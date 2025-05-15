@@ -6,7 +6,7 @@ import { Id } from '@user/domain/value-objects/id'
 
 @Injectable()
 export class MongoUserFactory implements UserFactory {
-  async createUser(dto: CreateUserDto): Promise<UserEntity> {
+  createUser(dto: CreateUserDto): UserEntity {
     const id = Id.generateUniqueId()
 
     return new UserEntity(

@@ -29,7 +29,7 @@ export class CreateUserUseCase {
     }
 
     // Crear usuario usando la factory
-    const user = await this.userFactory.createUser(dto)
+    const user = this.userFactory.createUser(dto)
 
     // Guardar usuario en la base de datos
     await this.userRepository.createEntity(user)

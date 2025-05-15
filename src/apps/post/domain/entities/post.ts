@@ -11,4 +11,16 @@ export class PostEntity {
     public updatedAt?: Date,
     public user?: UserEntity,
   ) {}
+
+  toJSON() {
+    return {
+      id: this.id.toString(),
+      title: this.title,
+      content: this.content,
+      userId: this.userId,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      user: this.user?.toJSON() || null,
+    }
+  }
 }

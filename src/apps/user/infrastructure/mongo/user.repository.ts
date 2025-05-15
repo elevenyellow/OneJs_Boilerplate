@@ -1,18 +1,21 @@
-import { Inject } from '@EyJs'
+import { Inject, EyJsError } from '@EyJs'
 import { Collection, MongoRepository, MongoConnector } from '@EyJs/Mongo'
 import { UserEntity } from '@user/domain/entities/user.entity'
 import { type OptionalUnlessRequiredId } from 'mongodb'
 import { UserMongoModel } from './models/user.mongo'
 import { Id } from '@user/domain/value-objects/id'
-import { EyJsError } from '@EyJs'
+import { PostEntity } from '@post/domain/entities/post'
+
 @Collection('users')
-export class UserMongoRepository extends MongoRepository<UserMongoModel> {
+export class UserMongoRepository extends MongoRepository<
+  UserMongoModel & Document
+> {
   constructor(@Inject(MongoConnector) mongo: MongoConnector) {
-    super(mongo, UserMongoModel)
+    super(mongo, UserMongoModel as any)
   }
 
   async findById(id: string): Promise<UserEntity | null> {
-    const doc = await this.findOneById(id) // ✅ habilita populate
+    const doc = await this.findOneById(id, { populate: true }) // Habilitamos populate para cargar los posts
     return doc ? this.toEntity(doc) : null
   }
 
@@ -42,14 +45,28 @@ export class UserMongoRepository extends MongoRepository<UserMongoModel> {
   }
 
   private toEntity(doc: UserMongoModel): UserEntity {
+    const posts =
+      doc.posts?.map(
+        (post) =>
+          new PostEntity(
+            Id.createFrom(post.id),
+            post.title,
+            post.content,
+            post.userId,
+            post.createdAt,
+            post.updatedAt,
+          ),
+      ) || []
+
     return new UserEntity(
       Id.createFrom(doc.id),
       doc.name,
       doc.email,
+      doc.password,
       doc.postIds,
       doc.createdAt,
       doc.updatedAt,
-      doc.posts, // ✅ usa posts poblados si existen
+      posts,
     )
   }
 
@@ -64,6 +81,14 @@ export class UserMongoRepository extends MongoRepository<UserMongoModel> {
       postIds: entity.postIds,
       createdAt: entity.createdAt!,
       updatedAt: entity.updatedAt!,
+      posts: entity.posts?.map((post) => ({
+        id: post.id.toString(),
+        title: post.title,
+        content: post.content,
+        userId: post.userId,
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
+      })),
     }
   }
 }

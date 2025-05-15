@@ -19,4 +19,17 @@ export class UserEntity {
   touch() {
     this.updatedAt = new Date()
   }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id.toString(),
+      name: this.name,
+      email: this.email,
+      password: this.password,
+      postIds: this.postIds,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      posts: this.posts?.map((post) => post.toJSON()) || [],
+    }
+  }
 }

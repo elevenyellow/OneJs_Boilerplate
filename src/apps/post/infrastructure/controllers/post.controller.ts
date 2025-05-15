@@ -3,6 +3,7 @@ import { Inject } from '@EyJs'
 import { PostMongoRepository } from '@post/infrastructure/persistance/mongo/post.repository'
 import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
 import { CreatePostUseCase } from '@post/application/use-cases/create-post.use-case'
+import type { PostEntity } from '@post/domain/entities/post'
 
 @Controller('/posts')
 export class PostController {
@@ -23,7 +24,10 @@ export class PostController {
   @Get('/user/:userId')
   async getUserPosts(request: Request, response: Response) {
     const { userId } = request.params
-    const posts = await this.posts.findByUserId(userId, { populate: true })
-    return response.json(posts)
+    const posts: PostEntity[] = await this.posts.findByUserId(userId, {
+      populate: true,
+    })
+
+    return response.json(posts.map((post) => post.toJSON()))
   }
 }
