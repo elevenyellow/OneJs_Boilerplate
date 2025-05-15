@@ -1,11 +1,6 @@
 import { Inject } from '@EyJs'
-import {
-  Collection,
-  MongoRepository,
-  MongoConnector,
-  toObjectIdString,
-} from '@EyJs/Mongo'
-import { UserEntity } from '@user/domain/entities/user'
+import { Collection, MongoRepository, MongoConnector } from '@EyJs/Mongo'
+import { UserEntity } from '@user/domain/entities/user.entity'
 import { type OptionalUnlessRequiredId } from 'mongodb'
 import { UserMongoModel } from './models/user.mongo'
 
@@ -22,6 +17,7 @@ export class UserMongoRepository extends MongoRepository<UserMongoModel> {
 
   async createEntity(user: UserEntity): Promise<UserEntity> {
     const result = await super.create(this.toDocument(user))
+
     const persisted = await this.findOneById(result.insertedId.toHexString())
     return this.toEntity(persisted!)
   }
@@ -36,10 +32,10 @@ export class UserMongoRepository extends MongoRepository<UserMongoModel> {
 
   private toEntity(doc: UserMongoModel): UserEntity {
     return new UserEntity(
+      doc._id.toHexString(),
       doc.name,
       doc.email,
       doc.postIds,
-      toObjectIdString(doc._id),
       doc.createdAt,
       doc.updatedAt,
       doc.posts, // ✅ usa posts poblados si existen
@@ -50,9 +46,13 @@ export class UserMongoRepository extends MongoRepository<UserMongoModel> {
     entity: UserEntity,
   ): OptionalUnlessRequiredId<UserMongoModel> {
     return {
+      id: entity.id.toString(),
       name: entity.name,
       email: entity.email,
+      password: entity.password,
       postIds: entity.postIds,
+      createdAt: entity.createdAt!,
+      updatedAt: entity.updatedAt!,
     }
   }
 }

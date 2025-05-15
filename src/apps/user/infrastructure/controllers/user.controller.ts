@@ -1,17 +1,26 @@
-import { Controller, Get, type Request, type Response } from '@EyJs'
+import { Controller, Post, type Request, type Response } from '@EyJs'
 import { Inject } from '@EyJs'
 import { UserMongoRepository } from '@user/infrastructure/mongo/user.repository'
-import { populateMany } from '@EyJs/Mongo'
+import { CreateUserDto } from '@user/domain/dtos/create-user.dto'
+import { CreateUserUseCase } from '@user/application/use-cases/create-user.use-case'
 
 @Controller('/users')
 export class UserController {
-  constructor(@Inject(UserMongoRepository) private readonly users: UserMongoRepository) {}
+  constructor(
+    @Inject(UserMongoRepository) private readonly users: UserMongoRepository,
+    @Inject(CreateUserUseCase) private readonly createUserUseCase: CreateUserUseCase,
+  ) {}
 
-  @Get('/')
-  async getAll(req: Request, res: Response) {
-    const rawUsers = await this.users.findAll()
-    const hydrated = await populateMany(rawUsers)
+  @Post('/sign-up')
+  async signUp(request: Request, response: Response) {
+    // TODO GET FROM REQUEST BODY
+    const userDto = CreateUserDto.create(
+      'test@test.com',
+      'Test',
+      'pASSw0rdAbc123.',
+    )
 
-    res.json(hydrated)
+    const user = await this.createUserUseCase.execute(userDto)
+    return response.status(201).json(user)
   }
 }

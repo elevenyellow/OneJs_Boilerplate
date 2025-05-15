@@ -5,19 +5,24 @@ import { PostMongoModel } from '@post/infrastructure/persistance/mongo/models/po
 @Entity({
   name: 'users',
   schema: {
+    id: 'string',
     name: 'string',
     email: 'string',
+    password: 'string',
     postIds: 'array',
+    createdAt: 'date',
+    updatedAt: 'date',
   },
 })
 export class UserMongoModel implements MongoEntityBase {
-  _id?: ObjectId
-  createdAt?: Date
-  updatedAt?: Date
-
+  _id!: ObjectId
+  id!: string
   name!: string
   email!: string
+  password!: string
   postIds!: string[]
+  createdAt!: Date
+  updatedAt!: Date
 
   @OneToMany({
     collection: 'posts',

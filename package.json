@@ -18,6 +18,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "mongodb": "^6.16.0"
+    "mongodb": "^6.16.0",
+    "elysia": "^0.8.17"
   }
 }

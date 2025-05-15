@@ -7,11 +7,5 @@ export class UserService {
     @Inject(UserMongoRepository) private userMongoRepository: UserMongoRepository,
   ) {}
 
-  public async hi() {
-    const test = await this.userMongoRepository.findByEmail('test@test.com')
-
-    console.log({ test })
-
-    return test
-  }
+  public async hi() {}
 }
