@@ -6,21 +6,23 @@ import type { ObjectId } from 'mongodb'
 @Entity({
   name: 'posts',
   schema: {
+    id: 'string',
     title: 'string',
     content: 'string',
     userId: 'string',
+    createdAt: 'date',
+    updatedAt: 'date',
   },
 })
 export class PostMongoModel implements MongoEntityBase {
   _id?: ObjectId
+  id!: string
+  title!: string
+  content!: string
+  userId!: string
   createdAt?: Date
   updatedAt?: Date
 
-  title!: string
-  content!: string
-
-  userId!: string
-
-  @OneToOne({ collection: 'users', foreignField: '_id', localField: 'userId' })
+  @OneToOne({ collection: 'users', foreignField: 'id', localField: 'userId' })
   user?: UserMongoModel
 }

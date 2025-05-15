@@ -10,10 +10,10 @@ export class MongoPostFactory implements PostFactory {
     const id = Id.generateUniqueId()
 
     return new PostEntity(
+      id,
       dto.title,
       dto.content,
       dto.userId,
-      id.toString(),
       new Date(),
       new Date(),
     )
@@ -21,10 +21,10 @@ export class MongoPostFactory implements PostFactory {
 
   createPostFromExisting(post: PostEntity): PostEntity {
     return new PostEntity(
+      post.id,
       post.title,
       post.content,
       post.userId,
-      post.id,
       post.createdAt,
       post.updatedAt,
     )

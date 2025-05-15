@@ -1,5 +1,4 @@
 import { Entity, OneToMany, type MongoEntityBase } from '@EyJs/Mongo'
-import type { ObjectId } from 'mongodb'
 import { PostMongoModel } from '@post/infrastructure/persistance/mongo/models/post.mongo'
 
 @Entity({
@@ -15,7 +14,6 @@ import { PostMongoModel } from '@post/infrastructure/persistance/mongo/models/po
   },
 })
 export class UserMongoModel implements MongoEntityBase {
-  _id!: ObjectId
   id!: string
   name!: string
   email!: string
@@ -26,7 +24,7 @@ export class UserMongoModel implements MongoEntityBase {
 
   @OneToMany({
     collection: 'posts',
-    foreignField: '_id',
+    foreignField: 'id',
     localField: 'postIds',
   })
   posts?: PostMongoModel[]

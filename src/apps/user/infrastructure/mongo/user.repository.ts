@@ -3,7 +3,8 @@ import { Collection, MongoRepository, MongoConnector } from '@EyJs/Mongo'
 import { UserEntity } from '@user/domain/entities/user.entity'
 import { type OptionalUnlessRequiredId } from 'mongodb'
 import { UserMongoModel } from './models/user.mongo'
-
+import { Id } from '@user/domain/value-objects/id'
+import { EyJsError } from '@EyJs'
 @Collection('users')
 export class UserMongoRepository extends MongoRepository<UserMongoModel> {
   constructor(@Inject(MongoConnector) mongo: MongoConnector) {
@@ -23,7 +24,17 @@ export class UserMongoRepository extends MongoRepository<UserMongoModel> {
   }
 
   async updateEntity(user: UserEntity): Promise<void> {
-    await this.updateById(user.id!, this.toDocument(user))
+    await this.updateById(user.id.toString(), this.toDocument(user))
+  }
+
+  async addPost(userId: string, postId: string): Promise<void> {
+    const user = await this.findOneById(userId)
+
+    if (!user) throw new EyJsError('USER_NOT_FOUND', 404, 'User not found')
+
+    await this.updateById(userId, {
+      postIds: [...user.postIds, postId],
+    })
   }
 
   async deleteEntity(id: string): Promise<void> {
@@ -32,7 +43,7 @@ export class UserMongoRepository extends MongoRepository<UserMongoModel> {
 
   private toEntity(doc: UserMongoModel): UserEntity {
     return new UserEntity(
-      doc._id.toHexString(),
+      Id.createFrom(doc.id),
       doc.name,
       doc.email,
       doc.postIds,

@@ -1,4 +1,4 @@
-import { Controller, Post, type Request, type Response } from '@EyJs'
+import { Controller, Get, Post, type Request, type Response } from '@EyJs'
 import { Inject } from '@EyJs'
 import { UserMongoRepository } from '@user/infrastructure/mongo/user.repository'
 import { CreateUserDto } from '@user/domain/dtos/create-user.dto'
@@ -22,5 +22,12 @@ export class UserController {
 
     const user = await this.createUserUseCase.execute(userDto)
     return response.status(201).json(user)
+  }
+
+  @Get('/:id')
+  async getUser(request: Request, response: Response) {
+    const { id } = request.params
+    const user = await this.users.findOneById(id, { populate: true })
+    return response.status(200).json(user)
   }
 }

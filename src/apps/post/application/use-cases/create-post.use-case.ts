@@ -6,13 +6,14 @@ import { MongoPostFactory } from '@post/infrastructure/factories/mongo-post-fact
 import { PostCreatedEvent } from '../../domain/events/post-created.event'
 import { EventBus } from '@EyJs'
 import { PostMongoRepository } from '@post/infrastructure/persistance/mongo/post.repository'
-
+import { UserMongoRepository } from '@user/infrastructure/mongo/user.repository'
 @Injectable()
 export class CreatePostUseCase {
   constructor(
     @Inject(PostMongoRepository) private readonly postRepository: PostMongoRepository,
     @Inject(MongoPostFactory) private readonly postFactory: PostFactory,
-    @Inject(EventBus) private readonly eventBus: EventBus
+    @Inject(EventBus) private readonly eventBus: EventBus,
+    @Inject(UserMongoRepository) private readonly userRepository: UserMongoRepository,
   ) {}
 
   async execute(dto: CreatePostDto): Promise<PostEntity> {
@@ -21,6 +22,11 @@ export class CreatePostUseCase {
 
     // Guardar post en la base de datos
     await this.postRepository.createEntity(post)
+
+    await this.userRepository.addPost(
+      post.userId.toString(),
+      post.id.toString(),
+    )
 
     // Publicar evento usando el patrón Observer
     await this.eventBus.publish(new PostCreatedEvent(post))

@@ -23,7 +23,7 @@ export class PostController {
   @Get('/user/:userId')
   async getUserPosts(request: Request, response: Response) {
     const { userId } = request.params
-    const posts = await this.posts.findByUserId(userId)
+    const posts = await this.posts.findByUserId(userId, { populate: true })
     return response.json(posts)
   }
 }
