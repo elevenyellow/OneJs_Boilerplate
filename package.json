@@ -1,0 +1,23 @@
+{
+  "name": "containerv2",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "create-app": "bun ./packages/create-app/cli.ts",
+    "start:db": "podman-compose up -d",
+    "start:dev": "bun start:db && bun --verbose --watch index.ts",
+    "start:dev:simple": "bun --verbose --watch index.ts",
+    "start": "bun run index.ts",
+    "test": "bun --test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "mongodb": "^6.16.0"
+  }
+}
