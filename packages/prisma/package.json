@@ -1,0 +1,20 @@
+{
+  "name": "containerv2",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start:dev": "bun --verbose --watch index.ts",
+    "start": "bun run index.ts",
+    "test": "bun --test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.0"
+  }
+}
