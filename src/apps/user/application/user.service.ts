@@ -1,11 +1,14 @@
 import { Inject, Injectable } from '@EyJs'
-import { UserMongoRepository } from '@user/infrastructure/mongo/user.repository'
+import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
 
 @Injectable()
 export class UserService {
   constructor(
-    @Inject(UserMongoRepository) private userMongoRepository: UserMongoRepository,
+    @Inject(UserPrismaRepository)
+    private userPrismaRepository: UserPrismaRepository,
   ) {}
 
-  public async hi() {}
+  public async hi() {
+    console.log('hi')
+  }
 }

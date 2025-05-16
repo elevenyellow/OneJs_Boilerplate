@@ -1,11 +1,5 @@
-import { AutoLoader, ConfigService, container, Server } from '@EyJs'
-import { MongoConnector } from '@EyJs/Mongo'
+import { AutoLoader, container, Server } from '@EyJs'
 
-const config = container.get(ConfigService)
-
-const mongoConnector = container.get(MongoConnector)
-
-await mongoConnector.connect(config.get('MONGO_URL') as string)
 await AutoLoader.init()
 
 container

@@ -2,20 +2,22 @@ import { Injectable, Inject } from '@EyJs'
 import type { UserFactory } from '../../domain/factories/user-factory.interface'
 import type { UserEntity } from '../../domain/entities/user.entity'
 import { CreateUserDto } from '../../domain/dtos/create-user.dto'
-import { MongoUserFactory } from '@user/infrastructure/factories/mongo-user-factory'
+import { MongoUserFactory } from '@user/infrastructure/factories/mongo-user.factory'
 import type { PasswordValidationStrategy } from '../../domain/strategies/password-validation.strategy'
 import { StrongPasswordStrategy } from '../../domain/strategies/strong-password.strategy'
 import { UserCreatedEvent } from '../../domain/events/user-created.event'
 import { EyJsError, EventBus } from '@EyJs'
-import { UserMongoRepository } from '@user/infrastructure/mongo/user.repository'
+import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
 
 @Injectable()
 export class CreateUserUseCase {
   constructor(
-    @Inject(UserMongoRepository) private readonly userRepository: UserMongoRepository,
+    @Inject(UserPrismaRepository)
+    private readonly userRepository: UserPrismaRepository,
     @Inject(MongoUserFactory) private readonly userFactory: UserFactory,
-    @Inject(StrongPasswordStrategy) private readonly passwordStrategy: PasswordValidationStrategy,
-    @Inject(EventBus) private readonly eventBus: EventBus
+    @Inject(StrongPasswordStrategy)
+    private readonly passwordStrategy: PasswordValidationStrategy,
+    @Inject(EventBus) private readonly eventBus: EventBus,
   ) {}
 
   async execute(dto: CreateUserDto): Promise<UserEntity> {

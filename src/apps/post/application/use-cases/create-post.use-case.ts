@@ -1,19 +1,22 @@
 import { Injectable, Inject } from '@EyJs'
-import type { PostFactory } from '../../domain/factories/post-factory.interface'
-import type { PostEntity } from '../../domain/entities/post'
-import { CreatePostDto } from '../../domain/dtos/create-post.dto'
-import { MongoPostFactory } from '@post/infrastructure/factories/mongo-post-factory'
-import { PostCreatedEvent } from '../../domain/events/post-created.event'
+import type { PostFactory } from '@post/domain/factories/post-factory.interface'
+import type { PostEntity } from '@post/domain/entities/post'
+import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
+import { PostCreatedEvent } from '@post/domain/events/post-created.event'
 import { EventBus } from '@EyJs'
-import { PostMongoRepository } from '@post/infrastructure/persistance/mongo/post.repository'
-import { UserMongoRepository } from '@user/infrastructure/mongo/user.repository'
+import { PostPrismaRepository } from '@post/infrastructure/persistence/prisma/post.repository'
+import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
+import { PrismaPostFactory } from '@post/infrastructure/factories/prisma-post.factory'
+
 @Injectable()
 export class CreatePostUseCase {
   constructor(
-    @Inject(PostMongoRepository) private readonly postRepository: PostMongoRepository,
-    @Inject(MongoPostFactory) private readonly postFactory: PostFactory,
+    @Inject(PostPrismaRepository)
+    private readonly postRepository: PostPrismaRepository,
+    @Inject(PrismaPostFactory) private readonly postFactory: PostFactory,
     @Inject(EventBus) private readonly eventBus: EventBus,
-    @Inject(UserMongoRepository) private readonly userRepository: UserMongoRepository,
+    @Inject(UserPrismaRepository)
+    private readonly userRepository: UserPrismaRepository,
   ) {}
 
   async execute(dto: CreatePostDto): Promise<PostEntity> {

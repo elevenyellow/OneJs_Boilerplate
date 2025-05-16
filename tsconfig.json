@@ -29,10 +29,9 @@
 
     "paths": {
       "@EyJs": ["./packages/core"],
-      "@EyJs/Mongo": ["./packages/mongo"],
       "@EyJs/Auth": ["./packages/auth"],
       "@EyJs/Jobs": ["./packages/jobs"],
-      // "@EyJs/Prisma": ["./packages/prisma"],
+      "@EyJs/Prisma": ["./packages/prisma"],
       "@*": ["./src/apps/*", "./src/common/*"]
     }
   }
