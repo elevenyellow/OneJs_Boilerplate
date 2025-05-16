@@ -76,7 +76,6 @@ export class Server {
 
         const middlewares = [...(route.middlewares || [])]
 
-        console.log(route.raw || meta.raw)
         if (route.raw || meta.raw) {
           middlewares.unshift(bodyParser.urlencoded({ extended: false }))
           middlewares.push(bodyParser.json())
