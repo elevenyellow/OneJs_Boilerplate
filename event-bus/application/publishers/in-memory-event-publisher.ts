@@ -1,0 +1,22 @@
+import type { DomainEvent } from '../../domain/events/domain-events'
+import type { EventPublisher } from './event-publisher'
+import { Injectable } from '../../../container'
+
+@Injectable()
+export class InMemoryEventPublisher implements EventPublisher {
+  private handlers: Map<string, ((event: DomainEvent) => void)[]> = new Map()
+
+  async publish(eventType: string, event: DomainEvent): Promise<void> {
+    const handlers = this.handlers.get(eventType) || []
+
+    handlers.forEach((handler) => handler(event))
+  }
+
+  subscribe(eventType: string, handler: (event: DomainEvent) => void): void {
+    if (!this.handlers.has(eventType)) {
+      this.handlers.set(eventType, [])
+    }
+
+    this.handlers.get(eventType)!.push(handler)
+  }
+}

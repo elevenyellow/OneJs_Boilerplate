@@ -1,0 +1,149 @@
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from 'express'
+import cors from 'cors'
+import bodyParser from 'body-parser'
+import { container, Injectable, Inject } from '../container'
+import { Logger } from '../logger'
+import { ConfigService } from '../config'
+import { ErrorMiddleware } from './middlewares/error.middleware'
+import { getAllControllers } from './decorators'
+import { useClassMiddleware } from './utils'
+
+@Injectable()
+export class Server {
+  private readonly controllers: any[]
+  private readonly app: Express
+  private middlewares: Array<
+    (req: Request, res: Response, next: NextFunction) => void
+  >
+  public prefix: string;
+
+  constructor(
+    @Inject(ConfigService) private readonly config: ConfigService,
+    @Inject(Logger) private readonly logger: Logger,
+  ) {
+    this.app = express()
+    this.app.set('trust proxy', true)
+    this.app.use(cors())
+
+    this.controllers = []
+    this.middlewares = []
+    this.prefix = ''
+  }
+
+  private asyncHandler(
+    fn: (req: Request, res: Response, next: NextFunction) => Promise<void>,
+  ) {
+    return (req: Request, res: Response, next: NextFunction) => {
+      Promise.resolve(fn(req, res, next)).catch((error) => {
+        console.error(error)
+
+        next(error)
+      })
+    }
+  }
+
+  private logClientIp(req: Request, res: Response, next: NextFunction) {
+    req.clientIp = req.ip
+    next()
+  }
+
+  private registerRoutes(): void {
+    this.controllers.forEach((controllerClass) => {
+      const controllerInstance = container.get(controllerClass)
+      const meta = controllerClass.__meta
+      if (!meta || !meta.routes) return
+
+      const basePath = `${meta.version || this.prefix}${meta.path}`.replace(
+        /\/{2,}/g,
+        '/',
+      )
+
+      this.logger.debug(
+        `Registering routes for controller ${controllerClass.name}`,
+      )
+
+      for (const [handlerName, route] of Object.entries(meta.routes)) {
+        const fullPath = `${basePath}${route.path}`.replace(/\/{2,}/g, '/')
+        const method = route.method?.toLowerCase()
+        if (!method) continue
+
+        const handler = controllerInstance[handlerName].bind(controllerInstance)
+
+        const middlewares = [...(route.middlewares || [])]
+
+        console.log(route.raw || meta.raw)
+        if (route.raw || meta.raw) {
+          middlewares.unshift(bodyParser.urlencoded({ extended: false }))
+          middlewares.push(bodyParser.json())
+        } else {
+          middlewares.unshift(express.json())
+        }
+
+        this.logger.debug(
+          `Registering route [${method.toUpperCase()}] ${fullPath}`,
+        )
+
+        this.app[method](fullPath, ...middlewares, this.asyncHandler(handler))
+      }
+    })
+  }
+
+  addController(controllerClass: any): this {
+    this.controllers.push(controllerClass)
+    return this
+  }
+
+  addControllers(controllerClasses: any[]): this {
+    this.controllers.push(...controllerClasses)
+    return this
+  }
+
+  setPrefix(prefix: string): this {
+    this.prefix = prefix
+    return this
+  }
+
+  addMiddleware(middleware: Function | { new (...args: any[]): any }): this {
+    const resolved =
+      typeof middleware === 'function' && middleware.prototype?.handle
+        ? useClassMiddleware(middleware)
+        : middleware
+
+    this.middlewares.push(resolved)
+    return this
+  }
+
+  addMiddlewares(
+    middlewares: Array<Function | { new (...args: any[]): any }>,
+  ): this {
+    middlewares.forEach((middleware) => this.addMiddleware(middleware))
+    return this
+  }
+
+  start(port = 3000, callback?: () => void): void {
+    this.app.use(this.logClientIp)
+
+    // Registrar middlewares globales
+    this.middlewares.forEach((middleware) => this.app.use(middleware))
+
+    const controllers = getAllControllers()
+
+    this.addControllers(controllers)
+
+    // Registrar rutas de controladores
+    this.registerRoutes()
+
+    // Error handler al final
+    this.app.use(ErrorMiddleware)
+
+    this.app.listen(port, () => {
+      this.logger.debug(`🚀 Server listening on port ${port}`)
+      callback?.()
+    })
+  }
+}
