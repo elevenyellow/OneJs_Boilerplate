@@ -1,5 +1,5 @@
 {
-  "name": "containerv2",
+  "name": "ey-js-prisma",
   "module": "index.ts",
   "type": "module",
   "private": true,

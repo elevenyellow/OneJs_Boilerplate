@@ -1,8 +1,9 @@
 {
-  "name": "containerv2",
+  "name": "ey-js-boilerplate",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "workspaces": ["packages/*"],
   "scripts": {
     "create-app": "bun ./packages/create-app/cli.ts",
     "start:db": "podman-compose up -d",

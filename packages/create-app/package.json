@@ -1,5 +1,5 @@
 {
-  "name": "containerv2",
+  "name": "ey-js-create-app",
   "module": "index.ts",
   "type": "module",
   "private": true,

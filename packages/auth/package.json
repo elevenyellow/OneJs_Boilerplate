@@ -1,5 +1,5 @@
 {
-  "name": "containerv2",
+  "name": "ey-js-auth",
   "module": "index.ts",
   "type": "module",
   "private": true,
