@@ -1,8 +1,8 @@
 import { Injectable } from '@EyJs'
-import type { PostFactory } from '../../domain/factories/post-factory.interface'
-import { PostEntity } from '@src/post/domain/entities/post'
-import type { CreatePostDto } from '@src/post/domain/dtos/create-post.dto'
+import type { PostFactory } from '@post/domain/factories/post-factory.interface'
 import { Id } from '@user/domain/value-objects/id'
+import { PostEntity } from '@post/domain/entities/post'
+import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
 
 @Injectable()
 export class PrismaPostFactory implements PostFactory {
