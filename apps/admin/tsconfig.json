@@ -28,10 +28,10 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
     "paths": {
-      "@EyJs": ["../../packages/core"],
-      "@EyJs/Auth": ["../../packages/auth"],
-      "@EyJs/Jobs": ["../../packages/jobs"],
-      "@EyJs/Prisma": ["../../packages/prisma"],
+      "@EyJs": ["../../packages/ey-js/core"],
+      "@EyJs/Auth": ["../../packages/ey-js/auth"],
+      "@EyJs/Jobs": ["../../packages/ey-js/jobs"],
+      "@EyJs/Prisma": ["../../packages/ey-js/prisma"],
       "@*": ["./src/*"]
     }
   }
