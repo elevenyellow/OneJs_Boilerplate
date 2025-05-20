@@ -28,11 +28,11 @@
     "experimentalDecorators": true,
 
     "paths": {
+      "@*": ["./src/apps/*", "./src/common/*", "./packages/*"],
       "@EyJs": ["./packages/ey-js/core"],
       "@EyJs/Auth": ["./packages/ey-js/auth"],
       "@EyJs/Jobs": ["./packages/ey-js/jobs"],
-      "@EyJs/Prisma": ["./packages/ey-js/prisma"],
-      "@*": ["./src/apps/*", "./src/common/*"]
+      "@EyJs/Prisma": ["./packages/ey-js/prisma"]
     }
   }
 }
