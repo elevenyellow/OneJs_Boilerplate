@@ -1,16 +1,14 @@
-import { Injectable, EyJsError } from '@EyJs'
+import { Injectable } from '@EyJs'
 import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
-import { Middleware } from '../../core/server'
+import { EyJsError } from '@EyJs'
 
 @Injectable()
 export class AuthMiddleware {
-  // optional you can use @Middleware() to specify the name of the middleware
-  @Middleware()
-  async handler(req: Request, res: Response, next: NextFunction) {
+  async handle(req: Request, res: Response, next: NextFunction) {
     const auth = req.headers.authorization
 
-    if (!auth || !auth.startsWith('Bearer ')) {
+    if (!auth?.startsWith('Bearer ')) {
       throw new EyJsError('Unauthorized', 401, 'Bearer token is required')
     }
 

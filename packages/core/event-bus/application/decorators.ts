@@ -1,44 +1,41 @@
-import { container } from '../../container'
 import type { DomainEvent } from '../domain/events/domain-events'
-import { EventBus } from './event-bus'
-import type { IEventHandler } from '../domain/handlers/event-handler'
+import type { EventHandlerOptions } from '../domain/interfaces'
+import type { ClassConstructor } from '../../container'
+import { registerEventHandler } from '../../container/metadata/event-handler.registry'
 
-interface EventHandlerOptions {
-  context?: any
-  once?: boolean
-  priority?: number
-}
-
-export function EventHandler(
-  eventType: string | Function,
+/**
+ * Registra un método como manejador de eventos para una clase que extiende DomainEvent.
+ *
+ * @param eventType - Clase del evento (constructor)
+ * @param options - Opciones como prioridad o ejecución única
+ */
+export function EventHandler<T extends DomainEvent>(
+  eventType: ClassConstructor<T>,
   options: EventHandlerOptions = {},
-) {
+): MethodDecorator {
   return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
-    const originalMethod = descriptor.value
+    const controller = target.constructor as ClassConstructor
 
-    // Asegurarse de que el EventBus esté registrado en el contenedor
-    if (!container.get(EventBus)) {
-      throw new Error('EventBus is not registered in the dependency container')
+    // Validación opcional en tiempo de ejecución
+    if (
+      typeof eventType !== 'function' ||
+      !(eventType.prototype instanceof Object) ||
+      !Object.getPrototypeOf(eventType.prototype)?.constructor?.name.includes(
+        'DomainEvent',
+      )
+    ) {
+      console.warn(
+        `⚠️ [EventHandler] ${controller.name}.${String(propertyKey)} está intentando registrar un tipo inválido:`,
+        eventType,
+      )
     }
 
-    // Obtener o crear el EventBus
-    const eventBus = container.get<EventBus>(EventBus)
-
-    // Crear un manejador de eventos que cumpla con la interfaz IEventHandler
-    const handler: IEventHandler<DomainEvent> = {
-      handle: async (event: DomainEvent) => {
-        // Obtener la instancia del objeto desde el contenedor de dependencias
-        const instance = container.get(target.constructor)
-
-        // Ejecutar el método decorado usando la instancia obtenida
-        return originalMethod.call(instance, event)
-      },
-    }
-
-    const eventName = typeof eventType === 'string' ? eventType : eventType.name
-
-    // Usar el método subscribe del EventBus para registrar el manejador
-    eventBus.subscribe(eventName, handler, options)
+    registerEventHandler({
+      target: controller,
+      methodName: propertyKey as string,
+      eventType,
+      options,
+    })
 
     return descriptor
   }

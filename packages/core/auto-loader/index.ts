@@ -1,9 +1,18 @@
+// packages/di/auto-loader.ts
+
 import { glob } from 'glob'
 import path from 'path'
-import { container } from '../container'
+import { Container } from '../container'
+
+interface AutoLoaderOptions {
+  rootDir: string // obligatorio: raíz de la app (apps/app1)
+  extraDirs?: string[] // opcional: paths adicionales como 'packages'
+}
 
 export class AutoLoader {
-  // Ignorar archivos de pruebas y ciertos directorios
+  private static container: Container | null = null
+  private static options: AutoLoaderOptions | null = null
+
   private static readonly ignorePatterns = [
     '**/*.spec.{ts,js}',
     '**/*.test.{ts,js}',
@@ -12,71 +21,83 @@ export class AutoLoader {
     '**/node_modules/**',
     '**/auto-load/**',
     '**/create-app/**',
-    '*.ts', // ✅ ignora raíz
-    '*.js',
   ]
 
-  /**
-   * Inicializa el auto-loader cargando los módulos y ejecutando los métodos autorun
-   */
-  static async init(): Promise<void> {
-    try {
-      await this.loadCoreFiles()
-      await this.loadApplicationFiles()
-      await this.runAutoRunMethods()
-    } catch (error) {
-      console.error('❌ AutoLoader failed:', error)
-    }
+  static setContainer(container: Container): void {
+    this.container = container
   }
 
-  /**
-   * Carga archivos base del core (ej: contenedor, configuración, etc.)
-   */
+  static async init(options: AutoLoaderOptions): Promise<void> {
+    this.options = options
+    await this.loadCoreFiles()
+    await this.loadApplicationFiles()
+    // await this.runAutoRunMethods()
+  }
+
   private static async loadCoreFiles(): Promise<void> {
     const corePattern = path.resolve(__dirname, '../*.{ts,js}')
     await this.importMatchingFiles(corePattern)
   }
 
-  /**
-   * Carga todos los archivos de la aplicación que cumplen el patrón
-   */
   private static async loadApplicationFiles(): Promise<void> {
-    // Solo carga archivos de ciertos subdirectorios
-    const subfolders = ['src', 'apps', 'packages', 'modules']
-    for (const folder of subfolders) {
-      const pattern = path.resolve(process.cwd(), folder, '**/*.{ts,js}')
-      await this.importMatchingFiles(pattern)
+    if (!this.options) throw new Error('Missing AutoLoader options')
+
+    const { rootDir, extraDirs = [] } = this.options
+    const allowedDirs = [rootDir, ...extraDirs]
+
+    for (const dir of allowedDirs) {
+      const pattern = path.resolve(dir, '**/*.{ts,js}')
+      await this.importMatchingFiles(pattern, allowedDirs)
     }
   }
 
-  /**
-   * Importa dinámicamente todos los archivos que cumplan el patrón dado,
-   * ignorando los definidos en ignorePatterns
-   */
-  private static async importMatchingFiles(pattern: string): Promise<void> {
+  private static async importMatchingFiles(
+    pattern: string,
+    allowedDirs?: string[],
+  ): Promise<void> {
     const files = await glob(pattern, {
       ignore: this.ignorePatterns,
       nodir: true,
     })
 
     for (const file of files) {
+      const resolvedPath = path.resolve(file)
+
+      // Si hay directorios permitidos, filtramos
+      if (allowedDirs && !this.isInsideAllowedDirs(resolvedPath, allowedDirs)) {
+        console.debug(`🚫 Skipped: ${resolvedPath}`)
+        continue
+      }
+
       try {
-        await import(path.resolve(file)) // Ejecuta decoradores o inicializadores
-        // console.debug(`📦 Imported: ${file}`)
+        await import(resolvedPath)
+        // console.debug(`📦 Imported: ${resolvedPath}`)
       } catch (err) {
-        console.warn(`⚠️ Failed to import ${file}: ${err}`)
+        console.warn(`⚠️ Failed to import ${resolvedPath}: ${err}`)
       }
     }
   }
 
-  /**
-   * Ejecuta los métodos `autorun()` definidos en servicios registrados
-   */
+  private static isInsideAllowedDirs(
+    filePath: string,
+    allowedDirs: string[],
+  ): boolean {
+    const normalizedFile = path.normalize(filePath)
+    return allowedDirs.some((dir) =>
+      normalizedFile.startsWith(path.normalize(dir)),
+    )
+  }
+
   private static async runAutoRunMethods(): Promise<void> {
-    const services = container.getAllServicesWithAutorun()
+    if (!this.container) {
+      console.warn('⚠️ No container set. Skipping autorun services.')
+      return
+    }
+
+    const services = this.container.getAllServicesWithAutorun()
 
     for (const Service of services) {
-      const instance = container.get(Service)
+      const instance = this.container.get(Service)
       if (typeof instance.autorun === 'function') {
         console.info(`⚙️ Running autorun => ${Service.name}`)
         try {

@@ -1,7 +1,7 @@
 import { Injectable } from '@EyJs'
 import type { PostFactory } from '../../domain/factories/post-factory.interface'
-import { PostEntity } from '@post/domain/entities/post'
-import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
+import { PostEntity } from '@src/post/domain/entities/post'
+import type { CreatePostDto } from '@src/post/domain/dtos/create-post.dto'
 import { Id } from '@user/domain/value-objects/id'
 
 @Injectable()

@@ -1,17 +1,17 @@
 import { EventEmitter } from 'node:events'
 import type { ClassConstructor } from './types'
 
-type Scope = 'singleton' | 'transient'
-type Fallback = (() => any) | any
+export type Scope = 'singleton' | 'transient'
+export type Fallback = (() => any) | any
 
-interface ParamInfo {
+export interface ParamInfo {
   index: number
   type?: any
   optional?: boolean
   fallback?: Fallback
 }
 
-interface ServiceMetadata {
+export interface ServiceMetadata {
   constructor: ClassConstructor
   scope: Scope
   autorun: boolean
@@ -21,36 +21,26 @@ interface ServiceMetadata {
 export class Container extends EventEmitter {
   private services = new Map<any, ServiceMetadata>()
   private aliases = new Map<any, ClassConstructor>()
-  private paramMap = new Map<any, ParamInfo[]>()
   private instances = new Map<any, any>()
   private resolutionStack = new Set<any>()
 
+  /**
+   * Registra una clase en el contenedor junto con sus dependencias.
+   */
   register<T>(
     constructor: ClassConstructor<T>,
     scope: Scope = 'singleton',
     autorun: boolean = false,
+    params: ParamInfo[] = [],
   ): void {
     if (this.services.has(constructor)) return
 
-    const params = this.paramMap.get(constructor) || []
     this.services.set(constructor, { constructor, scope, autorun, params })
     this.emit('registered', { name: constructor.name, constructor })
   }
 
   registerAlias(abstractKey: any, concreteClass: ClassConstructor): void {
     this.aliases.set(abstractKey, concreteClass)
-  }
-
-  setParamType(target: any, index: number, type: any) {
-    const list = this.paramMap.get(target) || []
-    list[index] = { ...list[index], index, type }
-    this.paramMap.set(target, list)
-  }
-
-  setParamOptional(target: any, index: number, fallback?: Fallback) {
-    const list = this.paramMap.get(target) || []
-    list[index] = { ...list[index], index, optional: true, fallback }
-    this.paramMap.set(target, list)
   }
 
   private resolveToken(token: any): ClassConstructor | null {
@@ -81,6 +71,7 @@ export class Container extends EventEmitter {
 
       for (let i = 0; i < metadata.params.length; i++) {
         const param = metadata.params[i]
+
         if (!param?.type) {
           args[i] = undefined
           continue
@@ -107,6 +98,7 @@ export class Container extends EventEmitter {
       }
 
       const instance = new metadata.constructor(...args)
+
       if (metadata.scope === 'singleton') {
         this.instances.set(constructor, instance)
       }
@@ -131,6 +123,14 @@ export class Container extends EventEmitter {
   getAllServices(): any[] {
     return Array.from(this.instances.values())
   }
+
+  clear(): void {
+    this.services.clear()
+    this.aliases.clear()
+    this.instances.clear()
+    this.resolutionStack.clear()
+  }
 }
 
+// Instancia compartida por defecto (opcional)
 export const container = new Container()

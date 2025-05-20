@@ -6,9 +6,8 @@ import express, {
 } from 'express'
 import cors from 'cors'
 import bodyParser from 'body-parser'
-import { container, Injectable, Inject } from '../container'
+import { Injectable, Inject, Container } from '../container'
 import { Logger } from '../logger'
-import { ConfigService } from '../config'
 import { ErrorMiddleware } from './middlewares/error.middleware'
 import { getAllControllers } from './decorators'
 import { useClassMiddleware } from './utils'
@@ -20,10 +19,10 @@ export class Server {
   private middlewares: Array<
     (req: Request, res: Response, next: NextFunction) => void
   >
-  public prefix: string;
+  public prefix: string
+  protected container: Container;
 
   constructor(
-    @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(Logger) private readonly logger: Logger,
   ) {
     this.app = express()
@@ -33,6 +32,11 @@ export class Server {
     this.controllers = []
     this.middlewares = []
     this.prefix = ''
+  }
+
+  setContainer(containerInstance: Container): this {
+    this.container = containerInstance
+    return this
   }
 
   private asyncHandler(
@@ -54,7 +58,7 @@ export class Server {
 
   private registerRoutes(): void {
     this.controllers.forEach((controllerClass) => {
-      const controllerInstance = container.get(controllerClass)
+      const controllerInstance = this.container.get(controllerClass)
       const meta = controllerClass.__meta
       if (!meta || !meta.routes) return
 
@@ -74,20 +78,34 @@ export class Server {
 
         const handler = controllerInstance[handlerName].bind(controllerInstance)
 
-        const middlewares = [...(route.middlewares || [])]
+        const rawMiddlewares = [...(route.middlewares || [])]
+
+        const resolvedMiddlewares = rawMiddlewares.map((mw: any) => {
+          if (typeof mw === 'function' && mw.prototype?.handle) {
+            const instance = this.container.get(mw)
+            return instance.handle.bind(instance)
+          }
+          return mw
+        })
 
         if (route.raw || meta.raw) {
-          middlewares.unshift(bodyParser.urlencoded({ extended: false }))
-          middlewares.push(bodyParser.json())
+          resolvedMiddlewares.unshift(
+            bodyParser.urlencoded({ extended: false }),
+          )
+          resolvedMiddlewares.push(bodyParser.json())
         } else {
-          middlewares.unshift(express.json())
+          resolvedMiddlewares.unshift(express.json())
         }
 
         this.logger.debug(
           `Registering route [${method.toUpperCase()}] ${fullPath}`,
         )
 
-        this.app[method](fullPath, ...middlewares, this.asyncHandler(handler))
+        this.app[method](
+          fullPath,
+          ...resolvedMiddlewares,
+          this.asyncHandler(handler),
+        )
       }
     })
   }
@@ -125,6 +143,12 @@ export class Server {
   }
 
   start(port = 3000, callback?: () => void): void {
+    if (!this.container) {
+      throw new Error(
+        'Container not set. Use .setContainer(container) before start()',
+      )
+    }
+
     this.app.use(this.logClientIp)
 
     // Registrar middlewares globales

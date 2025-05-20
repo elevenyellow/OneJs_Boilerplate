@@ -1,4 +1,4 @@
-import { container } from '../container'
+import { metadataRegistry } from '../metadata-registry'
 import type { ClassConstructor } from '../types'
 
 export interface InjectableOptions {
@@ -8,8 +8,7 @@ export interface InjectableOptions {
 
 export function Injectable(options: InjectableOptions = {}): ClassDecorator {
   const { scope = 'singleton', autorun = false } = options
-
   return (target: Function): void => {
-    container.register(target as ClassConstructor<any>, scope, autorun)
+    metadataRegistry.registerService(target as ClassConstructor, scope, autorun)
   }
 }
