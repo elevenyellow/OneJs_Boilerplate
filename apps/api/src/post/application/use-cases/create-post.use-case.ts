@@ -6,6 +6,7 @@ import { PostCreatedEvent } from '@post/domain/events/post-created.event'
 import { EventBus } from '@EyJs'
 import { PostPrismaRepository } from '@post/infrastructure/persistence/prisma/post.repository'
 import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
+import { PrismaPostFactory } from '@post/infrastructure/factories/prisma-post.factory'
 
 @Injectable()
 export class CreatePostUseCase {
