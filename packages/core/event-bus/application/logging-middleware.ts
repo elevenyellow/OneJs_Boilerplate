@@ -1,5 +1,5 @@
 import type { DomainEvent } from '../domain/events/domain-events'
-import type { Middleware } from './middleware'
+import type { EventBusMiddlewareInterface as Middleware } from './middleware'
 
 export const LoggingMiddleware: Middleware = async (
   event: DomainEvent,

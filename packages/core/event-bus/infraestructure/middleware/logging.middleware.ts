@@ -1,4 +1,4 @@
-import type { Middleware } from '../../application/middleware'
+import type { EventBusMiddlewareInterface as Middleware } from '../../application/middleware'
 
 export const LoggingMiddleware: Middleware = async (event, next) => {
   console.log(

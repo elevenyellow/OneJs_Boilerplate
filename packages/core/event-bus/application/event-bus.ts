@@ -1,5 +1,5 @@
 import type { DomainEvent } from '../domain/events/domain-events'
-import type { Middleware } from './middleware'
+import type { EventBusMiddlewareInterface as Middleware } from './middleware'
 import { Inject, Injectable } from '../../container'
 import type { IEventHandler } from '../domain/handlers/event-handler'
 import { InMemoryEventPublisher } from './publishers/in-memory-event-publisher'
