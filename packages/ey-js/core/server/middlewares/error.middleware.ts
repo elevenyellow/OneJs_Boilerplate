@@ -1,51 +1,41 @@
-import type { Request, Response, NextFunction } from 'express'
 import { EyJsError } from '../ey-js.error'
 import { logger } from '../../logger'
 
-export function ErrorMiddleware(
-  err: Error | EyJsError,
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-) {
-  const isDevelopment = process.env.NODE_ENV === 'development'
-  const isEyJsError = err instanceof EyJsError
+export function createErrorHandler() {
+  return ({ code, error, set }: { code: string; error: Error; set: any }) => {
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    const isEyJsError = error instanceof EyJsError
 
-  const status = isEyJsError ? err.statusCode : 500
-  const message = isDevelopment
-    ? err.message
-    : isEyJsError
-      ? err.message
-      : 'Internal Server Error'
+    const status = isEyJsError ? error.statusCode : 500
+    const message = isDevelopment
+      ? error.message
+      : isEyJsError
+        ? error.message
+        : 'Internal Server Error'
 
-  // Log the error with context (mantenemos el logging detallado para debugging)
-  logger.error(message, {
-    error: {
-      name: err.name,
-      message: err.message,
-      stack: err.stack,
-      status,
-      path: req.path,
-      method: req.method,
-      body: req.body,
-      query: req.query,
-      params: req.params,
-      headers: req.headers,
-    },
-  })
+    // Log the error with context
+    logger.error(message, {
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        status,
+        code,
+      },
+    })
 
-  const errorResponse = {
-    success: false,
-    message,
-    error: {
-      statusCode: status,
-      ...(isDevelopment && {
-        details: err.explanatoryMessage || err.message,
-      }),
-    },
-    data: {},
-    timestamp: new Date().toISOString(),
+    set.status = status
+    return {
+      success: false,
+      message,
+      error: {
+        statusCode: status,
+        ...(isDevelopment && {
+          details: error.explanatoryMessage || error.message,
+        }),
+      },
+      data: {},
+      timestamp: new Date().toISOString(),
+    }
   }
-
-  return res.status(status).json(errorResponse)
 }

@@ -1,9 +1,9 @@
 import { Controller, Get, Inject } from '@EyJs'
 // import { UserService } from './user/application/user.service'
 import { CreatePostUseCase } from '@post/application/use-cases/create-post.use-case'
-import type { Response } from 'express'
+import type { Context } from 'elysia'
 
-@Controller('/')
+@Controller('/users')
 export class UserController {
   constructor(
     @Inject(CreatePostUseCase)
@@ -11,8 +11,13 @@ export class UserController {
   ) {}
 
   @Get('/')
-  index(request: Request, response: Response) {
-    console.log(this.createPostUseCase)
-    return response.json({ message: 'Hello World' })
+  index(context: Context) {
+    // context.set.status = 200
+
+    return {
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      age: 30,
+    }
   }
 }

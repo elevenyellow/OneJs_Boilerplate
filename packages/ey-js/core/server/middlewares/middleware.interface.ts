@@ -1,7 +1,11 @@
-import type { NextFunction, Request, Response } from 'express'
+import type { Context } from 'elysia'
+
+export type ElysiaContext = Context & {
+  clientIp?: string
+}
 
 export interface MiddlewareInterface {
-  handle(req: Request, res: Response, next: NextFunction): void
+  handle(context: ElysiaContext): Promise<void> | void
 }
 
 export interface MiddlewareClassInterface {

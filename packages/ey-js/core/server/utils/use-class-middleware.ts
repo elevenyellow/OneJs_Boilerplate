@@ -1,10 +1,11 @@
 import { container } from '../../container'
+import type { ElysiaContext } from '../middlewares/middleware.interface'
 
 export function useClassMiddleware(ClassRef: any) {
   const instance = container.get(ClassRef)
   const ctor = ClassRef as any
 
-  // Determinar el nombre del método middleware
+  // Determine middleware method name
   const middlewareMethodName = ctor.__middlewareMethod || 'handle'
 
   const middlewareMethod = instance[middlewareMethodName]
@@ -15,12 +16,11 @@ export function useClassMiddleware(ClassRef: any) {
     )
   }
 
-  const isAsync = middlewareMethod.constructor.name === 'AsyncFunction'
-
-  return isAsync
-    ? (req, res, next) =>
-        Promise.resolve(middlewareMethod.call(instance, req, res, next)).catch(
-          next,
-        )
-    : middlewareMethod.bind(instance)
+  return async (context: ElysiaContext) => {
+    try {
+      await Promise.resolve(middlewareMethod.call(instance, context))
+    } catch (error) {
+      throw error
+    }
+  }
 }
