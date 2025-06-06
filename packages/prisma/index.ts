@@ -1,5 +1,0 @@
-export * from './client'
-export * from './decorators/prisma-model'
-export * from './repositories/base.repository'
-export * from './services/prisma.service'
-export { PrismaClient } from '@prisma/client'

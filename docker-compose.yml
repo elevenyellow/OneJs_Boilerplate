@@ -1,12 +1,14 @@
 version: '3.8'
 
 services:
-  mongo:
-    image: mongo:latest
-    container_name: mongodb
+  postgres:
+    image: postgres:latest
+    container_name: postgresdb
     ports:
-      - "27017:27017"
+      - "5432:5432"
     environment:
-      MONGO_INITDB_DATABASE: ddd-boilerplate # Specify your database name here
+      POSTGRES_DB: ddd_boilerplate         # Nombre de la base de datos
+      POSTGRES_USER: admin                 # Usuario (puedes cambiarlo)
+      POSTGRES_PASSWORD: admin123          # Contraseña (asegúrate de cambiarla en producción)
     volumes:
-      - ./data:/data/db
+      - ./data:/var/lib/postgresql/data    # Persistencia de datos
