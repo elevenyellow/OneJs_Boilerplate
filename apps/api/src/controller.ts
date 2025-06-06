@@ -13,7 +13,7 @@ export class UserController {
   @UseAuth()
   @Get('/')
   index(context: Context) {
-    // context.set.status = 200
+    context.set.status = 200
 
     return {
       name: 'John Doe',

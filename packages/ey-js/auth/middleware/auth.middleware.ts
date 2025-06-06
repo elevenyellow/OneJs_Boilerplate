@@ -56,10 +56,10 @@ export class ClerkAuthMiddleware {
         secretKey: this.secretKey,
       })
 
-      return {
+      context.store.user = {
         userId: payload.sub,
         email: payload.email,
-        clerkUser: payload,
+        payload,
       }
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {

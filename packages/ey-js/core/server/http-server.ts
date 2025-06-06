@@ -107,20 +107,36 @@ export class Server {
 
         const rawMiddlewares = [...(route.middlewares || [])]
 
-        const resolvedMiddlewares = rawMiddlewares.map((mw) => {
+        // Convert class-based middlewares to Elysia plugins
+        const middlewarePlugins = rawMiddlewares.map((mw) => {
           if (typeof mw === 'function' && mw.prototype?.handle) {
             const instance = this.container.get(mw)
-            return instance.handle.bind(instance)
+
+            return (app: Elysia) =>
+              app.onBeforeHandle(async (context) => {
+                await instance.handle(context)
+              })
           }
+
+          // If it’s already a plugin, return it directly
           return mw
         })
 
+        // Construct scoped app with plugins
+        let scopedApp = new Elysia()
+
+        for (const plugin of middlewarePlugins) {
+          if (typeof plugin === 'function') {
+            scopedApp = scopedApp.use(plugin)
+          }
+        }
+
+        // Register the route handler with the plugin-applied instance
         this.logger.debug(
           `Registering route [${method.toUpperCase()}] ${fullPath}`,
         )
 
-        // Pass the original Elysia context to the handler
-        const elysiaHandler = async (context: ElysiaContext) => {
+        scopedApp[method](fullPath, async (context: ElysiaContext) => {
           try {
             const result = await handler(context)
 
@@ -128,22 +144,17 @@ export class Server {
               context.body = result
             }
 
-            // Store the original response
-            const originalResponse = context.body
-
-            // Format the response
-            const formattedResponse = createSuccessResponse(originalResponse)
-
-            // Set the response and return it
+            const formattedResponse = createSuccessResponse(context.body)
             context.body = formattedResponse
             return formattedResponse
           } catch (error) {
             this.logger.error('Error in controller handler:', error)
             throw error
           }
-        }
+        })
 
-        this.app[method](fullPath, ...resolvedMiddlewares, elysiaHandler)
+        // Mount the scoped app onto the main app
+        this.app.use(scopedApp)
       }
     })
   }
