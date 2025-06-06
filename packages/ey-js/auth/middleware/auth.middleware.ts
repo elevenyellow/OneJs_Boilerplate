@@ -1,24 +1,47 @@
-import { Injectable } from '@EyJs'
-import type { NextFunction, Request, Response } from 'express'
-import jwt from 'jsonwebtoken'
-import { EyJsError } from '@EyJs'
+import { EyJsError, Injectable, type ElysiaContext } from '@EyJs'
+import { verifyToken } from '@clerk/backend'
+import { ErrorCodes } from '../../shared-errors'
 
 @Injectable()
-export class AuthMiddleware {
-  async handle(req: Request, res: Response, next: NextFunction) {
-    const auth = req.headers.authorization
+export class ClerkAuthMiddleware {
+  async handle(context: ElysiaContext) {
+    const header = context.request.headers.get('authorization')
 
-    if (!auth?.startsWith('Bearer ')) {
-      throw new EyJsError('Unauthorized', 401, 'Bearer token is required')
+    if (!header?.startsWith('Bearer ')) {
+      context.set.status = 401
+
+      throw new EyJsError(
+        'Unauthorized',
+        401,
+        'Bearer token is required',
+        { header: null },
+        ErrorCodes.AUTH_MISSING,
+      )
     }
 
+    const token = header.replace('Bearer ', '')
+
     try {
-      const token = auth.replace('Bearer ', '')
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!)
-      req.user = decoded
-      next()
+      const payload = await verifyToken(token, {
+        issuer: 'https://api.clerk.dev',
+        audience: 'YOUR_FRONTEND_API_KEY', // Clerk dashboard → API Keys → Frontend API
+      })
+
+      return {
+        userId: payload.sub,
+        email: payload.email,
+        clerkUser: payload,
+      }
     } catch {
-      throw new EyJsError('Unauthorized', 401, 'Invalid token')
+      context.set.status = 401
+
+      throw new EyJsError(
+        'Unauthorized',
+        401,
+        'Bearer token is required',
+        { header: null },
+        ErrorCodes.AUTH_MISSING,
+      )
     }
   }
 }

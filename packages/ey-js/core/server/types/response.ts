@@ -28,16 +28,17 @@ export function createSuccessResponse<T>(
 export function createErrorResponse(
   message: string,
   statusCode: number,
-  details?: string,
-): ApiResponse {
+  explanatoryMessage?: string,
+  data: any = {},
+) {
   return {
     success: false,
     message,
-    data: {},
+    data,
     timestamp: new Date().toISOString(),
     error: {
       statusCode,
-      ...(details && { details }),
+      message: explanatoryMessage,
     },
   }
 }

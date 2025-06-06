@@ -3,9 +3,9 @@ import { cors } from '@elysiajs/cors'
 import { Injectable, Inject, Container } from '../container'
 import { Logger } from '../logger'
 import { getAllControllers } from './decorators'
-import { EyJsError } from './ey-js.error'
 import { createErrorResponse, createSuccessResponse } from './types/response'
 import { ElysiaContext, MiddlewareInterface } from './middlewares'
+import { EyJsError } from './ey-js.error'
 
 interface RouteMeta {
   method?: string
@@ -43,6 +43,29 @@ export class Server {
     this.controllers = []
     this.middlewares = []
     this.prefix = ''
+
+    // Error handler
+    this.app.onError(({ error }) => {
+      if (error instanceof EyJsError) {
+        return error.toResponse()
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Internal Server Error',
+          data: {},
+          timestamp: new Date().toISOString(),
+          error: {
+            statusCode: 500,
+          },
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    })
   }
 
   setContainer(containerInstance: Container): this {
@@ -144,19 +167,23 @@ export class Server {
   }
 
   addMiddleware(
-    middleware: MiddlewareInterface | { new (...args: any[]): any },
+    middleware:
+      | MiddlewareInterface
+      | { new (...args: any[]): MiddlewareInterface },
   ): this {
     // const resolved =
     //   typeof middleware === 'function' && middleware.prototype?.handle
     //     ? useClassMiddleware(middleware)
     //     : middleware
 
-    this.middlewares.push(middleware as ElysiaMiddleware)
+    this.middlewares.push(middleware as MiddlewareInterface)
     return this
   }
 
   addMiddlewares(
-    middlewares: Array<ElysiaMiddleware | { new (...args: any[]): any }>,
+    middlewares: Array<
+      MiddlewareInterface | { new (...args: any[]): MiddlewareInterface }
+    >,
   ): this {
     middlewares.forEach((middleware) => this.addMiddleware(middleware))
     return this
@@ -183,44 +210,14 @@ export class Server {
     // Add catch-all route for 404s
     this.app.all('*', ({ set }) => {
       set.status = 404
-      return createErrorResponse('Not Found', 404)
-    })
-
-    // Error handler
-    this.app.onError(({ code, error, set }) => {
-      const isDevelopment = process.env.NODE_ENV === 'development'
-      const isEyJsError = error instanceof EyJsError
-
-      const status = isEyJsError ? error.statusCode : 500
-      const message = isDevelopment
-        ? error instanceof Error
-          ? error.message
-          : 'Unknown error'
-        : isEyJsError
-          ? error.message
-          : 'Internal Server Error'
-
-      this.logger.error('Server error:', {
-        error: {
-          name: error instanceof Error ? error.name : 'Unknown',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          status,
-          code,
+      return new Response(
+        JSON.stringify(createErrorResponse('Not Found', 404)),
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          },
         },
-      })
-
-      set.status = status
-      return createErrorResponse(
-        message,
-        status,
-        isDevelopment
-          ? isEyJsError
-            ? error.explanatoryMessage
-            : error instanceof Error
-              ? error.message
-              : 'Unknown error'
-          : undefined,
       )
     })
 

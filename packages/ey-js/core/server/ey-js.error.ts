@@ -1,22 +1,44 @@
+import { type ErrorCode } from './errors/error-codes'
+
 export class EyJsError extends Error {
   statusCode: number
   explanatoryMessage: string
+  code?: ErrorCode
+  data?: any
 
-  constructor(message: string, statusCode: number, explanatoryMessage: string) {
+  constructor(
+    message: string,
+    statusCode: number,
+    explanatoryMessage: string,
+    data?: any,
+    code?: ErrorCode,
+  ) {
     super(message)
     this.statusCode = statusCode
     this.explanatoryMessage = explanatoryMessage
+    this.data = data
+    this.code = code
 
-    // Establecer el prototipo explícitamente
     Object.setPrototypeOf(this, EyJsError.prototype)
   }
 
-  toResponse() {
-    return {
-      success: false,
-      message: this.message,
-      statusCode: this.statusCode,
-      error: this.explanatoryMessage,
-    }
+  toResponse(): Response {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: this.message,
+        data: this.data ?? {},
+        timestamp: new Date().toISOString(),
+        error: {
+          statusCode: this.statusCode,
+          message: this.explanatoryMessage,
+          code: this.code,
+        },
+      }),
+      {
+        status: this.statusCode,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    )
   }
 }

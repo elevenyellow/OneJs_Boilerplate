@@ -17,6 +17,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@clerk/backend": "^2.0.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2"
   }
