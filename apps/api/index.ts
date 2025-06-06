@@ -6,7 +6,11 @@ const container = await BootstrapService.bootstrap(import.meta.url)
 
 const server = container.get(Server)
 server
-  .addMiddleware(cors())
+  .addMiddleware(
+    cors({
+      credentials: true,
+    }),
+  )
   .addMiddleware(
     swagger({
       path: '/docs',

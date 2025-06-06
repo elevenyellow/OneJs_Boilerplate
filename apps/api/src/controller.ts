@@ -1,5 +1,5 @@
+import { UseAuth } from '@EyJs/Auth'
 import { Controller, Get, Inject } from '@EyJs'
-// import { UserService } from './user/application/user.service'
 import { CreatePostUseCase } from '@post/application/use-cases/create-post.use-case'
 import type { Context } from 'elysia'
 
@@ -10,6 +10,7 @@ export class UserController {
     private readonly createPostUseCase: CreatePostUseCase,
   ) {}
 
+  @UseAuth()
   @Get('/')
   index(context: Context) {
     // context.set.status = 200

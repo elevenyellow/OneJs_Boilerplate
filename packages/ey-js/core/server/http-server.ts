@@ -1,5 +1,4 @@
 import { Elysia } from 'elysia'
-import { cors } from '@elysiajs/cors'
 import { Injectable, Inject, Container } from '../container'
 import { Logger } from '../logger'
 import { getAllControllers } from './decorators'
@@ -38,8 +37,6 @@ export class Server {
     @Inject(Logger) private readonly logger: Logger,
   ) {
     this.app = new Elysia()
-    this.app.use(cors())
-
     this.controllers = []
     this.middlewares = []
     this.prefix = ''

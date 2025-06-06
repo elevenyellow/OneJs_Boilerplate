@@ -1,20 +1,49 @@
-import { EyJsError, Injectable, type ElysiaContext } from '@EyJs'
+import {
+  ConfigService,
+  EyJsError,
+  Inject,
+  Injectable,
+  Logger,
+  type ElysiaContext,
+} from '@EyJs'
 import { verifyToken } from '@clerk/backend'
 import { ErrorCodes } from '../../shared-errors'
 
 @Injectable()
 export class ClerkAuthMiddleware {
+  private frontendApiKey: string
+  private secretKey: string;
+
+  constructor(
+    @Inject(ConfigService)
+    private readonly configService: ConfigService,
+    @Inject(Logger)
+    private readonly logger: Logger,
+  ) {
+    this.frontendApiKey = configService.get('CLERK_FRONTEND_API_KEY')!
+    this.secretKey = configService.get('CLERK_SECRET_KEY')!
+
+    if (!this.frontendApiKey || !this.secretKey) {
+      throw new EyJsError(
+        'Clerk configuration missing',
+        500,
+        'CLERK_FRONTEND_API_KEY or CLERK_SECRET_KEY is not set',
+        undefined,
+        ErrorCodes.SERVER_ERROR,
+      )
+    }
+  }
+
   async handle(context: ElysiaContext) {
     const header = context.request.headers.get('authorization')
 
     if (!header?.startsWith('Bearer ')) {
       context.set.status = 401
-
       throw new EyJsError(
         'Unauthorized',
         401,
         'Bearer token is required',
-        { header: null },
+        { header },
         ErrorCodes.AUTH_MISSING,
       )
     }
@@ -23,8 +52,8 @@ export class ClerkAuthMiddleware {
 
     try {
       const payload = await verifyToken(token, {
-        issuer: 'https://api.clerk.dev',
-        audience: 'YOUR_FRONTEND_API_KEY', // Clerk dashboard → API Keys → Frontend API
+        audience: this.frontendApiKey,
+        secretKey: this.secretKey,
       })
 
       return {
@@ -32,15 +61,18 @@ export class ClerkAuthMiddleware {
         email: payload.email,
         clerkUser: payload,
       }
-    } catch {
-      context.set.status = 401
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        this.logger.error(`[ClerkAuthMiddleware] Invalid token: ${err}`)
+      }
 
+      context.set.status = 401
       throw new EyJsError(
         'Unauthorized',
         401,
-        'Bearer token is required',
-        { header: null },
-        ErrorCodes.AUTH_MISSING,
+        'Token is invalid or expired',
+        { token },
+        ErrorCodes.AUTH_INVALID,
       )
     }
   }
