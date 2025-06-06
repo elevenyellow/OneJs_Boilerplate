@@ -1,9 +1,6 @@
 import type { Context } from 'elysia'
 
-export type ElysiaContext = Context & {
-  clientIp?: string
-}
-
+export type ElysiaContext = Context
 export interface MiddlewareInterface {
   handle(context: ElysiaContext): Promise<void> | void
 }

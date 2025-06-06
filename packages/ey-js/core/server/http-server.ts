@@ -1,17 +1,11 @@
-import { Elysia, type Context } from 'elysia'
+import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { Injectable, Inject, Container } from '../container'
 import { Logger } from '../logger'
 import { getAllControllers } from './decorators'
-import { useClassMiddleware } from './utils'
 import { EyJsError } from './ey-js.error'
 import { createErrorResponse, createSuccessResponse } from './types/response'
-
-type ElysiaContext = Context & {
-  clientIp?: string
-}
-
-type ElysiaMiddleware = (context: ElysiaContext) => Promise<void> | void
+import { ElysiaContext, MiddlewareInterface } from './middlewares'
 
 interface RouteMeta {
   method?: string
@@ -36,7 +30,7 @@ interface ControllerClass {
 export class Server {
   private readonly controllers: ControllerClass[]
   private readonly app: Elysia
-  private middlewares: ElysiaMiddleware[]
+  private middlewares: any[]
   public prefix: string
   protected container: Container;
 
@@ -119,7 +113,6 @@ export class Server {
 
             // Format the response
             const formattedResponse = createSuccessResponse(originalResponse)
-            console.log('Formatted response:', formattedResponse)
 
             // Set the response and return it
             context.body = formattedResponse
@@ -151,14 +144,14 @@ export class Server {
   }
 
   addMiddleware(
-    middleware: ElysiaMiddleware | { new (...args: any[]): any },
+    middleware: MiddlewareInterface | { new (...args: any[]): any },
   ): this {
-    const resolved =
-      typeof middleware === 'function' && middleware.prototype?.handle
-        ? useClassMiddleware(middleware)
-        : middleware
+    // const resolved =
+    //   typeof middleware === 'function' && middleware.prototype?.handle
+    //     ? useClassMiddleware(middleware)
+    //     : middleware
 
-    this.middlewares.push(resolved as ElysiaMiddleware)
+    this.middlewares.push(middleware as ElysiaMiddleware)
     return this
   }
 
