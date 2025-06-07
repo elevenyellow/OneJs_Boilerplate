@@ -10,22 +10,16 @@ const generatorFile = path.resolve(__dirname, '../prisma/generators.prisma')
 const datasourceFile = path.resolve(__dirname, '../prisma/datasource.prisma')
 
 const dynamicFiles = globSync(
-  path.resolve(
-    __dirname,
-    '../apps/**/infrastructure/persistence/prisma/*.model.prisma',
-  ),
+  path.resolve(__dirname, '../apps/**/*.model.prisma'),
 )
 
 const commonFiles = globSync(
-  path.resolve(
-    __dirname,
-    '../packages/**/infrastructure/persistence/prisma/*.model.prisma',
-  ),
+  path.resolve(__dirname, '../packages/**/*.model.prisma'),
 )
 
 const modelFiles = [...dynamicFiles, ...commonFiles]
 
-if (modelFiles.length === 0) {
+if (!modelFiles.length) {
   console.error('❌ No model files found to merge.')
   process.exit(1)
 }

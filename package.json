@@ -12,7 +12,10 @@
     "prisma:merge": "bun scripts/merge-schema.ts",
     "prisma:validate": "bunx prisma validate",
     "prisma:generate": "bunx prisma generate",
-    "prisma:build": "bun scripts/merge-schema.ts && bunx prisma validate && bunx prisma generate"
+    "prisma:build": "bun scripts/merge-schema.ts && bunx prisma validate && bunx prisma generate",
+    "prisma:migrate": "bunx prisma migrate dev --name init",
+    "prisma:push": "bunx prisma db push",
+    "prisma:studio": "bunx prisma studio"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.3.3",
