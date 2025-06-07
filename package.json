@@ -3,7 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": ["packages/**/*"],
   "scripts": {
     "create-app": "bun ./packages/create-app/cli.ts",
     "start:db": "podman-compose down && podman rm -f postgresdb || true && podman-compose up -d",
