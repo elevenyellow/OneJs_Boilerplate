@@ -1,5 +1,5 @@
 import { container } from '../../container'
-import type { ElysiaContext } from '../middlewares/middleware.interface'
+import type { AnyMiddleware } from '../middlewares/middleware.interface'
 
 export function useClassMiddleware(ClassRef: any) {
   const instance = container.get(ClassRef)
@@ -16,7 +16,7 @@ export function useClassMiddleware(ClassRef: any) {
     )
   }
 
-  return async (context: ElysiaContext) => {
+  return async (context: AnyMiddleware) => {
     try {
       await Promise.resolve(middlewareMethod.call(instance, context))
     } catch (error) {

@@ -1,13 +1,7 @@
-import {
-  ConfigService,
-  EyJsError,
-  Inject,
-  Injectable,
-  Logger,
-  type ElysiaContext,
-} from '@EyJs'
+import { ConfigService, EyJsError, Inject, Injectable, Logger } from '@EyJs'
 import { verifyToken } from '@clerk/backend'
 import { ErrorCodes } from '../../shared-errors'
+import type { JwtPayload } from '@clerk/types'
 
 @Injectable()
 export class AuthMiddleware {
@@ -16,7 +10,7 @@ export class AuthMiddleware {
 
   constructor(
     @Inject(ConfigService)
-    private readonly configService: ConfigService,
+    configService: ConfigService,
     @Inject(Logger)
     private readonly logger: Logger,
   ) {
@@ -34,7 +28,17 @@ export class AuthMiddleware {
     }
   }
 
-  async handle(context: ElysiaContext) {
+  async handle(context: {
+    request: { headers: { get: (arg0: string) => any } }
+    set: { status: number }
+    store: {
+      user: {
+        userId: string
+        email: unknown
+        payload: NonNullable<JwtPayload | undefined>
+      }
+    }
+  }) {
     const header = context.request.headers.get('authorization')
 
     if (!header?.startsWith('Bearer ')) {
