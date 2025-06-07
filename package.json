@@ -7,10 +7,7 @@
   "scripts": {
     "create-app": "bun ./packages/create-app/cli.ts",
     "start:db": "podman-compose down && podman rm -f postgresdb || true && podman-compose up -d",
-    "start:dev": "bun start:db && bun --verbose --watch index.ts",
     "start:dev:api": "bun start:db && cd apps/api && bun --verbose --watch index.ts",
-    "start:dev:simple": "bun --verbose --watch index.ts",
-    "start": "bun run index.ts",
     "test": "bun --test",
     "prisma:merge": "bun scripts/merge-schema.ts",
     "prisma:validate": "bunx prisma validate",

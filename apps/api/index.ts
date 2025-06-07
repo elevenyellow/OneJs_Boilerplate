@@ -1,24 +1,17 @@
 import { BootstrapService, Server } from '@EyJs'
-import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
+import { cors } from '@elysiajs/cors'
 
 const container = await BootstrapService.bootstrap(import.meta.url)
 
 const server = container.get(Server)
 server
-  .addMiddleware(
-    cors({
-      credentials: true,
-    }),
-  )
-  .addMiddleware(
+  .use(cors({ credentials: true }))
+  .use(
     swagger({
       path: '/docs',
       documentation: {
-        info: {
-          title: 'EyJs Boilerplate API',
-          version: '1.0.0',
-        },
+        info: { title: 'EyJs Boilerplate API', version: '1.0.0' },
       },
     }),
   )

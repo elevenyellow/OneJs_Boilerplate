@@ -1,10 +1,48 @@
-import type { Context } from 'elysia'
+import type { Context, Elysia } from 'elysia'
 
-export type ElysiaContext = Context
+// Tu interfaz base para middlewares en clases
 export interface MiddlewareInterface {
-  handle(context: ElysiaContext): Promise<void> | void
+  handle(context: Context): Promise<void> | void
 }
 
-export interface MiddlewareClassInterface {
-  new (...args: any[]): MiddlewareInterface
-}
+// Clase que implementa esa interfaz
+export type MiddlewareClass = new (...args: any[]) => MiddlewareInterface
+
+// Plugin tipo Elysia (como cors())
+export type ElysiaPlugin = Elysia<
+  '',
+  {
+    decorator: {}
+    store: {}
+    derive: {}
+    resolve: {}
+  },
+  {
+    typebox: {}
+    error: {}
+  },
+  {
+    schema: {}
+    standaloneSchema: {}
+    macro: {}
+    macroFn: {}
+    parser: {}
+  },
+  {},
+  {
+    derive: {}
+    resolve: {}
+    schema: {}
+    standaloneSchema: {}
+  },
+  {
+    derive: {}
+    resolve: {}
+    schema: {}
+    standaloneSchema: {}
+  }
+>
+
+// Tipo unificado para aceptar todos
+// Solo acepta clases o funciones que devuelven Elysia
+export type AnyMiddleware = MiddlewareInterface | MiddlewareClass | ElysiaPlugin

@@ -3,8 +3,9 @@ import { Injectable, Inject, Container } from '../container'
 import { Logger } from '../logger'
 import { getAllControllers } from './decorators'
 import { createErrorResponse, createSuccessResponse } from './types/response'
-import { ElysiaContext, MiddlewareInterface } from './middlewares'
+import { AnyMiddleware, MiddlewareInterface } from './middlewares'
 import { EyJsError } from './ey-js.error'
+import { useClassMiddleware } from './utils'
 
 interface RouteMeta {
   method?: string
@@ -174,17 +175,13 @@ export class Server {
     return this
   }
 
-  addMiddleware(
-    middleware:
-      | MiddlewareInterface
-      | { new (...args: any[]): MiddlewareInterface },
-  ): this {
-    // const resolved =
-    //   typeof middleware === 'function' && middleware.prototype?.handle
-    //     ? useClassMiddleware(middleware)
-    //     : middleware
+  use(middleware: AnyMiddleware): this {
+    const resolved =
+      typeof middleware === 'function' && middleware.prototype?.handle
+        ? useClassMiddleware(middleware)
+        : middleware
 
-    this.middlewares.push(middleware as MiddlewareInterface)
+    this.middlewares.push(resolved)
     return this
   }
 
@@ -193,7 +190,7 @@ export class Server {
       MiddlewareInterface | { new (...args: any[]): MiddlewareInterface }
     >,
   ): this {
-    middlewares.forEach((middleware) => this.addMiddleware(middleware))
+    middlewares.forEach((middleware) => this.use(middleware))
     return this
   }
 
