@@ -10,7 +10,7 @@ import { verifyToken } from '@clerk/backend'
 import { ErrorCodes } from '../../shared-errors'
 
 @Injectable()
-export class ClerkAuthMiddleware {
+export class AuthMiddleware {
   private frontendApiKey: string
   private secretKey: string;
 
@@ -63,7 +63,7 @@ export class ClerkAuthMiddleware {
       }
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        this.logger.error(`[ClerkAuthMiddleware] Invalid token: ${err}`)
+        this.logger.error(`[AuthMiddleware] Invalid token: ${err}`)
       }
 
       context.set.status = 401

@@ -1,4 +1,4 @@
-import { ClerkAuthMiddleware } from '../middleware/auth.middleware'
+import { AuthMiddleware } from '../middleware/auth.middleware'
 
 export function UseAuth() {
   return function (target: any, propertyKey: string) {
@@ -11,6 +11,6 @@ export function UseAuth() {
     meta.routes[propertyKey] ??= {}
 
     meta.routes[propertyKey].middlewares ??= []
-    meta.routes[propertyKey].middlewares.push(ClerkAuthMiddleware)
+    meta.routes[propertyKey].middlewares.push(AuthMiddleware)
   }
 }
