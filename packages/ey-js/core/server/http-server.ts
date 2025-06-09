@@ -6,6 +6,7 @@ import { createErrorResponse, createSuccessResponse } from './types/response'
 import { AnyMiddleware, MiddlewareInterface } from './middlewares'
 import { EyJsError } from './ey-js.error'
 import { useClassMiddleware } from './utils'
+import { container } from '../container'
 
 interface RouteMeta {
   method?: string
@@ -41,6 +42,7 @@ export class Server {
     this.controllers = []
     this.middlewares = []
     this.prefix = ''
+    this.container = container
 
     // Error handler
     this.app.onError(({ error }) => {

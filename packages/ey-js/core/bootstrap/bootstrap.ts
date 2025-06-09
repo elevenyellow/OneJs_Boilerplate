@@ -2,14 +2,12 @@
 
 import path from 'path'
 import { fileURLToPath } from 'url'
-import {
-  container as defaultContainer,
-  getAllEventHandlers,
-} from '../container'
-import { AutoLoader } from '../auto-loader'
+import { container as defaultContainer } from '../container'
+import { AutoLoader } from './auto-loader'
 import { metadataRegistry } from '../container/metadata-registry'
 import type { Container } from '../container'
-import { DomainEvent, EventBus } from '../event-bus'
+import { BootstrapBase } from './bootstrap-base'
+import { getAllBootstraps, registerBootstrap } from './store'
 
 interface BootstrapOptions {
   rootDir?: string
@@ -24,8 +22,8 @@ interface BootstrapOptions {
 }
 
 export class BootstrapService {
-  static async bootstrap(
-    callerMetaUrl: string,
+  static async init(
+    callerMetaUrl?: string,
     options: BootstrapOptions = {},
   ): Promise<Container> {
     // 1. Resolver rootDir si no se dio
@@ -41,12 +39,17 @@ export class BootstrapService {
 
     // 2. Cargar archivos con AutoLoader
     logger.debug?.(`📦 Auto-loading files from: ${rootDir}`)
-    AutoLoader.setContainer(container)
+
     await AutoLoader.init({ rootDir, extraDirs })
 
     // 3. Registrar servicios
     logger.debug?.('🔧 Registering injectable services...')
     for (const meta of metadataRegistry.getAllMetadata()) {
+      // register as autorun service
+      if (meta.constructor.prototype instanceof BootstrapBase) {
+        registerBootstrap({ target: meta.constructor })
+      }
+
       container.register(
         meta.constructor,
         meta.scope,
@@ -55,37 +58,18 @@ export class BootstrapService {
       )
     }
 
-    // 4. Registrar manejadores de eventos
-    logger.debug?.('🧩 Registering event handlers...')
+    // startup services
+    for (const meta of getAllBootstraps()) {
+      const instance = container.get(meta.target)
 
-    const eventBus = container.get(EventBus)
-    for (const {
-      target,
-      methodName,
-      eventType,
-      options,
-    } of getAllEventHandlers()) {
-      const handler = {
-        handle: async (event: DomainEvent) => {
-          const instance = container.get(target)
-          return instance[methodName](event)
-        },
-      }
-
-      eventBus.subscribe(eventType.name, handler, options)
-    }
-
-    logger.info?.('✅ App bootstrap complete.')
-
-    for (const Service of container.getAllServicesWithAutorun()) {
-      const instance = container.get(Service)
-
-      if (typeof instance.autorun === 'function') {
-        logger.debug?.(`⚙️  Autorun => ${Service.name}`)
+      if (
+        instance instanceof BootstrapBase &&
+        typeof instance.bootstrap === 'function'
+      ) {
         try {
-          await instance.autorun()
+          await instance.bootstrap()
         } catch (err) {
-          logger.error?.(`❌ Autorun failed in ${Service.name}:`, err)
+          logger.error?.(`❌ Error in ${meta.target.name}.bootstrap(): ${err}`)
         }
       }
     }

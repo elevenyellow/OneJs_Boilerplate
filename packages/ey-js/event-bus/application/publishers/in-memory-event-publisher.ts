@@ -1,6 +1,6 @@
 import type { DomainEvent } from '../../domain/events/domain-events'
 import type { EventPublisher } from './event-publisher'
-import { Injectable } from '../../../container'
+import { Injectable } from '@EyJs/Core'
 
 @Injectable()
 export class InMemoryEventPublisher implements EventPublisher {

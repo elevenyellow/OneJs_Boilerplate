@@ -2,7 +2,6 @@
 
 import { glob } from 'glob'
 import path from 'path'
-import { Container } from '../container'
 
 interface AutoLoaderOptions {
   rootDir: string // obligatorio: raíz de la app (apps/app1)
@@ -10,7 +9,6 @@ interface AutoLoaderOptions {
 }
 
 export class AutoLoader {
-  private static container: Container | null = null
   private static options: AutoLoaderOptions | null = null
 
   private static readonly ignorePatterns = [
@@ -22,10 +20,6 @@ export class AutoLoader {
     '**/auto-load/**',
     '**/create-app/**',
   ]
-
-  static setContainer(container: Container): void {
-    this.container = container
-  }
 
   static async init(options: AutoLoaderOptions): Promise<void> {
     this.options = options
@@ -88,24 +82,24 @@ export class AutoLoader {
     )
   }
 
-  private static async runAutoRunMethods(): Promise<void> {
-    if (!this.container) {
-      console.warn('⚠️ No container set. Skipping autorun services.')
-      return
-    }
+  // private static async runAutoRunMethods(): Promise<void> {
+  //   if (!this.container) {
+  //     console.warn('⚠️ No container set. Skipping autorun services.')
+  //     return
+  //   }
 
-    const services = this.container.getAllServicesWithAutorun()
+  //   const services = this.container.getAllServicesWithAutorun()
 
-    for (const Service of services) {
-      const instance = this.container.get(Service)
-      if (typeof instance.autorun === 'function') {
-        console.info(`⚙️ Running autorun => ${Service.name}`)
-        try {
-          await instance.autorun()
-        } catch (err) {
-          console.error(`❌ autorun failed for ${Service.name}:`, err)
-        }
-      }
-    }
-  }
+  //   for (const Service of services) {
+  //     const instance = this.container.get(Service)
+  //     if (typeof instance.autorun === 'function') {
+  //       console.info(`⚙️ Running autorun => ${Service.name}`)
+  //       try {
+  //         await instance.autorun()
+  //       } catch (err) {
+  //         console.error(`❌ autorun failed for ${Service.name}:`, err)
+  //       }
+  //     }
+  //   }
+  // }
 }

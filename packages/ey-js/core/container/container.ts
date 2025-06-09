@@ -1,22 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type { ClassConstructor } from './types'
-
-export type Scope = 'singleton' | 'transient'
-export type Fallback = (() => any) | any
-
-export interface ParamInfo {
-  index: number
-  type?: any
-  optional?: boolean
-  fallback?: Fallback
-}
-
-export interface ServiceMetadata {
-  constructor: ClassConstructor
-  scope: Scope
-  autorun: boolean
-  params: ParamInfo[]
-}
+import { ServiceMetadata, Scope, ParamInfo } from './metadata-registry'
 
 export class Container extends EventEmitter {
   private services = new Map<any, ServiceMetadata>()
@@ -112,12 +96,6 @@ export class Container extends EventEmitter {
 
   get<T>(constructor: ClassConstructor<T>): T {
     return this.resolve(constructor)
-  }
-
-  getAllServicesWithAutorun(): any[] {
-    return Array.from(this.services.values())
-      .filter((s) => s.autorun)
-      .map((s) => s.constructor)
   }
 
   getAllServices(): any[] {

@@ -1,5 +1,5 @@
-import { EventHandlerOptions } from '../../event-bus/domain/interfaces'
-import { ClassConstructor } from '../types'
+import type { EventHandlerOptions } from './interfaces'
+import type { ClassConstructor } from '@EyJs/Core'
 
 interface EventHandlerMeta {
   target: ClassConstructor

@@ -1,6 +1,6 @@
 import type { EventHandlerOptions } from './event-handler-options'
 
-export interface EventHandlerMetadata {
+export interface handlerHandlerMetadata {
   eventType: string
   methodName: string
   options: EventHandlerOptions

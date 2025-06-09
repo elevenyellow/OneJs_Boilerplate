@@ -1,11 +1,17 @@
 import type { DomainEvent } from '../domain/events/domain-events'
 import type { EventBusMiddlewareInterface as Middleware } from './middleware'
-import { Inject, Injectable } from '../../container'
+import {
+  ConfigService,
+  Logger,
+  Inject,
+  Injectable,
+  container,
+} from '@EyJs/Core'
 import type { IEventHandler } from '../domain/handlers/event-handler'
 import { InMemoryEventPublisher } from './publishers/in-memory-event-publisher'
-import { ConfigService } from '../../config'
-import { Logger } from '../../logger'
 import type { EventHandlerOptions } from '../domain/interfaces'
+import { BootstrapBase } from '@EyJs/Core'
+import { getAllEventHandlers } from '../domain/store'
 
 interface PrioritizedEventHandler<T extends DomainEvent> {
   handler: IEventHandler<T>
@@ -13,7 +19,7 @@ interface PrioritizedEventHandler<T extends DomainEvent> {
 }
 
 @Injectable()
-export class EventBus {
+export class EventBus extends BootstrapBase {
   private readonly isDevelopment: boolean;
 
   constructor(
@@ -26,6 +32,8 @@ export class EventBus {
     @Inject(Logger)
     private readonly logger: Logger,
   ) {
+    super()
+
     this.isDevelopment =
       this.configService.get('NODE_ENV') !== 'production'
   }
@@ -131,5 +139,29 @@ export class EventBus {
   ): void {
     const priority = options.priority || 0
     this.register(eventType, handler, priority)
+  }
+
+  bootstrap(): Promise<void> | void {
+    this.logger.debug('🧩 Registering event handlers...')
+
+    const eventBus = container.get(EventBus)
+
+    for (const {
+      target,
+      methodName,
+      eventType,
+      options,
+    } of getAllEventHandlers()) {
+      this.logger.debug(`Subscribing to event ${eventType}`)
+
+      const handler = {
+        handle: async (event: DomainEvent) => {
+          const instance = container.get(target)
+          return instance[methodName](event)
+        },
+      }
+
+      eventBus.subscribe(eventType, handler, options)
+    }
   }
 }

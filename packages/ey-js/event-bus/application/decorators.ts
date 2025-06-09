@@ -1,7 +1,7 @@
+import type { ClassConstructor } from '@ey-js/core'
 import type { DomainEvent } from '../domain/events/domain-events'
 import type { EventHandlerOptions } from '../domain/interfaces'
-import type { ClassConstructor } from '../../container'
-import { registerEventHandler } from '../../container/metadata/event-handler.registry'
+import { registerEventHandler } from '../domain/store'
 
 /**
  * Registra un método como manejador de eventos para una clase que extiende DomainEvent.
@@ -33,7 +33,7 @@ export function EventHandler<T extends DomainEvent>(
     registerEventHandler({
       target: controller,
       methodName: propertyKey as string,
-      eventType,
+      eventType: eventType.name,
       options,
     })
 
