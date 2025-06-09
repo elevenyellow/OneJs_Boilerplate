@@ -1,5 +1,4 @@
 export * from './container'
 export * from './decorators'
-export * from './metadata-registry'
 export * from './types'
 export * from './metadata/event-handler.registry'
