@@ -1,0 +1,22 @@
+{
+  "name": "ey-js-jobs",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start:dev": "bun --verbose --watch index.ts",
+    "start": "bun run index.ts",
+    "test": "bun --test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "bullmq": "^5.52.2",
+    "ioredis": "^5.6.1",
+    "@ey-js/event-bus": "workspace:*"
+  }
+}
