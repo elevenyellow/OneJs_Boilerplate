@@ -1,5 +1,5 @@
 {
-  "name": "ey-js-core",
+  "name": "@EyJs/Core",
   "version": "1.0.1",
   "main": "index.ts",
   "peerDependencies": {},
