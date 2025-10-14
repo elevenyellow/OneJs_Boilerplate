@@ -6,9 +6,7 @@
     "start:dev": "bun --watch index.ts",
     "start:build": "bun build ./index.ts --outdir ./dist"
   },
-  "dependencies": {
-    "@EyJs/core": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "typescript": "^5.0.0"
   }

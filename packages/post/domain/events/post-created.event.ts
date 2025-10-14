@@ -1,4 +1,4 @@
-import { DomainEvent } from '@EyJs'
+import { DomainEvent } from '@OneJs'
 import { PostEntity } from '../entities/post'
 
 export class PostCreatedEvent extends DomainEvent {

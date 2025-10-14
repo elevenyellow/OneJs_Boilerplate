@@ -1,4 +1,4 @@
-import { DomainEvent } from '@EyJs'
+import { DomainEvent } from '@OneJs'
 import { UserEntity } from '../entities/user.entity'
 
 export class UserCreatedEvent extends DomainEvent {

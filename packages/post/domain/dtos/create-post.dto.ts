@@ -1,4 +1,4 @@
-import { EyJsError } from '@EyJs'
+import { EyJsError } from '@OneJs'
 
 export class CreatePostDto {
   constructor(

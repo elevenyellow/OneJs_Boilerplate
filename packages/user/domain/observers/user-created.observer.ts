@@ -1,6 +1,5 @@
-import { Injectable, EventHandler, Inject } from '@EyJs'
+import { EventHandler, Inject, Injectable, Logger } from '@OneJs'
 import { UserCreatedEvent } from '../events/user-created.event'
-import { Logger } from '@EyJs'
 
 @Injectable()
 export class UserCreatedObserver {

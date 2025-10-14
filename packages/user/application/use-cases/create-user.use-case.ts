@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@EyJs'
+import { Injectable, Inject } from '@OneJs'
 import type { UserFactory } from '../../domain/factories/user-factory.interface'
 import type { UserEntity } from '../../domain/entities/user.entity'
 import { CreateUserDto } from '../../domain/dtos/create-user.dto'
@@ -6,7 +6,7 @@ import { MongoUserFactory } from '@user/infrastructure/factories/mongo-user.fact
 import type { PasswordValidationStrategy } from '../../domain/strategies/password-validation.strategy'
 import { StrongPasswordStrategy } from '../../domain/strategies/strong-password.strategy'
 import { UserCreatedEvent } from '../../domain/events/user-created.event'
-import { EyJsError, EventBus } from '@EyJs'
+import { EyJsError, EventBus } from '@OneJs'
 import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
 
 @Injectable()

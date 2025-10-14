@@ -1,5 +1,5 @@
-import { Controller, Post, Get, type Request, type Response } from '@EyJs'
-import { Inject } from '@EyJs'
+import { Controller, Post, Get, type Request, type Response } from '@OneJs'
+import { Inject } from '@OneJs'
 import { PostPrismaRepository } from '@post/infrastructure/persistence/prisma/post.repository'
 import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
 import { CreatePostUseCase } from '@post/application/use-cases/create-post.use-case'
