@@ -10,11 +10,11 @@ const generatorFile = path.resolve(__dirname, './generators.prisma')
 const datasourceFile = path.resolve(__dirname, './datasource.prisma')
 
 const dynamicFiles = globSync(
-  path.resolve(__dirname, '../apps/**/*.model.prisma'),
+  path.resolve(__dirname, '../../../apps/**/*.model.prisma'),
 )
 
 const commonFiles = globSync(
-  path.resolve(__dirname, '../packages/**/*.model.prisma'),
+  path.resolve(__dirname, '../../../packages/**/*.model.prisma'),
 )
 
 const modelFiles = [...dynamicFiles, ...commonFiles]
@@ -22,6 +22,7 @@ const modelFiles = [...dynamicFiles, ...commonFiles]
 // Leer contenido
 const generator = readFileSync(generatorFile, 'utf-8').trim()
 const datasource = readFileSync(datasourceFile, 'utf-8').trim()
+
 const models = modelFiles
   .map((f) => readFileSync(f, 'utf-8').trim())
   .join('\n\n')
@@ -30,7 +31,8 @@ const models = modelFiles
 const merged = [generator, datasource, models].join('\n\n\n')
 
 // Escribir resultado
-const outputPath = path.resolve(__dirname, '../../prisma/schema.prisma')
+const outputPath = path.resolve(__dirname, '../../../prisma/schema.prisma')
+
 writeFileSync(outputPath, merged)
 
 console.log(`✅ schema.prisma generado con ${modelFiles.length} modelos.`)

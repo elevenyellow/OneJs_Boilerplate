@@ -81,8 +81,7 @@ export class Server {
         '/',
       )
 
-      this.logger.debug(
-        'oneJs:server',
+      this.logger.info(
         `Registering routes for controller ${controllerClass.name}`,
       )
 
@@ -120,8 +119,7 @@ export class Server {
         }
 
         // Register the route handler with the plugin-applied instance
-        this.logger.debug(
-          'oneJs:server',
+        this.logger.info(
           `Registering route [${method.toUpperCase()}] ${fullPath}`,
         )
 
