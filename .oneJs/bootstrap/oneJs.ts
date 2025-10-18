@@ -4,11 +4,13 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import type { Container } from '../container'
 import { container as defaultContainer } from '../container'
+import { ContainerProvider } from '../container/container-provider'
 import { metadataRegistry } from '../container/metadata-registry'
 import { logger } from '../logger'
 import { AutoLoader } from './auto-loader'
 import { BootstrapBase } from './bootstrap-base'
-import { getAllBootstraps, registerBootstrap } from './store'
+import { PluginRegistry } from './plugin-registry'
+import { registerBootstrap } from './store'
 
 interface BootstrapOptions {
   rootDir?: string
@@ -23,7 +25,10 @@ export class OneJs {
   ) {}
 
   async start(options: BootstrapOptions = {}) {
-    // 1. Resolver rootDir si no se dio
+    // 1. Set container in provider for global access
+    ContainerProvider.setContainer(this.container)
+
+    // 2. Resolver rootDir si no se dio
     const rootDir =
       options.rootDir || path.dirname(fileURLToPath(this.callerMetaUrl))
 
@@ -31,15 +36,15 @@ export class OneJs {
       path.resolve(process.cwd(), 'packages'),
     ]
 
-    // 2. Cargar archivos con AutoLoader
+    // 3. Cargar archivos con AutoLoader
     logger.debug(`oneJs:bootstrap`, `📦 Auto-loading files from: ${rootDir}`)
 
     await AutoLoader.init({ rootDir, extraDirs })
 
-    // 3. Registrar servicios
+    // 4. Registrar servicios en el contenedor
     logger.debug('oneJs:bootstrap', '🔧 Registering injectable services...')
     for (const meta of metadataRegistry.getAllMetadata()) {
-      // register as autorun service
+      // Register classes extending BootstrapBase for the bootstrap loader
       if (meta.constructor.prototype instanceof BootstrapBase) {
         registerBootstrap({ target: meta.constructor })
       }
@@ -52,21 +57,42 @@ export class OneJs {
       )
     }
 
-    // startup services
-    for (const meta of getAllBootstraps()) {
-      const instance = this.container.get(meta.target)
+    // 5. PHASE 1: Plugin Registration
+    logger.debug('oneJs:bootstrap', '🔌 Registering plugins...')
+    const plugins = PluginRegistry.getAll()
 
-      if (
-        instance instanceof BootstrapBase &&
-        typeof instance.bootstrap === 'function'
-      ) {
-        try {
-          await instance.bootstrap()
-        } catch (err) {
-          logger.error?.(`❌ Error in ${meta.target.name}.bootstrap(): ${err}`)
+    for (const plugin of plugins) {
+      try {
+        if (plugin.register) {
+          logger.debug(
+            'oneJs:bootstrap',
+            `📝 Registering plugin: ${plugin.name}`,
+          )
+          await plugin.register(this.container)
         }
+      } catch (err) {
+        logger.error?.(
+          'oneJs:bootstrap',
+          `❌ Error registering plugin "${plugin.name}": ${err}`,
+        )
       }
     }
+
+    // 6. PHASE 2: Plugin Loading
+    logger.debug('oneJs:bootstrap', '⚡ Loading plugins...')
+    for (const plugin of plugins) {
+      try {
+        logger.debug('oneJs:bootstrap', `🚀 Loading plugin: ${plugin.name}`)
+        await plugin.load(this.container)
+      } catch (err) {
+        logger.error?.(
+          'oneJs:bootstrap',
+          `❌ Error loading plugin "${plugin.name}": ${err}`,
+        )
+      }
+    }
+
+    logger.debug('oneJs:bootstrap', '✅ OneJs initialization complete')
   }
 
   getContainer(): Container {

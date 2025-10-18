@@ -1,4 +1,4 @@
-import { DomainEvent } from '@OneJs'
+import { DomainEvent } from '@onejs/event-bus'
 import { PostEntity } from '../entities/post'
 
 export class PostCreatedEvent extends DomainEvent {

@@ -1,12 +1,12 @@
-import { Injectable, Inject } from '@OneJs'
-import type { PostFactory } from '@post/domain/factories/post-factory.interface'
-import type { PostEntity } from '@post/domain/entities/post'
+import { Inject, Injectable } from '@onejs/core'
+import { EventBus } from '@onejs/event-bus'
 import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
+import type { PostEntity } from '@post/domain/entities/post'
 import { PostCreatedEvent } from '@post/domain/events/post-created.event'
-import { EventBus } from '@OneJs'
+import type { PostFactory } from '@post/domain/factories/post-factory.interface'
+import { PrismaPostFactory } from '@post/infrastructure/factories/prisma-post.factory'
 import { PostPrismaRepository } from '@post/infrastructure/persistence/prisma/post.repository'
 import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
-import { PrismaPostFactory } from '@post/infrastructure/factories/prisma-post.factory'
 
 @Injectable()
 export class CreatePostUseCase {

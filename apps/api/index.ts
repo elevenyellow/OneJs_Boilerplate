@@ -1,15 +1,23 @@
-import { OneJs, Server } from '@OneJs'
-import cors from '@elysiajs/cors'
+import {
+  ContainerProvider,
+  OneJs,
+  PluginRegistry,
+} from '../../.oneJs/core/src/index.ts'
+import { Server, ServerPlugin } from '../../.oneJs/server/src/index.ts'
+
+// Register plugins explicitly
+PluginRegistry.register(new ServerPlugin())
+// PluginRegistry.register(new EventBusPlugin())
+// PluginRegistry.register(new JobsPlugin())
 
 const oneJs = new OneJs(import.meta.url)
 
 await oneJs.start()
-const container = oneJs.getContainer()
+const container = ContainerProvider.getContainer()
 
 const server = container.get(Server)
 
 server
-  .use(cors({ credentials: true }))
+  // .use(cors({ credentials: true }))
   .setPrefix('/api')
-  .setContainer(container)
   .start(4000)

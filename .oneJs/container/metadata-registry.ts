@@ -53,6 +53,20 @@ class MetadataRegistry {
       params: this.paramMap.get(ctor) || [],
     }))
   }
+
+  getMetadata(ctor: ClassConstructor): ServiceMetadata | undefined {
+    const meta = this.services.get(ctor)
+    if (!meta) {
+      return undefined
+    }
+
+    return {
+      constructor: ctor,
+      scope: meta.scope,
+      autorun: meta.autorun,
+      params: this.paramMap.get(ctor) || [],
+    }
+  }
 }
 
 // ✅ Exporta la instancia final aquí:

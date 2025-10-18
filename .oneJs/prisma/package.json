@@ -1,20 +1,40 @@
 {
-  "name": "ey-js-prisma",
-  "module": "index.ts",
+  "name": "@onejs/prisma",
+  "version": "1.0.0",
+  "description": "Prisma integration for OneJs framework",
+  "module": "src/index.ts",
   "type": "module",
-  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
   "scripts": {
-    "start:dev": "bun --verbose --watch index.ts",
-    "start": "bun run index.ts",
+    "build": "tsc",
+    "dev": "tsc --watch",
     "test": "bun --test"
   },
+  "keywords": [
+    "prisma",
+    "database",
+    "orm",
+    "framework",
+    "typescript"
+  ],
+  "author": "OneJs Team",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^6.17.1"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
   },
   "peerDependencies": {
+    "@onejs/core": "file:./core",
     "typescript": "^5"
-  },
-  "dependencies": {
-    "@prisma/client": "^6.8.1"
   }
 }
