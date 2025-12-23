@@ -24,8 +24,9 @@ const server = container.get(Server)
 
 
 server
-  .use(cors({ credentials: true }))
   .setPrefix('/api')
+  .use(cors({ credentials: true }) as any)
   .start(4000, () => {
     logger.info('api:startup', 'Server started on port 4000')
   })
+
