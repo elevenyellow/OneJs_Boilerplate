@@ -1,0 +1,40 @@
+{
+  "name": "@OneJs/prisma",
+  "version": "1.0.0",
+  "description": "Prisma integration for OneJs framework",
+  "module": "src/index.ts",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun --test"
+  },
+  "keywords": [
+    "prisma",
+    "database",
+    "orm",
+    "framework",
+    "typescript"
+  ],
+  "author": "OneJs Team",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^6.17.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@OneJs/core": "file:./core",
+    "typescript": "^5"
+  }
+}

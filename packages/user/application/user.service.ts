@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@EyJs'
+import { Inject, Injectable } from '@OneJs/core'
 import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
 
 @Injectable()

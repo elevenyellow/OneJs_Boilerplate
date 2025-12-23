@@ -1,7 +1,0 @@
-export * from './controller'
-export * from './methods'
-export * from './middleware'
-export * from './register-controller'
-export * from './register-route'
-export * from './raw'
-export * from './methods'

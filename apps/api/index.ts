@@ -1,20 +1,32 @@
-import { BootstrapService, Server } from '@EyJs'
-import { swagger } from '@elysiajs/swagger'
-import { cors } from '@elysiajs/cors'
+import {
+  ContainerProvider,
+  logger,
+  OneJs,
+  PluginRegistry
+} from '@OneJs'
+import { Server, ServerPlugin } from '@OneJs/server'
+import { PrismaPlugin } from '@OneJs/prisma'
+import cors from '@elysiajs/cors'
 
-const container = await BootstrapService.bootstrap(import.meta.url)
+// Register plugins explicitly
+
+PluginRegistry.register(new ServerPlugin())
+PluginRegistry.register(new PrismaPlugin())
+// PluginRegistry.register(new EventBusPlugin())
+// PluginRegistry.register(new JobsPlugin())
+
+const oneJs = new OneJs(import.meta.url)
+
+await oneJs.start()
+const container = ContainerProvider.getContainer()
 
 const server = container.get(Server)
+
+
 server
-  .use(cors({ credentials: true }))
-  .use(
-    swagger({
-      path: '/docs',
-      documentation: {
-        info: { title: 'EyJs Boilerplate API', version: '1.0.0' },
-      },
-    }),
-  )
   .setPrefix('/api')
-  .setContainer(container)
-  .start(4000)
+  .use(cors({ credentials: true }) as any)
+  .start(4000, () => {
+    logger.info('api:startup', 'Server started on port 4000')
+  })
+

@@ -1,4 +1,4 @@
-import { Injectable } from '@EyJs'
+import { Injectable } from '@OneJs/core'
 import { PasswordValidationStrategy } from './password-validation.strategy'
 
 @Injectable()

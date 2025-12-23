@@ -1,12 +1,18 @@
-import { EyJsError, Inject, Injectable } from '@EyJs'
-import { UserEntity } from '@user/domain/entities/user.entity'
+import {
+  OneJsError,
+  Inject,
+  Injectable,
+} from '@OneJs/core'
 import { PostEntity } from '@post/domain/entities/post'
+import { UserEntity } from '@user/domain/entities/user.entity'
 import { Id } from '@user/domain/value-objects/id'
-import { PrismaClientEy, PrismaRepository } from '@EyJs/Prisma'
+import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
 
 @Injectable()
 export class UserPrismaRepository extends PrismaRepository<'user'> {
-  constructor(@Inject(PrismaClientEy) protected readonly prisma: PrismaClientEy) {
+  constructor(
+    @Inject(PrismaClientOneJs) protected readonly prisma: PrismaClientOneJs,
+  ) {
     super(prisma, 'user')
   }
 
@@ -36,7 +42,7 @@ export class UserPrismaRepository extends PrismaRepository<'user'> {
 
   async addPost(userId: string, postId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } })
-    if (!user) throw new EyJsError('USER_NOT_FOUND', 404, 'User not found')
+    if (!user) throw new OneJsError('USER_NOT_FOUND', 404, 'User not found')
 
     await this.prisma.post.update({
       where: { id: postId },

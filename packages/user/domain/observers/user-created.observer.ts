@@ -1,6 +1,6 @@
-import { Injectable, EventHandler, Inject } from '@EyJs'
+import { Inject, Injectable, Logger } from '@OneJs/core'
+import { EventHandler } from '@OneJs/event-bus'
 import { UserCreatedEvent } from '../events/user-created.event'
-import { Logger } from '@EyJs'
 
 @Injectable()
 export class UserCreatedObserver {
@@ -8,8 +8,8 @@ export class UserCreatedObserver {
 
   @EventHandler(UserCreatedEvent)
   async handle(event: UserCreatedEvent): Promise<void> {
-    this.logger.info(`Called event: UserCreatedEvent`)
-    this.logger.info(`User created: ${event.user.email}`)
+    this.logger.info('user:event', `Called event: UserCreatedEvent`)
+    this.logger.info('user:created', `User created: ${event.user.email}`)
     // Aquí podrías agregar más lógica como:
     // - Enviar email de bienvenida
     // - Crear perfil inicial

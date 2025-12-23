@@ -1,16 +1,8 @@
-import {
-  Controller,
-  Get,
-  Post,
-  UseMiddleware,
-  type Request,
-  type Response,
-} from '@EyJs'
-import { AuthMiddleware } from '@EyJs/Auth'
-import { Inject } from '@EyJs'
-import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
-import { CreateUserDto } from '@user/domain/dtos/create-user.dto'
+import { Inject } from '@OneJs/core'
+import { Controller, Get, Post } from '@OneJs/server'
 import { CreateUserUseCase } from '@user/application/use-cases/create-user.use-case'
+import { CreateUserDto } from '@user/domain/dtos/create-user.dto'
+import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'
 
 @Controller('/users')
 export class UserController {
@@ -30,7 +22,7 @@ export class UserController {
     return response.status(201).json(user)
   }
 
-  @UseMiddleware(AuthMiddleware)
+  // @UseMiddleware(AuthMiddleware)
   @Get('/:id')
   async getUser(request: Request, response: Response) {
     console.log('Get user handler called', { user: request.user }) // Debug log

@@ -1,4 +1,4 @@
-import { Injectable } from '@EyJs'
+import { Injectable } from '@OneJs/core'
 import type { PostFactory } from '@post/domain/factories/post-factory.interface'
 import { Id } from '@user/domain/value-objects/id'
 import { PostEntity } from '@post/domain/entities/post'

@@ -1,11 +1,13 @@
-import { Injectable, Inject } from '@EyJs'
+import { Inject, Injectable } from '@OneJs/core'
 import { PostEntity } from '@post/domain/entities/post'
 import { UserEntity } from '@user/domain/entities/user.entity'
-import { PrismaClientEy, PrismaRepository } from '@EyJs/Prisma'
+import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
 
 @Injectable()
 export class PostPrismaRepository extends PrismaRepository<'post'> {
-  constructor(@Inject(PrismaClientEy) protected readonly prisma: PrismaClientEy) {
+  constructor(
+    @Inject(PrismaClientOneJs) protected readonly prisma: PrismaClientOneJs,
+  ) {
     super(prisma, 'post')
   }
 

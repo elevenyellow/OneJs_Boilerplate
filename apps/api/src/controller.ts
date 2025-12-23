@@ -1,5 +1,5 @@
-import { UseAuth } from '@EyJs/Auth'
-import { Controller, Get, Inject } from '@EyJs'
+import { Inject, UseAuth } from '@OneJs/core'
+import { Controller, Get } from '@OneJs/server'
 import { CreatePostUseCase } from '@post/application/use-cases/create-post.use-case'
 import type { Context } from 'elysia'
 
@@ -8,7 +8,7 @@ export class UserController {
   constructor(
     @Inject(CreatePostUseCase)
     private readonly createPostUseCase: CreatePostUseCase,
-  ) {}
+  ) { }
 
   @UseAuth()
   @Get('/')
