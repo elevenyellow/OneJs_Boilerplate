@@ -1,199 +1,137 @@
-# Elysia.js Boilerplate
+<div align="center">
+  <h1>OneJs Boilerplate</h1>
+  <p><b>A modern, type-safe, and feature-rich framework for enterprise-grade web applications.</b></p>
 
-A modern, type-safe, and feature-rich boilerplate for building web applications with Elysia.js, Bun, and MongoDB.
+  <p>
+    <img src="https://img.shields.io/badge/Bun-%23000000.svg?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" />
+    <img src="https://img.shields.io/badge/Elysia.js-%23000000.svg?style=for-the-badge&logo=elysia&logoColor=white" alt="Elysia.js" />
+    <img src="https://img.shields.io/badge/Prisma-%232D3748.svg?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
+    <img src="https://img.shields.io/badge/TypeScript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" />
+  </p>
 
-## Features
+  <h4>
+    <a href="docs/README.md">Documentation</a>
+    <span> · </span>
+    <a href="https://github.com/your-username/eyjs-boilerplate/issues">Report Bug</a>
+    <span> · </span>
+    <a href="https://github.com/your-username/eyjs-boilerplate/pulls">Request Feature</a>
+  </h4>
+</div>
 
-- 🚀 **Built with Elysia.js** - A fast, type-safe web framework
-- ⚡ **Powered by Bun** - The all-in-one JavaScript runtime & toolkit
-- 🗄️ **MongoDB Integration** - Ready-to-use database setup with Docker
-- 📦 **TypeScript Support** - Full type safety out of the box
-- 🎨 **Biome Integration** - Modern code formatting and linting
-- 🐳 **Docker Support** - Easy development environment setup
-- 📝 **CLI Tool** - Create new applications with ease
+---
 
-## Prerequisites
+OneJs is a high-performance boilerplate built on top of **Elysia.js** and **Bun**, implementing **Hexagonal Architecture** and **Domain-Driven Design (DDD)**. It provides a robust foundation for building scalable, maintainable, and type-safe backend services.
 
-- [Bun](https://bun.sh/) (Latest version)
-- [Docker](https://www.docker.com/) or [Podman](https://podman.io/)
-- [Node.js](https://nodejs.org/) (v18 or later)
+## ✨ Key Features
 
-## Getting Started
+- 🚀 **Extreme Performance** - Leverages Bun's runtime and Elysia's optimized router.
+- 🏗️ **Architectural Excellence** - Strict Hexagonal Architecture and DDD principles.
+- 💉 **Powerful DI** - Built-in Dependency Injection container with decorator support.
+- 📡 **Event-Driven** - Seamless communication using a built-in Event Bus.
+- 👷 **Background Processing** - Managed background tasks with BullMQ & Redis.
+- 🛡️ **Built-in Security** - JWT and Clerk authentication strategies out of the box.
+- 🗄️ **Schema Harmony** - Automated Prisma schema merging for multi-module projects.
+- 📝 **Smart CLI** - Instant scaffolding of apps and domain modules.
 
-1. Clone the repository:
+## 🛠️ Tech Stack
+
+| Category | Technology |
+| :--- | :--- |
+| **Runtime** | [Bun](https://bun.sh/) |
+| **Web Framework** | [Elysia.js](https://elysiajs.com/) |
+| **Database/ORM** | [PostgreSQL](https://www.postgresql.org/) & [Prisma](https://www.prisma.io/) |
+| **Task Queue** | [BullMQ](https://docs.bullmq.io/) & [Redis](https://redis.io/) |
+| **Code Quality** | [Biome](https://biomejs.dev/) |
+| **Environment** | [Docker](https://www.docker.com/) / [Podman](https://podman.io/) |
+
+## 🏗️ Architecture at a Glance
+
+OneJs enforces a clear separation of concerns, ensuring your domain logic remains pure and decoupled from infrastructure details.
+
+```mermaid
+graph TD
+    subgraph Infrastructure [Infrastructure Layer]
+        Controllers[Controllers / API]
+        Persistence[Prisma / Repositories]
+        External[External Adapters]
+    end
+
+    subgraph Application [Application Layer]
+        UseCases[Use Cases]
+        Services[Application Services]
+    end
+
+    subgraph Domain [Domain Layer]
+        Entities[Entities]
+        ValueObjects[Value Objects]
+        Events[Domain Events]
+    end
+
+    Infrastructure --> Application
+    Application --> Domain
+    Infrastructure --> Domain
+```
+
+## 🚀 Quick Start
+
+1. **Clone & Install**
+   ```bash
+   git clone <repository-url>
+   cd eyjs-boilerplate
+   bun install
+   ```
+
+2. **Initialize Your Project**
+   ```bash
+   bun run init
+   ```
+   *Follow the interactive prompts to choose which components (API, Admin, Worker) and examples you want to keep. This will clean up the boilerplate for your specific needs.*
+
+3. **Launch Dev Environment**
+   ```bash
+   bun start:api:dev
+   ```
+   *This starts the DB, merges schemas, runs migrations, and launches the server.*
+
+## 🛠️ Usage & Scaffolding
+
+### Project Templates
+OneJs supports different application types that you can choose during `bun run init`:
+- **API**: High-performance backend using Elysia.js.
+- **Admin**: Modern dashboard built with Next.js and Shadcn UI.
+- **Worker**: Background task processor using BullMQ and Redis.
+
+### Scaffolding New Modules
+To create new business logic modules following hexagonal architecture:
 ```bash
-git clone <repository-url>
-cd eyjs-boilerplate
+bun create-app <module-name>
 ```
+This generates a complete folder structure including Domain, Application, and Infrastructure layers.
 
-2. Install dependencies:
-```bash
-bun install
-```
+## 📖 Documentation
 
-3. Start the development environment:
-```bash
-# Start MongoDB and the application
-bun start:dev
+Explore our comprehensive guides to master OneJs:
 
-# Or start only the application (if MongoDB is already running)
-bun start:dev:simple
-```
+- [**Overview & Setup**](docs/getting-started.md)
+- [**Hexagonal Architecture Deep Dive**](docs/architecture.md)
+- [**Dependency Injection & Core**](docs/core-features.md)
+- [**Routing & Controllers**](docs/routing.md)
+- [**Database & Persistence**](docs/database.md)
+- [**Events & Background Jobs**](docs/events-jobs.md)
+- [**Authentication & Security**](docs/auth.md)
+- [**CLI Tool Usage**](docs/cli.md)
 
-## Available Scripts
+## 🤝 Contributing
 
-- `bun start:db` - Start the MongoDB database using Docker/Podman
-- `bun start:dev` - Start both the database and the application in development mode
-- `bun start:dev:simple` - Start only the application in development mode
-- `bun start` - Start the application in production mode
-- `bun test` - Run tests
-- `bun create-app` - Create a new application using the CLI tool
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-## Project Structure
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git checkout -b feature/AmazingFeature`)
+5. Open a Pull Request
 
-```
-eyjs-boilerplate/
-├── src/              # Source code
-├── packages/         # Additional packages and tools
-├── data/            # MongoDB data persistence
-├── .vscode/         # VS Code configuration
-├── docker-compose.yml # Docker configuration
-├── biome.json       # Biome configuration
-├── tsconfig.json    # TypeScript configuration
-└── package.json     # Project dependencies and scripts
-```
+## 📄 License
 
-## Database Setup
-
-The boilerplate includes a MongoDB setup using Docker/Podman. The database is configured to run on port 27017 with the following default settings:
-
-- Database name: ddd-boilerplate
-- Port: 27017
-- Data persistence: ./data directory
-
-## Development
-
-1. The application uses Biome for code formatting and linting. Make sure to install the Biome extension in your IDE.
-
-2. For VS Code users, the project includes recommended extensions and settings in the `.vscode` directory.
-
-3. The project uses TypeScript for type safety. Make sure to follow the type definitions and interfaces.
-
-## Creating New Applications
-
-You can create new applications using the included CLI tool:
-
-```bash
-bun create-app
-```
-
-This will guide you through the process of creating a new application with the boilerplate structure.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Available Packages
-
-The boilerplate includes several packages that provide different functionalities:
-
-### Core Package (`packages/core`)
-The foundation of the boilerplate that provides essential functionality:
-- Server configuration and setup
-- Event bus system for event-driven architecture
-- Logging system
-- Auto-loader for automatic module loading
-- Dependency injection container
-- Configuration management
-
-### Create App (`packages/create-app`)
-A CLI tool to generate new applications with a hexagonal architecture:
-```bash
-bun create-app my-new-app
-```
-This will create a new application with the following structure:
-```
-my-new-app/
-├── domain/          # Business logic and domain models
-├── application/     # Use cases and application services
-├── infrastructure/  # External services and implementations
-└── interfaces/      # API endpoints and controllers
-```
-
-### Authentication (`packages/auth`)
-Provides authentication and authorization functionality:
-- JWT token management
-- User authentication
-- Role-based access control
-- Session management
-
-### MongoDB Integration (`packages/mongo`)
-MongoDB database integration with:
-- Connection management
-- Repository pattern implementation
-- Query builders
-- Data validation
-
-### Prisma Integration (`packages/prisma`)
-Alternative database integration using Prisma ORM:
-- Type-safe database queries
-- Schema management
-- Migration tools
-- Database seeding
-
-### Background Jobs (`packages/jobs`)
-Background job processing system:
-- Job queue management
-- Worker processes
-- Scheduled tasks
-- Job monitoring
-
-## Using the Packages
-
-1. **Creating a New Application**
-```bash
-# Create a new application with hexagonal architecture
-bun create-app my-app
-
-# The application will be created in src/apps/my-app
-```
-
-2. **Adding Authentication**
-```typescript
-import { AuthService } from '@boilerplate/auth'
-
-// Initialize auth service
-const auth = new AuthService()
-
-// Use authentication in your routes
-app.post('/login', async (c) => {
-  const token = await auth.login(c.body)
-  return { token }
-})
-```
-
-3. **Using MongoDB**
-```typescript
-import { MongoRepository } from '@boilerplate/mongo'
-
-// Create a repository for your entity
-const userRepo = new MongoRepository('users')
-
-// Use the repository
-const users = await userRepo.find({ role: 'admin' })
-```
-
-4. **Setting up Background Jobs**
-```typescript
-import { JobQueue } from '@boilerplate/jobs'
-
-// Create a job queue
-const queue = new JobQueue()
-
-// Add a job
-await queue.add('process-data', { data: 'example' })
-``` 
+Distributed under the MIT License. See `LICENSE` for more information.
