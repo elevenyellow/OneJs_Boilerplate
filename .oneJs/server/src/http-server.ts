@@ -1,16 +1,15 @@
 import { Elysia, type Context } from 'elysia'
-import {
+import { type AnyMiddleware, type MiddlewareInterface } from './middlewares'
+import { createErrorResponse, createSuccessResponse } from './types/response'
+import { useClassMiddleware } from './utils/use-class-middleware'
+import { 
   Container,
   ContainerProvider,
   Inject,
   Injectable,
   Logger,
-  type ClassConstructor,
-} from '../../core/src'
-import { EyJsError } from './ey-js.error'
-import { type AnyMiddleware, type MiddlewareInterface } from './middlewares'
-import { createErrorResponse, createSuccessResponse } from './types/response'
-import { useClassMiddleware } from './utils'
+  type ClassConstructor, 
+  OneJsError } from '../../core/src'
 
 interface RouteMeta {
   method?: string
@@ -18,6 +17,7 @@ interface RouteMeta {
   version?: string
   middlewares?: Array<Function | { new (...args: any[]): any }>
   raw?: boolean
+  roles?: any[]
 }
 
 interface ControllerMeta {
@@ -44,7 +44,7 @@ export class Server {
 
     // Error handler
     this.app.onError(({ error }) => {
-      if (error instanceof EyJsError) {
+      if (error instanceof OneJsError) {
         return error.toResponse()
       }
 
@@ -103,7 +103,7 @@ export class Server {
 
             return (app: Elysia) =>
               app.onBeforeHandle(async (context) => {
-                await instance.handle(context)
+                await instance.handle(context, route.roles)
               })
           }
 

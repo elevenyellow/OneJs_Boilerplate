@@ -1,5 +1,5 @@
 {
-    "name": "@onejs/auth",
+    "name": "@OneJs/auth",
     "version": "1.0.0",
     "description": "Authentication middleware for OneJs framework",
     "module": "src/index.ts",
@@ -36,8 +36,8 @@
         "typescript": "^5.0.0"
     },
     "peerDependencies": {
-        "@onejs/core": "file:./core",
-        "@onejs/server": "file:./server",
+        "@OneJs/core": "file:./core",
+        "@OneJs/server": "file:./server",
         "typescript": "^5"
     }
 }

@@ -49,7 +49,7 @@ export class AppGenerator {
       `${this.folderName}.service.ts`,
     )
     const content = `
-import { Injectable } from '@OneJs'
+import { Injectable } from '@OneJs/core'
 
 @Injectable()
 export class ${this.capitalizedName}Service {
@@ -73,7 +73,7 @@ export class ${this.capitalizedName}Service {
       `${this.folderName}-mongo.repository.ts`,
     )
     const content = `
-import { Injectable, MongoConnector } from '@OneJs'
+import { Injectable, MongoConnector } from '@OneJs/core'
 import { Collection } from 'mongodb'
 import { ${this.capitalizedName} } from '@${this.folderName}/domain/entities/${this.folderName}'
 
@@ -182,7 +182,7 @@ export class Id {
       `${this.folderName}.controller.ts`,
     )
     const content = `
-import { Controller } from '@OneJs'
+import { Controller } from '@OneJs/core'
 import { ${this.capitalizedName}Service } from '@${this.folderName}/application/${this.folderName}.service'
 import { ${this.capitalizedName}MongoRepository } from '@${this.folderName}/infrastructure/persistance/${this.folderName}-mongo.repository'
 

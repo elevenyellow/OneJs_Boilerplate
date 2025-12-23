@@ -1,12 +1,17 @@
 import {
   ContainerProvider,
+  logger,
   OneJs,
-  PluginRegistry,
-} from '../../.oneJs/core/src/index.ts'
-import { Server, ServerPlugin } from '../../.oneJs/server/src/index.ts'
+  PluginRegistry
+} from '@OneJs'
+import { Server, ServerPlugin } from '@OneJs/server'
+import { PrismaPlugin } from '@OneJs/prisma'
+import cors from '@elysiajs/cors'
 
 // Register plugins explicitly
+
 PluginRegistry.register(new ServerPlugin())
+PluginRegistry.register(new PrismaPlugin())
 // PluginRegistry.register(new EventBusPlugin())
 // PluginRegistry.register(new JobsPlugin())
 
@@ -17,7 +22,10 @@ const container = ContainerProvider.getContainer()
 
 const server = container.get(Server)
 
+
 server
-  // .use(cors({ credentials: true }))
+  .use(cors({ credentials: true }))
   .setPrefix('/api')
-  .start(4000)
+  .start(4000, () => {
+    logger.info('api:startup', 'Server started on port 4000')
+  })

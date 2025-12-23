@@ -1,11 +1,11 @@
-# @onejs/core
+# @OneJs/core
 
 Core dependency injection container, bootstrap, and utilities for OneJs framework.
 
 ## Installation
 
 ```bash
-npm install @onejs/core
+npm install @OneJs/core
 ```
 
 ## Features
@@ -23,7 +23,7 @@ npm install @onejs/core
 ### Basic Setup
 
 ```typescript
-import { OneJs, PluginRegistry } from '@onejs/core'
+import { OneJs, PluginRegistry } from '@OneJs/core'
 
 const oneJs = new OneJs(import.meta.url)
 await oneJs.start()
@@ -32,7 +32,7 @@ await oneJs.start()
 ### Dependency Injection
 
 ```typescript
-import { Injectable, Inject } from '@onejs/core'
+import { Injectable, Inject } from '@OneJs/core'
 
 @Injectable()
 export class MyService {
@@ -43,7 +43,7 @@ export class MyService {
 ### Configuration
 
 ```typescript
-import { ConfigService } from '@onejs/core'
+import { ConfigService } from '@OneJs/core'
 
 const config = new ConfigService()
 const dbUrl = config.get('DATABASE_URL')
@@ -52,7 +52,7 @@ const dbUrl = config.get('DATABASE_URL')
 ### Logging
 
 ```typescript
-import { logger } from '@onejs/core'
+import { logger } from '@OneJs/core'
 
 logger.info('app:start', 'Application started')
 logger.debug('app:debug', 'Debug information')
@@ -72,7 +72,7 @@ The following services are automatically registered:
 Plugins can register additional services and functionality:
 
 ```typescript
-import { BootstrapPlugin } from '@onejs/core'
+import { BootstrapPlugin } from '@OneJs/core'
 
 export class MyPlugin implements BootstrapPlugin {
   name = 'my-plugin'

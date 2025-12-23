@@ -1,14 +1,14 @@
-import { EyJsError, logger } from '../../../core/src'
+import { logger, OneJsError } from '@OneJs/core'
 
 export function createErrorHandler() {
   return ({ code, error, set }: { code: string; error: Error; set: any }) => {
     const isDevelopment = process.env.NODE_ENV === 'development'
-    const isEyJsError = error instanceof EyJsError
+    const isOneJsError = error instanceof OneJsError
 
-    const status = isEyJsError ? error.statusCode : 500
+    const status = isOneJsError ? error.statusCode : 500
     const message = isDevelopment
       ? error.message
-      : isEyJsError
+      : isOneJsError
         ? error.message
         : 'Internal Server Error'
 

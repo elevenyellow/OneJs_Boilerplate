@@ -34,32 +34,41 @@
       "@OneJs": [
         "./.oneJs"
       ],
-      "@OneJs/server": [
-        "./.oneJs/server"
-      ],
-      "@OneJs/event-bus": [
-        "./.oneJs/event-bus"
-      ],
-      "@OneJs/jobs": [
-        "./.oneJs/jobs"
-      ],
-      "@onejs/core": [
+      "@OneJs/core": [
         "./.oneJs/core/src"
       ],
-      "@onejs/server": [
+      "@OneJs/core/*": [
+        "./.oneJs/core/src/*"
+      ],
+      "@OneJs/server": [
         "./.oneJs/server/src"
       ],
-      "@onejs/event-bus": [
+      "@OneJs/server/*": [
+        "./.oneJs/server/src/*"
+      ],
+      "@OneJs/event-bus": [
         "./.oneJs/event-bus/src"
       ],
-      "@onejs/jobs": [
+      "@OneJs/event-bus/*": [
+        "./.oneJs/event-bus/src/*"
+      ],
+      "@OneJs/jobs": [
         "./.oneJs/jobs/src"
       ],
-      "@onejs/prisma": [
+      "@OneJs/jobs/*": [
+        "./.oneJs/jobs/src/*"
+      ],
+      "@OneJs/prisma": [
         "./.oneJs/prisma/src"
       ],
-      "@onejs/auth": [
+      "@OneJs/prisma/*": [
+        "./.oneJs/prisma/src/*"
+      ],
+      "@OneJs/auth": [
         "./.oneJs/auth/src"
+      ],
+      "@OneJs/auth/*": [
+        "./.oneJs/auth/src/*"
       ]
     }
   }

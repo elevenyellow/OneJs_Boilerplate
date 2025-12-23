@@ -7,6 +7,7 @@ import { container as defaultContainer } from '../container'
 import { ContainerProvider } from '../container/container-provider'
 import { metadataRegistry } from '../container/metadata-registry'
 import { logger } from '../logger'
+import { ConfigService } from '../config'
 import { AutoLoader } from './auto-loader'
 import { BootstrapBase } from './bootstrap-base'
 import { PluginRegistry } from './plugin-registry'
@@ -60,6 +61,13 @@ export class OneJs {
       'oneJs:bootstrap',
       `✅ Registered ${metadataRegistry.getAllMetadata().length} decorated services`,
     )
+
+    // 4.1 Force ConfigService initialization to load .env files early
+    try {
+      this.container.get(ConfigService)
+    } catch (err) {
+      logger.warn('oneJs:bootstrap', 'ConfigService not found or could not be initialized.')
+    }
 
     // 5. PHASE 1: Plugin Registration
     logger.debug('oneJs:bootstrap', '🔌 Registering plugins...')

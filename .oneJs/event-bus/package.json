@@ -1,5 +1,5 @@
 {
-    "name": "@onejs/event-bus",
+    "name": "@OneJs/event-bus",
     "version": "1.0.0",
     "description": "Event bus system for OneJs framework",
     "module": "src/index.ts",
@@ -31,7 +31,7 @@
         "typescript": "^5.0.0"
     },
     "peerDependencies": {
-        "@onejs/core": "file:./core",
+        "@OneJs/core": "file:./core",
         "typescript": "^5"
     }
 }

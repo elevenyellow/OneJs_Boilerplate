@@ -6,7 +6,7 @@ This guide helps verify that the refactored architecture works correctly.
 
 ### 1. Container Provider
 ```typescript
-import { ContainerProvider, container } from '@OneJs'
+import { ContainerProvider, container } from '@OneJs/core'
 
 // Should throw before initialization
 try {
@@ -23,7 +23,7 @@ console.log('✅ Container provider working:', c === container)
 
 ### 2. Plugin Registry
 ```typescript
-import { PluginRegistry, BootstrapPlugin } from '@OneJs'
+import { PluginRegistry, BootstrapPlugin } from '@OneJs/core'
 
 // Check registered plugins
 const plugins = PluginRegistry.getAll()
@@ -40,7 +40,7 @@ console.log('✅ Found', plugins.length, 'plugins')
 
 ### 3. Bootstrap Flow
 ```typescript
-import { OneJs } from '@OneJs'
+import { OneJs } from '@OneJs/core'
 
 const app = new OneJs(import.meta.url)
 
@@ -54,7 +54,7 @@ console.log('✅ Bootstrap completed successfully')
 
 ### 4. Event Handlers
 ```typescript
-import { Injectable, EventHandler, DomainEvent } from '@OneJs'
+import { Injectable, EventHandler, DomainEvent } from '@OneJs/core'
 
 class TestEvent extends DomainEvent {
   constructor(public message: string) {
@@ -77,7 +77,7 @@ await eventBus.publish(new TestEvent('Hello from refactored system!'))
 
 ### 5. Controllers
 ```typescript
-import { Controller, Get } from '@OneJs'
+import { Controller, Get } from '@OneJs/core'
 
 @Controller('/test')
 class TestController {
@@ -95,7 +95,7 @@ console.log('✅ Controllers registered')
 
 ### 6. Worker Jobs
 ```typescript
-import { Injectable, WorkerJob } from '@OneJs'
+import { Injectable, WorkerJob } from '@OneJs/core'
 
 @Injectable()
 class TestWorker {
@@ -123,7 +123,7 @@ import {
   ContainerProvider,
   PluginRegistry,
   container,
-} from '@OneJs'
+} from '@OneJs/core'
 
 describe('DI Refactor Integration', () => {
   beforeAll(async () => {
@@ -204,7 +204,7 @@ describe('DI Refactor Integration', () => {
 ```typescript
 // test/unit/container-provider.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
-import { ContainerProvider, Container } from '@OneJs'
+import { ContainerProvider, Container } from '@OneJs/core'
 
 describe('ContainerProvider', () => {
   afterEach(() => {
@@ -240,7 +240,7 @@ describe('ContainerProvider', () => {
 ```typescript
 // test/unit/plugin-registry.test.ts
 import { describe, it, expect, beforeEach } from 'bun:test'
-import { PluginRegistry, type BootstrapPlugin } from '@OneJs'
+import { PluginRegistry, type BootstrapPlugin } from '@OneJs/core'
 
 describe('PluginRegistry', () => {
   beforeEach(() => {
@@ -309,7 +309,7 @@ describe('PluginRegistry', () => {
 ```typescript
 // test/unit/event-bus-loader.test.ts
 import { describe, it, expect, beforeEach } from 'bun:test'
-import { Container } from '@OneJs'
+import { Container } from '@OneJs/core'
 import { EventBusLoader } from '@OneJs/event-bus/loader'
 
 describe('EventBusLoader', () => {

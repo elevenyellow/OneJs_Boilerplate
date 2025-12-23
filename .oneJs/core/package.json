@@ -1,5 +1,5 @@
 {
-    "name": "@onejs/core",
+    "name": "@OneJs/core",
     "version": "1.0.0",
     "description": "Core dependency injection container, bootstrap, and utilities for OneJs framework",
     "module": "src/index.ts",
@@ -26,7 +26,6 @@
     "author": "OneJs Team",
     "license": "MIT",
     "dependencies": {
-        "reflect-metadata": "^0.2.2",
         "fast-glob": "^3.3.3",
         "debug": "^4.0.0",
         "@prisma/client": "^6.17.1",

@@ -1,5 +1,5 @@
-import { Inject } from '@onejs/core'
-import { Controller, Get, Post } from '@onejs/server'
+import { Inject } from '@OneJs/core'
+import { Controller, Get, Post } from '@OneJs/server'
 import { CreatePostUseCase } from '@post/application/use-cases/create-post.use-case'
 import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
 import type { PostEntity } from '@post/domain/entities/post'

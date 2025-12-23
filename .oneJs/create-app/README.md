@@ -20,13 +20,13 @@ A powerful CLI tool for generating hexagonal architecture folder structures for 
 ### Global Installation
 
 ```bash
-npm install -g @OneJs/create-app
+npm install -g @OneJs/core/create-app
 ```
 
 ### Local Installation
 
 ```bash
-npm install --save-dev @OneJs/create-app
+npm install --save-dev @OneJs/core/create-app
 ```
 
 ## Usage
@@ -75,7 +75,7 @@ This will create the application structure in `custom/path/my-app`.
 A basic service class with dependency injection support:
 
 ```typescript
-import { Injectable } from '@OneJs'
+import { Injectable } from '@OneJs/core'
 
 @Injectable()
 export class MyAppService {
@@ -94,7 +94,7 @@ export class MyAppService {
 A MongoDB repository implementation with basic CRUD operations:
 
 ```typescript
-import { Injectable, MongoConnector } from '@OneJs'
+import { Injectable, MongoConnector } from '@OneJs/core'
 import { Collection } from 'mongodb'
 import { MyApp } from '@my-app/domain/entities/my-app'
 
@@ -192,7 +192,7 @@ export class Id {
 A basic controller with dependency injection:
 
 ```typescript
-import { Controller } from '@OneJs'
+import { Controller } from '@OneJs/core'
 import { MyAppService } from '@my-app/application/my-app.service'
 import { MyAppMongoRepository } from '@my-app/infrastructure/persistance/my-app-mongo.repository'
 

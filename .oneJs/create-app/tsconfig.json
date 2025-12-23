@@ -26,7 +26,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "paths": {
-      "@OneJs": [
+      "@OneJs/core": [
         "../core"
       ]
     }

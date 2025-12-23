@@ -1,11 +1,11 @@
-# @onejs/event-bus
+# @OneJs/event-bus
 
 Event bus system for OneJs framework with domain event support.
 
 ## Installation
 
 ```bash
-npm install @onejs/event-bus
+npm install @OneJs/event-bus
 ```
 
 ## Features
@@ -20,8 +20,8 @@ npm install @onejs/event-bus
 ### Basic Setup
 
 ```typescript
-import { OneJs, PluginRegistry } from '@onejs/core'
-import { EventBusPlugin } from '@onejs/event-bus'
+import { OneJs, PluginRegistry } from '@OneJs/core'
+import { EventBusPlugin } from '@OneJs/event-bus'
 
 PluginRegistry.register(new EventBusPlugin())
 
@@ -32,7 +32,7 @@ await oneJs.start()
 ### Creating Domain Events
 
 ```typescript
-import { DomainEvent } from '@onejs/event-bus'
+import { DomainEvent } from '@OneJs/event-bus'
 
 export class UserCreatedEvent extends DomainEvent {
   constructor(
@@ -47,8 +47,8 @@ export class UserCreatedEvent extends DomainEvent {
 ### Creating Event Handlers
 
 ```typescript
-import { Injectable, Inject } from '@onejs/core'
-import { EventHandler } from '@onejs/event-bus'
+import { Injectable, Inject } from '@OneJs/core'
+import { EventHandler } from '@OneJs/event-bus'
 
 @Injectable()
 export class UserCreatedHandler {
@@ -64,8 +64,8 @@ export class UserCreatedHandler {
 ### Publishing Events
 
 ```typescript
-import { Injectable, Inject } from '@onejs/core'
-import { EventBus } from '@onejs/event-bus'
+import { Injectable, Inject } from '@OneJs/core'
+import { EventBus } from '@OneJs/event-bus'
 
 @Injectable()
 export class UserService {
@@ -94,7 +94,7 @@ The `EventBusPlugin` automatically:
 You can add middleware to the event bus for cross-cutting concerns:
 
 ```typescript
-import { EventBusMiddlewareInterface } from '@onejs/event-bus'
+import { EventBusMiddlewareInterface } from '@OneJs/event-bus'
 
 class LoggingMiddleware implements EventBusMiddlewareInterface {
   async handle(event: DomainEvent, next: () => Promise<void>): Promise<void> {

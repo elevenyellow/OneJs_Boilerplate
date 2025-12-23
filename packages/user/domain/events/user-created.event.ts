@@ -1,4 +1,4 @@
-import { DomainEvent } from '@onejs/event-bus'
+import { DomainEvent } from '@OneJs/event-bus'
 import { UserEntity } from '../entities/user.entity'
 
 export class UserCreatedEvent extends DomainEvent {

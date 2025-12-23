@@ -1,4 +1,4 @@
-import { Injectable } from '@OneJs'
+import { Injectable } from '@OneJs/core'
 import type { CreateUserDto } from '@user/domain/dtos/create-user.dto'
 import { UserEntity } from '@user/domain/entities/user.entity'
 import type { UserFactory } from '@user/domain/factories/user-factory.interface'

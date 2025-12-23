@@ -1,5 +1,5 @@
-import { Inject, Injectable, Logger } from '@onejs/core'
-import { EventHandler } from '@onejs/event-bus'
+import { Inject, Injectable, Logger } from '@OneJs/core'
+import { EventHandler } from '@OneJs/event-bus'
 import { UserCreatedEvent } from '../events/user-created.event'
 
 @Injectable()

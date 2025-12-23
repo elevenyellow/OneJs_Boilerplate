@@ -1,4 +1,4 @@
-import { EyJsError } from '@OneJs'
+import { OneJsError } from '@OneJs/core'
 
 export class CreatePostDto {
   constructor(
@@ -12,11 +12,11 @@ export class CreatePostDto {
 
   private validate(): void {
     if (!this.title) {
-      throw new EyJsError('Title is required', 400, 'Title is required')
+      throw new OneJsError('Title is required', 400, 'Title is required')
     }
 
     if (this.title.length < 3) {
-      throw new EyJsError(
+      throw new OneJsError(
         'Title must be at least 3 characters long',
         400,
         'Title must be at least 3 characters long',
@@ -24,11 +24,11 @@ export class CreatePostDto {
     }
 
     if (!this.content) {
-      throw new EyJsError('Content is required', 400, 'Content is required')
+      throw new OneJsError('Content is required', 400, 'Content is required')
     }
 
     if (this.content.length < 10) {
-      throw new EyJsError(
+      throw new OneJsError(
         'Content must be at least 10 characters long',
         400,
         'Content must be at least 10 characters long',
@@ -36,7 +36,7 @@ export class CreatePostDto {
     }
 
     if (!this.userId) {
-      throw new EyJsError('User ID is required', 400, 'User ID is required')
+      throw new OneJsError('User ID is required', 400, 'User ID is required')
     }
   }
 

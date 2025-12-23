@@ -1,4 +1,4 @@
-import { Injectable, ConfigService, Inject } from '@OneJs'
+import { Injectable, ConfigService, Inject } from '@OneJs/core'
 import IORedis from 'ioredis'
 
 @Injectable()

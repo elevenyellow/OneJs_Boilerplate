@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@onejs/core'
-import { EventBus } from '@onejs/event-bus'
+import { Inject, Injectable } from '@OneJs/core'
+import { EventBus } from '@OneJs/event-bus'
 import { CreatePostDto } from '@post/domain/dtos/create-post.dto'
 import type { PostEntity } from '@post/domain/entities/post'
 import { PostCreatedEvent } from '@post/domain/events/post-created.event'

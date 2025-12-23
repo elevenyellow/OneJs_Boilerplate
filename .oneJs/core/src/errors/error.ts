@@ -1,7 +1,9 @@
-export class EyJsError extends Error {
+import type { ErrorCode } from './error-codes'
+
+export class OneJsError extends Error {
   statusCode: number
   explanatoryMessage: string
-  code?: string
+  code?: ErrorCode
   data?: any
 
   constructor(
@@ -9,7 +11,7 @@ export class EyJsError extends Error {
     statusCode: number,
     explanatoryMessage: string,
     data?: any,
-    code?: string,
+    code?: ErrorCode,
   ) {
     super(message)
     this.statusCode = statusCode
@@ -17,7 +19,7 @@ export class EyJsError extends Error {
     this.data = data
     this.code = code
 
-    Object.setPrototypeOf(this, EyJsError.prototype)
+    Object.setPrototypeOf(this, OneJsError.prototype)
   }
 
   toResponse(): Response {

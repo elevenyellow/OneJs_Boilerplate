@@ -1,4 +1,4 @@
-import { EyJsError } from '@OneJs'
+import { OneJsError } from '@OneJs/core'
 
 export class CreateUserDto {
   constructor(
@@ -12,19 +12,19 @@ export class CreateUserDto {
 
   private validate(): void {
     if (!this.email) {
-      throw new EyJsError('Email is required', 400, 'Email is required')
+      throw new OneJsError('Email is required', 400, 'Email is required')
     }
 
     if (!this.isValidEmail(this.email)) {
-      throw new EyJsError('Invalid email format', 400, 'Invalid email format')
+      throw new OneJsError('Invalid email format', 400, 'Invalid email format')
     }
 
     if (!this.name) {
-      throw new EyJsError('Name is required', 400, 'Name is required')
+      throw new OneJsError('Name is required', 400, 'Name is required')
     }
 
     if (this.name.length < 2) {
-      throw new EyJsError(
+      throw new OneJsError(
         'Name must be at least 2 characters long',
         400,
         'Name must be at least 2 characters long',
@@ -32,11 +32,11 @@ export class CreateUserDto {
     }
 
     if (!this.password) {
-      throw new EyJsError('Password is required', 400, 'Password is required')
+      throw new OneJsError('Password is required', 400, 'Password is required')
     }
 
     if (this.password.length < 6) {
-      throw new EyJsError(
+      throw new OneJsError(
         'Password must be at least 6 characters long',
         400,
         'Password must be at least 6 characters long',

@@ -32,10 +32,10 @@ bun add eyjslogger
 ```typescript
 import { logger, createLogger } from 'eyjslogger'
 
-// Use default logger - all methods require a key and message
-logger.info('app:startup', 'Application started')
-logger.warn('app:config', 'This is a warning')
-logger.error('app:fatal', 'Something went wrong')
+// Use default logger
+logger.info('Application started')
+logger.warn('This is a warning')
+logger.error('Something went wrong')
 
 // Create custom logger
 const customLogger = createLogger({
@@ -53,23 +53,23 @@ const customLogger = createLogger({
 ```typescript
 import { logger } from 'eyjslogger'
 
-// Basic logs - all require a key as first parameter
-logger.info('user:auth', 'User logged in')
-logger.warn('system:performance', 'Performance degradation detected')
-logger.error('db:connection', 'Database connection failed')
-logger.trace('app:debug', 'Detailed trace information')
+// Basic logs
+logger.info('User logged in')
+logger.warn('Performance degradation detected')
+logger.error('Database connection failed')
+logger.trace('Detailed trace information')
 ```
 
 ### Logs with Context
 
 ```typescript
-logger.info('user:login', 'User login attempt', { 
+logger.info('User login attempt', { 
   userId: 'user123', 
   ip: '192.168.1.1', 
   userAgent: 'Mozilla/5.0...' 
 })
 
-logger.error('db:connection', 'Database connection failed', { 
+logger.error('Database connection failed', { 
   error: 'Connection timeout',
   retryCount: 3,
   lastAttempt: new Date().toISOString()
@@ -79,36 +79,36 @@ logger.error('db:connection', 'Database connection failed', {
 ### Specific Log Types
 
 ```typescript
-// User actions - key is now the first parameter
-logger.userAction('user:action', 'purchase', 'user456', { 
+// User actions
+logger.userAction('purchase', 'user456', { 
   amount: 99.99, 
   currency: 'USD' 
 })
 
 // System information
-logger.systemInfo('system:cache', 'Cache cleared successfully', { 
+logger.systemInfo('Cache cleared successfully', { 
   cacheSize: '2.5MB',
   itemsRemoved: 150
 })
 
 // Business logic
-logger.businessLogic('order:processing', 'Order processing completed', { 
+logger.businessLogic('Order processing completed', { 
   orderId: 'order-789',
   processingTime: '2.3s'
 })
 
 // Warnings
-logger.deprecatedFeature('api:deprecated', 'old-api', 'new-api')
-logger.performanceWarning('db:performance', 'Slow query detected', { duration: '2.5s' })
-logger.securityWarning('auth:security', 'Multiple failed login attempts', { attempts: 5 })
+logger.deprecatedFeature('old-api', 'new-api')
+logger.performanceWarning('Slow query detected', { duration: '2.5s' })
+logger.securityWarning('Multiple failed login attempts', { attempts: 5 })
 
 // Errors
-logger.validationError('validation:email', 'Invalid email format', 'email', 'invalid-email')
-logger.databaseError('db:query', 'Connection timeout', 'SELECT * FROM users WHERE id = ?')
-logger.apiError('api:ratelimit', 'Rate limit exceeded', '/api/users', 429)
-logger.authenticationError('auth:credentials', 'Invalid credentials', 'user123')
-logger.systemError('system:memory', 'Memory limit exceeded', 'cache-service')
-logger.businessError('business:payment', 'Insufficient funds', 'payment-processing')
+logger.validationError('Invalid email format', 'email', 'invalid-email')
+logger.databaseError('Connection timeout', 'SELECT * FROM users WHERE id = ?')
+logger.apiError('Rate limit exceeded', '/api/users', 429)
+logger.authenticationError('Invalid credentials', 'user123')
+logger.systemError('Memory limit exceeded', 'cache-service')
+logger.businessError('Insufficient funds', 'payment-processing')
 ```
 
 ### Debug with Keys
@@ -187,30 +187,30 @@ debugUtils.disableDebugKeys('app:db')
 ### Logger Methods
 
 #### Basic Methods
-- `logger.info(key, message, context?)`
-- `logger.warn(key, message, context?)`
-- `logger.error(key, message, context?)`
+- `logger.info(message, context?)`
+- `logger.warn(message, context?)`
+- `logger.error(message, context?)`
 - `logger.debug(key, message, context?)`
-- `logger.trace(key, message, context?)`
+- `logger.trace(message, context?)`
 
 #### Specific Info Methods
-- `logger.userAction(key, action, userId?, context?)`
-- `logger.systemInfo(key, message, context?)`
-- `logger.businessLogic(key, message, context?)`
+- `logger.userAction(action, userId?, context?)`
+- `logger.systemInfo(message, context?)`
+- `logger.businessLogic(message, context?)`
 
 #### Specific Warning Methods
-- `logger.deprecatedFeature(key, feature, alternative?, context?)`
-- `logger.performanceWarning(key, message, metrics?)`
-- `logger.securityWarning(key, message, context?)`
-- `logger.configurationWarning(key, message, context?)`
+- `logger.deprecatedFeature(feature, alternative?, context?)`
+- `logger.performanceWarning(message, metrics?)`
+- `logger.securityWarning(message, context?)`
+- `logger.configurationWarning(message, context?)`
 
 #### Specific Error Methods
-- `logger.validationError(key, message, field?, value?, context?)`
-- `logger.databaseError(key, message, query?, context?)`
-- `logger.apiError(key, message, endpoint?, statusCode?, context?)`
-- `logger.authenticationError(key, message, userId?, context?)`
-- `logger.systemError(key, message, component?, context?)`
-- `logger.businessError(key, message, operation?, context?)`
+- `logger.validationError(message, field?, value?, context?)`
+- `logger.databaseError(message, query?, context?)`
+- `logger.apiError(message, endpoint?, statusCode?, context?)`
+- `logger.authenticationError(message, userId?, context?)`
+- `logger.systemError(message, component?, context?)`
+- `logger.businessError(message, operation?, context?)`
 
 ### Debug Keys
 

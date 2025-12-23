@@ -1,5 +1,5 @@
-import { Inject } from '@OneJs'
-import { Controller, Get, Post } from '@onejs/server'
+import { Inject } from '@OneJs/core'
+import { Controller, Get, Post } from '@OneJs/server'
 import { CreateUserUseCase } from '@user/application/use-cases/create-user.use-case'
 import { CreateUserDto } from '@user/domain/dtos/create-user.dto'
 import { UserPrismaRepository } from '@user/infrastructure/persistence/prisma/user.repository'

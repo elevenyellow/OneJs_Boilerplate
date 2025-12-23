@@ -15,3 +15,5 @@ export const ErrorCodes = {
   SERVER_ERROR: 'SERVER_ERROR',
   UNKNOWN: 'UNKNOWN',
 } as const
+
+export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]

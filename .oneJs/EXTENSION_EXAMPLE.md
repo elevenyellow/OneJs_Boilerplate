@@ -40,7 +40,7 @@ Let's create a complete cache plugin that can be published as `@oneJs/cache-plug
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "@OneJs": "^1.0.0"
+    "@OneJs/core": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
@@ -56,7 +56,7 @@ Let's create a complete cache plugin that can be published as `@oneJs/cache-plug
 
 **`src/cache.service.ts`**
 ```typescript
-import { Injectable, Logger, Inject } from '@OneJs'
+import { Injectable, Logger, Inject } from '@OneJs/core'
 
 export interface CacheOptions {
   defaultTtl?: number
@@ -130,8 +130,8 @@ export class CacheService {
 
 **`src/cache-plugin.ts`**
 ```typescript
-import type { BootstrapPlugin, Container } from '@OneJs'
-import { metadataRegistry } from '@OneJs'
+import type { BootstrapPlugin, Container } from '@OneJs/core'
+import { metadataRegistry } from '@OneJs/core'
 import { CacheService } from './cache.service'
 
 export interface CachePluginOptions {
@@ -240,7 +240,7 @@ npm install @oneJs/cache-plugin
 
 **`apps/api/index.ts`**
 ```typescript
-import { OneJs, PluginRegistry } from '@OneJs'
+import { OneJs, PluginRegistry } from '@OneJs/core'
 import { CachePlugin } from '@oneJs/cache-plugin'
 
 // Register the cache plugin
@@ -257,7 +257,7 @@ await oneJs.start()
 
 **`packages/user/user.service.ts`**
 ```typescript
-import { Injectable, Inject, Logger } from '@OneJs'
+import { Injectable, Inject, Logger } from '@OneJs/core'
 import { CacheService } from '@oneJs/cache-plugin'
 
 @Injectable()
@@ -325,8 +325,8 @@ Here's a more complex example showing how to create a database plugin with multi
 
 **`src/database-plugin.ts`**
 ```typescript
-import type { BootstrapPlugin, Container } from '@OneJs'
-import { metadataRegistry } from '@OneJs'
+import type { BootstrapPlugin, Container } from '@OneJs/core'
+import { metadataRegistry } from '@OneJs/core'
 import { DatabaseService } from './database.service'
 import { MigrationService } from './migration.service'
 import { QueryBuilder } from './query-builder.service'

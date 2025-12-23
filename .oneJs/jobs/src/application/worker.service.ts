@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@OneJs'
+import { Inject, Injectable, Logger } from '@OneJs/core'
 import { EventBus } from '@OneJs/event-bus'
 import { Job, Worker } from 'bullmq'
 import IORedis from 'ioredis'

@@ -1,5 +1,5 @@
-import { Inject } from '@onejs/core'
-import { Controller, Get } from '@onejs/server'
+import { Inject, UseAuth } from '@OneJs/core'
+import { Controller, Get } from '@OneJs/server'
 import { CreatePostUseCase } from '@post/application/use-cases/create-post.use-case'
 import type { Context } from 'elysia'
 
@@ -8,9 +8,9 @@ export class UserController {
   constructor(
     @Inject(CreatePostUseCase)
     private readonly createPostUseCase: CreatePostUseCase,
-  ) {}
+  ) { }
 
-  // @UseAuth()
+  @UseAuth()
   @Get('/')
   index(context: Context) {
     context.set.status = 200

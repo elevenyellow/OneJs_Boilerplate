@@ -1,4 +1,4 @@
-import type { ClassConstructor } from '@OneJs'
+import type { ClassConstructor } from '@OneJs/core'
 import { registerWorkerHandler } from '../store'
 
 export function WorkerJob(queueName: string, concurrency = 1): MethodDecorator {

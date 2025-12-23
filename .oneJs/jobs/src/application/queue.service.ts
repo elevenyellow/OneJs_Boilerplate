@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@OneJs'
+import { Inject, Injectable, Logger } from '@OneJs/core'
 import { Job, Queue, QueueEvents, type JobsOptions } from 'bullmq'
 import crypto from 'crypto'
 import IORedis from 'ioredis'

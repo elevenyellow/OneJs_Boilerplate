@@ -1,11 +1,11 @@
-# @onejs/server
+# @OneJs/server
 
 HTTP server plugin for OneJs framework with Elysia integration.
 
 ## Installation
 
 ```bash
-npm install @onejs/server
+npm install @OneJs/server
 ```
 
 ## Features
@@ -20,8 +20,8 @@ npm install @onejs/server
 ### Basic Setup
 
 ```typescript
-import { OneJs, PluginRegistry } from '@onejs/core'
-import { ServerPlugin } from '@onejs/server'
+import { OneJs, PluginRegistry } from '@OneJs/core'
+import { ServerPlugin } from '@OneJs/server'
 
 PluginRegistry.register(new ServerPlugin())
 
@@ -32,8 +32,8 @@ await oneJs.start()
 ### Creating Controllers
 
 ```typescript
-import { Controller, Get, Post, Inject } from '@onejs/server'
-import { Injectable } from '@onejs/core'
+import { Controller, Get, Post, Inject } from '@OneJs/server'
+import { Injectable } from '@OneJs/core'
 
 @Controller('/users')
 @Injectable()
@@ -57,8 +57,8 @@ export class UserController {
 ### Server Configuration
 
 ```typescript
-import { Server } from '@onejs/server'
-import { ContainerProvider } from '@onejs/core'
+import { Server } from '@OneJs/server'
+import { ContainerProvider } from '@OneJs/core'
 
 const container = ContainerProvider.getContainer()
 const server = container.get(Server)

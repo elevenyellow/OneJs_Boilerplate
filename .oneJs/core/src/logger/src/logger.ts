@@ -4,7 +4,11 @@ import pretty from 'pino-pretty'
 import { Injectable } from '../../container/decorators'
 import { ColorManager } from './color-themes'
 import { getConfigFromEnv, mergeConfig } from './env-config'
-import { type LoggerConfig } from './logger-config.interface'
+import {
+  type ColorConfig,
+  type ColorTheme,
+  type LoggerConfig,
+} from './logger-config.interface'
 import { type ExtensibleLogger } from './logger.interface'
 
 @Injectable()
@@ -26,7 +30,6 @@ export class Logger implements ExtensibleLogger {
       enableDebug = true,
       debugKeys = [],
       serverUrl,
-      serviceName = 'eyjs-logger',
       colors = {},
     } = finalConfig
 
@@ -39,8 +42,8 @@ export class Logger implements ExtensibleLogger {
       colorize: false, // Disable Pino's colors
       colorizeObjects: false,
       // Simple format without custom prettifiers
-      messageFormat: (log: any, messageKey: string) => {
-        return log[messageKey]
+      messageFormat: (log: Record<string, unknown>, messageKey: string) => {
+        return String(log[messageKey] ?? '')
       },
     }
 
@@ -86,10 +89,12 @@ export class Logger implements ExtensibleLogger {
   }
 
   setColorTheme(theme: string): void {
-    this.colorManager.addCustomColors({ theme: theme as any })
+    this.colorManager.addCustomColors({
+      theme: theme as ColorTheme,
+    })
   }
 
-  addCustomColors(customColors: any): void {
+  addCustomColors(customColors: Partial<ColorConfig>): void {
     this.colorManager.addCustomColors(customColors)
   }
 
@@ -101,34 +106,175 @@ export class Logger implements ExtensibleLogger {
     this.colorManager.enableColors()
   }
 
-  info(key: string, message: string, context?: Record<string, unknown>): void {
-    const color = this.colorManager.getLevelColor('info')
+  /**
+   * Formats a log message with colors for different parts:
+   * - Level indicator (INFO, WARN, ERROR) in level color
+   * - Context prefix (MATO:INSTAGRAM_WORKER:...) in cyan
+   * - Message text in white/gray
+   */
+  private formatColoredMessage(
+    level: 'info' | 'warn' | 'error' | 'trace',
+    contextPrefix: string | undefined,
+    message: string,
+  ): string {
+    if (!this.colorManager.config.enabled) {
+      return contextPrefix ? `${contextPrefix} ${message}` : message
+    }
+
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] ${message}`
-    const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
-    this.logger.info(context, coloredMessage)
+    const levelColor = this.colorManager.getLevelColor(level)
+    const contextColor = '\x1b[36m' // Cyan for context prefix
+    const messageColor = '\x1b[37m' // White for message text
+    const dimColor = '\x1b[90m' // Gray for level indicator brackets
+
+    const levelLabel = level.toUpperCase()
+    const levelIndicator = `${dimColor}[${reset}${levelColor}${levelLabel}${reset}${dimColor}]${reset}`
+
+    if (contextPrefix) {
+      // Format: [INFO] MATO:CONTEXT:FEATURE Message text
+      return `${levelIndicator} ${contextColor}${contextPrefix}${reset} ${messageColor}${message}${reset}`
+    }
+
+    // Format: [INFO] Message text (no context)
+    return `${levelIndicator} ${messageColor}${message}${reset}`
   }
 
-  warn(key: string, message: string, context?: Record<string, unknown>): void {
-    const color = this.colorManager.getLevelColor('warn')
-    const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] ${message}`
-    const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
-    this.logger.warn(context, coloredMessage)
+  info(
+    contextPrefixOrMessage: string,
+    messageOrData?: string | Record<string, unknown>,
+    data?: Record<string, unknown>,
+  ): void {
+    // Handle case: logger.info(contextPrefix, message, data)
+    if (
+      typeof contextPrefixOrMessage === 'string' &&
+      typeof messageOrData === 'string' &&
+      data !== undefined
+    ) {
+      const coloredMessage = this.formatColoredMessage(
+        'info',
+        contextPrefixOrMessage,
+        messageOrData,
+      )
+      this.logger.info(data, coloredMessage)
+      return
+    }
+
+    // Handle case: logger.info(contextPrefix, message) - no data
+    if (
+      typeof contextPrefixOrMessage === 'string' &&
+      typeof messageOrData === 'string'
+    ) {
+      const coloredMessage = this.formatColoredMessage(
+        'info',
+        contextPrefixOrMessage,
+        messageOrData,
+      )
+      this.logger.info(coloredMessage)
+      return
+    }
+
+    // Standard case: logger.info(message, data)
+    const coloredMessage = this.formatColoredMessage(
+      'info',
+      undefined,
+      contextPrefixOrMessage,
+    )
+    this.logger.info(
+      messageOrData as Record<string, unknown> | undefined,
+      coloredMessage,
+    )
   }
 
-  error(key: string, message: string, context?: Record<string, unknown>): void {
-    const color = this.colorManager.getLevelColor('error')
-    const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] ${message}`
-    const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
-    this.logger.error(context, coloredMessage)
+  warn(
+    contextPrefixOrMessage: string,
+    messageOrData?: string | Record<string, unknown>,
+    data?: Record<string, unknown>,
+  ): void {
+    // Handle case: logger.warn(contextPrefix, message, data)
+    if (
+      typeof contextPrefixOrMessage === 'string' &&
+      typeof messageOrData === 'string' &&
+      data !== undefined
+    ) {
+      const coloredMessage = this.formatColoredMessage(
+        'warn',
+        contextPrefixOrMessage,
+        messageOrData,
+      )
+      this.logger.warn(data, coloredMessage)
+      return
+    }
+
+    // Handle case: logger.warn(contextPrefix, message) - no data
+    if (
+      typeof contextPrefixOrMessage === 'string' &&
+      typeof messageOrData === 'string'
+    ) {
+      const coloredMessage = this.formatColoredMessage(
+        'warn',
+        contextPrefixOrMessage,
+        messageOrData,
+      )
+      this.logger.warn(coloredMessage)
+      return
+    }
+
+    // Standard case: logger.warn(message, data)
+    const coloredMessage = this.formatColoredMessage(
+      'warn',
+      undefined,
+      contextPrefixOrMessage,
+    )
+    this.logger.warn(
+      messageOrData as Record<string, unknown> | undefined,
+      coloredMessage,
+    )
+  }
+
+  error(
+    contextPrefixOrMessage: string,
+    messageOrData?: string | Record<string, unknown>,
+    data?: Record<string, unknown>,
+  ): void {
+    // Handle case: logger.error(contextPrefix, message, data)
+    if (
+      typeof contextPrefixOrMessage === 'string' &&
+      typeof messageOrData === 'string' &&
+      data !== undefined
+    ) {
+      const coloredMessage = this.formatColoredMessage(
+        'error',
+        contextPrefixOrMessage,
+        messageOrData,
+      )
+      this.logger.error(data, coloredMessage)
+      return
+    }
+
+    // Handle case: logger.error(contextPrefix, message) - no data
+    if (
+      typeof contextPrefixOrMessage === 'string' &&
+      typeof messageOrData === 'string'
+    ) {
+      const coloredMessage = this.formatColoredMessage(
+        'error',
+        contextPrefixOrMessage,
+        messageOrData,
+      )
+      this.logger.error(coloredMessage)
+      return
+    }
+
+    // Standard case: logger.error(message, data)
+    const coloredMessage = this.formatColoredMessage(
+      'error',
+      undefined,
+      contextPrefixOrMessage,
+    )
+    this.logger.error(
+      messageOrData as Record<string, unknown> | undefined,
+      coloredMessage,
+    )
   }
 
   debug(key: string, message: string, context?: Record<string, unknown>): void {
@@ -144,13 +290,13 @@ export class Logger implements ExtensibleLogger {
     debugLogger(`${message}${contextStr}`)
   }
 
-  trace(key: string, message: string, context?: Record<string, unknown>): void {
-    const color = this.colorManager.getLevelColor('trace')
-    const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] ${message}`
-    const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+  trace(message: string, context?: Record<string, unknown>): void {
+    // Trace doesn't support context prefix pattern, only standard format
+    const coloredMessage = this.formatColoredMessage(
+      'trace',
+      undefined,
+      message,
+    )
     this.logger.trace(context, coloredMessage)
   }
 
@@ -180,50 +326,37 @@ export class Logger implements ExtensibleLogger {
   }
 
   userAction(
-    key: string,
     action: string,
     userId?: string,
     context?: Record<string, unknown>,
   ): void {
     const color = this.colorManager.getLogTypeColor('userAction')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 👤 User action: ${action}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}👤 User action: ${action}${reset}`
+      : `👤 User action: ${action}`
     this.logger.info({ userId, ...context }, coloredMessage)
   }
 
-  systemInfo(
-    key: string,
-    message: string,
-    context?: Record<string, unknown>,
-  ): void {
+  systemInfo(message: string, context?: Record<string, unknown>): void {
     const color = this.colorManager.getLogTypeColor('systemInfo')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] ⚙️ System: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}⚙️ System: ${message}${reset}`
+      : `⚙️ System: ${message}`
     this.logger.info(context, coloredMessage)
   }
 
-  businessLogic(
-    key: string,
-    message: string,
-    context?: Record<string, unknown>,
-  ): void {
+  businessLogic(message: string, context?: Record<string, unknown>): void {
     const color = this.colorManager.getLogTypeColor('businessLogic')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 💼 Business: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}💼 Business: ${message}${reset}`
+      : `💼 Business: ${message}`
     this.logger.info(context, coloredMessage)
   }
 
   deprecatedFeature(
-    key: string,
     feature: string,
     alternative?: string,
     context?: Record<string, unknown>,
@@ -231,58 +364,45 @@ export class Logger implements ExtensibleLogger {
     const color = this.colorManager.getLogTypeColor('deprecatedFeature')
     const reset = this.colorManager.getResetColor()
     const message = alternative
-      ? `[${key}] ⚠️ Deprecated feature '${feature}' used. Consider using '${alternative}' instead.`
-      : `[${key}] ⚠️ Deprecated feature '${feature}' used.`
+      ? `⚠️ Deprecated feature '${feature}' used. Consider using '${alternative}' instead.`
+      : `⚠️ Deprecated feature '${feature}' used.`
     const coloredMessage = this.colorManager.config.enabled
       ? `${color}${message}${reset}`
       : message
     this.logger.warn(context, coloredMessage)
   }
 
-  performanceWarning(
-    key: string,
-    message: string,
-    metrics?: Record<string, unknown>,
-  ): void {
+  performanceWarning(message: string, metrics?: Record<string, unknown>): void {
     const color = this.colorManager.getLogTypeColor('performanceWarning')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 🐌 Performance warning: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}🐌 Performance warning: ${message}${reset}`
+      : `🐌 Performance warning: ${message}`
     this.logger.warn(metrics, coloredMessage)
   }
 
-  securityWarning(
-    key: string,
-    message: string,
-    context?: Record<string, unknown>,
-  ): void {
+  securityWarning(message: string, context?: Record<string, unknown>): void {
     const color = this.colorManager.getLogTypeColor('securityWarning')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 🔒 Security warning: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}🔒 Security warning: ${message}${reset}`
+      : `🔒 Security warning: ${message}`
     this.logger.warn(context, coloredMessage)
   }
 
   configurationWarning(
-    key: string,
     message: string,
     context?: Record<string, unknown>,
   ): void {
     const color = this.colorManager.getLogTypeColor('configurationWarning')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] ⚙️ Configuration warning: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}⚙️ Configuration warning: ${message}${reset}`
+      : `⚙️ Configuration warning: ${message}`
     this.logger.warn(context, coloredMessage)
   }
 
   validationError(
-    key: string,
     message: string,
     field?: string,
     value?: unknown,
@@ -290,30 +410,26 @@ export class Logger implements ExtensibleLogger {
   ): void {
     const color = this.colorManager.getLogTypeColor('validationError')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] ❌ Validation error: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}❌ Validation error: ${message}${reset}`
+      : `❌ Validation error: ${message}`
     this.logger.error({ field, value, ...context }, coloredMessage)
   }
 
   databaseError(
-    key: string,
     message: string,
     query?: string,
     context?: Record<string, unknown>,
   ): void {
     const color = this.colorManager.getLogTypeColor('databaseError')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 🗄️ Database error: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}🗄️ Database error: ${message}${reset}`
+      : `🗄️ Database error: ${message}`
     this.logger.error({ query, ...context }, coloredMessage)
   }
 
   apiError(
-    key: string,
     message: string,
     endpoint?: string,
     statusCode?: number,
@@ -321,55 +437,48 @@ export class Logger implements ExtensibleLogger {
   ): void {
     const color = this.colorManager.getLogTypeColor('apiError')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 🌐 API error: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}🌐 API error: ${message}${reset}`
+      : `🌐 API error: ${message}`
     this.logger.error({ endpoint, statusCode, ...context }, coloredMessage)
   }
 
   authenticationError(
-    key: string,
     message: string,
     userId?: string,
     context?: Record<string, unknown>,
   ): void {
     const color = this.colorManager.getLogTypeColor('authenticationError')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 🔐 Authentication error: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}🔐 Authentication error: ${message}${reset}`
+      : `🔐 Authentication error: ${message}`
     this.logger.error({ userId, ...context }, coloredMessage)
   }
 
   systemError(
-    key: string,
     message: string,
     component?: string,
     context?: Record<string, unknown>,
   ): void {
     const color = this.colorManager.getLogTypeColor('systemError')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 💥 System error: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}💥 System error: ${message}${reset}`
+      : `💥 System error: ${message}`
     this.logger.error({ component, ...context }, coloredMessage)
   }
 
   businessError(
-    key: string,
     message: string,
     operation?: string,
     context?: Record<string, unknown>,
   ): void {
     const color = this.colorManager.getLogTypeColor('businessError')
     const reset = this.colorManager.getResetColor()
-    const formattedMessage = `[${key}] 💼 Business error: ${message}`
     const coloredMessage = this.colorManager.config.enabled
-      ? `${color}${formattedMessage}${reset}`
-      : formattedMessage
+      ? `${color}💼 Business error: ${message}${reset}`
+      : `💼 Business error: ${message}`
     this.logger.error({ operation, ...context }, coloredMessage)
   }
 }

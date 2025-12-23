@@ -14,7 +14,7 @@ export class ConfigService {
     this.loadEnvFiles()
   }
 
-  private splitFirstOccurrence(str, separator) {
+  private splitFirstOccurrence(str: string, separator: string) {
     const index = str.indexOf(separator)
 
     if (index === -1) {
@@ -41,11 +41,16 @@ export class ConfigService {
         envVariables.forEach((variable) => {
           const [key, value] = this.splitFirstOccurrence(variable, '=')
 
-          if (key && value)
-            this.env[key.trim()] = value
+          if (key && value) {
+            const cleanKey = key.trim()
+            const cleanValue = value
               .trim()
               .replaceAll("'", '')
               .replaceAll('"', '')
+            
+            this.env[cleanKey] = cleanValue
+            process.env[cleanKey] = cleanValue
+          }
         })
       })
 

@@ -1,4 +1,4 @@
-import type { ClassConstructor } from '@OneJs'
+import type { ClassConstructor } from '@OneJs/core'
 import type { DomainEvent } from '../domain/events/domain-events'
 import type { EventHandlerOptions } from '../domain/interfaces'
 import { registerEventHandler } from '../domain/store'

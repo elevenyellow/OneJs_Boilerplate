@@ -45,14 +45,14 @@ OneJs.start()
 
 #### Before:
 ```typescript
-import { container } from '@OneJs'
+import { container } from '@OneJs/core'
 
 const service = container.get(MyService)
 ```
 
 #### After (Recommended):
 ```typescript
-import { ContainerProvider } from '@OneJs'
+import { ContainerProvider } from '@OneJs/core'
 
 const container = ContainerProvider.getContainer()
 const service = container.get(MyService)
@@ -96,7 +96,7 @@ export class UserEventHandler {
 
 #### Before:
 ```typescript
-import { container, Injectable } from '@OneJs'
+import { container, Injectable } from '@OneJs/core'
 
 @Injectable()
 export class MyService {
@@ -110,7 +110,7 @@ export class MyService {
 #### After (Option 1 - Recommended):
 Use proper dependency injection:
 ```typescript
-import { Injectable, Inject, Logger } from '@OneJs'
+import { Injectable, Inject, Logger } from '@OneJs/core'
 
 @Injectable()
 export class MyService {
@@ -123,7 +123,7 @@ export class MyService {
 #### After (Option 2):
 Use ContainerProvider for better testability:
 ```typescript
-import { Injectable, ContainerProvider, Logger } from '@OneJs'
+import { Injectable, ContainerProvider, Logger } from '@OneJs/core'
 
 @Injectable()
 export class MyService {
@@ -138,7 +138,7 @@ export class MyService {
 
 #### Before:
 ```typescript
-import { BootstrapBase, Injectable } from '@OneJs'
+import { BootstrapBase, Injectable } from '@OneJs/core'
 
 @Injectable()
 export class DatabaseBootstrap extends BootstrapBase {
@@ -156,7 +156,7 @@ export class DatabaseBootstrap extends BootstrapBase {
 #### Before:
 If you were manually registering event handlers:
 ```typescript
-import { container, EventBus } from '@OneJs'
+import { container, EventBus } from '@OneJs/core'
 
 const eventBus = container.get(EventBus)
 eventBus.subscribe('UserCreated', handler)
@@ -178,7 +178,7 @@ export class MyHandler {
 
 #### Before:
 ```typescript
-import { container, Server } from '@OneJs'
+import { container, Server } from '@OneJs/core'
 
 const server = container.get(Server)
 server.setPrefix('/api/v1')
@@ -189,7 +189,7 @@ server.start(3000)
 **Still works!** But note that controllers are now loaded by the `ServerLoader` plugin before `server.start()` is called. If you need to add controllers manually:
 
 ```typescript
-import { ContainerProvider, Server } from '@OneJs'
+import { ContainerProvider, Server } from '@OneJs/core'
 
 const container = ContainerProvider.getContainer()
 const server = container.get(Server)
@@ -202,7 +202,7 @@ server.start(3000)
 
 #### Before:
 ```typescript
-import { container } from '@OneJs'
+import { container } from '@OneJs/core'
 
 describe('MyService', () => {
   beforeEach(() => {
@@ -214,7 +214,7 @@ describe('MyService', () => {
 
 #### After:
 ```typescript
-import { ContainerProvider, Container } from '@OneJs'
+import { ContainerProvider, Container } from '@OneJs/core'
 
 describe('MyService', () => {
   let testContainer: Container
@@ -238,7 +238,7 @@ describe('MyService', () => {
 You can now easily extend OneJs with custom features:
 
 ```typescript
-import type { BootstrapPlugin } from '@OneJs'
+import type { BootstrapPlugin } from '@OneJs/core'
 
 export class MyFeatureLoader implements BootstrapPlugin {
   name = 'my-feature-loader'
@@ -250,14 +250,14 @@ export class MyFeatureLoader implements BootstrapPlugin {
 }
 
 // In your index.ts
-import { PluginRegistry } from '@OneJs'
+import { PluginRegistry } from '@OneJs/core'
 PluginRegistry.register(new MyFeatureLoader())
 ```
 
 ### 2. Access Container Safely
 
 ```typescript
-import { ContainerProvider } from '@OneJs'
+import { ContainerProvider } from '@OneJs/core'
 
 if (ContainerProvider.hasContainer()) {
   const container = ContainerProvider.getContainer()

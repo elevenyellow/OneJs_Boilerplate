@@ -1,5 +1,5 @@
 {
-    "name": "@onejs/jobs",
+    "name": "@OneJs/jobs",
     "version": "1.0.0",
     "description": "Job queue system for OneJs framework with BullMQ",
     "module": "src/index.ts",
@@ -34,7 +34,7 @@
         "typescript": "^5.0.0"
     },
     "peerDependencies": {
-        "@onejs/core": "file:./core",
+        "@OneJs/core": "file:./core",
         "typescript": "^5"
     }
 }

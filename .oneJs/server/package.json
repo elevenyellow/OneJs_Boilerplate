@@ -1,5 +1,5 @@
 {
-    "name": "@onejs/server",
+    "name": "@OneJs/server",
     "version": "1.0.0",
     "description": "HTTP server plugin for OneJs framework with Elysia",
     "module": "src/index.ts",
@@ -34,7 +34,7 @@
         "typescript": "^5.0.0"
     },
     "peerDependencies": {
-        "@onejs/core": "file:./core",
+        "@OneJs/core": "file:./core",
         "typescript": "^5"
     }
 }

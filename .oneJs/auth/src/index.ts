@@ -1,2 +1,1 @@
-export { UseAuth } from './decorators/use-middleware'
-export { AuthMiddleware } from './middleware/auth.middleware'
+export { AuthMiddleware, UseAuth, Roles, UserRoles, type UserRole, type AuthUser, type AuthStrategy } from '@OneJs/core'

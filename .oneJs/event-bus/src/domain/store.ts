@@ -1,4 +1,4 @@
-import type { ClassConstructor } from '@OneJs'
+import type { ClassConstructor } from '@OneJs/core'
 import type { EventHandlerOptions } from './interfaces'
 
 interface EventHandlerMeta {

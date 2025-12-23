@@ -1,11 +1,11 @@
-# @onejs/jobs
+# @OneJs/jobs
 
 Job queue system for OneJs framework with BullMQ integration.
 
 ## Installation
 
 ```bash
-npm install @onejs/jobs
+npm install @OneJs/jobs
 ```
 
 ## Features
@@ -20,8 +20,8 @@ npm install @onejs/jobs
 ### Basic Setup
 
 ```typescript
-import { OneJs, PluginRegistry } from '@onejs/core'
-import { JobsPlugin } from '@onejs/jobs'
+import { OneJs, PluginRegistry } from '@OneJs/core'
+import { JobsPlugin } from '@OneJs/jobs'
 
 PluginRegistry.register(new JobsPlugin())
 
@@ -32,8 +32,8 @@ await oneJs.start()
 ### Creating Job Handlers
 
 ```typescript
-import { Injectable, Inject } from '@onejs/core'
-import { WorkerJob } from '@onejs/jobs'
+import { Injectable, Inject } from '@OneJs/core'
+import { WorkerJob } from '@OneJs/jobs'
 
 @Injectable()
 export class EmailService {
@@ -54,8 +54,8 @@ export class EmailService {
 ### Adding Jobs to Queue
 
 ```typescript
-import { Injectable, Inject } from '@onejs/core'
-import { QueueService } from '@onejs/jobs'
+import { Injectable, Inject } from '@OneJs/core'
+import { QueueService } from '@OneJs/jobs'
 
 @Injectable()
 export class UserService {
@@ -100,7 +100,7 @@ The `JobsPlugin` automatically:
 ## Queue Management
 
 ```typescript
-import { QueueService } from '@onejs/jobs'
+import { QueueService } from '@OneJs/jobs'
 
 // Add job with options
 await queueService.add('queue-name', 'job-type', data, {
