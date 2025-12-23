@@ -31,7 +31,7 @@
         "typescript": "^5.0.0"
     },
     "peerDependencies": {
-        "@OneJs/core": "file:./core",
+        "@OneJs/core": "workspace:*",
         "typescript": "^5"
     }
 }
