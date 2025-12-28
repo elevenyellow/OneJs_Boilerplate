@@ -2,6 +2,7 @@
 export { OneJs, PluginRegistry, type BootstrapPlugin } from './bootstrap'
 export { ConfigService } from './config'
 export {
+  container,
   Container,
   ContainerProvider,
   Inject,
@@ -16,7 +17,12 @@ export type { ClassConstructor } from './types'
 export { AuthMiddleware } from './auth/auth.middleware'
 export { UseAuth } from './auth/decorators/auth-middleware'
 export { Roles } from './auth/decorators/roles'
-export { UserRoles, type UserRole, type AuthUser, type AuthStrategy } from './auth/types'
+export {
+  UserRoles,
+  type UserRole,
+  type AuthUser,
+  type AuthStrategy,
+} from './auth/types'
 export { LocalJwtStrategy } from './auth/strategies/local-jwt.strategy'
 export { ClerkStrategy } from './auth/strategies/clerk.strategy'
 

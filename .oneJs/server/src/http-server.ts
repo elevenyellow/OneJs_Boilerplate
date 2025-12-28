@@ -2,14 +2,15 @@ import { Elysia, type Context } from 'elysia'
 import { type AnyMiddleware, type MiddlewareInterface } from './middlewares'
 import { createErrorResponse, createSuccessResponse } from './types/response'
 import { useClassMiddleware } from './utils/use-class-middleware'
-import { 
+import {
   Container,
-  ContainerProvider,
   Inject,
   Injectable,
   Logger,
-  type ClassConstructor, 
-  OneJsError } from '../../core/src'
+  type ClassConstructor,
+  OneJsError,
+  container,
+} from '../../core/src'
 
 interface RouteMeta {
   method?: string
@@ -37,11 +38,9 @@ export class Server {
   private readonly app: Elysia = new Elysia()
   private middlewares: AnyMiddleware[] = []
   public prefix: string = ''
-  protected container: Container
+  protected container: Container = container
 
   constructor(@Inject(Logger) private readonly logger: Logger) {
-    this.container = ContainerProvider.getContainer()
-
     // Error handler
     this.app.onError(({ error }) => {
       if (error instanceof OneJsError) {
@@ -83,7 +82,6 @@ export class Server {
       )
 
       this.logger.info(
-        'OneJs:server',
         `Registering routes for controller ${controllerClass.name}`,
       )
 
@@ -103,7 +101,7 @@ export class Server {
 
             return (app: Elysia) =>
               app.onBeforeHandle(async (context) => {
-                await instance.handle(context, route.roles)
+                await instance.handle(context)
               })
           }
 
@@ -112,7 +110,8 @@ export class Server {
         })
 
         // Construct scoped app with plugins
-        let scopedApp = new Elysia()
+        // Use scopes: 'global' to properly inherit context and query parsing
+        let scopedApp = new Elysia({ scopes: { query: 'global' } })
 
         for (const plugin of middlewarePlugins) {
           if (typeof plugin === 'function') {
@@ -122,7 +121,6 @@ export class Server {
 
         // Register the route handler with the plugin-applied instance
         this.logger.info(
-          'OneJs:server',
           `Registering route [${method.toUpperCase()}] ${fullPath}`,
         )
 
@@ -130,7 +128,26 @@ export class Server {
           fullPath,
           async (context: Context) => {
             try {
-              const result = await handler(context)
+              // Ensure query parameters are parsed from the URL
+              // This fixes the issue where ctx.query is empty
+              const enhancedContext = context as Context & {
+                query: Record<string, string | undefined>
+              }
+
+              // Parse query parameters from URL if not already present
+              if (
+                !enhancedContext.query ||
+                Object.keys(enhancedContext.query).length === 0
+              ) {
+                const url = new URL(context.request.url)
+                const queryParams: Record<string, string> = {}
+                url.searchParams.forEach((value, key) => {
+                  queryParams[key] = value
+                })
+                enhancedContext.query = queryParams
+              }
+
+              const result = await handler(enhancedContext)
 
               if (result !== undefined) {
                 context.body = result
@@ -140,7 +157,10 @@ export class Server {
               context.body = formattedResponse
               return formattedResponse
             } catch (error) {
-              this.logger.error(`Error in controller handler: `, { error })
+              this.logger.error('oneJs:server', 'Error in controller handler', {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+              })
               throw error
             }
           },
@@ -197,6 +217,9 @@ export class Server {
     this.middlewares.forEach((middleware) => {
       this.app.use(middleware)
     })
+
+    const controllers = getAllControllers()
+    this.addControllers(controllers)
 
     // Register controller routes
     this.registerRoutes()

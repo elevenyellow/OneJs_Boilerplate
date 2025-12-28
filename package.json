@@ -34,7 +34,7 @@
     "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.10",
+    "@biomejs/biome": "^2.3.10",
     "@prisma/client": "^6.1.0",
     "@types/bun": "latest",
     "glob": "^13.0.0",
