@@ -28,7 +28,7 @@ export class TheCragApiScraper {
     'Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0'
 
   private cookie: string = ''
-  private delayMs: number = 100
+  private delayMs: number = 50
 
   /**
    * Set authentication cookie for API requests
@@ -84,8 +84,14 @@ export class TheCragApiScraper {
     if (expandableTypes.includes(type as NodeType)) {
       await this.delay()
 
-      // Get node info
-      const info = await this.getNodeInfo(nodeId)
+      // Paralelizar las 3 llamadas principales
+      const needsRoutes = ['Sector', 'Cliff', 'Crag'].includes(type)
+      const [info, children, routes] = await Promise.all([
+        this.getNodeInfo(nodeId),
+        this.getChildren(nodeId),
+        needsRoutes ? this.getRoutes(nodeId) : Promise.resolve([]),
+      ])
+
       if (info) {
         node.info = info
       }
@@ -99,34 +105,45 @@ export class TheCragApiScraper {
         }
       }
 
-      await this.delay()
+      // Procesar hijos en paralelo (con límite de concurrencia)
+      node.children = await this.traverseChildrenInBatches(children, depth)
 
-      // Get child areas
-      const children = await this.getChildren(nodeId)
-
-      for (const child of children) {
-        const childNode = await this.traverse(
-          child.id,
-          child.name,
-          child.type,
-          depth + 1,
-          child.geometry ?? null,
-        )
-        node.children.push(childNode)
-      }
-
-      // Get routes for sectors/cliffs/crags
-      if (['Sector', 'Cliff', 'Crag'].includes(type)) {
-        await this.delay()
-        const routes = await this.getRoutes(nodeId)
-
-        if (routes.length > 0) {
-          node.routes = routes
-        }
+      // Asignar rutas si las hay
+      if (routes.length > 0) {
+        node.routes = routes
       }
     }
 
     return node
+  }
+
+  /**
+   * Traverse children in parallel batches to avoid overwhelming the server
+   */
+  private async traverseChildrenInBatches(
+    children: RawChildData[],
+    depth: number,
+  ): Promise<ScrapedCragNode[]> {
+    const BATCH_SIZE = 3 // Procesar 3 nodos en paralelo
+    const results: ScrapedCragNode[] = []
+
+    for (let i = 0; i < children.length; i += BATCH_SIZE) {
+      const batch = children.slice(i, i + BATCH_SIZE)
+      const batchResults = await Promise.all(
+        batch.map((child) =>
+          this.traverse(
+            child.id,
+            child.name,
+            child.type,
+            depth + 1,
+            child.geometry ?? null,
+          ),
+        ),
+      )
+      results.push(...batchResults)
+    }
+
+    return results
   }
 
   /**

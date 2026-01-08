@@ -37,6 +37,23 @@ interface ScrapeStats {
 }
 
 /**
+ * Process items in parallel batches with concurrency limit
+ */
+async function processBatch<T, R>(
+  items: T[],
+  processor: (item: T) => Promise<R>,
+  batchSize: number = 3,
+): Promise<R[]> {
+  const results: R[] = []
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize)
+    const batchResults = await Promise.all(batch.map(processor))
+    results.push(...batchResults)
+  }
+  return results
+}
+
+/**
  * Background job that scrapes all crags, areas, sectors and routes
  * for a given country.
  *
@@ -217,11 +234,14 @@ export class ScrapeCountryJob {
       `🔍 Processing node: ${nodeName} (type: ${nodeType}, id: ${nodeId}, regionId: ${regionId?.toString() ?? 'none'})`,
     )
 
-    const info = await this.scraper.getNodeInfo(nodeId)
+    // Paralelizar info y checkHasRoutes
+    const [info, hasRoutes] = await Promise.all([
+      this.scraper.getNodeInfo(nodeId),
+      this.checkHasRoutes(nodeId),
+    ])
     const geometry = info?.geometry ?? geometryFromParent
 
     const isCragLevel = nodeType === 'Crag'
-    const hasRoutes = await this.checkHasRoutes(nodeId)
 
     if (isCragLevel || hasRoutes) {
       logger.debug(
@@ -266,33 +286,41 @@ export class ScrapeCountryJob {
         await this.saveRoutesForSector(nodeId, sector.id, stats)
 
         const children = await this.scraper.getChildren(nodeId)
-        for (const child of children) {
-          await this.scrapeAndSaveCragChild(
-            child.id,
-            child.name,
-            child.type,
-            crag.id,
-            area.id,
-            child.geometry ?? null,
-            stats,
-          )
-        }
+        await processBatch(
+          children,
+          async (child) => {
+            await this.scrapeAndSaveCragChild(
+              child.id,
+              child.name,
+              child.type,
+              crag.id,
+              area.id,
+              child.geometry ?? null,
+              stats,
+            )
+          },
+          3,
+        )
 
         return { cragId: crag.id, areaId: area.id }
       }
 
       const children = await this.scraper.getChildren(nodeId)
-      for (const child of children) {
-        await this.scrapeAndSaveCragChild(
-          child.id,
-          child.name,
-          child.type,
-          crag.id,
-          null,
-          child.geometry ?? null,
-          stats,
-        )
-      }
+      await processBatch(
+        children,
+        async (child) => {
+          await this.scrapeAndSaveCragChild(
+            child.id,
+            child.name,
+            child.type,
+            crag.id,
+            null,
+            child.geometry ?? null,
+            stats,
+          )
+        },
+        3,
+      )
 
       return { cragId: crag.id }
     }
@@ -320,17 +348,21 @@ export class ScrapeCountryJob {
       )
     }
 
-    for (const child of children) {
-      await this.scrapeAndSaveNode(
-        child.id,
-        child.name,
-        child.type,
-        countryId,
-        child.geometry ?? null,
-        stats,
-        currentRegionId,
-      )
-    }
+    await processBatch(
+      children,
+      async (child) => {
+        await this.scrapeAndSaveNode(
+          child.id,
+          child.name,
+          child.type,
+          countryId,
+          child.geometry ?? null,
+          stats,
+          currentRegionId,
+        )
+      },
+      3,
+    )
 
     return { regionId: currentRegionId }
   }
@@ -349,10 +381,12 @@ export class ScrapeCountryJob {
       `  └─ Processing crag child: ${nodeName} (type: ${nodeType}, id: ${nodeId})`,
     )
 
-    const info = await this.scraper.getNodeInfo(nodeId)
+    // Paralelizar info y routes
+    const [info, routes] = await Promise.all([
+      this.scraper.getNodeInfo(nodeId),
+      this.scraper.getRoutes(nodeId),
+    ])
     const geometry = info?.geometry ?? geometryFromParent
-
-    const routes = await this.scraper.getRoutes(nodeId)
     const hasRoutes = routes.length > 0
 
     if (hasRoutes) {
@@ -390,17 +424,21 @@ export class ScrapeCountryJob {
       await this.logProgress(stats)
 
       const children = await this.scraper.getChildren(nodeId)
-      for (const child of children) {
-        await this.scrapeAndSaveCragChild(
-          child.id,
-          child.name,
-          child.type,
-          cragId,
-          areaId,
-          child.geometry ?? null,
-          stats,
-        )
-      }
+      await processBatch(
+        children,
+        async (child) => {
+          await this.scrapeAndSaveCragChild(
+            child.id,
+            child.name,
+            child.type,
+            cragId,
+            areaId,
+            child.geometry ?? null,
+            stats,
+          )
+        },
+        3,
+      )
     } else {
       const children = await this.scraper.getChildren(nodeId)
 
@@ -421,17 +459,21 @@ export class ScrapeCountryJob {
         )
         stats.areas++
 
-        for (const child of children) {
-          await this.scrapeAndSaveCragChild(
-            child.id,
-            child.name,
-            child.type,
-            cragId,
-            area.id,
-            child.geometry ?? null,
-            stats,
-          )
-        }
+        await processBatch(
+          children,
+          async (child) => {
+            await this.scrapeAndSaveCragChild(
+              child.id,
+              child.name,
+              child.type,
+              cragId,
+              area.id,
+              child.geometry ?? null,
+              stats,
+            )
+          },
+          3,
+        )
       }
     }
   }

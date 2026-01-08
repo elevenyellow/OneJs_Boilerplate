@@ -1,8 +1,14 @@
-import { ContainerProvider, logger, OneJs, PluginRegistry } from '@OneJs'
+import {
+  ConfigService,
+  ContainerProvider,
+  logger,
+  OneJs,
+  PluginRegistry,
+} from '@OneJs'
 import { BootstrapLoader } from '@OneJs/core/bootstrap/bootstrap-loader'
+import { JobsPlugin } from '@OneJs/jobs'
 import { PrismaPlugin } from '@OneJs/prisma'
 import { Server, ServerPlugin } from '@OneJs/server'
-import { JobsPlugin } from '@OneJs/jobs'
 import cors from '@elysiajs/cors'
 
 // Import jobs so they get registered
@@ -15,6 +21,7 @@ PluginRegistry.register(new JobsPlugin())
 PluginRegistry.register(new BootstrapLoader())
 
 const oneJs = new OneJs(import.meta.url)
+const config = oneJs.getContainer().get(ConfigService)
 
 await oneJs.start()
 const container = ContainerProvider.getContainer()
@@ -24,6 +31,6 @@ const server = container.get(Server)
 server
   .setPrefix('/api')
   .use(cors({ credentials: true }) as any)
-  .start(4000, () => {
+  .start(Number(config.get('PORT') || 4000), () => {
     logger.info('api:startup', 'Server started on port 4000')
   })
