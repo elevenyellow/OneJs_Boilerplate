@@ -1,0 +1,19 @@
+model Region {
+  id         String  @id @default(cuid())
+  externalId BigInt  @unique
+  countryId  String
+  name       String
+  latitude   Float?
+  longitude  Float?
+  geometry   Json? // {boundary, bbox, center, areasize}
+
+  country Country @relation(fields: [countryId], references: [id])
+  crags   Crag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([countryId])
+  @@index([latitude, longitude])
+  @@map("regions")
+}

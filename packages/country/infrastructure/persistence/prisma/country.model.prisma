@@ -1,0 +1,17 @@
+model Country {
+  id          String @id @default(cuid())
+  externalId  BigInt @unique
+  continentId String
+  name        String
+  geometry    Json?
+
+  continent Continent @relation(fields: [continentId], references: [id], onDelete: Cascade)
+  regions   Region[]
+  crags     Crag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([continentId])
+  @@map("countries")
+}

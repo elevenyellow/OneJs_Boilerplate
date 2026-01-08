@@ -1,0 +1,9 @@
+// Value Objects
+export { Coordinates } from './domain/value-objects/coordinates.vo'
+export { Geometry, type GeometryData, type BoundingBox, type Boundary } from './domain/value-objects/geometry.vo'
+export { Grade, type GradeSystem } from './domain/value-objects/grade.vo'
+export { BetaInfo, type BetaItemData } from './domain/value-objects/beta-info.vo'
+export { EntityId, ExternalId } from './domain/value-objects/entity-id.vo'
+export { Name } from './domain/value-objects/name.vo'
+export { Url } from './domain/value-objects/url.vo'
+export { Seasonality } from './domain/value-objects/seasonality.vo'

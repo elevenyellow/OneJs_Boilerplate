@@ -7,7 +7,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: ddd_boilerplate         # Nombre de la base de datos
+      POSTGRES_DB: climb_zone         # Nombre de la base de datos
       POSTGRES_USER: admin                 # Usuario (puedes cambiarlo)
       POSTGRES_PASSWORD: admin123          # Contraseña (asegúrate de cambiarla en producción)
     volumes:

@@ -1,0 +1,40 @@
+model Sector {
+  id                String   @id @default(cuid())
+  externalId        BigInt   @unique
+  areaId            String
+  name              String
+  type              String   // Sector, Cliff
+  latitude          Float?
+  longitude         Float?
+  geometry          Json?
+  seasonality       Int[]
+  beta              Json?    // [{name, markdown}]
+
+  // Stats agregados (calculados desde rutas)
+  routeCount        Int      @default(0)
+  minGrade          String?
+  maxGrade          String?
+  minGradeIndex     Int?     // Para ordenación
+  maxGradeIndex     Int?
+  gradeDistribution Json?    // {"6a": 5, "6b": 12, ...}
+  averageHeight     Float?
+  totalAscents      Int?
+
+  // Metadata de TheCrag
+  priceCategory     String?
+  hasTopo           Boolean  @default(false)
+  kudos             Int?
+
+  area   Area    @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  routes Route[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([areaId])
+  @@index([minGradeIndex])
+  @@index([maxGradeIndex])
+  @@index([routeCount])
+  @@index([latitude, longitude])
+  @@map("sectors")
+}

@@ -1,39 +1,63 @@
+import { ContinentPrismaRepository } from '@climb-zone/continent'
+import { CountryPrismaRepository } from '@climb-zone/country'
 import { Inject } from '@OneJs/core'
 import { Controller, Get, type Context } from '@OneJs/server'
-import { ScrapeOnDemandService } from '@scraper-thecrag/application/services/scrape-on-demand.service'
+import { TheCragApiScraper } from '@scraper-thecrag'
 
 @Controller('/scrape')
 export class ScrapeController {
   constructor(
-    @Inject(ScrapeOnDemandService)
-    private readonly service: ScrapeOnDemandService,
+    @Inject(TheCragApiScraper)
+    private readonly scraper: TheCragApiScraper,
+    @Inject(ContinentPrismaRepository)
+    private readonly continentRepo: ContinentPrismaRepository,
+    @Inject(CountryPrismaRepository)
+    private readonly countryRepo: CountryPrismaRepository,
   ) {}
 
-  @Get('/search')
-  async search(context: Context) {
-    const { q } = context.query as { q: string }
-    if (!q) {
-      throw new Error('Query parameter "q" is required')
-    }
-    return this.service.search(q)
+  @Get('/continents')
+  async getContinents() {
+    const continents = await this.continentRepo.findAll()
+    return continents.map((c) => ({
+      id: c.id.toString(),
+      externalId: c.externalId.toNumber(),
+      name: c.name,
+    }))
   }
 
   @Get('/countries')
   async getCountries() {
-    // Países principales de escalada
-    const countries = [
-      { id: '7546063', name: 'Spain', slug: 'spain' },
-      { id: '11882473', name: 'France', slug: 'france' },
-      { id: '81852390', name: 'Italy', slug: 'italy' },
-      { id: '11871253', name: 'New Zealand', slug: 'new-zealand' },
-      { id: '12476041', name: 'Australia', slug: 'australia' },
-    ]
-    return countries
+    const countries = await this.countryRepo.findAll()
+    return countries.map((c) => ({
+      id: c.id.toString(),
+      externalId: c.externalId.toNumber(),
+      continentId: c.continentId.toString(),
+      name: c.name,
+    }))
+  }
+
+  @Get('/continent/:continentId/countries')
+  async getCountriesByContinent(context: Context) {
+    const { continentId } = context.params as { continentId: string }
+    const { ContinentId } = await import('@climb-zone/continent')
+    const countries = await this.countryRepo.findByContinent(
+      ContinentId.fromString(continentId),
+    )
+    return countries.map((c) => ({
+      id: c.id.toString(),
+      externalId: c.externalId.toNumber(),
+      name: c.name,
+    }))
   }
 
   @Get('/area/:externalId/children')
   async getAreaChildren(context: Context) {
     const { externalId } = context.params as { externalId: string }
-    return this.service.getAreaChildren(externalId)
+    const children = await this.scraper.getChildren(parseInt(externalId, 10))
+    return children.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+    }))
   }
 }

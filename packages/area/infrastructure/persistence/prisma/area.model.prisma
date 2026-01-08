@@ -1,0 +1,24 @@
+model Area {
+  id           String   @id @default(cuid())
+  externalId   BigInt   @unique
+  cragId       String
+  parentAreaId String?  // Para áreas anidadas (Cliff dentro de Area)
+  name         String
+  type         String   // Area, Cliff
+  latitude     Float?
+  longitude    Float?
+  geometry     Json?
+  beta         Json?    // [{name, markdown}]
+
+  crag       Crag   @relation(fields: [cragId], references: [id], onDelete: Cascade)
+  parentArea Area?  @relation("AreaHierarchy", fields: [parentAreaId], references: [id])
+  childAreas Area[] @relation("AreaHierarchy")
+  sectors    Sector[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cragId])
+  @@index([parentAreaId])
+  @@map("areas")
+}

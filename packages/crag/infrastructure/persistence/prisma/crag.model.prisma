@@ -1,0 +1,27 @@
+model Crag {
+  id          String  @id @default(cuid())
+  externalId  BigInt  @unique
+  countryId   String
+  regionId    String?
+  name        String
+  latitude    Float?
+  longitude   Float?
+  geometry    Json? // {boundary, bbox, center, areasize}
+  seasonality Int[] // [215, 117, 103, ...] - 12 meses + extra
+  description String? @db.Text
+  approach    String? @db.Text
+  ethic       String? @db.Text
+  sourceUrl   String
+
+  country Country @relation(fields: [countryId], references: [id])
+  region  Region? @relation(fields: [regionId], references: [id])
+  areas   Area[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([countryId])
+  @@index([regionId])
+  @@index([latitude, longitude])
+  @@map("crags")
+}

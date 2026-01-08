@@ -1,0 +1,13 @@
+model Continent {
+  id         String @id @default(cuid())
+  externalId BigInt @unique
+  name       String
+  geometry   Json?
+
+  countries Country[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("continents")
+}

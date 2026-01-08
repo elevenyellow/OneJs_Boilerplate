@@ -1,14 +1,18 @@
 import { ContainerProvider, logger, OneJs, PluginRegistry } from '@OneJs'
+import { BootstrapLoader } from '@OneJs/core/bootstrap/bootstrap-loader'
 import { PrismaPlugin } from '@OneJs/prisma'
 import { Server, ServerPlugin } from '@OneJs/server'
+import { JobsPlugin } from '@OneJs/jobs'
 import cors from '@elysiajs/cors'
 
-// Register plugins explicitly
+// Import jobs so they get registered
+import '@scraper-thecrag/infrastructure/jobs/scrape-country.job'
 
+// Register plugins explicitly
 PluginRegistry.register(new ServerPlugin())
 PluginRegistry.register(new PrismaPlugin())
-// PluginRegistry.register(new EventBusPlugin())
-// PluginRegistry.register(new JobsPlugin())
+PluginRegistry.register(new JobsPlugin())
+PluginRegistry.register(new BootstrapLoader())
 
 const oneJs = new OneJs(import.meta.url)
 

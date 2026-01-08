@@ -1,0 +1,29 @@
+model Route {
+  id          String   @id @default(cuid())
+  externalId  BigInt   @unique
+  sectorId    String
+  name        String
+  grade       String?
+  gradeIndex  Int?     // Para ordenación/filtrado numérico
+  height      Float?
+  pitches     Int?
+  bolts       Int?
+  stars       Int?     // 0-3 calidad
+  quality     Int?
+  ascents     Int?
+  subType     String?  // sport, trad, boulder, mixed
+  firstAscent String?
+  tags        Json?
+  warnings    Json?
+
+  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([sectorId])
+  @@index([grade])
+  @@index([gradeIndex])
+  @@index([stars])
+  @@index([subType])
+  @@map("routes")
+}

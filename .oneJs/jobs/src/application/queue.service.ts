@@ -125,6 +125,28 @@ export class QueueService {
     return queue.clean(graceTime, 1000, status)
   }
 
+  /**
+   * Drain the queue: removes all waiting and delayed jobs.
+   * Active jobs will continue to run.
+   */
+  async drainQueue(queueName: string) {
+    const queue = this.getQueue(queueName)
+    await queue.drain()
+    this.logger.info('oneJs:jobs', `Queue "${queueName}" drained`)
+  }
+
+  /**
+   * Obliterate the queue: removes all jobs including active ones,
+   * and removes the queue from Redis.
+   * Use with caution!
+   */
+  async obliterateQueue(queueName: string) {
+    const queue = this.getQueue(queueName)
+    await queue.obliterate({ force: true })
+    this.queues.delete(queueName)
+    this.logger.info('oneJs:jobs', `Queue "${queueName}" obliterated`)
+  }
+
   async getQueueMetrics(queueName: string) {
     const queue = this.getQueue(queueName)
     const [waiting, active, completed, failed, delayed] = await Promise.all([
