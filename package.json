@@ -16,7 +16,7 @@
   "scripts": {
     "init": "bun scripts/init.ts",
     "create-app": "bun ./.oneJs/create-app/cli.ts",
-    "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
+    "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb redisdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
     "prisma:merge": "bun ./.oneJs/prisma/src/scripts/merge-schema.ts",
     "prisma:validate": "npx prisma validate --schema=./prisma/schema.prisma",
     "prisma:generate:dev": "npx prisma generate --schema=./prisma/schema.prisma",
@@ -31,7 +31,9 @@
     "type-check": "tsc --noEmit",
     "start:api:prod": "bun run --cwd apps/api start",
     "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev",
-    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev"
+    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev",
+    "start:web:dev": "bun run --cwd apps/web dev",
+    "start:mobile:dev": "bun run --cwd apps/mobile start"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
@@ -47,6 +49,8 @@
     "@OneJs/jobs": "workspace:*",
     "@OneJs/prisma": "workspace:*",
     "@OneJs/server": "workspace:*",
+    "cheerio": "^1.1.2",
+    "ioredis": "^5.9.0",
     "typescript": "^5.0.0",
     "uuid": "^13.0.0"
   }

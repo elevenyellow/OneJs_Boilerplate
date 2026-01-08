@@ -6,7 +6,9 @@
     "start:dev": "bun --watch index.ts",
     "start:build": "bun build ./index.ts --outdir ./dist"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@elysiajs/cors": "^1.4.1"
+  },
   "devDependencies": {
     "typescript": "^5.0.0"
   }

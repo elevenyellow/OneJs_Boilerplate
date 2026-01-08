@@ -69,6 +69,30 @@
       ],
       "@OneJs/auth/*": [
         "./.oneJs/auth/src/*"
+      ],
+      "@zone/*": [
+        "./packages/zone/*"
+      ],
+      "@weather/*": [
+        "./packages/weather/*"
+      ],
+      "@scraper/meteoblue": [
+        "./packages/scraper-meteoblue"
+      ],
+      "@scraper/meteoblue/*": [
+        "./packages/scraper-meteoblue/*"
+      ],
+      "@scraper-thecrag": [
+        "./packages/scraper-thecrag"
+      ],
+      "@scraper-thecrag/*": [
+        "./packages/scraper-thecrag/*"
+      ],
+      "@user/*": [
+        "./packages/user/*"
+      ],
+      "@post/*": [
+        "./packages/post/*"
       ]
     }
   }

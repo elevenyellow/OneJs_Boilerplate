@@ -12,3 +12,12 @@ services:
       POSTGRES_PASSWORD: admin123          # Contraseña (asegúrate de cambiarla en producción)
     volumes:
       - ./data:/var/lib/postgresql/data    # Persistencia de datos
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: redisdb
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis-data:/data
+    command: redis-server --appendonly yes

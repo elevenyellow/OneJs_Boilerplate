@@ -1,11 +1,6 @@
-import {
-  ContainerProvider,
-  logger,
-  OneJs,
-  PluginRegistry
-} from '@OneJs'
-import { Server, ServerPlugin } from '@OneJs/server'
+import { ContainerProvider, logger, OneJs, PluginRegistry } from '@OneJs'
 import { PrismaPlugin } from '@OneJs/prisma'
+import { Server, ServerPlugin } from '@OneJs/server'
 import cors from '@elysiajs/cors'
 
 // Register plugins explicitly
@@ -22,11 +17,9 @@ const container = ContainerProvider.getContainer()
 
 const server = container.get(Server)
 
-
 server
   .setPrefix('/api')
   .use(cors({ credentials: true }) as any)
   .start(4000, () => {
     logger.info('api:startup', 'Server started on port 4000')
   })
-

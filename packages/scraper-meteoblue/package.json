@@ -1,0 +1,21 @@
+{
+  "name": "@scraper/meteoblue",
+  "version": "1.0.0",
+  "description": "Meteoblue weather scraper for climbing zones",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@OneJs/core": "workspace:*",
+    "@OneJs/prisma": "workspace:*",
+    "@OneJs/jobs": "workspace:*",
+    "cheerio": "^1.1.2",
+    "ioredis": "^5.3.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0"
+  }
+}
