@@ -24,6 +24,7 @@ export interface ScrapedRouteData {
  * Node info from TheCrag API
  */
 export interface ScrapedNodeInfo {
+  apiResponseRaw?: Record<string, unknown> // Respuesta completa de la API
   geometry?: GeometryData
   googleMapsUrl?: string
   seasonality?: number[]

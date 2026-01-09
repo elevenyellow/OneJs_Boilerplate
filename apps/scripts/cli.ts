@@ -14,6 +14,7 @@ type Command =
   | 'scrape-spain'
   | 'scrape-world'
   | 'seed-countries'
+  | 'verify-data'
   | 'help'
 
 interface CommandDefinition {
@@ -58,6 +59,14 @@ const COMMANDS: Record<string, CommandDefinition> = {
     execute: async (container) => {
       const { seedCountries } = await import('./commands/seed-countries.command')
       await seedCountries(container, COOKIE)
+    },
+  },
+  'verify-data': {
+    name: 'verify-data',
+    description: 'Verificar que los datos se guardaron correctamente en la BD',
+    execute: async (container) => {
+      const { verifyData } = await import('./commands/verify-data.command')
+      await verifyData(container)
     },
   },
   help: {

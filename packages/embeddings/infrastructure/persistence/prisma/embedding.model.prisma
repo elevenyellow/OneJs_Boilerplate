@@ -1,0 +1,80 @@
+model ZoneEmbedding {
+  id                   String   @id @default(cuid())
+  zoneId               String   @unique
+  zoneType             String   // 'crag' | 'sector' | 'area'
+  
+  // Vector embedding (768 dimensions for OpenAI text-embedding-3-small)
+  // pgvector supports up to 16,000 dimensions
+  embedding            Unsupported("vector(768)")
+  
+  // Text representation used to generate the embedding
+  textRepresentation   String   @db.Text
+  
+  // === Structured metadata for hybrid filtering ===
+  
+  // Geolocation
+  latitude             Float
+  longitude            Float
+  locatedness          Int?     // Location accuracy 0-100
+  
+  // Climbing grades
+  minGradeIndex        Int?
+  maxGradeIndex        Int?
+  avgGradeIndex        Float?
+  gradeDistribution    Json     // { "6a": 10, "6b": 15, ... }
+  
+  // Route quantity
+  routeCount           Int      @default(0)
+  
+  // Seasonality (12 months normalized 0-1)
+  seasonalityScores    Json     // [0.8, 0.6, 0.5, ...]
+  bestMonths           Int[]    // [10, 11, 12, 1] - Best 4 months
+  
+  // Approach
+  approachTimeMin      Int?     // Minutes from parking (estimated)
+  approachDifficulty   String?  // 'easy' | 'moderate' | 'difficult'
+  
+  // Technical characteristics
+  orientations         String[] // ['N', 'NE', 'E']
+  rockTypes            String[] // ['limestone', 'granite']
+  climbingStyles       String[] // ['sport', 'vertical', 'overhang']
+  
+  // Sun exposure
+  sunExposure          String?  // 'full_sun' | 'partial_shade' | 'full_shade'
+  sheltered            Boolean?
+  
+  // Quality and popularity (normalized 0-1)
+  popularity           Float?   // Based on totalFavorites, ascents
+  quality              Float?   // Based on ratings, kudos
+  
+  // Facilities
+  hasTopos             Boolean  @default(false)
+  hasPhotos            Boolean  @default(false)
+  requiresPermit       Boolean  @default(false)
+  priceCategory        String?  // 'free' | 'paid'
+  
+  // Available route types
+  hasSport             Boolean  @default(false)
+  hasTrad              Boolean  @default(false)
+  hasBoulder           Boolean  @default(false)
+  hasMultiPitch        Boolean  @default(false)
+  
+  // Additional statistics
+  avgRouteHeight       Float?
+  totalAscents         Int?
+  numberPhotos         Int?
+  numberTopos          Int?
+  
+  // References
+  crag                 Crag?    @relation(fields: [zoneId], references: [id])
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  @@index([latitude, longitude])
+  @@index([minGradeIndex, maxGradeIndex])
+  @@index([routeCount])
+  @@index([popularity])
+  @@index([quality])
+  @@map("zone_embeddings")
+}

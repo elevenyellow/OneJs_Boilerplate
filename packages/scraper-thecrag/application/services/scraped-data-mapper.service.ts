@@ -92,6 +92,15 @@ export interface ValidatedAreaData {
   geometry: Geometry | null
   seasonality: Seasonality
   beta: BetaInfo
+  locatedness: Locatedness | null
+  averageHeight: number | null
+  numberRoutes: number | null
+  permitNode: PermitInfo
+  priceCategory: PriceCategory | null
+  urlAncestorStub: string | null
+  redirectStubs: string[]
+  tlc: Record<string, unknown> | null
+  apiResponseRaw: Record<string, unknown> | null
 }
 
 /**
@@ -130,6 +139,9 @@ export interface ValidatedSectorData {
   urlAncestorStub: string | null
   lastPDFSize: string | null
   lastPDFStaticDate: string | null
+  redirectStubs: string[]
+  tlc: Record<string, unknown> | null
+  apiResponseRaw: Record<string, unknown> | null
 }
 
 /**
@@ -198,6 +210,22 @@ export class ScrapedDataMapperService {
     const lastPDFSize = info?.lastPDFSize ?? null
     const lastPDFStaticDate = info?.lastPDFStaticDate ?? null
 
+    // Extraer campos adicionales desde apiResponseRaw
+    const raw = info?.apiResponseRaw as any
+    
+    // Extraer averageHeight (formato TheCrag: [valor, "m"])
+    let averageHeight: number | null = null
+    if (raw?.averageHeight && Array.isArray(raw.averageHeight)) {
+      averageHeight = Number(raw.averageHeight[0])
+      if (isNaN(averageHeight)) averageHeight = null
+    }
+    
+    const numberRoutes = raw?.numberRoutes ?? info?.numberRoutes ?? null
+    const subAreaCount = raw?.subAreaCount ?? info?.subAreaCount ?? null
+    const redirectStubs = Array.isArray(raw?.redirectStubs) ? raw.redirectStubs : []
+    const tlc = raw?.tlc ?? null
+    const lastPDFStaticSize = raw?.lastPDFStaticSize ?? info?.lastPDFStaticSize ?? null
+
     return {
       id: CragId.generate(),
       externalId,
@@ -224,6 +252,13 @@ export class ScrapedDataMapperService {
       urlAncestorStub,
       lastPDFSize,
       lastPDFStaticDate,
+      averageHeight,
+      numberRoutes,
+      subAreaCount,
+      redirectStubs,
+      tlc,
+      lastPDFStaticSize,
+      apiResponseRaw: info?.apiResponseRaw ?? null,
     }
   }
 
@@ -244,23 +279,50 @@ export class ScrapedDataMapperService {
     const beta = BetaInfo.fromJSON(info?.beta)
     const name = Name.create(rawName)
     const type = this.validateAreaType(rawType)
-    
-    // Alta prioridad
-    const altNames = AltNames.create(info?.altNames)
-    const seasonality = Seasonality.create(info?.seasonality)
+   
+   // Alta prioridad
+   const altNames = AltNames.create(info?.altNames)
+   const seasonality = Seasonality.create(info?.seasonality)
 
-    return {
-      id: AreaId.generate(),
-      externalId,
-      cragId,
-      parentAreaId,
-      name,
-      altNames,
-      type,
-      geometry,
-      seasonality,
-      beta,
-    }
+   // Extraer campos adicionales desde apiResponseRaw
+   const raw = info?.apiResponseRaw as any
+   const locatedness = Locatedness.create(raw?.locatedness ?? info?.locatedness)
+   const permitNode = PermitInfo.create(raw?.permitNode ?? info?.permitNode)
+   const priceCategory = PriceCategory.create(raw?.priceCategory ?? info?.priceCategory)
+   const urlAncestorStub = raw?.urlAncestorStub ?? info?.urlAncestorStub ?? null
+   
+   // Extraer averageHeight (formato TheCrag: [valor, "m"])
+   let averageHeight: number | null = null
+   if (raw?.averageHeight && Array.isArray(raw.averageHeight)) {
+     averageHeight = Number(raw.averageHeight[0])
+     if (isNaN(averageHeight)) averageHeight = null
+   }
+   
+   const numberRoutes = raw?.numberRoutes ?? info?.numberRoutes ?? null
+   const redirectStubs = Array.isArray(raw?.redirectStubs) ? raw.redirectStubs : []
+   const tlc = raw?.tlc ?? null
+
+   return {
+     id: AreaId.generate(),
+     externalId,
+     cragId,
+     parentAreaId,
+     name,
+     altNames,
+     type,
+     geometry,
+     seasonality,
+     beta,
+     locatedness,
+     averageHeight,
+     numberRoutes,
+     permitNode,
+     priceCategory,
+     urlAncestorStub,
+     redirectStubs,
+     tlc,
+     apiResponseRaw: info?.apiResponseRaw ?? null,
+   }
   }
 
   /**
@@ -305,9 +367,14 @@ export class ScrapedDataMapperService {
     const ascentCount = info?.ascentCount ?? null
     const maxPop = info?.maxPop ?? null
     const permitNode = PermitInfo.create(info?.permitNode)
-    const siblingLabel = info?.siblingLabel ?? null
+    const siblingLabel = info?.siblingLabel ? String(info?.siblingLabel) : null
     const lastPDFSize = info?.lastPDFSize ?? null
     const lastPDFStaticDate = info?.lastPDFStaticDate ?? null
+
+    // Extraer campos adicionales desde apiResponseRaw
+    const raw = info?.apiResponseRaw as any
+    const redirectStubs = Array.isArray(raw?.redirectStubs) ? raw.redirectStubs : []
+    const tlc = raw?.tlc ?? null
 
     return {
       id: SectorId.generate(),
@@ -342,6 +409,9 @@ export class ScrapedDataMapperService {
       urlAncestorStub,
       lastPDFSize,
       lastPDFStaticDate,
+      redirectStubs,
+      tlc,
+      apiResponseRaw: info?.apiResponseRaw ?? null,
     }
   }
 

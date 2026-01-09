@@ -42,10 +42,22 @@ model Crag {
   // PDF Info (MEDIA PRIORIDAD)
   lastPDFSize       String?
   lastPDFStaticDate String?
+  
+  // Campos adicionales de TheCrag
+  averageHeight     Float?   // Altura promedio de rutas
+  numberRoutes      Int?     // Total de rutas en el crag
+  subAreaCount      Int?     // Número de sub-áreas
+  redirectStubs     String[] @default([]) // URLs alternativas
+  tlc               Json?    // Top Level Crag reference
+  lastPDFStaticSize String?  // Tamaño del PDF estático
+  
+  // API Response Raw (para análisis futuro)
+  apiResponseRaw    Json?    // Respuesta completa de la API
 
   country Country @relation(fields: [countryId], references: [id])
   region  Region? @relation(fields: [regionId], references: [id])
   areas   Area[]
+  embedding ZoneEmbedding?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

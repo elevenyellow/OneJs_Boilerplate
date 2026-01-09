@@ -204,13 +204,23 @@ export class TheCragApiScraper {
    * Get detailed info for a node
    */
   async getNodeInfo(nodeId: number): Promise<ScrapedNodeInfo | null> {
-    const url = `${this.BASE_URL}/api/node/id/${nodeId}?show=info,description,approach,access,beta,history,ethics`
+    const url = `${this.BASE_URL}/api/node/id/${nodeId}?show=info,description,approach,access,beta,history,ethics,tags`
 
     const output = await this.curlRequest(url)
     const parsed = JSON.parse(output)
     const data = parsed.data || parsed
 
     const info: ScrapedNodeInfo = {}
+    
+    // Guardar respuesta completa para análisis futuro
+    info.apiResponseRaw = data
+    
+    // DEBUG: Buscar 'aspect' en toda la respuesta
+    const dataStr = JSON.stringify(data)
+    if (dataStr.includes('aspect') || dataStr.includes('orientation') || dataStr.includes('facing')) {
+      console.log(`🔍 Node ${nodeId} tiene aspect/orientation/facing en algún lugar:`)
+      console.log(JSON.stringify(data, null, 2).substring(0, 500))
+    }
 
     // Geometry
     if (data.geometry) {

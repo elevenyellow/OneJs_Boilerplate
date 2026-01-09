@@ -4,16 +4,26 @@
  */
 
 import { AreaId, AreaPrismaRepository } from '@climb-zone/area'
-import { CountryId, CountryPrismaRepository } from '@climb-zone/country'
+import {
+  ContinentEntity,
+  ContinentPrismaRepository,
+} from '@climb-zone/continent'
+import {
+  CountryEntity,
+  CountryId,
+  CountryPrismaRepository,
+} from '@climb-zone/country'
 import { CragId, CragPrismaRepository } from '@climb-zone/crag'
-import { RegionEntity, RegionId, RegionPrismaRepository } from '@climb-zone/region'
-import { ContinentPrismaRepository, ContinentEntity } from '@climb-zone/continent'
+import {
+  RegionEntity,
+  RegionId,
+  RegionPrismaRepository,
+} from '@climb-zone/region'
 import { RoutePrismaRepository } from '@climb-zone/route'
 import { SectorPrismaRepository } from '@climb-zone/sector'
 import { ExternalId, Geometry, Name } from '@climb-zone/shared'
 import { TheCragApiScraper } from '@scraper-thecrag'
 import { ScrapedDataMapperService } from '@scraper-thecrag/application/services/scraped-data-mapper.service'
-import { CountryEntity } from '@climb-zone/country'
 
 interface Stats {
   regions: number
@@ -93,20 +103,22 @@ export async function testValencia(container: any, cookie: string) {
 
   if (!spainCountry) {
     console.log('⚠️  Spain not in database, creating it now...')
-    
+
     // Find or create Europe continent
-    let europeContinent = await continentRepo.findByExternalId(ExternalId.create(europe.id))
-    
+    let europeContinent = await continentRepo.findByExternalId(
+      ExternalId.create(europe.id),
+    )
+
     if (!europeContinent) {
       const newEurope = ContinentEntity.create(
         ExternalId.create(europe.id),
         'Europe',
-        europe.geometry ? Geometry.fromJSON(europe.geometry) : null
+        europe.geometry ? Geometry.fromJSON(europe.geometry) : null,
       )
       europeContinent = await continentRepo.save(newEurope)
       console.log(`   ✅ Europe continent created`)
     }
-    
+
     // Create Spain
     const spainInfo = await scraper.getNodeInfo(spainNode.id)
     const spainGeometry = spainInfo?.geometry ?? spainNode.geometry
@@ -114,7 +126,7 @@ export async function testValencia(container: any, cookie: string) {
       ExternalId.create(spainNode.id),
       europeContinent.id.toString(),
       'Spain',
-      spainGeometry ? Geometry.fromJSON(spainGeometry) : null
+      spainGeometry ? Geometry.fromJSON(spainGeometry) : null,
     )
     spainCountry = await countryRepo.save(newSpain)
     console.log(`   ✅ Spain created in DB`)
@@ -126,9 +138,10 @@ export async function testValencia(container: any, cookie: string) {
   // Get all regions of Spain and find Valencia
   console.log('\n🔍 Looking for "Comunidad Valenciana"...\n')
   const spainRegions = await scraper.getChildren(spainNode.id)
-  
+
   const valenciaNode = spainRegions.find(
-    (r) => r.name === 'Comunidad Valenciana' || r.name === 'Valencian Community'
+    (r) =>
+      r.name === 'Comunidad Valenciana' || r.name === 'Valencian Community',
   )
 
   if (!valenciaNode) {
@@ -216,11 +229,21 @@ function printFinalReport(stats: Stats) {
   console.log(`Errors: ${stats.errors}`)
   console.log('\n📊 New Fields Sampling:')
   console.log(`  altNames found in: ${stats.newFieldsSampled.altNames} nodes`)
-  console.log(`  locatedness found in: ${stats.newFieldsSampled.locatedness} nodes`)
-  console.log(`  numberPhotos found in: ${stats.newFieldsSampled.numberPhotos} nodes`)
-  console.log(`  numberTopos found in: ${stats.newFieldsSampled.numberTopos} nodes`)
-  console.log(`  totalFavorites found in: ${stats.newFieldsSampled.totalFavorites} nodes`)
-  console.log(`  orientation found in: ${stats.newFieldsSampled.orientation} nodes`)
+  console.log(
+    `  locatedness found in: ${stats.newFieldsSampled.locatedness} nodes`,
+  )
+  console.log(
+    `  numberPhotos found in: ${stats.newFieldsSampled.numberPhotos} nodes`,
+  )
+  console.log(
+    `  numberTopos found in: ${stats.newFieldsSampled.numberTopos} nodes`,
+  )
+  console.log(
+    `  totalFavorites found in: ${stats.newFieldsSampled.totalFavorites} nodes`,
+  )
+  console.log(
+    `  orientation found in: ${stats.newFieldsSampled.orientation} nodes`,
+  )
   console.log(`  rockType found in: ${stats.newFieldsSampled.rockType} nodes`)
   console.log('='.repeat(80))
 }
@@ -264,6 +287,7 @@ async function processRegionChildren(
         )
         const crag = await cragRepo.saveByExternalId(
           mapper.createCragEntity(cragData),
+          info?.apiResponseRaw,
         )
         stats.crags++
 
@@ -340,6 +364,7 @@ async function processCragChildren(
       )
       const area = await areaRepo.saveByExternalId(
         mapper.createAreaEntity(areaData),
+        info?.apiResponseRaw,
       )
       areaId = area.id
       stats.areas++
@@ -357,6 +382,7 @@ async function processCragChildren(
     )
     const sector = await sectorRepo.saveByExternalId(
       mapper.createSectorEntity(sectorData),
+      info?.apiResponseRaw,
     )
     stats.sectors++
 

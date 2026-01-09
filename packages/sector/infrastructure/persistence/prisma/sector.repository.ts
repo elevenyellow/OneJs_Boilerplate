@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
 import {
+  AltNames,
   BetaInfo,
   ExternalId,
   Geometry,
+  Locatedness,
   Name,
+  PermitInfo,
   Seasonality,
   type BetaItemData,
 } from '@climb-zone/shared'
@@ -27,10 +30,12 @@ interface SectorPrismaData {
   externalId: bigint
   areaId: string
   name: string
+  altNames: string[]
   type: string
   latitude: number | null
   longitude: number | null
   geometry: unknown
+  locatedness: number | null
   orientation: string | null
   rockType: string | null
   climbingStyle: string[]
@@ -46,10 +51,25 @@ interface SectorPrismaData {
   gradeDistribution: unknown
   averageHeight: number | null
   totalAscents: number | null
+  numberPhotos: number | null
+  numberTopos: number | null
+  totalFavorites: number | null
+  isTLC: boolean
+  ascentCount: number | null
+  maxPop: number | null
   priceCategory: string | null
   hasTopo: boolean
   kudos: number | null
+  permitNode: unknown
+  siblingLabel: string | null
   tagsRaw: unknown
+  urlStub: string | null
+  urlAncestorStub: string | null
+  lastPDFSize: string | null
+  lastPDFStaticDate: string | null
+  redirectStubs: string[]
+  tlc: unknown
+  apiResponseRaw: unknown
   createdAt: Date
   updatedAt: Date
 }
@@ -203,8 +223,27 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
     return this.toEntity(saved)
   }
 
-  async saveByExternalId(entity: SectorEntity): Promise<SectorEntity> {
+  async saveByExternalId(
+    entity: SectorEntity,
+    apiResponseRaw?: Record<string, unknown>,
+  ): Promise<SectorEntity> {
     const data = this.toPrismaData(entity)
+    
+    // Agregar apiResponseRaw si está disponible
+    if (apiResponseRaw) {
+      (data as any).apiResponseRaw = apiResponseRaw
+      
+      // Extraer campos adicionales desde apiResponseRaw
+      const raw = apiResponseRaw as any
+      
+      // redirectStubs y tlc
+      if (Array.isArray(raw.redirectStubs)) {
+        (data as any).redirectStubs = raw.redirectStubs
+      }
+      if (raw.tlc) {
+        (data as any).tlc = raw.tlc
+      }
+    }
 
     const saved = await this.prisma.sector.upsert({
       where: { externalId: entity.externalId.toBigInt() },
@@ -261,8 +300,10 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       ExternalId.create(data.externalId),
       AreaId.fromString(data.areaId),
       Name.create(data.name),
+      AltNames.create(data.altNames),
       data.type as SectorType,
       Geometry.fromJSON(data.geometry as Record<string, unknown>),
+      Locatedness.create(data.locatedness),
       Orientation.create(data.orientation),
       RockType.create(data.rockType),
       ClimbingStyle.create(data.climbingStyle),
@@ -280,10 +321,22 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         data.averageHeight,
         data.totalAscents,
       ),
+      data.numberPhotos,
+      data.numberTopos,
+      data.totalFavorites,
+      data.isTLC,
+      data.ascentCount,
+      data.maxPop,
       PriceCategory.create(data.priceCategory),
       data.hasTopo,
       Kudos.create(data.kudos),
+      PermitInfo.create(data.permitNode),
+      data.siblingLabel,
       data.tagsRaw as Record<string, unknown> | null,
+      data.urlStub,
+      data.urlAncestorStub,
+      data.lastPDFSize,
+      data.lastPDFStaticDate,
       data.createdAt,
       data.updatedAt,
     )
@@ -295,10 +348,12 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       externalId: entity.externalId.toBigInt(),
       areaId: entity.areaId.toString(),
       name: entity.name.toString(),
+      altNames: entity.altNames.toArray(),
       type: entity.type,
       latitude: entity.latitude,
       longitude: entity.longitude,
       geometry: entity.geometry?.toJSON() ?? null,
+      locatedness: entity.locatedness?.toNumber() ?? null,
       orientation: entity.orientation?.toString() ?? null,
       rockType: entity.rockType?.toString() ?? null,
       climbingStyle: entity.climbingStyle.toArray(),
@@ -314,10 +369,22 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       gradeDistribution: entity.stats.gradeDistribution,
       averageHeight: entity.stats.averageHeight,
       totalAscents: entity.stats.totalAscents,
+      numberPhotos: entity.numberPhotos,
+      numberTopos: entity.numberTopos,
+      totalFavorites: entity.totalFavorites,
+      isTLC: entity.isTLC,
+      ascentCount: entity.ascentCount,
+      maxPop: entity.maxPop,
       priceCategory: entity.priceCategory?.toString() ?? null,
       hasTopo: entity.hasTopo,
       kudos: entity.kudos?.toNumber() ?? null,
+      permitNode: entity.permitNode.toJSON(),
+      siblingLabel: entity.siblingLabel,
       tagsRaw: entity.tagsRaw,
+      urlStub: entity.urlStub,
+      urlAncestorStub: entity.urlAncestorStub,
+      lastPDFSize: entity.lastPDFSize,
+      lastPDFStaticDate: entity.lastPDFStaticDate,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }

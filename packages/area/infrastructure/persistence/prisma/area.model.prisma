@@ -13,6 +13,19 @@ model Area {
   
   // Información temporal
   seasonality  Int[]    // Seasonality también para áreas
+  
+  // Campos adicionales de TheCrag
+  locatedness     Int?     // Precisión GPS (0-100)
+  averageHeight   Float?   // Altura promedio de rutas
+  numberRoutes    Int?     // Total de rutas en el área
+  permitNode      Json?    // Información de permisos
+  priceCategory   String?  // Categoría de precio
+  urlAncestorStub String?  // URL ancestral
+  redirectStubs   String[] @default([]) // URLs alternativas
+  tlc             Json?    // Top Level Crag reference
+  
+  // API Response Raw (para análisis futuro)
+  apiResponseRaw Json?  // Respuesta completa de la API
 
   crag       Crag   @relation(fields: [cragId], references: [id], onDelete: Cascade)
   parentArea Area?  @relation("AreaHierarchy", fields: [parentAreaId], references: [id])

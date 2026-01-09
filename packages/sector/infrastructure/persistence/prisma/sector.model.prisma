@@ -58,6 +58,13 @@ model Sector {
   // PDF Info (MEDIA PRIORIDAD)
   lastPDFSize       String?
   lastPDFStaticDate String?
+  
+  // Campos adicionales de TheCrag
+  redirectStubs  String[] @default([]) // URLs alternativas
+  tlc            Json?    // Top Level Crag reference
+  
+  // API Response Raw (para análisis futuro)
+  apiResponseRaw    Json?    // Respuesta completa de la API para análisis
 
   area   Area    @relation(fields: [areaId], references: [id], onDelete: Cascade)
   routes Route[]

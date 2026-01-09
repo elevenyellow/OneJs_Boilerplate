@@ -3,15 +3,20 @@ import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
 import { CountryId } from '@climb-zone/country'
 import { RegionId } from '@climb-zone/region'
 import {
+  AltNames,
   BetaInfo,
   ExternalId,
   Geometry,
+  Locatedness,
   Name,
+  PermitInfo,
   Seasonality,
   Url,
 } from '@climb-zone/shared'
 import { CragEntity } from '@crag/domain/entities/crag.entity'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
+import { PriceCategory } from '@crag/domain/value-objects/price-category.vo'
+import { Kudos } from '@crag/domain/value-objects/kudos.vo'
 
 interface CragPrismaData {
   id: string
@@ -19,14 +24,37 @@ interface CragPrismaData {
   countryId: string
   regionId: string | null
   name: string
+  altNames: string[]
   latitude: number | null
   longitude: number | null
   geometry: unknown
+  locatedness: number | null
   seasonality: number[]
   description: string | null
   approach: string | null
   ethic: string | null
+  numberPhotos: number | null
+  numberTopos: number | null
+  hasTopo: boolean
+  totalFavorites: number | null
+  kudos: number | null
+  ascentCount: number | null
+  maxPop: number | null
+  priceCategory: string | null
+  permitNode: unknown
+  tagsRaw: unknown
   sourceUrl: string
+  urlStub: string | null
+  urlAncestorStub: string | null
+  lastPDFSize: string | null
+  lastPDFStaticDate: string | null
+  averageHeight: number | null
+  numberRoutes: number | null
+  subAreaCount: number | null
+  redirectStubs: string[]
+  tlc: unknown
+  lastPDFStaticSize: string | null
+  apiResponseRaw: unknown
   createdAt: Date
   updatedAt: Date
 }
@@ -83,8 +111,44 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
     return this.toEntity(saved)
   }
 
-  async saveByExternalId(entity: CragEntity): Promise<CragEntity> {
+  async saveByExternalId(
+    entity: CragEntity,
+    apiResponseRaw?: Record<string, unknown>,
+  ): Promise<CragEntity> {
     const data = this.toPrismaData(entity)
+    
+    // Agregar apiResponseRaw si está disponible
+    if (apiResponseRaw) {
+      (data as any).apiResponseRaw = apiResponseRaw
+      
+      // Extraer campos adicionales desde apiResponseRaw
+      const raw = apiResponseRaw as any
+      
+      // averageHeight viene como [valor, "m"]
+      if (raw.averageHeight && Array.isArray(raw.averageHeight)) {
+        const height = Number(raw.averageHeight[0])
+        if (!isNaN(height)) {
+          (data as any).averageHeight = height
+        }
+      }
+      
+      // Otros campos simples
+      if (raw.numberRoutes !== undefined) {
+        (data as any).numberRoutes = raw.numberRoutes
+      }
+      if (raw.subAreaCount !== undefined) {
+        (data as any).subAreaCount = raw.subAreaCount
+      }
+      if (Array.isArray(raw.redirectStubs)) {
+        (data as any).redirectStubs = raw.redirectStubs
+      }
+      if (raw.tlc) {
+        (data as any).tlc = raw.tlc
+      }
+      if (raw.lastPDFStaticSize) {
+        (data as any).lastPDFStaticSize = raw.lastPDFStaticSize
+      }
+    }
 
     // Verificar que countryId existe antes de intentar guardar
     const countryExists = await this.prisma.country.findUnique({
@@ -139,10 +203,26 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       CountryId.fromString(data.countryId),
       data.regionId ? RegionId.fromString(data.regionId) : null,
       Name.create(data.name),
+      AltNames.create(data.altNames),
       Geometry.fromJSON(data.geometry as Record<string, unknown>),
+      Locatedness.create(data.locatedness),
       Seasonality.create(data.seasonality),
       BetaInfo.fromJSON(betaItems),
+      data.numberPhotos,
+      data.numberTopos,
+      data.hasTopo,
+      data.totalFavorites,
+      Kudos.create(data.kudos),
+      data.ascentCount,
+      data.maxPop,
+      PriceCategory.create(data.priceCategory),
+      PermitInfo.create(data.permitNode),
+      data.tagsRaw as Record<string, unknown> | null,
       Url.create(data.sourceUrl),
+      data.urlStub,
+      data.urlAncestorStub,
+      data.lastPDFSize,
+      data.lastPDFStaticDate,
       data.createdAt,
       data.updatedAt,
     )
@@ -155,14 +235,31 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       countryId: entity.countryId.toString(),
       regionId: entity.regionId?.toString() ?? null,
       name: entity.name.toString(),
+      altNames: entity.altNames.toArray(),
       latitude: entity.latitude,
       longitude: entity.longitude,
       geometry: entity.geometry?.toJSON() ?? null,
+      locatedness: entity.locatedness?.toNumber() ?? null,
       seasonality: entity.seasonality.toArray(),
       description: entity.description,
       approach: entity.approach,
       ethic: entity.ethic,
+      numberPhotos: entity.numberPhotos,
+      numberTopos: entity.numberTopos,
+      hasTopo: entity.hasTopo,
+      totalFavorites: entity.totalFavorites,
+      kudos: entity.kudos?.toNumber() ?? null,
+      ascentCount: entity.ascentCount,
+      maxPop: entity.maxPop,
+      priceCategory: entity.priceCategory?.toString() ?? null,
+      permitNode: entity.permitNode.toJSON(),
+      tagsRaw: entity.tagsRaw,
       sourceUrl: entity.sourceUrl.toString(),
+      urlStub: entity.urlStub,
+      urlAncestorStub: entity.urlAncestorStub,
+      lastPDFSize: entity.lastPDFSize,
+      lastPDFStaticDate: entity.lastPDFStaticDate,
+      apiResponseRaw: null, // Placeholder
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }

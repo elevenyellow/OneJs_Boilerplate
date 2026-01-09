@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
 import {
+  AltNames,
   BetaInfo,
   ExternalId,
   Geometry,
   Name,
+  Seasonality,
   type BetaItemData,
 } from '@climb-zone/shared'
 import { AreaEntity, type AreaType } from '@area/domain/entities/area.entity'
@@ -17,11 +19,22 @@ interface AreaPrismaData {
   cragId: string
   parentAreaId: string | null
   name: string
+  altNames: string[]
   type: string
   latitude: number | null
   longitude: number | null
   geometry: unknown
   beta: unknown
+  seasonality: number[]
+  locatedness: number | null
+  averageHeight: number | null
+  numberRoutes: number | null
+  permitNode: unknown
+  priceCategory: string | null
+  urlAncestorStub: string | null
+  redirectStubs: string[]
+  tlc: unknown
+  apiResponseRaw: unknown
   createdAt: Date
   updatedAt: Date
 }
@@ -87,8 +100,52 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
     return this.toEntity(saved)
   }
 
-  async saveByExternalId(entity: AreaEntity): Promise<AreaEntity> {
+  async saveByExternalId(
+    entity: AreaEntity,
+    apiResponseRaw?: Record<string, unknown>,
+  ): Promise<AreaEntity> {
     const data = this.toPrismaData(entity)
+    
+    // Agregar apiResponseRaw si está disponible
+    if (apiResponseRaw) {
+      (data as any).apiResponseRaw = apiResponseRaw
+      
+      // Extraer campos adicionales desde apiResponseRaw
+      const raw = apiResponseRaw as any
+      
+      // locatedness
+      if (raw.locatedness !== undefined) {
+        (data as any).locatedness = raw.locatedness
+      }
+      
+      // averageHeight viene como [valor, "m"]
+      if (raw.averageHeight && Array.isArray(raw.averageHeight)) {
+        const height = Number(raw.averageHeight[0])
+        if (!isNaN(height)) {
+          (data as any).averageHeight = height
+        }
+      }
+      
+      // Otros campos simples
+      if (raw.numberRoutes !== undefined) {
+        (data as any).numberRoutes = raw.numberRoutes
+      }
+      if (raw.permitNode) {
+        (data as any).permitNode = raw.permitNode
+      }
+      if (raw.priceCategory) {
+        (data as any).priceCategory = raw.priceCategory
+      }
+      if (raw.urlAncestorStub) {
+        (data as any).urlAncestorStub = raw.urlAncestorStub
+      }
+      if (Array.isArray(raw.redirectStubs)) {
+        (data as any).redirectStubs = raw.redirectStubs
+      }
+      if (raw.tlc) {
+        (data as any).tlc = raw.tlc
+      }
+    }
 
     const saved = await this.prisma.area.upsert({
       where: { externalId: entity.externalId.toBigInt() },
@@ -127,9 +184,11 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
       CragId.fromString(data.cragId),
       data.parentAreaId ? AreaId.fromString(data.parentAreaId) : null,
       Name.create(data.name),
+      AltNames.create(data.altNames),
       data.type as AreaType,
       Geometry.fromJSON(data.geometry as Record<string, unknown>),
       BetaInfo.fromJSON(data.beta as BetaItemData[]),
+      Seasonality.create(data.seasonality),
       data.createdAt,
       data.updatedAt,
     )
@@ -142,11 +201,14 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
       cragId: entity.cragId.toString(),
       parentAreaId: entity.parentAreaId?.toString() ?? null,
       name: entity.name.toString(),
+      altNames: entity.altNames.toArray(),
       type: entity.type,
       latitude: entity.latitude,
       longitude: entity.longitude,
       geometry: entity.geometry?.toJSON() ?? null,
       beta: entity.beta.toJSON(),
+      seasonality: entity.seasonality.toArray(),
+      apiResponseRaw: null, // Placeholder
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }
