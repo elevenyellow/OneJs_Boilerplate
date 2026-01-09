@@ -1,3 +1,6 @@
+// DEPRECATED: Worker job example - no longer needed
+
+/*
 import { Injectable, logger } from '@OneJs'
 import { WorkerJob } from '@OneJs/jobs'
 
@@ -11,4 +14,4 @@ export class SampleWorker {
     logger.info('worker:sample', 'Job completed')
   }
 }
-
+*/

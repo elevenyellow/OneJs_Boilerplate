@@ -14,8 +14,6 @@ export {
   type ImportResult,
 } from './application/services/crag-importer.service'
 
-export { ScraperQueueService } from './application/services/scraper-queue.service'
-
 export {
   ScrapedDataMapperService,
   type ValidatedAreaData,
@@ -33,10 +31,3 @@ export {
 
 // Infrastructure - Scrapers
 export { TheCragApiScraper } from './infrastructure/scrapers/thecrag-api.scraper'
-
-// Infrastructure - Jobs
-export {
-  SCRAPE_QUEUE,
-  ScrapeCountryJob,
-  type ScrapeCountryJobData,
-} from './infrastructure/jobs/scrape-country.job'

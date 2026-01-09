@@ -1,3 +1,7 @@
+// DEPRECATED: This use case has been removed along with the job queue system.
+// Weather scraping should now be implemented as a direct bootstrap if needed.
+
+/*
 import { Inject, Injectable, Logger } from '@OneJs/core'
 import { QueueService } from '@OneJs/jobs'
 import type { ClimbingZoneCoordinates } from '../../domain/dtos/weather-data.dto'
@@ -93,3 +97,4 @@ export class UpdateForecastsUseCase {
     )
   }
 }
+*/

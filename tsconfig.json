@@ -52,12 +52,6 @@
       "@OneJs/event-bus/*": [
         "./.oneJs/event-bus/src/*"
       ],
-      "@OneJs/jobs": [
-        "./.oneJs/jobs/src"
-      ],
-      "@OneJs/jobs/*": [
-        "./.oneJs/jobs/src/*"
-      ],
       "@OneJs/prisma": [
         "./.oneJs/prisma/src"
       ],

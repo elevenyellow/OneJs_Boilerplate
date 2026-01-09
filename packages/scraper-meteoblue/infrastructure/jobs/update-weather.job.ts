@@ -1,3 +1,8 @@
+// DEPRECATED: This job system has been removed. Weather scraping is now done directly.
+// If you need weather scraping functionality, implement it as a direct bootstrap
+// similar to world-scraper.bootstrap.ts
+
+/*
 import { Inject, Injectable, Logger } from '@OneJs/core'
 import { WorkerJob } from '@OneJs/jobs'
 import { FetchWeatherUseCase } from '../../application/use-cases/fetch-weather.use-case'
@@ -81,4 +86,5 @@ export class UpdateWeatherWorker {
   }
 }
 
+*/
 

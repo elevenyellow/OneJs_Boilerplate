@@ -1,5 +1,5 @@
 import type { GeometryData } from '@climb-zone/shared'
-import { Injectable } from '@OneJs/core'
+import { Injectable, logger } from '@OneJs/core'
 import type {
   ScrapedCragNode,
   ScrapedNodeInfo,
@@ -72,6 +72,8 @@ export class TheCragApiScraper {
       children: [],
     }
 
+    logger.info('scraper:thecrag', `Traversing node: ${name} (type: ${type})`)
+
     // Only expand nodes that can have children
     const expandableTypes: NodeType[] = [
       'Region',
@@ -91,6 +93,10 @@ export class TheCragApiScraper {
         this.getChildren(nodeId),
         needsRoutes ? this.getRoutes(nodeId) : Promise.resolve([]),
       ])
+
+      logger.debug('scraper:thecrag', `Info: ${JSON.stringify(info)}`)
+      logger.debug('scraper:thecrag', `Children: ${JSON.stringify(children)}`)
+      logger.debug('scraper:thecrag', `Routes: ${JSON.stringify(routes)}`)
 
       if (info) {
         node.info = info
@@ -152,22 +158,17 @@ export class TheCragApiScraper {
   async getChildren(nodeId: number): Promise<RawChildData[]> {
     const url = `${this.BASE_URL}/api/node/id/${nodeId}/children/area?flatten=data[id,name,urlStub,urlAncestorStub,subAreaCount,subType,asciiName,approach,map,geo,location,geolocation,geometry,lat,lng,latitude,longitude,image,images,photo,photos,coverImage,thumbnail,media,numberPhotos]&expires=10`
 
-    try {
-      const output = await this.curlRequest(url)
-      const parsed = JSON.parse(output)
-      const data = parsed[0] ?? []
+    const output = await this.curlRequest(url)
+    const parsed = JSON.parse(output)
+    const data = parsed[0] ?? []
 
-      // Parse array format: [id, name, urlStub, urlAncestorStub, subAreaCount, subType, asciiName, approach, map, geo, location, geolocation, geometry, ...]
-      return data.map((item: unknown[]) => ({
-        id: item[0] as number,
-        name: item[1] as string,
-        type: (item[5] as string) || 'Area',
-        geometry: item[12] as GeometryData | undefined,
-      }))
-    } catch {
-      // Silent fail - caller handles empty result
-      return []
-    }
+    // Parse array format: [id, name, urlStub, urlAncestorStub, subAreaCount, subType, asciiName, approach, map, geo, location, geolocation, geometry, ...]
+    return data.map((item: unknown[]) => ({
+      id: item[0] as number,
+      name: item[1] as string,
+      type: (item[5] as string) || 'Area',
+      geometry: item[12] as GeometryData | undefined,
+    }))
   }
 
   /**
@@ -176,31 +177,27 @@ export class TheCragApiScraper {
   async getRoutes(nodeId: number): Promise<ScrapedRouteData[]> {
     const url = `${this.BASE_URL}/api/node/id/${nodeId}/children/route?flatten=data[id,name,grade,gradeIndex,height,pitches,quality,stars,ascents,subType,bolts,firstAscent,tags,warnings]&expires=10`
 
-    try {
-      const output = await this.curlRequest(url)
-      const parsed = JSON.parse(output)
-      const data = parsed[0] ?? []
+    const output = await this.curlRequest(url)
+    const parsed = JSON.parse(output)
+    const data = parsed[0] ?? []
 
-      // Parse array format: [id, name, grade, gradeIndex, height, pitches, quality, stars, ascents, subType, bolts, firstAscent, tags, warnings]
-      return data.map((r: unknown[]) => ({
-        id: Number(r[0]),
-        name: r[1] as string,
-        grade: (r[2] as string) || null,
-        gradeIndex: (r[3] as number) || null,
-        height: this.parseHeight(r[4]),
-        pitches: (r[5] as number) ?? null,
-        quality: (r[6] as number) ?? null,
-        stars: (r[7] as number) ?? null,
-        ascents: (r[8] as number) ?? null,
-        subType: (r[9] as string) ?? null,
-        bolts: (r[10] as number) ?? null,
-        firstAscent: (r[11] as string) ?? null,
-        tags: r[12] ?? null,
-        warnings: r[13] ?? null,
-      }))
-    } catch {
-      return []
-    }
+    // Parse array format: [id, name, grade, gradeIndex, height, pitches, quality, stars, ascents, subType, bolts, firstAscent, tags, warnings]
+    return data.map((r: unknown[]) => ({
+      id: Number(r[0]),
+      name: r[1] as string,
+      grade: (r[2] as string) || null,
+      gradeIndex: (r[3] as number) || null,
+      height: this.parseHeight(r[4]),
+      pitches: (r[5] as number) ?? null,
+      quality: (r[6] as number) ?? null,
+      stars: (r[7] as number) ?? null,
+      ascents: (r[8] as number) ?? null,
+      subType: (r[9] as string) ?? null,
+      bolts: (r[10] as number) ?? null,
+      firstAscent: (r[11] as string) ?? null,
+      tags: r[12] ?? null,
+      warnings: r[13] ?? null,
+    }))
   }
 
   /**
@@ -209,79 +206,73 @@ export class TheCragApiScraper {
   async getNodeInfo(nodeId: number): Promise<ScrapedNodeInfo | null> {
     const url = `${this.BASE_URL}/api/node/id/${nodeId}?show=info,description,approach,access,beta,history,ethics`
 
-    try {
-      const output = await this.curlRequest(url)
-      const parsed = JSON.parse(output)
-      const data = parsed.data || parsed
+    const output = await this.curlRequest(url)
+    const parsed = JSON.parse(output)
+    const data = parsed.data || parsed
 
-      const info: ScrapedNodeInfo = {}
+    const info: ScrapedNodeInfo = {}
 
-      // Geometry
-      if (data.geometry) {
-        info.geometry = data.geometry
-        if (data.geometry.lat && data.geometry.lng) {
-          info.googleMapsUrl = `https://www.google.com/maps?q=${data.geometry.lat},${data.geometry.lng}`
-        }
+    // Geometry
+    if (data.geometry) {
+      info.geometry = data.geometry
+      if (data.geometry.lat && data.geometry.lng) {
+        info.googleMapsUrl = `https://www.google.com/maps?q=${data.geometry.lat},${data.geometry.lng}`
       }
-
-      // Metadata
-      if (data.seasonality) info.seasonality = data.seasonality
-      if (data.tags) info.tags = data.tags
-
-      // Beta (approach, description, etc.)
-      if (data.beta && Array.isArray(data.beta) && data.beta.length > 0) {
-        info.beta = data.beta
-      }
-
-      // Statistics
-      if (data.ascentCount) info.ascentCount = data.ascentCount
-      if (data.averageHeight) info.averageHeight = data.averageHeight
-      if (data.displayAverageHeight)
-        info.displayAverageHeight = data.displayAverageHeight
-      if (data.numberRoutes) info.numberRoutes = data.numberRoutes
-      if (data.numberPhotos) info.numberPhotos = data.numberPhotos
-      if (data.numberTopos) info.numberTopos = data.numberTopos
-      if (data.hasTopo !== undefined) info.hasTopo = data.hasTopo
-      if (data.subAreaCount) info.subAreaCount = data.subAreaCount
-      if (data.totalFavorites) info.totalFavorites = data.totalFavorites
-      if (data.kudos) info.kudos = data.kudos
-      if (data.maxPop) info.maxPop = data.maxPop
-
-      // Additional info
-      if (data.altNames) info.altNames = data.altNames
-      if (data.description) info.description = data.description
-      if (data.approach) info.approach = data.approach
-      if (data.siblingLabel) info.siblingLabel = data.siblingLabel
-      if (data.priceCategory) info.priceCategory = data.priceCategory
-      if (data.permitNode) info.permitNode = data.permitNode
-      if (data.locatedness) info.locatedness = data.locatedness
-
-      // URLs
-      if (data.urlStub) info.urlStub = data.urlStub
-      if (data.urlAncestorStub) info.urlAncestorStub = data.urlAncestorStub
-      if (data.urlShortestStub) info.urlShortestStub = data.urlShortestStub
-      if (data.urlShortestAncestorStub)
-        info.urlShortestAncestorStub = data.urlShortestAncestorStub
-      if (data.redirectStubs) info.redirectStubs = data.redirectStubs
-
-      // PDF
-      if (data.lastPDFSize) info.lastPDFSize = data.lastPDFSize
-      if (data.lastPDFStaticDate)
-        info.lastPDFStaticDate = data.lastPDFStaticDate
-      if (data.lastPDFStaticSize)
-        info.lastPDFStaticSize = data.lastPDFStaticSize
-
-      // Flags
-      if (data.isTLC !== undefined) info.isTLC = data.isTLC
-      if (data.hide !== undefined) info.hide = data.hide
-      if (data.hasUnarchivedChildren !== undefined)
-        info.hasUnarchivedChildren = data.hasUnarchivedChildren
-      if (data.unique !== undefined) info.unique = data.unique
-
-      return Object.keys(info).length > 0 ? info : null
-    } catch {
-      return null
     }
+
+    // Metadata
+    if (data.seasonality) info.seasonality = data.seasonality
+    if (data.tags) info.tags = data.tags
+
+    // Beta (approach, description, etc.)
+    if (data.beta && Array.isArray(data.beta) && data.beta.length > 0) {
+      info.beta = data.beta
+    }
+
+    // Statistics
+    if (data.ascentCount) info.ascentCount = data.ascentCount
+    if (data.averageHeight) info.averageHeight = data.averageHeight
+    if (data.displayAverageHeight)
+      info.displayAverageHeight = data.displayAverageHeight
+    if (data.numberRoutes) info.numberRoutes = data.numberRoutes
+    if (data.numberPhotos) info.numberPhotos = data.numberPhotos
+    if (data.numberTopos) info.numberTopos = data.numberTopos
+    if (data.hasTopo !== undefined) info.hasTopo = data.hasTopo
+    if (data.subAreaCount) info.subAreaCount = data.subAreaCount
+    if (data.totalFavorites) info.totalFavorites = data.totalFavorites
+    if (data.kudos) info.kudos = data.kudos
+    if (data.maxPop) info.maxPop = data.maxPop
+
+    // Additional info
+    if (data.altNames) info.altNames = data.altNames
+    if (data.description) info.description = data.description
+    if (data.approach) info.approach = data.approach
+    if (data.siblingLabel) info.siblingLabel = data.siblingLabel
+    if (data.priceCategory) info.priceCategory = data.priceCategory
+    if (data.permitNode) info.permitNode = data.permitNode
+    if (data.locatedness) info.locatedness = data.locatedness
+
+    // URLs
+    if (data.urlStub) info.urlStub = data.urlStub
+    if (data.urlAncestorStub) info.urlAncestorStub = data.urlAncestorStub
+    if (data.urlShortestStub) info.urlShortestStub = data.urlShortestStub
+    if (data.urlShortestAncestorStub)
+      info.urlShortestAncestorStub = data.urlShortestAncestorStub
+    if (data.redirectStubs) info.redirectStubs = data.redirectStubs
+
+    // PDF
+    if (data.lastPDFSize) info.lastPDFSize = data.lastPDFSize
+    if (data.lastPDFStaticDate) info.lastPDFStaticDate = data.lastPDFStaticDate
+    if (data.lastPDFStaticSize) info.lastPDFStaticSize = data.lastPDFStaticSize
+
+    // Flags
+    if (data.isTLC !== undefined) info.isTLC = data.isTLC
+    if (data.hide !== undefined) info.hide = data.hide
+    if (data.hasUnarchivedChildren !== undefined)
+      info.hasUnarchivedChildren = data.hasUnarchivedChildren
+    if (data.unique !== undefined) info.unique = data.unique
+
+    return Object.keys(info).length > 0 ? info : null
   }
 
   /**

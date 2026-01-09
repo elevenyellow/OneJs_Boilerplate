@@ -1,3 +1,7 @@
+// DEPRECATED: Worker app is no longer needed. Job queue system has been removed.
+// Scraping is now done via bootstraps in the API app.
+
+/*
 import {
   ContainerProvider,
   logger,
@@ -16,4 +20,4 @@ const oneJs = new OneJs(import.meta.url)
 await oneJs.start()
 
 logger.info('worker:startup', 'Worker application started')
-
+*/
