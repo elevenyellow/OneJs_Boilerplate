@@ -25,10 +25,11 @@ export function useLocation() {
         
         if (status !== 'granted') {
           if (isMounted) {
+            // En web o si no hay permisos, usar ubicación por defecto (Valencia, España)
             setLocation({
-              latitude: null,
-              longitude: null,
-              error: 'Permission to access location was denied',
+              latitude: 39.4699,
+              longitude: -0.3763,
+              error: 'Using default location (Valencia, Spain)',
               loading: false,
             });
           }
@@ -49,10 +50,11 @@ export function useLocation() {
         }
       } catch (error) {
         if (isMounted) {
+          // Si falla (común en web), usar ubicación por defecto
           setLocation({
-            latitude: null,
-            longitude: null,
-            error: 'Failed to get location',
+            latitude: 39.4699,
+            longitude: -0.3763,
+            error: 'Using default location (Valencia, Spain)',
             loading: false,
           });
         }

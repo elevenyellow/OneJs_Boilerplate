@@ -17,7 +17,7 @@ export function ZoneList({
   isLoading,
   onRefresh,
   isRefreshing = false,
-  emptyMessage = 'No se encontraron zonas',
+  emptyMessage = 'No zones found',
 }: ZoneListProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -26,7 +26,7 @@ export function ZoneList({
     return (
       <View style={styles.loadingContainer}>
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Cargando zonas...
+          Loading zones...
         </Text>
       </View>
     );

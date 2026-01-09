@@ -73,9 +73,9 @@ export default function FavoritesScreen() {
         <View style={[styles.iconContainer, { backgroundColor: colors.destructive + '20' }]}>
           <Ionicons name="heart" size={24} color={colors.destructive} />
         </View>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Mis Favoritos</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>My Favorites</Text>
         <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-          {zones.length} {zones.length === 1 ? 'zona guardada' : 'zonas guardadas'}
+          {zones.length} {zones.length === 1 ? 'saved zone' : 'saved zones'}
         </Text>
       </View>
 
@@ -86,17 +86,17 @@ export default function FavoritesScreen() {
             <Ionicons name="heart-outline" size={48} color={colors.textSecondary} />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            No tienes favoritos
+            No favorites yet
           </Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Explora las zonas de escalada y guarda tus favoritas para acceder rápidamente.
+            Explore climbing zones and save your favorites for quick access.
           </Text>
           <Pressable
             style={[styles.exploreButton, { backgroundColor: colors.primary }]}
             onPress={() => router.push('/zones')}
           >
             <Text style={[styles.exploreButtonText, { color: colors.primaryForeground }]}>
-              Explorar zonas
+              Explore zones
             </Text>
             <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
           </Pressable>

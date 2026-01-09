@@ -24,16 +24,16 @@ const weatherIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 const climbingConditionLabels: Record<string, string> = {
-  excellent: 'Excelente',
-  good: 'Bueno',
-  fair: 'Aceptable',
-  poor: 'Malo',
-  unsuitable: 'No apto',
+  excellent: 'Excellent',
+  good: 'Good',
+  fair: 'Fair',
+  poor: 'Poor',
+  unsuitable: 'Unsuitable',
 };
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('es-ES', {
+  return date.toLocaleDateString('en-US', {
     weekday: 'short',
     day: 'numeric',
   });
@@ -46,7 +46,7 @@ export function WeatherWidget({ forecast, isLoading }: WeatherWidgetProps) {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Cargando pronóstico...</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Loading forecast...</Text>
       </View>
     );
   }
@@ -54,7 +54,7 @@ export function WeatherWidget({ forecast, isLoading }: WeatherWidgetProps) {
   if (!forecast || forecast.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Pronóstico no disponible</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Forecast not available</Text>
       </View>
     );
   }
@@ -63,7 +63,7 @@ export function WeatherWidget({ forecast, isLoading }: WeatherWidgetProps) {
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.header}>
         <Ionicons name="thermometer-outline" size={20} color={colors.primary} />
-        <Text style={[styles.title, { color: colors.text }]}>Pronóstico 5 días</Text>
+        <Text style={[styles.title, { color: colors.text }]}>5-day forecast</Text>
       </View>
 
       {forecast.slice(0, 5).map((day, index) => {
@@ -83,7 +83,7 @@ export function WeatherWidget({ forecast, isLoading }: WeatherWidgetProps) {
               <Ionicons name={iconName} size={28} color={colors.textSecondary} />
               <View>
                 <Text style={[styles.dayName, { color: colors.text }]}>
-                  {index === 0 ? 'Hoy' : formatDate(day.date)}
+                  {index === 0 ? 'Today' : formatDate(day.date)}
                 </Text>
                 <View style={styles.dayStats}>
                   <Ionicons name="water-outline" size={12} color={colors.textSecondary} />
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E2DA',
+    borderBottomColor: '#E2E8F0',
   },
   title: {
     fontSize: 18,

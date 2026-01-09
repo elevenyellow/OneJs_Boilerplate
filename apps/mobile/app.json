@@ -1,19 +1,19 @@
 {
   "expo": {
+    "jsEngine": "hermes",
     "name": "ClimbZone",
     "slug": "climb-zone",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "climbzone",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#8B5A2B"
     },
     "ios": {
+      "jsEngine": "hermes",
       "supportsTablet": true,
       "bundleIdentifier": "com.climbzone.app",
       "config": {
@@ -24,10 +24,7 @@
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#8B5A2B"
-      },
+      "jsEngine": "hermes",
       "package": "com.climbzone.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -41,8 +38,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
@@ -56,10 +52,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "http://192.168.8.178:4000/api"
     }
   }
 }
-
-
-
-

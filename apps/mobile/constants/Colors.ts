@@ -1,67 +1,83 @@
 /**
- * ClimbZone color palette - earthy climbing-inspired colors
+ * ClimbZone color palette - Professional modern design
  */
 
-const tintColorLight = '#8B5A2B'; // Terracotta/rock
-const tintColorDark = '#D4A574'; // Warm amber
+const tintColorLight = '#4F46E5'; // Indigo - professional & modern
+const tintColorDark = '#818CF8'; // Light indigo for dark mode
 
 export const Colors = {
   light: {
-    text: '#2D2418',
-    textSecondary: '#6B5B4F',
-    background: '#FAF8F5',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    background: '#F8FAFC',
     card: '#FFFFFF',
-    border: '#E8E2DA',
+    border: '#E2E8F0',
     tint: tintColorLight,
-    tabIconDefault: '#9B8B7A',
+    tabIconDefault: '#94A3B8',
     tabIconSelected: tintColorLight,
-    primary: '#8B5A2B',
-    primaryForeground: '#FAF8F5',
-    secondary: '#E8F5E9',
-    secondaryForeground: '#2E7D32',
-    accent: '#2E7D32',
-    accentForeground: '#FAF8F5',
-    destructive: '#D32F2F',
-    muted: '#F5F0EB',
-    mutedForeground: '#6B5B4F',
+    primary: '#4F46E5',
+    primaryForeground: '#FFFFFF',
+    secondary: '#F1F5F9',
+    secondaryForeground: '#475569',
+    accent: '#10B981',
+    accentForeground: '#FFFFFF',
+    destructive: '#EF4444',
+    muted: '#F1F5F9',
+    mutedForeground: '#64748B',
   },
   dark: {
-    text: '#FAF8F5',
-    textSecondary: '#A89B8E',
-    background: '#1A1612',
-    card: '#252019',
-    border: '#3D352D',
+    text: '#F8FAFC',
+    textSecondary: '#94A3B8',
+    background: '#0F172A',
+    card: '#1E293B',
+    border: '#334155',
     tint: tintColorDark,
-    tabIconDefault: '#6B5B4F',
+    tabIconDefault: '#64748B',
     tabIconSelected: tintColorDark,
-    primary: '#D4A574',
-    primaryForeground: '#1A1612',
-    secondary: '#1B3D20',
-    secondaryForeground: '#A5D6A7',
-    accent: '#4CAF50',
-    accentForeground: '#1A1612',
-    destructive: '#EF5350',
-    muted: '#2D2620',
-    mutedForeground: '#8B7B6E',
+    primary: '#818CF8',
+    primaryForeground: '#0F172A',
+    secondary: '#1E293B',
+    secondaryForeground: '#CBD5E1',
+    accent: '#34D399',
+    accentForeground: '#0F172A',
+    destructive: '#F87171',
+    muted: '#1E293B',
+    mutedForeground: '#94A3B8',
   },
 };
 
-// Climbing condition colors
+// Climbing condition colors - refined palette
 export const ConditionColors = {
-  excellent: { light: '#4CAF50', dark: '#66BB6A' },
-  good: { light: '#8BC34A', dark: '#9CCC65' },
-  fair: { light: '#FFC107', dark: '#FFCA28' },
-  poor: { light: '#FF9800', dark: '#FFB74D' },
-  unsuitable: { light: '#F44336', dark: '#EF5350' },
+  excellent: { light: '#10B981', dark: '#34D399' },
+  good: { light: '#22C55E', dark: '#4ADE80' },
+  fair: { light: '#F59E0B', dark: '#FBBF24' },
+  poor: { light: '#F97316', dark: '#FB923C' },
+  unsuitable: { light: '#EF4444', dark: '#F87171' },
 };
 
-// Climbing type colors
+// Climbing type colors - cohesive professional palette
 export const ClimbingTypeColors = {
-  sport: { light: '#2196F3', dark: '#64B5F6' },
-  trad: { light: '#FF9800', dark: '#FFB74D' },
-  boulder: { light: '#4CAF50', dark: '#81C784' },
-  'multi-pitch': { light: '#9C27B0', dark: '#BA68C8' },
-  mixed: { light: '#607D8B', dark: '#90A4AE' },
+  sport: { light: '#3B82F6', dark: '#60A5FA' },
+  trad: { light: '#F59E0B', dark: '#FBBF24' },
+  boulder: { light: '#10B981', dark: '#34D399' },
+  'multi-pitch': { light: '#8B5CF6', dark: '#A78BFA' },
+  mixed: { light: '#64748B', dark: '#94A3B8' },
+};
+
+// Gradient colors for orientation-based visuals
+export const OrientationGradients = {
+  sun: {
+    light: ['#FB923C', '#F59E0B', '#FBBF24'],
+    dark: ['#F97316', '#FB923C', '#FCD34D'],
+  },
+  shade: {
+    light: ['#64748B', '#6366F1', '#818CF8'],
+    dark: ['#475569', '#4F46E5', '#6366F1'],
+  },
+  neutral: {
+    light: ['#6366F1', '#4F46E5', '#4338CA'],
+    dark: ['#4338CA', '#4F46E5', '#6366F1'],
+  },
 };
 
 

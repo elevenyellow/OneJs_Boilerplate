@@ -70,7 +70,7 @@ export function ZoneCard({ zone }: ZoneCardProps) {
           <View style={styles.stat}>
             <Ionicons name="git-branch-outline" size={16} color={colors.textSecondary} />
             <Text style={[styles.statText, { color: colors.textSecondary }]}>
-              {zone.totalRoutes} vías
+              {zone.totalRoutes} routes
             </Text>
           </View>
         </View>

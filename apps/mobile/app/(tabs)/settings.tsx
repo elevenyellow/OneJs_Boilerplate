@@ -49,12 +49,12 @@ export default function SettingsScreen() {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* App section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>APLICACIÓN</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>APP</Text>
         <View style={[styles.sectionContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <SettingsItem
             icon="notifications-outline"
-            title="Notificaciones"
-            subtitle="Alertas de buen tiempo"
+            title="Notifications"
+            subtitle="Good weather alerts"
             colors={colors}
             rightElement={
               <Switch
@@ -65,8 +65,8 @@ export default function SettingsScreen() {
           />
           <SettingsItem
             icon="location-outline"
-            title="Ubicación"
-            subtitle="Mostrar zonas cercanas"
+            title="Location"
+            subtitle="Show nearby zones"
             colors={colors}
             rightElement={
               <Switch
@@ -77,8 +77,8 @@ export default function SettingsScreen() {
           />
           <SettingsItem
             icon="download-outline"
-            title="Datos offline"
-            subtitle="Guardar zonas para uso sin conexión"
+            title="Offline data"
+            subtitle="Save zones for offline use"
             onPress={() => {}}
             colors={colors}
           />
@@ -87,19 +87,19 @@ export default function SettingsScreen() {
 
       {/* Data sources */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>FUENTES DE DATOS</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DATA SOURCES</Text>
         <View style={[styles.sectionContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <SettingsItem
             icon="globe-outline"
             title="theCrag"
-            subtitle="Zonas de escalada"
+            subtitle="Climbing zones"
             onPress={() => openLink('https://www.thecrag.com')}
             colors={colors}
           />
           <SettingsItem
             icon="partly-sunny-outline"
             title="Meteoblue"
-            subtitle="Datos meteorológicos"
+            subtitle="Weather data"
             onPress={() => openLink('https://www.meteoblue.com')}
             colors={colors}
           />
@@ -108,23 +108,23 @@ export default function SettingsScreen() {
 
       {/* About */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ACERCA DE</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ABOUT</Text>
         <View style={[styles.sectionContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <SettingsItem
             icon="information-circle-outline"
-            title="Versión"
+            title="Version"
             subtitle="1.0.0"
             colors={colors}
           />
           <SettingsItem
             icon="document-text-outline"
-            title="Términos de uso"
+            title="Terms of use"
             onPress={() => {}}
             colors={colors}
           />
           <SettingsItem
             icon="shield-checkmark-outline"
-            title="Política de privacidad"
+            title="Privacy policy"
             onPress={() => {}}
             colors={colors}
           />
@@ -137,7 +137,7 @@ export default function SettingsScreen() {
           ClimbZone © {new Date().getFullYear()}
         </Text>
         <Text style={[styles.footerSubtext, { color: colors.mutedForeground }]}>
-          Hecho con ❤️ para escaladores
+          Made with ❤️ for climbers
         </Text>
       </View>
     </ScrollView>
