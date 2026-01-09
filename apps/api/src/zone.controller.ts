@@ -39,14 +39,7 @@ export class ZoneController {
     return zones
   }
 
-  @Get('/:id')
-  async getZoneDetail(context: Context) {
-    const { id } = context.params as { id: string }
-    const zone = await this.zoneService.getZoneDetail(id)
-    context.set.status = 200
-    return zone
-  }
-
+  // IMPORTANT: Static routes must come BEFORE dynamic routes (/:id)
   @Get('/nearby')
   async getNearbyZones(context: Context) {
     const query = context.query as Record<string, string | undefined>
@@ -60,7 +53,7 @@ export class ZoneController {
       latitude: parseFloat(query.lat),
       longitude: parseFloat(query.lng),
       radiusKm: query.radius ? parseFloat(query.radius) : 50,
-      limit: query.limit ? parseInt(query.limit, 10) : 20,
+      limit: query.limit ? parseInt(query.limit, 10) : 100,
     }
 
     const zones = await this.zoneService.getNearbyZones(nearbyDto)
@@ -95,5 +88,14 @@ export class ZoneController {
     const regions = await this.zoneRepository.getRegions(query.country)
     context.set.status = 200
     return regions
+  }
+
+  // Dynamic route must come LAST to avoid capturing static routes like /nearby, /countries, etc.
+  @Get('/:id')
+  async getZoneDetail(context: Context) {
+    const { id } = context.params as { id: string }
+    const zone = await this.zoneService.getZoneDetail(id)
+    context.set.status = 200
+    return zone
   }
 }

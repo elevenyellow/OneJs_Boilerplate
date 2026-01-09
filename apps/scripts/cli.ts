@@ -9,8 +9,9 @@ import { BootstrapLoader } from '@OneJs/core/bootstrap/bootstrap-loader'
 import { PrismaPlugin } from '@OneJs/prisma'
 
 // Tipos de comandos disponibles
-type Command = 
+type Command =
   | 'test-valencia'
+  | 'test-country'
   | 'scrape-spain'
   | 'scrape-world'
   | 'seed-countries'
@@ -37,6 +38,22 @@ const COMMANDS: Record<string, CommandDefinition> = {
       await testValencia(container, COOKIE)
     },
   },
+  'test-country': {
+    name: 'test-country',
+    description:
+      'Scrape un país completo (batch 100). Uso: test-country <país>',
+    execute: async (container) => {
+      const countryName = process.argv[3]
+      if (!countryName) {
+        console.error('❌ Error: Debes especificar un país')
+        console.log('Uso: bun run apps/scripts/cli.ts test-country <país>')
+        console.log('Ejemplo: bun run apps/scripts/cli.ts test-country Spain')
+        process.exit(1)
+      }
+      const { testCountry } = await import('./commands/test-country.command')
+      await testCountry(container, COOKIE, countryName)
+    },
+  },
   'scrape-spain': {
     name: 'scrape-spain',
     description: 'Scrape toda España (todas las regiones)',
@@ -57,7 +74,9 @@ const COMMANDS: Record<string, CommandDefinition> = {
     name: 'seed-countries',
     description: 'Seed continentes y países en la base de datos',
     execute: async (container) => {
-      const { seedCountries } = await import('./commands/seed-countries.command')
+      const { seedCountries } = await import(
+        './commands/seed-countries.command'
+      )
       await seedCountries(container, COOKIE)
     },
   },
@@ -82,13 +101,15 @@ function printHelp() {
   console.log('\n📚 Climb Zone CLI - Comandos Disponibles\n')
   console.log('Uso: bun run apps/scripts/cli.ts <comando>\n')
   console.log('Comandos:\n')
-  
+
   Object.values(COMMANDS).forEach((cmd) => {
     console.log(`  ${cmd.name.padEnd(20)} ${cmd.description}`)
   })
-  
+
   console.log('\nEjemplos:')
   console.log('  bun run apps/scripts/cli.ts test-valencia')
+  console.log('  bun run apps/scripts/cli.ts test-country Spain')
+  console.log('  bun run apps/scripts/cli.ts test-country France')
   console.log('  bun run apps/scripts/cli.ts scrape-spain')
   console.log('')
 }

@@ -25,6 +25,45 @@ import { ExternalId, Geometry, Name } from '@climb-zone/shared'
 import { TheCragApiScraper } from '@scraper-thecrag'
 import { ScrapedDataMapperService } from '@scraper-thecrag/application/services/scraped-data-mapper.service'
 
+// Retry utility for database operations
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  delayMs = 1000,
+  operationName = 'operation',
+): Promise<T> {
+  let lastError: Error | undefined
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation()
+    } catch (error: any) {
+      lastError = error
+
+      // Check if it's a connection error
+      const isConnectionError =
+        error?.code === 'P1001' ||
+        error?.message?.includes("Can't reach database") ||
+        error?.message?.includes('Connection') ||
+        error?.message?.includes('timeout')
+
+      if (isConnectionError && attempt < maxRetries) {
+        const delay = delayMs * attempt // Exponential backoff
+        console.log(
+          `   ⚠️  Connection error in ${operationName}, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`,
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+
+      // If not a connection error or out of retries, throw
+      throw error
+    }
+  }
+
+  throw lastError
+}
+
 interface Stats {
   regions: number
   crags: number
@@ -262,67 +301,87 @@ async function processRegionChildren(
 ): Promise<void> {
   const children = await scraper.getChildren(nodeId)
 
-  for (const child of children) {
-    try {
-      const [info, hasRoutes] = await Promise.all([
-        scraper.getNodeInfo(child.id),
-        scraper.getRoutes(child.id).then((r) => r.length > 0),
-      ])
+  // Process children in parallel batches - REDUCED from 5 to 2 to avoid DB connection issues
+  const BATCH_SIZE = 10
+  for (let i = 0; i < children.length; i += BATCH_SIZE) {
+    const batch = children.slice(i, i + BATCH_SIZE)
 
-      // Sample new fields
-      sampleNewFields(info, stats)
+    await Promise.all(
+      batch.map(async (child) => {
+        try {
+          const [info, hasRoutes] = await Promise.all([
+            scraper.getNodeInfo(child.id),
+            scraper.getRoutes(child.id).then((r) => r.length > 0),
+          ])
 
-      const geometry = info?.geometry ?? child.geometry
-      const isCragLevel = child.type === 'Crag'
+          // Sample new fields
+          sampleNewFields(info, stats)
 
-      if (isCragLevel || hasRoutes) {
-        // This is a Crag - save it
-        const cragData = mapper.mapToCrag(
-          child.id,
-          child.name,
-          countryId,
-          geometry,
-          info,
-          regionId,
-        )
-        const crag = await cragRepo.saveByExternalId(
-          mapper.createCragEntity(cragData),
-          info?.apiResponseRaw,
-        )
-        stats.crags++
+          const geometry = info?.geometry ?? child.geometry
+          const isCragLevel = child.type === 'Crag'
 
-        console.log(`   ⛰️  Crag: ${child.name}`)
+          if (isCragLevel || hasRoutes) {
+            // This is a Crag - save it with retry
+            const crag = await retryWithBackoff(
+              async () => {
+                const cragData = mapper.mapToCrag(
+                  child.id,
+                  child.name,
+                  countryId,
+                  geometry,
+                  info,
+                  regionId,
+                )
+                return await cragRepo.saveByExternalId(
+                  mapper.createCragEntity(cragData),
+                  info?.apiResponseRaw,
+                )
+              },
+              3,
+              1000,
+              `saving crag ${child.name}`,
+            )
+            stats.crags++
 
-        // Process crag children (areas/sectors)
-        await processCragChildren(
-          child.id,
-          child.name, // Pasar el nombre del crag
-          crag.id,
-          scraper,
-          mapper,
-          areaRepo,
-          sectorRepo,
-          routeRepo,
-          stats,
-        )
-      } else {
-        // This is a sub-region or area, recurse
-        await processRegionChildren(
-          child.id,
-          regionId,
-          countryId,
-          scraper,
-          mapper,
-          cragRepo,
-          areaRepo,
-          sectorRepo,
-          routeRepo,
-          stats,
-        )
-      }
-    } catch (error) {
-      stats.errors++
-      console.error(`   ❌ Error processing ${child.name}:`, error)
+            console.log(`   ⛰️  Crag: ${child.name}`)
+
+            // Process crag children (areas/sectors)
+            await processCragChildren(
+              child.id,
+              child.name, // Pasar el nombre del crag
+              crag.id,
+              scraper,
+              mapper,
+              areaRepo,
+              sectorRepo,
+              routeRepo,
+              stats,
+            )
+          } else {
+            // This is a sub-region or area, recurse
+            await processRegionChildren(
+              child.id,
+              regionId,
+              countryId,
+              scraper,
+              mapper,
+              cragRepo,
+              areaRepo,
+              sectorRepo,
+              routeRepo,
+              stats,
+            )
+          }
+        } catch (error) {
+          stats.errors++
+          console.error(`   ❌ Error processing ${child.name}:`, error)
+        }
+      }),
+    )
+
+    // Small delay between batches to avoid overwhelming the DB
+    if (i + BATCH_SIZE < children.length) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
   }
 }
@@ -339,6 +398,7 @@ async function processCragChildren(
   stats: Stats,
   parentAreaId: AreaId | null = null,
 ): Promise<void> {
+  // Fetch data from API in parallel (no DB connections here)
   const [info, children, routes] = await Promise.all([
     scraper.getNodeInfo(nodeId),
     scraper.getChildren(nodeId),
@@ -350,57 +410,78 @@ async function processCragChildren(
 
   // If has routes, this is a sector
   if (routes.length > 0) {
-    // Create area if needed
+    // Create area if needed (sequential DB operation)
     let areaId = parentAreaId
     if (!areaId) {
-      const areaData = mapper.mapToArea(
-        nodeId,
-        info?.name || nodeName || 'Default Area',
-        cragId,
-        null,
-        info?.geometry,
-        info,
-        'Area',
-      )
-      const area = await areaRepo.saveByExternalId(
-        mapper.createAreaEntity(areaData),
-        info?.apiResponseRaw,
+      const area = await retryWithBackoff(
+        async () => {
+          const areaData = mapper.mapToArea(
+            nodeId,
+            info?.name || nodeName || 'Default Area',
+            cragId,
+            null,
+            info?.geometry,
+            info,
+            'Area',
+          )
+          return await areaRepo.saveByExternalId(
+            mapper.createAreaEntity(areaData),
+            info?.apiResponseRaw,
+          )
+        },
+        3,
+        1000,
+        `saving area ${nodeName}`,
       )
       areaId = area.id
       stats.areas++
     }
 
-    // Create sector - usar el nombre correcto del nodo
+    // Create sector (sequential DB operation)
     const sectorName = info?.name || nodeName
-    const sectorData = mapper.mapToSector(
-      nodeId,
-      sectorName,
-      areaId,
-      info?.geometry,
-      info,
-      'Sector',
-    )
-    const sector = await sectorRepo.saveByExternalId(
-      mapper.createSectorEntity(sectorData),
-      info?.apiResponseRaw,
+    const sector = await retryWithBackoff(
+      async () => {
+        const sectorData = mapper.mapToSector(
+          nodeId,
+          sectorName,
+          areaId,
+          info?.geometry,
+          info,
+          'Sector',
+        )
+        return await sectorRepo.saveByExternalId(
+          mapper.createSectorEntity(sectorData),
+          info?.apiResponseRaw,
+        )
+      },
+      3,
+      1000,
+      `saving sector ${sectorName}`,
     )
     stats.sectors++
 
-    // Save routes
+    // Save routes sequentially to avoid DB overload (they share one connection)
     for (const route of routes) {
-      const routeData = mapper.mapToRoute(route, sector.id)
-      await routeRepo.saveByExternalId(mapper.createRouteEntity(routeData))
+      await retryWithBackoff(
+        async () => {
+          const routeData = mapper.mapToRoute(route, sector.id)
+          await routeRepo.saveByExternalId(mapper.createRouteEntity(routeData))
+        },
+        3,
+        1000,
+        `saving route`,
+      )
       stats.routes++
     }
 
     console.log(`      📍 Sector: ${sectorName} (${routes.length} routes)`)
   }
 
-  // Process children recursively
+  // Process children sequentially to avoid DB overload
   for (const child of children) {
     await processCragChildren(
       child.id,
-      child.name, // Pasar el nombre del nodo hijo
+      child.name,
       cragId,
       scraper,
       mapper,

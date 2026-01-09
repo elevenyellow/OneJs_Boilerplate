@@ -5,7 +5,7 @@ import { Server, ServerPlugin } from '@OneJs/server'
 import cors from '@elysiajs/cors'
 
 // Import bootstrap services to register them
-import './src/startup/world-scraper.bootstrap'
+// import './src/startup/world-scraper.bootstrap' // Disabled: Enable when needed
 
 // Register plugins explicitly
 PluginRegistry.register(new ServerPlugin())

@@ -36,3 +36,31 @@ export class WeatherController {
     return summary
   }
 }
+
+@Controller('/weather')
+export class WeatherByCoordinatesController {
+  constructor(
+    @Inject(WeatherService)
+    private readonly weatherService: WeatherService,
+  ) {}
+
+  @Get('/coordinates')
+  async getWeatherByCoordinates(context: Context) {
+    const query = context.query as Record<string, string | undefined>
+
+    const lat = parseFloat(query.lat || '0')
+    const lon = parseFloat(query.lon || '0')
+
+    if (!lat || !lon) {
+      context.set.status = 400
+      return { error: 'Missing lat or lon query parameters' }
+    }
+
+    const weather = await this.weatherService
+      .getByCoordinates({ latitude: lat, longitude: lon })
+      .parsed()
+
+    context.set.status = 200
+    return weather
+  }
+}
