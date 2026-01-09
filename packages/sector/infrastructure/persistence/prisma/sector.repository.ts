@@ -87,6 +87,29 @@ export interface SectorFilter {
   offset?: number
 }
 
+export interface AdvancedSearchFilters {
+  // Geographic bounds
+  latitudeMin: number
+  latitudeMax: number
+  longitudeMin: number
+  longitudeMax: number
+
+  // Grade range
+  minGradeIndex: number
+  maxGradeIndex: number
+
+  // Optional filters
+  minRoutes?: number
+  rockTypes?: string[]
+  climbingStyles?: string[]
+  hasTopo?: boolean
+  requiresNoPermit?: boolean
+
+  // Pagination
+  limit: number
+  offset: number
+}
+
 @Injectable()
 export class SectorPrismaRepository extends PrismaRepository<'sector'> {
   constructor(
@@ -292,6 +315,81 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       where: { externalId: externalId.toBigInt() },
     })
     return count > 0
+  }
+
+  /**
+   * Advanced search for sectors with multiple filters
+   * Used by the intelligent sector search feature
+   */
+  async searchWithAdvancedFilters(
+    filters: AdvancedSearchFilters,
+  ): Promise<SectorEntity[]> {
+    const where: Record<string, unknown> = {
+      AND: [
+        // Geographic bounds
+        {
+          latitude: {
+            gte: filters.latitudeMin,
+            lte: filters.latitudeMax,
+          },
+        },
+        {
+          longitude: {
+            gte: filters.longitudeMin,
+            lte: filters.longitudeMax,
+          },
+        },
+        // Grade range overlap
+        {
+          minGradeIndex: { lte: filters.maxGradeIndex },
+        },
+        {
+          maxGradeIndex: { gte: filters.minGradeIndex },
+        },
+      ],
+    }
+
+    // Optional filters
+    const additionalConditions: Record<string, unknown>[] = []
+
+    if (filters.minRoutes !== undefined) {
+      additionalConditions.push({ routeCount: { gte: filters.minRoutes } })
+    }
+
+    if (filters.hasTopo !== undefined) {
+      additionalConditions.push({ hasTopo: filters.hasTopo })
+    }
+
+    if (filters.rockTypes && filters.rockTypes.length > 0) {
+      additionalConditions.push({ rockType: { in: filters.rockTypes } })
+    }
+
+    if (filters.climbingStyles && filters.climbingStyles.length > 0) {
+      additionalConditions.push({
+        climbingStyle: { hasSome: filters.climbingStyles },
+      })
+    }
+
+    if (filters.requiresNoPermit) {
+      // Sectors without permit requirements
+      // permitNode is null or doesn't have permit required
+      additionalConditions.push({
+        OR: [{ permitNode: null }, { permitNode: { equals: {} } }],
+      })
+    }
+
+    if (additionalConditions.length > 0) {
+      ;(where.AND as Record<string, unknown>[]).push(...additionalConditions)
+    }
+
+    const sectors = await this.prisma.sector.findMany({
+      where,
+      orderBy: { routeCount: 'desc' },
+      take: filters.limit,
+      skip: filters.offset,
+    })
+
+    return sectors.map((s: SectorPrismaData) => this.toEntity(s))
   }
 
   private toEntity(data: SectorPrismaData): SectorEntity {

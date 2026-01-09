@@ -211,24 +211,24 @@ export class TheCragApiScraper {
     const data = parsed.data || parsed
 
     const info: ScrapedNodeInfo = {}
-    
+
     // Guardar respuesta completa para análisis futuro
     info.apiResponseRaw = data
-    
+
     // DEBUG: Buscar 'aspect' en toda la respuesta
-    const dataStr = JSON.stringify(data)
-    if (dataStr.includes('aspect') || dataStr.includes('orientation') || dataStr.includes('facing')) {
-      console.log(`🔍 Node ${nodeId} tiene aspect/orientation/facing en algún lugar:`)
-      console.log(JSON.stringify(data, null, 2).substring(0, 500))
-    }
+    // const dataStr = JSON.stringify(data)
+    // if (dataStr.includes('aspect') || dataStr.includes('orientation') || dataStr.includes('facing')) {
+    //   console.log(`🔍 Node ${nodeId} tiene aspect/orientation/facing en algún lugar:`)
+    //   console.log(JSON.stringify(data, null, 2).substring(0, 500))
+    // }
 
     // Geometry
-    if (data.geometry) {
-      info.geometry = data.geometry
-      if (data.geometry.lat && data.geometry.lng) {
-        info.googleMapsUrl = `https://www.google.com/maps?q=${data.geometry.lat},${data.geometry.lng}`
-      }
-    }
+    // if (data.geometry) {
+    //   info.geometry = data.geometry
+    //   if (data.geometry.lat && data.geometry.lng) {
+    //     info.googleMapsUrl = `https://www.google.com/maps?q=${data.geometry.lat},${data.geometry.lng}`
+    //   }
+    // }
 
     // Metadata
     if (data.seasonality) info.seasonality = data.seasonality

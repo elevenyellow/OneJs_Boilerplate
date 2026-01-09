@@ -3,18 +3,18 @@
  * Index all climbing zones for semantic search
  */
 
-import { PrismaClient } from '@prisma/client'
 import { CragPrismaRepository } from '@climb-zone/crag'
-import { SectorPrismaRepository } from '@climb-zone/sector'
 import { RoutePrismaRepository } from '@climb-zone/route'
+import { SectorPrismaRepository } from '@climb-zone/sector'
 import {
-  OpenAIEmbeddingService,
   EmbeddingPrismaRepository,
-  TextGeneratorService,
-  MetadataExtractorService,
-  IndexZoneUseCase,
   IndexAllZonesUseCase,
-} from '@climb-zone/embeddings'
+  IndexZoneUseCase,
+  MetadataExtractorService,
+  OpenAIEmbeddingService,
+  TextGeneratorService,
+} from '@embeddings'
+import { PrismaClient } from '@prisma/client'
 
 export async function indexEmbeddings(
   container: any,
@@ -68,7 +68,11 @@ export async function indexEmbeddings(
 
     // Batch indexing
     if (options?.all) {
-      const indexAllUseCase = new IndexAllZonesUseCase(cragRepo, indexZoneUseCase)
+      const indexAllUseCase = new IndexAllZonesUseCase(
+        cragRepo,
+        embeddingRepository,
+        indexZoneUseCase,
+      )
 
       const stats = await indexAllUseCase.execute({
         batchSize: options.batchSize || 10,
@@ -87,9 +91,15 @@ export async function indexEmbeddings(
 
     // Show help
     console.log('Usage:')
-    console.log('  bun run cli index-embeddings --cragId=<id>       # Index single crag')
-    console.log('  bun run cli index-embeddings --all               # Index all crags')
-    console.log('  bun run cli index-embeddings --all --skipExisting # Skip already indexed')
+    console.log(
+      '  bun run cli index-embeddings --cragId=<id>       # Index single crag',
+    )
+    console.log(
+      '  bun run cli index-embeddings --all               # Index all crags',
+    )
+    console.log(
+      '  bun run cli index-embeddings --all --skipExisting # Skip already indexed',
+    )
     console.log(
       '  bun run cli index-embeddings --all --batchSize=20 # Custom batch size',
     )

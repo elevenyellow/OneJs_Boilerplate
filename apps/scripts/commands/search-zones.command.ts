@@ -4,13 +4,13 @@
  */
 
 import { PrismaClient } from '@prisma/client'
+
 import {
-  OpenAIEmbeddingService,
   EmbeddingPrismaRepository,
+  OpenAIEmbeddingService,
   SearchZonesUseCase,
-  SearchZonesQuery,
-} from '@climb-zone/embeddings'
-import { CragPrismaRepository } from '@climb-zone/crag'
+  type SearchZonesQuery,
+} from '@embeddings'
 
 export async function searchZones(
   container: any,
@@ -38,7 +38,7 @@ export async function searchZones(
 
     const embeddingService = new OpenAIEmbeddingService(apiKey)
     const embeddingRepository = new EmbeddingPrismaRepository(prisma)
-    const cragRepo = container.get(CragPrismaRepository)
+    // const cragRepo = container.get(CragPrismaRepository)
 
     const searchUseCase = new SearchZonesUseCase(
       embeddingService,
@@ -67,7 +67,9 @@ export async function searchZones(
       console.log(
         `   Location: ${searchQuery.userLocation.lat}, ${searchQuery.userLocation.lon}`,
       )
-      console.log(`   Max Distance: ${searchQuery.maxDistance || 'unlimited'} km`)
+      console.log(
+        `   Max Distance: ${searchQuery.maxDistance || 'unlimited'} km`,
+      )
     }
     if (searchQuery.gradeRange) {
       console.log(
@@ -118,7 +120,9 @@ export async function searchZones(
       console.log(`   Grades: ${result.metadata.gradeRange}`)
 
       if (result.metadata.orientations.length > 0) {
-        console.log(`   Orientations: ${result.metadata.orientations.join(', ')}`)
+        console.log(
+          `   Orientations: ${result.metadata.orientations.join(', ')}`,
+        )
       }
 
       if (result.metadata.rockTypes.length > 0) {
