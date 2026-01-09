@@ -1,9 +1,0 @@
-{
-  "[project]/node_modules/.bun/react-leaflet@5.0.0+cc62cc9422c06d55/node_modules/react-leaflet/lib/index.js [app-client] (ecmascript, next/dynamic entry)": {
-    "id": "[project]/node_modules/.bun/react-leaflet@5.0.0+cc62cc9422c06d55/node_modules/react-leaflet/lib/index.js [app-client] (ecmascript, next/dynamic entry)",
-    "files": [
-      "static/chunks/node_modules__bun_f311dd44._.js",
-      "static/chunks/79179_react-leaflet_lib_index_0d6a0dc0.js"
-    ]
-  }
-}
