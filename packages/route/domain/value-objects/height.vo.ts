@@ -21,8 +21,8 @@ export class Height {
       throw new Error('Height cannot be negative')
     }
 
-    if (parsed > 2000) {
-      throw new Error('Height seems unrealistic (max 2000m)')
+    if (parsed > 8000) {
+      throw new Error('Height seems unrealistic (max 8000m)')
     }
 
     return new Height(parsed)

@@ -99,6 +99,22 @@ export class WorldScraperBootstrap extends BootstrapBase {
   }
 
   async bootstrap(): Promise<void> {
+    this.exec()
+      .then(() => {
+        logger.info(
+          'scraper:bootstrap',
+          '✅ World scraper bootstrap completed!',
+        )
+      })
+      .catch((error) => {
+        logger.error(
+          'scraper:bootstrap',
+          `❌ World scraper bootstrap failed: ${error}`,
+        )
+      })
+  }
+
+  private async exec() {
     // Check if scraper bootstrap is enabled
     const isEnabled = this.config.get('ENABLE_SCRAPER_BOOTSTRAP') === 'true'
 
