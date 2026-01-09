@@ -33,13 +33,16 @@ This package is part of the monorepo workspace. It's already available via works
 
 ### Environment Variables
 
-Set your Meteoblue API key in `.env`:
+Set your Meteoblue API credentials in `.env`:
 
 ```bash
 METEOBLUE_API_KEY=your_meteoblue_api_key_here
+METEOBLUE_SHARED_SECRET=your_shared_secret_here
 ```
 
-Get your API key from: [Meteoblue Weather API](https://www.meteoblue.com/en/weather-api)
+**Important**: Both the API key AND the shared secret are required. The shared secret is used to generate secure signatures for API requests.
+
+Get your API credentials from: [Meteoblue Weather API](https://www.meteoblue.com/en/weather-api)
 
 See [ENV_CONFIG.md](./ENV_CONFIG.md) for more details.
 

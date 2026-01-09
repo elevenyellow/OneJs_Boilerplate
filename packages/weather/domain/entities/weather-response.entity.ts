@@ -112,13 +112,17 @@ export class WeatherDataParser {
   static parse(raw: MeteoblueAPIResponse): WeatherData {
     return {
       metadata: this.parseMetadata(raw),
-      current: this.parseCurrent(raw),
-      hourly: this.parseHourly(raw),
+      current: raw.data_current
+        ? this.parseCurrent(raw)
+        : this.parseCurrentFromDaily(raw),
+      hourly: raw.data_1h ? this.parseHourly(raw) : [],
       daily: this.parseDaily(raw),
     }
   }
 
-  private static parseMetadata(raw: MeteoblueAPIResponse): WeatherData['metadata'] {
+  private static parseMetadata(
+    raw: MeteoblueAPIResponse,
+  ): WeatherData['metadata'] {
     return {
       location: raw.metadata.name,
       coordinates: {
@@ -138,6 +142,24 @@ export class WeatherDataParser {
       windSpeed: raw.data_current.windspeed,
       weatherCode: raw.data_current.pictocode,
       isDaylight: raw.data_current.isdaylight === 1,
+    }
+  }
+
+  // Fallback: use first daily data as current if data_current is not available
+  private static parseCurrentFromDaily(
+    raw: MeteoblueAPIResponse,
+  ): CurrentWeather {
+    const dailyData = raw.data_day
+    if (!dailyData || dailyData.time.length === 0) {
+      throw new Error('No weather data available')
+    }
+
+    return {
+      timestamp: new Date(dailyData.time[0] * 1000),
+      temperature: dailyData.temperature_mean[0],
+      windSpeed: dailyData.windspeed_mean[0],
+      weatherCode: dailyData.pictocode[0],
+      isDaylight: true, // Assume daylight for daily data
     }
   }
 
@@ -173,31 +195,32 @@ export class WeatherDataParser {
         mean: dailyData.temperature_mean[i],
       },
       feelsLike: {
-        min: dailyData.felttemperature_min[i],
-        max: dailyData.felttemperature_max[i],
-        mean: dailyData.felttemperature_mean[i],
+        min: dailyData.felttemperature_min?.[i] ?? dailyData.temperature_min[i],
+        max: dailyData.felttemperature_max?.[i] ?? dailyData.temperature_max[i],
+        mean:
+          dailyData.felttemperature_mean?.[i] ?? dailyData.temperature_mean[i],
       },
       wind: {
-        min: dailyData.windspeed_min[i],
+        min: dailyData.windspeed_min?.[i] ?? 0,
         max: dailyData.windspeed_max[i],
         mean: dailyData.windspeed_mean[i],
         direction: dailyData.winddirection[i],
       },
       precipitation: {
         amount: dailyData.precipitation[i],
-        probability: dailyData.precipitation_probability[i],
+        probability: dailyData.precipitation_probability?.[i] ?? 0,
       },
       humidity: {
-        min: dailyData.relativehumidity_min[i],
-        max: dailyData.relativehumidity_max[i],
-        mean: dailyData.relativehumidity_mean[i],
+        min: dailyData.relativehumidity_min?.[i] ?? 50,
+        max: dailyData.relativehumidity_max?.[i] ?? 80,
+        mean: dailyData.relativehumidity_mean?.[i] ?? 65,
       },
       weatherCode: dailyData.pictocode[i],
-      uvIndex: dailyData.uvindex[i],
-      sunrise: dailyData.sunrise[i],
-      sunset: dailyData.sunset[i],
-      sunshineMinutes: dailyData.sunshinetime[i],
-      predictability: dailyData.predictability[i],
+      uvIndex: dailyData.uvindex?.[i] ?? 0,
+      sunrise: dailyData.sunrise?.[i] ?? 0,
+      sunset: dailyData.sunset?.[i] ?? 0,
+      sunshineMinutes: dailyData.sunshinetime?.[i] ?? 480, // Default 8 hours if not available
+      predictability: dailyData.predictability?.[i] ?? 50,
     }))
   }
 

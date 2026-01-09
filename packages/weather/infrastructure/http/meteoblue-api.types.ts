@@ -193,18 +193,19 @@ export interface MeteoblueAPIResponse {
  * Simplified query parameters for Meteoblue API
  */
 export interface MeteoblueQueryParams {
-  apikey: string
   lat: number
   lon: number
+  asl?: number
+  tz?: string
   temperature?: 'C' | 'F' | 'K'
-  windspeed?: 'kmh' | 'ms' | 'mph' | 'kn'
+  windspeed?: 'kmh' | 'ms' | 'mph' | 'kn' | 'ms-1'
   precipitationamount?: 'mm' | 'inch'
   winddirection?: '3char' | '2char' | 'degree'
   timeformat?: 'iso8601' | 'timestamp' | 'timestamp_utc'
   history_days?: number
   forecast_days?: number
-  tz?: string
-  asl?: number
+  expire?: number
+  apikey: string
 }
 
 /**
@@ -234,6 +235,7 @@ export type MeteobluePackage =
  */
 export interface MeteoblueClientConfig {
   apiKey?: string // Optional, can use env var
+  sharedSecret?: string // Optional, can use env var
   baseUrl?: string
   timeout?: number
   maxRetries?: number
