@@ -1,6 +1,44 @@
 import type { SectorEntity } from '../entities/sector.entity'
 
 /**
+ * Route summary for search results
+ */
+export interface RouteSearchInfo {
+  id: string
+  externalId: number
+  name: string
+  grade: string | null
+  gradeIndex: number | null
+  height: number | null
+  pitches: number | null
+  bolts: number | null
+  stars: number | null
+  quality: number | null
+  ascents: number | null
+  subType: string | null
+  firstAscent: string | null
+}
+
+/**
+ * Crag/Zone information
+ */
+export interface CragInfo {
+  id: string
+  name: string
+  altNames: string[]
+  latitude: number | null
+  longitude: number | null
+  description: string | null
+  approach: string | null
+  numberPhotos: number | null
+  numberTopos: number | null
+  hasTopo: boolean
+  totalFavorites: number | null
+  urlStub: string | null
+  priceCategory: string | null
+}
+
+/**
  * DTO for sector search request
  */
 export interface SearchSectorsDto {
@@ -11,9 +49,8 @@ export interface SearchSectorsDto {
   // User grade range (required)
   gradeRange: { min: string; max: string } // e.g., "6b" to "7a"
 
-  // Seasonality (optional, defaults to current month)
-  currentMonth?: number // 1-12
-  forceOrientation?: 'sun' | 'shade' | 'any' // override automatic orientation selection
+  // Orientation preference (optional, auto-detected from weather if not specified)
+  forceOrientation?: 'sun' | 'shade' | 'any'
 
   // Optional filters
   minRoutes?: number // minimum number of routes in sector
@@ -31,7 +68,11 @@ export interface SearchSectorsDto {
  * Individual search result with scoring and metadata
  */
 export interface SearchSectorResult {
-  sector: ReturnType<SectorEntity['toJSON']> // Serialized sector entity
+  sector: ReturnType<SectorEntity['toJSON']> & {
+    cragName: string | null // Extracted from urlAncestorStub (for backward compatibility)
+    coordinates: { lat: number; lon: number } | null // Sector coordinates
+    routes: RouteSearchInfo[] // List of routes in the sector
+  }
   relevanceScore: number // 0-100
   distance: number // distance in km
   routesInUserRange: number // number of routes matching user's grade range
@@ -44,19 +85,46 @@ export interface SearchSectorResult {
     routeCount: number // 0-10 points
     quality: number // 0-5 points
   }
+  // Weather and conditions recommendation (optional)
+  conditions?: {
+    weatherScore: number // 0-100 - based on real-time weather
+    seasonalityScore: number // 0-100 - based on TheCrag historical data
+    orientationBonus: number // 0-10 - bonus for perfect orientation match
+    combinedScore: number // weighted combination of all factors
+    reasons: string[] // human-readable explanations
+    isGoodDay: boolean // overall recommendation
+  }
 }
 
 /**
- * Complete search response
+ * Crag/School with its recommended sectors
+ */
+export interface CragWithSectors {
+  crag: CragInfo
+  sectors: SearchSectorResult[]
+  avgRelevanceScore: number // Average score of all sectors
+  totalRoutesInRange: number // Total routes across all sectors in user's grade range
+  distance: number // Distance to nearest sector
+  totalSectorsInCrag: number // Total number of sectors in the crag (not just recommended ones)
+}
+
+/**
+ * Complete search response (grouped by crags/schools)
  */
 export interface SearchSectorsResponse {
-  results: SearchSectorResult[]
-  total: number
+  results: CragWithSectors[]
+  total: number // Total number of crags with matching sectors
+  totalSectors: number // Total number of individual sectors
   filters: SearchSectorsDto // applied filters
   metadata: {
     searchTime: number // ms
-    detectedSeason: 'summer' | 'winter' | 'spring' | 'autumn'
     preferredOrientation: 'sun' | 'shade' | 'any'
+    weatherLocationsQueried?: number // number of unique weather locations fetched
+    weather?: {
+      temperature: number
+      conditions: string
+      isGoodForClimbing: boolean
+    }
   }
 }
 

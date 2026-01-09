@@ -20,6 +20,7 @@
     "prisma:generate:dev": "npx prisma generate --schema=./prisma/schema.prisma",
     "prisma:build": "bun run prisma:merge && bun run prisma:validate && bun run prisma:generate:dev",
     "prisma:migrate:dev": "npx prisma migrate dev --name init --schema=./prisma/schema.prisma",
+    "prisma:migrate:deploy": "npx prisma migrate deploy --schema=./prisma/schema.prisma",
     "prisma:push": "npx prisma db push --schema=./prisma/schema.prisma",
     "prisma:studio": "npx prisma studio --schema=./prisma/schema.prisma",
     "prisma:generate:prod": "npx prisma generate --schema=./prisma/schema.prisma",
@@ -28,8 +29,8 @@
     "test": "bun --test",
     "type-check": "tsc --noEmit",
     "start:api:prod": "bun run --cwd apps/api start",
-    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev",
-    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev",
+    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:deploy && bun run --cwd apps/api start:dev",
+    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:deploy && bun run --cwd apps/admin dev",
     "start:web:dev": "bun run --cwd apps/web dev",
     "start:mobile:dev": "bun run --cwd apps/mobile start"
   },

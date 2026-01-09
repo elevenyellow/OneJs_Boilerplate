@@ -96,6 +96,97 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
     return crags.map((crag: CragPrismaData) => this.toEntity(crag))
   }
 
+  /**
+   * Find crags within a distance range with optional name search
+   * Returns crags sorted by distance from the given coordinates
+   */
+  async findNearbyWithSearch(params: {
+    latitude: number
+    longitude: number
+    maxDistanceKm: number
+    search?: string
+    limit?: number
+    offset?: number
+  }): Promise<{ crags: CragEntity[]; total: number }> {
+    const { latitude, longitude, maxDistanceKm, search, limit = 50, offset = 0 } = params
+
+    // Calculate bounding box for initial filtering (1 degree ≈ 111km)
+    const latDelta = maxDistanceKm / 111
+    const lonDelta = maxDistanceKm / (111 * Math.cos((latitude * Math.PI) / 180))
+
+    const latMin = latitude - latDelta
+    const latMax = latitude + latDelta
+    const lonMin = longitude - lonDelta
+    const lonMax = longitude + lonDelta
+
+    // Build where clause
+    const whereClause: Record<string, unknown> = {
+      latitude: { gte: latMin, lte: latMax },
+      longitude: { gte: lonMin, lte: lonMax },
+    }
+
+    // Add search filter if provided
+    if (search && search.trim().length > 0) {
+      const searchTerm = search.trim().toLowerCase()
+      whereClause.OR = [
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { altNames: { hasSome: [searchTerm] } },
+      ]
+    }
+
+    // Get total count
+    const total = await this.prisma.crag.count({ where: whereClause })
+
+    // Fetch crags with pagination
+    const crags = await this.prisma.crag.findMany({
+      where: whereClause,
+      orderBy: { name: 'asc' },
+      take: limit,
+      skip: offset,
+    })
+
+    // Convert to entities and calculate actual distance
+    const entities = crags.map((crag: CragPrismaData) => this.toEntity(crag))
+
+    // Sort by distance
+    entities.sort((a, b) => {
+      const distA = this.haversineDistance(latitude, longitude, a.latitude!, a.longitude!)
+      const distB = this.haversineDistance(latitude, longitude, b.latitude!, b.longitude!)
+      return distA - distB
+    })
+
+    // Filter by actual distance (bounding box may include corners outside radius)
+    const filtered = entities.filter((crag) => {
+      if (crag.latitude === null || crag.longitude === null) return false
+      const dist = this.haversineDistance(latitude, longitude, crag.latitude, crag.longitude)
+      return dist <= maxDistanceKm
+    })
+
+    return { crags: filtered, total }
+  }
+
+  /**
+   * Calculate distance between two points using Haversine formula
+   */
+  private haversineDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const R = 6371 // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
   async save(entity: CragEntity): Promise<CragEntity> {
     const data = this.toPrismaData(entity)
 

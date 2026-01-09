@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
+import { AreaId } from '@area/domain/value-objects/area-id.vo'
 import {
   AltNames,
   BetaInfo,
@@ -11,19 +12,44 @@ import {
   Seasonality,
   type BetaItemData,
 } from '@climb-zone/shared'
-import { SectorEntity, type SectorType } from '@sector/domain/entities/sector.entity'
+import type { RouteSearchInfo } from '@sector/domain/dtos/search-sectors.dto'
+import {
+  SectorEntity,
+  type SectorType,
+} from '@sector/domain/entities/sector.entity'
+import { ClimbingStyle } from '@sector/domain/value-objects/climbing-style.vo'
+import { Kudos } from '@sector/domain/value-objects/kudos.vo'
+import { Orientation } from '@sector/domain/value-objects/orientation.vo'
+import { PriceCategory } from '@sector/domain/value-objects/price-category.vo'
+import { RockType } from '@sector/domain/value-objects/rock-type.vo'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 import {
   SectorStats,
   type GradeDistribution,
 } from '@sector/domain/value-objects/sector-stats.vo'
-import { PriceCategory } from '@sector/domain/value-objects/price-category.vo'
-import { Kudos } from '@sector/domain/value-objects/kudos.vo'
-import { Orientation } from '@sector/domain/value-objects/orientation.vo'
-import { RockType } from '@sector/domain/value-objects/rock-type.vo'
-import { ClimbingStyle } from '@sector/domain/value-objects/climbing-style.vo'
 import { SunExposure } from '@sector/domain/value-objects/sun-exposure.vo'
-import { AreaId } from '@area/domain/value-objects/area-id.vo'
+
+export interface CragInfo {
+  id: string
+  name: string
+  altNames: string[]
+  latitude: number | null
+  longitude: number | null
+  description: string | null
+  approach: string | null
+  numberPhotos: number | null
+  numberTopos: number | null
+  hasTopo: boolean
+  totalFavorites: number | null
+  urlStub: string | null
+  priceCategory: string | null
+}
+
+export interface SectorWithRoutes {
+  entity: SectorEntity
+  routes: RouteSearchInfo[]
+  crag: CragInfo | null
+}
 
 interface SectorPrismaData {
   id: string
@@ -251,20 +277,20 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
     apiResponseRaw?: Record<string, unknown>,
   ): Promise<SectorEntity> {
     const data = this.toPrismaData(entity)
-    
+
     // Agregar apiResponseRaw si está disponible
     if (apiResponseRaw) {
-      (data as any).apiResponseRaw = apiResponseRaw
-      
+      ;(data as any).apiResponseRaw = apiResponseRaw
+
       // Extraer campos adicionales desde apiResponseRaw
       const raw = apiResponseRaw as any
-      
+
       // redirectStubs y tlc
       if (Array.isArray(raw.redirectStubs)) {
-        (data as any).redirectStubs = raw.redirectStubs
+        ;(data as any).redirectStubs = raw.redirectStubs
       }
       if (raw.tlc) {
-        (data as any).tlc = raw.tlc
+        ;(data as any).tlc = raw.tlc
       }
     }
 
@@ -320,23 +346,47 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
   /**
    * Advanced search for sectors with multiple filters
    * Used by the intelligent sector search feature
+   *
+   * Two-phase search:
+   * 1. Find nearby crags (which have coordinates)
+   * 2. Find sectors belonging to those crags with grade/other filters
    */
   async searchWithAdvancedFilters(
     filters: AdvancedSearchFilters,
-  ): Promise<SectorEntity[]> {
+  ): Promise<SectorWithRoutes[]> {
+    // PHASE 1: Find crags within geographic bounds
+    const nearbyCrags = await this.prisma.crag.findMany({
+      where: {
+        latitude: {
+          gte: filters.latitudeMin,
+          lte: filters.latitudeMax,
+        },
+        longitude: {
+          gte: filters.longitudeMin,
+          lte: filters.longitudeMax,
+        },
+      },
+      select: {
+        id: true,
+        latitude: true,
+        longitude: true,
+      },
+    })
+
+    // If no nearby crags, return empty
+    if (nearbyCrags.length === 0) {
+      return []
+    }
+
+    const cragIds = nearbyCrags.map((c) => c.id)
+
+    // PHASE 2: Find sectors from those crags with filters
     const where: Record<string, unknown> = {
       AND: [
-        // Geographic bounds
+        // Sectors belonging to nearby crags
         {
-          latitude: {
-            gte: filters.latitudeMin,
-            lte: filters.latitudeMax,
-          },
-        },
-        {
-          longitude: {
-            gte: filters.longitudeMin,
-            lte: filters.longitudeMax,
+          area: {
+            cragId: { in: cragIds },
           },
         },
         // Grade range overlap
@@ -384,12 +434,139 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
 
     const sectors = await this.prisma.sector.findMany({
       where,
+      include: {
+        area: {
+          include: {
+            crag: {
+              select: {
+                id: true,
+                name: true,
+                altNames: true,
+                latitude: true,
+                longitude: true,
+                geometry: true,
+                description: true,
+                approach: true,
+                numberPhotos: true,
+                numberTopos: true,
+                hasTopo: true,
+                totalFavorites: true,
+                urlStub: true,
+                priceCategory: true,
+              },
+            },
+          },
+        },
+        routes: {
+          select: {
+            id: true,
+            externalId: true,
+            name: true,
+            grade: true,
+            gradeIndex: true,
+            height: true,
+            pitches: true,
+            bolts: true,
+            stars: true,
+            quality: true,
+            ascents: true,
+            subType: true,
+            firstAscent: true,
+          },
+          orderBy: { gradeIndex: 'asc' },
+        },
+      },
       orderBy: { routeCount: 'desc' },
       take: filters.limit,
       skip: filters.offset,
     })
 
-    return sectors.map((s: SectorPrismaData) => this.toEntity(s))
+    // Map to entities with routes and crag info
+    return sectors.map((s: any) => {
+      const entity = this.toEntity(s)
+
+      // Map routes to RouteSearchInfo
+      const routes: RouteSearchInfo[] = (s.routes || []).map((r: any) => ({
+        id: r.id,
+        externalId: Number(r.externalId),
+        name: r.name,
+        grade: r.grade,
+        gradeIndex: r.gradeIndex,
+        height: r.height,
+        pitches: r.pitches,
+        bolts: r.bolts,
+        stars: r.stars,
+        quality: r.quality,
+        ascents: r.ascents,
+        subType: r.subType,
+        firstAscent: r.firstAscent,
+      }))
+
+      // Extract crag info
+      let cragInfo: CragInfo | null = null
+      if (s.area?.crag) {
+        const crag = s.area.crag
+        cragInfo = {
+          id: crag.id,
+          name: crag.name,
+          altNames: crag.altNames || [],
+          latitude: crag.latitude,
+          longitude: crag.longitude,
+          description: crag.description,
+          approach: crag.approach,
+          numberPhotos: crag.numberPhotos,
+          numberTopos: crag.numberTopos,
+          hasTopo: crag.hasTopo,
+          totalFavorites: crag.totalFavorites,
+          urlStub: crag.urlStub,
+          priceCategory: crag.priceCategory,
+        }
+
+        // If sector doesn't have coordinates, use crag's coordinates
+        if (!entity.latitude && crag.latitude) {
+          const updatedEntity = new SectorEntity(
+            entity.id,
+            entity.externalId,
+            entity.areaId,
+            entity.name,
+            entity.altNames,
+            entity.type,
+            crag.geometry
+              ? Geometry.fromJSON(crag.geometry as any)
+              : entity.geometry,
+            entity.locatedness,
+            entity.orientation,
+            entity.rockType,
+            entity.climbingStyle,
+            entity.sunExposure,
+            entity.sheltered,
+            entity.seasonality,
+            entity.beta,
+            entity.stats,
+            entity.numberPhotos,
+            entity.numberTopos,
+            entity.totalFavorites,
+            entity.isTLC,
+            entity.ascentCount,
+            entity.maxPop,
+            entity.priceCategory,
+            entity.hasTopo,
+            entity.kudos,
+            entity.permitNode,
+            entity.siblingLabel,
+            entity.tagsRaw,
+            entity.urlStub,
+            entity.urlAncestorStub,
+            entity.lastPDFSize,
+            entity.lastPDFStaticDate,
+            entity.createdAt,
+            entity.updatedAt,
+          )
+          return { entity: updatedEntity, routes, crag: cragInfo }
+        }
+      }
+      return { entity, routes, crag: cragInfo }
+    })
   }
 
   private toEntity(data: SectorPrismaData): SectorEntity {
@@ -438,6 +615,52 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       data.createdAt,
       data.updatedAt,
     )
+  }
+
+  /**
+   * Get total sector count for multiple crags
+   */
+  async getSectorCountsByCragIds(
+    cragIds: string[],
+  ): Promise<Map<string, number>> {
+    const counts = await this.prisma.sector.groupBy({
+      by: ['areaId'],
+      where: {
+        area: {
+          cragId: { in: cragIds },
+        },
+      },
+      _count: {
+        id: true,
+      },
+    })
+
+    // Get area to crag mapping
+    const areas = await this.prisma.area.findMany({
+      where: {
+        cragId: { in: cragIds },
+      },
+      select: {
+        id: true,
+        cragId: true,
+      },
+    })
+
+    const areaToCrag = new Map<string, string>()
+    for (const area of areas) {
+      areaToCrag.set(area.id, area.cragId)
+    }
+
+    // Aggregate counts by crag
+    const cragCounts = new Map<string, number>()
+    for (const count of counts) {
+      const cragId = areaToCrag.get(count.areaId)
+      if (cragId) {
+        cragCounts.set(cragId, (cragCounts.get(cragId) || 0) + count._count.id)
+      }
+    }
+
+    return cragCounts
   }
 
   private toPrismaData(entity: SectorEntity) {

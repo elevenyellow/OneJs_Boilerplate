@@ -13,6 +13,12 @@ export { CragCreatedEvent, CragUpdatedEvent } from './domain/events/crag-created
 // Application
 export { GetCragUseCase } from './application/use-cases/get-crag.use-case'
 export { CreateCragUseCase } from './application/use-cases/create-crag.use-case'
+export {
+  GetCragDetailUseCase,
+  type CragDetailResponse,
+  type SectorSummary,
+  type RouteHighlight,
+} from './application/use-cases/get-crag-detail.use-case'
 
 // Infrastructure
 export { CragPrismaRepository } from './infrastructure/persistence/prisma/crag.repository'

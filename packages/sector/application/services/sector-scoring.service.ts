@@ -1,7 +1,7 @@
 import { Injectable } from '@OneJs/core'
 import { Coordinates, Grade } from '@climb-zone/shared'
-import type { SectorEntity } from '@sector/domain/entities/sector.entity'
 import type { SearchSectorResult } from '@sector/domain/dtos/search-sectors.dto'
+import type { SectorEntity } from '@sector/domain/entities/sector.entity'
 
 export type SeasonType = 'summer' | 'winter' | 'spring' | 'autumn'
 export type OrientationPreference = 'sun' | 'shade' | 'any'
@@ -10,7 +10,6 @@ interface ScoringContext {
   userLocation: Coordinates
   minGradeIndex: number
   maxGradeIndex: number
-  currentMonth: number
   orientationPreference: OrientationPreference
 }
 
@@ -50,7 +49,6 @@ export class SectorScoringService {
     const distanceScore = this.calculateDistanceScore(distance)
     const orientationScore = this.calculateOrientationScore(
       sector,
-      context.currentMonth,
       context.orientationPreference,
     )
     const popularityScore = this.calculatePopularityScore(sector)
@@ -123,44 +121,47 @@ export class SectorScoringService {
   }
 
   /**
-   * Orientation/Seasonality score (0-15 points)
-   * Matches sector orientation with current season
+   * Orientation score (0-15 points)
+   * Matches sector orientation with preferred orientation (based on weather)
    */
   private calculateOrientationScore(
     sector: SectorEntity,
-    month: number,
     preferredOrientation: OrientationPreference,
   ): number {
-    const season = this.getSeason(month)
-    let score = 0
+    const orientationStr = sector.orientation?.toString() ?? ''
+    const hasOrientationData = orientationStr.length > 0
 
-    // Check seasonality score for current month
-    if (sector.seasonality.isGoodMonth(month)) {
-      score += 5
+    // No preference or no data: neutral score
+    if (preferredOrientation === 'any') {
+      return 7
     }
 
-    // Check orientation match
-    if (preferredOrientation === 'any') {
-      score += 5 // neutral score when no preference
-    } else {
-      const orientationStr = sector.orientation?.toString() ?? ''
+    // No orientation data available: neutral score (don't penalize)
+    if (!hasOrientationData) {
+      return 7
+    }
 
-      if (preferredOrientation === 'shade') {
-        // Summer: prefer north-facing sectors
-        if (['N', 'NE', 'NW'].some((o) => orientationStr.includes(o))) {
-          score += 10
-        }
-        if (sector.sunExposure?.isShaded()) {
-          score += 5
-        }
-      } else if (preferredOrientation === 'sun') {
-        // Winter: prefer south-facing sectors
-        if (['S', 'SE', 'SW'].some((o) => orientationStr.includes(o))) {
-          score += 10
-        }
-        if (sector.sunExposure?.toString() === 'Sun') {
-          score += 5
-        }
+    let score = 0
+
+    if (preferredOrientation === 'shade') {
+      // Hot weather: prefer north-facing sectors
+      if (['N', 'NE', 'NW'].some((o) => orientationStr.includes(o))) {
+        score += 10
+      } else if (['E', 'W'].some((o) => orientationStr.includes(o))) {
+        score += 5 // partial shade
+      }
+      if (sector.sunExposure?.isShaded()) {
+        score += 5
+      }
+    } else if (preferredOrientation === 'sun') {
+      // Cold weather: prefer south-facing sectors
+      if (['S', 'SE', 'SW'].some((o) => orientationStr.includes(o))) {
+        score += 10
+      } else if (['E', 'W'].some((o) => orientationStr.includes(o))) {
+        score += 5 // partial sun
+      }
+      if (sector.sunExposure?.toString() === 'Sun') {
+        score += 5
       }
     }
 
@@ -255,51 +256,45 @@ export class SectorScoringService {
 
     // Distance
     if (distance <= 20) {
-      reasons.push(`Muy cerca (${Math.round(distance)}km)`)
+      reasons.push(`Very close (${Math.round(distance)}km)`)
     } else if (distance <= 50) {
-      reasons.push(`A ${Math.round(distance)}km de distancia`)
+      reasons.push(`${Math.round(distance)}km away`)
     }
 
     // Routes in range
     if (routesInRange > 0) {
-      reasons.push(`${routesInRange} rutas en tu rango de grado`)
+      reasons.push(`${routesInRange} routes in your grade range`)
     }
 
     // Orientation
-    const season = this.getSeason(context.currentMonth)
     if (context.orientationPreference === 'shade') {
       const orientationStr = sector.orientation?.toString() ?? ''
       if (['N', 'NE', 'NW'].some((o) => orientationStr.includes(o))) {
-        reasons.push(`Buena orientación para ${season} (sombra)`)
+        reasons.push('Good orientation (shade)')
       }
     } else if (context.orientationPreference === 'sun') {
       const orientationStr = sector.orientation?.toString() ?? ''
       if (['S', 'SE', 'SW'].some((o) => orientationStr.includes(o))) {
-        reasons.push(`Buena orientación para ${season} (sol)`)
+        reasons.push('Good orientation (sun)')
       }
-    }
-
-    // Seasonality
-    if (sector.seasonality.isGoodMonth(context.currentMonth)) {
-      reasons.push('Buena época del año')
     }
 
     // Popularity
     if ((sector.totalFavorites ?? 0) >= 50) {
-      reasons.push(`Popular (${sector.totalFavorites} favoritos)`)
+      reasons.push(`Popular (${sector.totalFavorites} favorites)`)
     }
 
     // Quality
     if (sector.isTLC) {
-      reasons.push('Zona destacada (TLC)')
+      reasons.push('Featured area (TLC)')
     }
     if (sector.hasTopos() && sector.hasPhotos()) {
-      reasons.push('Buena documentación (fotos y croquis)')
+      reasons.push('Well documented (photos and topos)')
     }
 
     // Route count
     if (sector.stats.routeCount >= 50) {
-      reasons.push(`Muchas rutas (${sector.stats.routeCount})`)
+      reasons.push(`Many routes (${sector.stats.routeCount})`)
     }
 
     return reasons

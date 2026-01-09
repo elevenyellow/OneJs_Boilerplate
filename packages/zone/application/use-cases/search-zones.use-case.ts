@@ -31,7 +31,15 @@ export class SearchZonesUseCase {
     const radiusKm = nearbyDto.radiusKm ?? 50
     const limit = nearbyDto.limit ?? 20
 
+    console.log('[SearchZonesUseCase] findNearby:', { 
+      lat: nearbyDto.latitude, 
+      lon: nearbyDto.longitude, 
+      radiusKm, 
+      limit 
+    })
+
     const allZones = await this.zoneRepository.findAll()
+    console.log('[SearchZonesUseCase] Total zones in DB:', allZones.length)
 
     // Filter zones within radius and calculate distance
     const nearbyZones = allZones
@@ -42,6 +50,8 @@ export class SearchZonesUseCase {
       .filter(({ distance }) => distance <= radiusKm)
       .sort((a, b) => a.distance - b.distance)
       .slice(0, limit)
+
+    console.log('[SearchZonesUseCase] Zones within radius:', nearbyZones.length)
 
     return nearbyZones.map(({ zone, distance }) => ({
       id: zone.id.toString(),

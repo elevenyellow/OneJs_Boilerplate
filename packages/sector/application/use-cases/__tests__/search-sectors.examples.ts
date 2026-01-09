@@ -12,35 +12,35 @@ import type { SearchSectorsDto } from '@sector/domain/dtos/search-sectors.dto'
 describe('Sector Search API - Manual Tests', () => {
   const API_URL = 'http://localhost:4000/api/sectors/search'
 
-  describe('Summer searches', () => {
-    it('should find shaded sectors near Valencia in summer', async () => {
+  describe('Hot weather searches', () => {
+    it('should find shaded sectors near Valencia in hot weather', async () => {
       const request: SearchSectorsDto = {
         userLocation: { lat: 39.5, lon: -0.5 },
         gradeRange: { min: '6b', max: '7a' },
         maxDistance: 80,
-        currentMonth: 7, // July
+        forceOrientation: 'shade',
         minRoutes: 10,
         limit: 5,
       }
 
-      console.log('Test 1: Summer search')
+      console.log('Test 1: Hot weather search')
       console.log('Expected: Sectors with N, NE, NW orientation')
       console.log('Request:', JSON.stringify(request, null, 2))
     })
   })
 
-  describe('Winter searches', () => {
-    it('should find sunny sectors near Valencia in winter', async () => {
+  describe('Cold weather searches', () => {
+    it('should find sunny sectors near Valencia in cold weather', async () => {
       const request: SearchSectorsDto = {
         userLocation: { lat: 39.5, lon: -0.5 },
         gradeRange: { min: '6a', max: '6c' },
         maxDistance: 80,
-        currentMonth: 1, // January
+        forceOrientation: 'sun',
         minRoutes: 15,
         limit: 5,
       }
 
-      console.log('Test 2: Winter search')
+      console.log('Test 2: Cold weather search')
       console.log('Expected: Sectors with S, SE, SW orientation')
       console.log('Request:', JSON.stringify(request, null, 2))
     })
@@ -133,7 +133,6 @@ MANUAL TEST INSTRUCTIONS
        "userLocation": { "lat": 39.5, "lon": -0.5 },
        "gradeRange": { "min": "6b", "max": "7a" },
        "maxDistance": 80,
-       "currentMonth": 7,
        "limit": 5
      }'
 
@@ -141,7 +140,7 @@ Expected response fields:
 - results: Array of sectors with scoring
 - total: Total number of results
 - filters: Applied filters
-- metadata: Search info (time, season, orientation)
+- metadata: Search info (time, orientation, weather)
 
 Each result includes:
 - sector: Full sector data

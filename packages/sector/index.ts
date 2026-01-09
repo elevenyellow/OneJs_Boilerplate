@@ -16,24 +16,43 @@ export {
 export { SunExposure } from './domain/value-objects/sun-exposure.vo'
 
 // Domain - DTOs
+// DEPRECATED: Crag-based search - Use sector search instead
+// Reason: Each sector has unique orientation/microclimate, even within same crag
+export type {
+  CragSectorResult,
+  SearchCragResult,
+  SearchCragsDto,
+  SearchCragsResponse,
+} from './domain/dtos/search-crags.dto'
+
 export type {
   AdvancedSearchFilters,
+  CragInfo,
+  CragWithSectors,
+  RouteSearchInfo,
   SearchSectorResult,
   SearchSectorsDto,
   SearchSectorsResponse,
 } from './domain/dtos/search-sectors.dto'
 
 // Application
+export { ClimbingConditionsService } from './application/services/climbing-conditions.service'
 export { SectorScoringService } from './application/services/sector-scoring.service'
 export {
   SectorStatsService,
   type RouteData,
 } from './application/services/sector-stats.service'
 export { GetSectorsUseCase } from './application/use-cases/get-sectors.use-case'
+
+// DEPRECATED: Use SearchSectorsUseCase instead
+// Reason: Each sector has unique orientation/microclimate
+export { SearchCragsUseCase } from './application/use-cases/search-crags.use-case'
+
 export { SearchSectorsUseCase } from './application/use-cases/search-sectors.use-case'
 
 // Infrastructure
 export {
   SectorPrismaRepository,
   type SectorFilter,
+  type SectorWithRoutes,
 } from './infrastructure/persistence/prisma/sector.repository'
