@@ -1,0 +1,48 @@
+🚀 Iniciando OneJs (una sola vez)...
+
+🚀 Starting OneJs...
+
+[12:01:53.510] WARN: [90m[[0m[33mWARN[0m[90m][0m [36moneJs:plugin[0m [37mPlugin "prisma-plugin" is already registered. Skipping.[0m
+[12:01:53.514] WARN: [90m[[0m[33mWARN[0m[90m][0m [36moneJs:plugin[0m [37mPlugin "bootstrap-loader" is already registered. Skipping.[0m
+🚀 Starting OneJs...
+
+[12:01:53.522] WARN: [90m[[0m[33mWARN[0m[90m][0m [36moneJs:plugin[0m [37mPlugin "prisma-plugin" is already registered. Skipping.[0m
+[12:01:53.522] WARN: [90m[[0m[33mWARN[0m[90m][0m [36moneJs:plugin[0m [37mPlugin "bootstrap-loader" is already registered. Skipping.[0m
+🚀 Starting OneJs...
+
+[12:01:53.525] WARN: [90m[[0m[33mWARN[0m[90m][0m [36moneJs:plugin[0m [37mPlugin "prisma-plugin" is already registered. Skipping.[0m
+[12:01:53.525] WARN: [90m[[0m[33mWARN[0m[90m][0m [36moneJs:plugin[0m [37mPlugin "bootstrap-loader" is already registered. Skipping.[0m
+⚠️ Failed to import /home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts: ResolveMessage: Cannot find module '@packages/weather-api' from '/home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts'
+⚠️ Failed to import /home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts: ResolveMessage: Cannot find module '@packages/weather-api' from '/home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts'
+⚠️ Failed to import /home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts: ResolveMessage: Cannot find module '@packages/weather-api' from '/home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts'
+⚠️ Failed to import /home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts: ResolveMessage: Cannot find module '@packages/weather-api' from '/home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts'
+[12:01:53.661] INFO: [90m[[0m[32mINFO[0m[90m][0m [36mOneJs:config[0m [37mAll .env files from root loaded successfully.[0m
+🌍 Step 1: Getting continents from World...
+
+✅ OneJs iniciado correctamente
+
+================================================================================
+🎯 Ejecutando comando: test-valencia
+================================================================================
+
+🌍 Step 1: Navigating World → Europe → Spain...
+
+🌍 Finding Valencia region...
+
+🌍 Navegando a Valencia...
+
+✅ Found Europe (ID: 11737771)
+✅ Found Europe (ID: 11737771)
+✅ Found 10 continents (filtered out Virtual, test area)
+
+📦 Processing 10 continent(s)...
+
+================================================================================
+[1/10] 🌍 Europe (ID: 11737771)
+================================================================================
+✅ Found Europe (ID: 11737771)
+💾 Continent saved: Europe
+
+✅ Found Spain (ID: 11747395)
+⚠️  Spain not in database, it needs to be seeded first
+   Run: bun run scripts/seed-countries.ts

@@ -6,6 +6,10 @@ export { SectorId } from './domain/value-objects/sector-id.vo'
 export { SectorStats, type SectorStatsData, type GradeDistribution } from './domain/value-objects/sector-stats.vo'
 export { PriceCategory } from './domain/value-objects/price-category.vo'
 export { Kudos } from './domain/value-objects/kudos.vo'
+export { Orientation } from './domain/value-objects/orientation.vo'
+export { RockType } from './domain/value-objects/rock-type.vo'
+export { ClimbingStyle } from './domain/value-objects/climbing-style.vo'
+export { SunExposure } from './domain/value-objects/sun-exposure.vo'
 
 // Application
 export { GetSectorsUseCase } from './application/use-cases/get-sectors.use-case'

@@ -1,0 +1,521 @@
+🚀 Iniciando OneJs (una sola vez)...
+
+⚠️ Failed to import /home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts: ResolveMessage: Cannot find module '@packages/weather-api' from '/home/carlos/Desktop/Projects/climb-zone/packages/weather-api/EXAMPLES.ts'
+[12:02:23.482] INFO: [90m[[0m[32mINFO[0m[90m][0m [36mOneJs:config[0m [37mAll .env files from root loaded successfully.[0m
+✅ OneJs iniciado correctamente
+
+================================================================================
+🎯 Ejecutando comando: test-valencia
+================================================================================
+
+🌍 Navegando a Valencia...
+
+✅ Found Europe (ID: 11737771)
+✅ Found Spain (ID: 11747395)
+⚠️  Spain not in database, creating it now...
+   ✅ Spain created in DB
+✅ Spain in DB (ID: 85f0d071-2fdc-4789-bd7c-5ce0fee6303a)
+
+🔍 Looking for "Comunidad Valenciana"...
+
+✅ Found Comunidad Valenciana (ID: 1846162401)
+
+📦 Starting Valencia scraping...
+
+💾 Region saved: Comunidad Valenciana
+📊 New fields detected:
+   - altNames: 2 names
+   - locatedness: 4098
+   - numberPhotos: 1275
+   - numberTopos: 1531
+   - totalFavorites: 2329
+   - orientation: N/A
+   - rockType: N/A
+
+   ⛰️  Crag: Alcora
+      📍 Sector: 35 routes
+   ⛰️  Crag: Altura
+      📍 Sector: 17 routes
+      📍 Sector: 14 routes
+      📍 Sector: 9 routes
+      📍 Sector: 5 routes
+      📍 Sector: 8 routes
+      📍 Sector: 7 routes
+      📍 Sector: 3 routes
+      📍 Sector: 8 routes
+      📍 Sector: 2 routes
+   ⛰️  Crag: Araya
+      📍 Sector: 61 routes
+   ⛰️  Crag: Argelita
+      📍 Sector: 2 routes
+   ⛰️  Crag: La Masia
+      📍 Sector: 15 routes
+   ⛰️  Crag: El Mirador
+      📍 Sector: 11 routes
+   ⛰️  Crag: Atzeneta del Maestrat
+      📍 Sector: 17 routes
+      📍 Sector: 21 routes
+      📍 Sector: 28 routes
+      📍 Sector: 12 routes
+   ⛰️  Crag: Ayódar
+      📍 Sector: 28 routes
+      📍 Sector: 13 routes
+      📍 Sector: 4 routes
+      📍 Sector: 3 routes
+      📍 Sector: 4 routes
+      📍 Sector: 19 routes
+      📍 Sector: 6 routes
+   ⛰️  Crag: Barranco de Pajares - Ares
+      📍 Sector: 16 routes
+   ⛰️  Crag: Betxi
+      📍 Sector: 12 routes
+      📍 Sector: 8 routes
+      📍 Sector: 19 routes
+   ⛰️  Crag: La Botalària
+      📍 Sector: 6 routes
+      📍 Sector: 3 routes
+      📍 Sector: 5 routes
+      📍 Sector: 5 routes
+      📍 Sector: 32 routes
+      📍 Sector: 9 routes
+      📍 Sector: 5 routes
+   ⛰️  Crag: Borriol
+      📍 Sector: 17 routes
+      📍 Sector: 29 routes
+      📍 Sector: 16 routes
+   ⛰️  Crag: La Cantera
+      📍 Sector: 16 routes
+   ⛰️  Crag: El Castellet
+      📍 Sector: 76 routes
+      📍 Sector: 30 routes
+      📍 Sector: 28 routes
+   ⛰️  Crag: Cervera del Maestre
+      📍 Sector: 17 routes
+      📍 Sector: 3 routes
+      📍 Sector: 23 routes
+      📍 Sector: 11 routes
+      📍 Sector: 19 routes
+   ⛰️  Crag: Les Costes
+      📍 Sector: 1 routes
+      📍 Sector: 1 routes
+   ⛰️  Crag: Illuminati
+      📍 Sector: 1 routes
+   ⛰️  Crag: Bloque 1+2
+      📍 Sector: 3 routes
+   ⛰️  Crag: Bloque 3
+      📍 Sector: 13 routes
+   ⛰️  Crag: Bloque 5
+      📍 Sector: 10 routes
+   ⛰️  Crag: Cucala
+      📍 Sector: 9 routes
+      📍 Sector: 30 routes
+      📍 Sector: 23 routes
+      📍 Sector: 32 routes
+   ⛰️  Crag: Culla
+      📍 Sector: 1 routes
+   ⛰️  Crag: La Devesa
+      📍 Sector: 25 routes
+      📍 Sector: 16 routes
+      📍 Sector: 40 routes
+   ⛰️  Crag: La Dragonera
+      📍 Sector: 12 routes
+   ⛰️  Crag: Figueroles
+      📍 Sector: 80 routes
+   ⛰️  Crag: La Grellera
+      📍 Sector: 23 routes
+      📍 Sector: 22 routes
+      📍 Sector: 13 routes
+      📍 Sector: 10 routes
+      📍 Sector: 15 routes
+      📍 Sector: 29 routes
+      📍 Sector: 16 routes
+      📍 Sector: 10 routes
+   ⛰️  Crag: Jérica
+      📍 Sector: 18 routes
+      📍 Sector: 12 routes
+      📍 Sector: 24 routes
+      📍 Sector: 28 routes
+      📍 Sector: 11 routes
+      📍 Sector: 29 routes
+      📍 Sector: 7 routes
+      📍 Sector: 11 routes
+      📍 Sector: 57 routes
+      📍 Sector: 30 routes
+      📍 Sector: 8 routes
+      📍 Sector: 6 routes
+      📍 Sector: 5 routes
+      📍 Sector: 2 routes
+      📍 Sector: 1 routes
+      📍 Sector: 2 routes
+      📍 Sector: 7 routes
+      📍 Sector: 7 routes
+      📍 Sector: 3 routes
+      📍 Sector: 15 routes
+      📍 Sector: 4 routes
+   ⛰️  Crag: Lucena del Cid
+      📍 Sector: 34 routes
+   ⛰️  Crag: Mas de Domingo
+      📍 Sector: 56 routes
+      📍 Sector: 9 routes
+   ⛰️  Crag: El Mollet
+      📍 Sector: 1 routes
+   ⛰️  Crag: Montanejos
+      📍 Sector: 9 routes
+      📍 Sector: 5 routes
+      📍 Sector: 4 routes
+      📍 Sector: 11 routes
+      📍 Sector: 10 routes
+      📍 Sector: 7 routes
+      📍 Sector: 2 routes
+      📍 Sector: 8 routes
+      📍 Sector: 3 routes
+      📍 Sector: 6 routes
+      📍 Sector: 4 routes
+      📍 Sector: 2 routes
+      📍 Sector: 2 routes
+      📍 Sector: 3 routes
+      📍 Sector: 18 routes
+      📍 Sector: 8 routes
+      📍 Sector: 3 routes
+      📍 Sector: 12 routes
+      📍 Sector: 2 routes
+      📍 Sector: 5 routes
+      📍 Sector: 2 routes
+      📍 Sector: 24 routes
+      📍 Sector: 13 routes
+      📍 Sector: 24 routes
+      📍 Sector: 18 routes
+      📍 Sector: 13 routes
+      📍 Sector: 30 routes
+      📍 Sector: 18 routes
+      📍 Sector: 84 routes
+      📍 Sector: 5 routes
+      📍 Sector: 13 routes
+      📍 Sector: 11 routes
+      📍 Sector: 4 routes
+      📍 Sector: 24 routes
+      📍 Sector: 26 routes
+      📍 Sector: 26 routes
+      📍 Sector: 24 routes
+      📍 Sector: 2 routes
+      📍 Sector: 14 routes
+      📍 Sector: 2 routes
+      📍 Sector: 3 routes
+      📍 Sector: 8 routes
+      📍 Sector: 8 routes
+      📍 Sector: 19 routes
+      📍 Sector: 15 routes
+      📍 Sector: 9 routes
+      📍 Sector: 5 routes
+      📍 Sector: 32 routes
+      📍 Sector: 33 routes
+      📍 Sector: 7 routes
+      📍 Sector: 13 routes
+      📍 Sector: 33 routes
+      📍 Sector: 26 routes
+      📍 Sector: 7 routes
+      📍 Sector: 17 routes
+      📍 Sector: 18 routes
+      📍 Sector: 12 routes
+      📍 Sector: 13 routes
+      📍 Sector: 9 routes
+      📍 Sector: 6 routes
+      📍 Sector: 5 routes
+      📍 Sector: 6 routes
+      📍 Sector: 5 routes
+      📍 Sector: 2 routes
+      📍 Sector: 5 routes
+      📍 Sector: 1 routes
+      📍 Sector: 1 routes
+      📍 Sector: 4 routes
+      📍 Sector: 3 routes
+      📍 Sector: 38 routes
+      📍 Sector: 8 routes
+      📍 Sector: 1 routes
+      📍 Sector: 8 routes
+      📍 Sector: 9 routes
+      📍 Sector: 4 routes
+      📍 Sector: 6 routes
+      📍 Sector: 3 routes
+      📍 Sector: 7 routes
+      📍 Sector: 2 routes
+      📍 Sector: 9 routes
+      📍 Sector: 6 routes
+      📍 Sector: 1 routes
+      📍 Sector: 5 routes
+      📍 Sector: 13 routes
+      📍 Sector: 5 routes
+      📍 Sector: 2 routes
+      📍 Sector: 3 routes
+      📍 Sector: 13 routes
+      📍 Sector: 31 routes
+      📍 Sector: 5 routes
+      📍 Sector: 5 routes
+      📍 Sector: 9 routes
+      📍 Sector: 11 routes
+      📍 Sector: 6 routes
+      📍 Sector: 4 routes
+      📍 Sector: 3 routes
+      📍 Sector: 9 routes
+      📍 Sector: 1 routes
+      📍 Sector: 58 routes
+      📍 Sector: 38 routes
+      📍 Sector: 20 routes
+      📍 Sector: 22 routes
+      📍 Sector: 1 routes
+      📍 Sector: 23 routes
+      📍 Sector: 8 routes
+      📍 Sector: 24 routes
+      📍 Sector: 14 routes
+      📍 Sector: 30 routes
+      📍 Sector: 9 routes
+      📍 Sector: 7 routes
+      📍 Sector: 15 routes
+      📍 Sector: 2 routes
+      📍 Sector: 24 routes
+      📍 Sector: 11 routes
+      📍 Sector: 5 routes
+      📍 Sector: 25 routes
+      📍 Sector: 9 routes
+      📍 Sector: 6 routes
+      📍 Sector: 8 routes
+      📍 Sector: 3 routes
+      📍 Sector: 3 routes
+      📍 Sector: 9 routes
+      📍 Sector: 5 routes
+      📍 Sector: 9 routes
+      📍 Sector: 1 routes
+      📍 Sector: 1 routes
+      📍 Sector: 12 routes
+      📍 Sector: 12 routes
+      📍 Sector: 6 routes
+      📍 Sector: 2 routes
+      📍 Sector: 3 routes
+      📍 Sector: 1 routes
+      📍 Sector: 6 routes
+      📍 Sector: 9 routes
+      📍 Sector: 8 routes
+      📍 Sector: 13 routes
+      📍 Sector: 1 routes
+      📍 Sector: 2 routes
+      📍 Sector: 3 routes
+      📍 Sector: 9 routes
+      📍 Sector: 2 routes
+      📍 Sector: 6 routes
+      📍 Sector: 10 routes
+      📍 Sector: 18 routes
+      📍 Sector: 30 routes
+      📍 Sector: 5 routes
+      📍 Sector: 1 routes
+      📍 Sector: 5 routes
+      📍 Sector: 12 routes
+      📍 Sector: 8 routes
+      📍 Sector: 1 routes
+      📍 Sector: 23 routes
+      📍 Sector: 7 routes
+      📍 Sector: 18 routes
+   ⛰️  Crag: Monzona
+   ⛰️  Crag: Murs
+      📍 Sector: 20 routes
+      📍 Sector: 19 routes
+      📍 Sector: 22 routes
+      📍 Sector: 24 routes
+      📍 Sector: 11 routes
+   ⛰️  Crag: Merendero
+      📍 Sector: 11 routes
+   ⛰️  Crag: Escondite
+      📍 Sector: 7 routes
+   ⛰️  Crag: Escaleras
+      📍 Sector: 2 routes
+   ⛰️  Crag: Bloque 6, 7, 8
+      📍 Sector: 7 routes
+   ⛰️  Crag: Bloque 9
+      📍 Sector: 8 routes
+   ⛰️  Crag: El Rocódromo
+      📍 Sector: 1 routes
+   ⛰️  Crag: Oropesa del Mar
+      📍 Sector: 38 routes
+      📍 Sector: 11 routes
+      📍 Sector: 15 routes
+   ⛰️  Crag: La Pedrera, Benicarló
+      📍 Sector: 13 routes
+   ⛰️  Crag: Peñagolosa
+      📍 Sector: 30 routes
+   ⛰️  Crag: Peñas Altas Torrechiva
+      📍 Sector: 130 routes
+   ⛰️  Crag: Peñíscola
+      📍 Sector: 4 routes
+      📍 Sector: 5 routes
+      📍 Sector: 16 routes
+      📍 Sector: 9 routes
+   ⛰️  Crag: La Rambla
+      📍 Sector: 13 routes
+   ⛰️  Crag: España sin impuestos
+      📍 Sector: 6 routes
+   ⛰️  Crag: Ribesalbes
+      📍 Sector: 10 routes
+      📍 Sector: 12 routes
+      📍 Sector: 7 routes
+      📍 Sector: 6 routes
+      📍 Sector: 2 routes
+   ⛰️  Crag: Roqueta del Migdia
+      📍 Sector: 12 routes
+   ⛰️  Crag: Bloque 1
+      📍 Sector: 13 routes
+   ⛰️  Crag: Bloque 2
+      📍 Sector: 1 routes
+   ⛰️  Crag: Bloque 3
+      📍 Sector: 4 routes
+   ⛰️  Crag: Bloque 4
+      📍 Sector: 12 routes
+   ⛰️  Crag: Bloque 5
+      📍 Sector: 1 routes
+   ⛰️  Crag: Bloque 6
+      📍 Sector: 4 routes
+   ⛰️  Crag: Bloque 7
+      📍 Sector: 6 routes
+   ⛰️  Crag: Bloque 8
+      📍 Sector: 14 routes
+   ⛰️  Crag: Bloque 9
+      📍 Sector: 4 routes
+   ⛰️  Crag: Bloque 10
+      📍 Sector: 5 routes
+   ⛰️  Crag: Bloque 11
+      📍 Sector: 1 routes
+   ⛰️  Crag: La Sarratella
+      📍 Sector: 54 routes
+      📍 Sector: 37 routes
+   ⛰️  Crag: Serra d'en Galceran
+      📍 Sector: 76 routes
+      📍 Sector: 1 routes
+   ⛰️  Crag: Tales
+      📍 Sector: 12 routes
+   ⛰️  Crag: Teresa
+      📍 Sector: 24 routes
+      📍 Sector: 6 routes
+   ⛰️  Crag: Torre Endoménech
+   ⛰️  Crag: Torreblanca
+      📍 Sector: 21 routes
+   ⛰️  Crag: Vallat
+      📍 Sector: 12 routes
+      📍 Sector: 15 routes
+      📍 Sector: 18 routes
+      📍 Sector: 15 routes
+      📍 Sector: 8 routes
+   ⛰️  Crag: Montaditos
+      📍 Sector: 1 routes
+   ⛰️  Crag: Radioactivoman
+      📍 Sector: 1 routes
+   ⛰️  Crag: Arena de playa
+      📍 Sector: 10 routes
+   ⛰️  Crag: Travesía ojos rojos
+      📍 Sector: 5 routes
+   ⛰️  Crag: Lanzapalera
+      📍 Sector: 5 routes
+   ⛰️  Crag: Javi's dyno
+      📍 Sector: 9 routes
+   ⛰️  Crag: Entre Perdigones
+      📍 Sector: 1 routes
+   ⛰️  Crag: Playgirl
+      📍 Sector: 2 routes
+   ⛰️  Crag: Queen of the night
+      📍 Sector: 1 routes
+   ⛰️  Crag: Xo2
+      📍 Sector: 8 routes
+   ⛰️  Crag: Espolón
+      📍 Sector: 3 routes
+   ⛰️  Crag: Gargamel
+      📍 Sector: 7 routes
+   ⛰️  Crag: Gargamel 2
+      📍 Sector: 2 routes
+   ⛰️  Crag: Meteorito
+      📍 Sector: 3 routes
+   ⛰️  Crag: Morro
+      📍 Sector: 9 routes
+   ⛰️  Crag: Romos
+      📍 Sector: 1 routes
+   ⛰️  Crag: Sol naciente
+      📍 Sector: 2 routes
+   ⛰️  Crag: Casa de los picapiedra
+      📍 Sector: 2 routes
+   ⛰️  Crag: Pepinodromo
+      📍 Sector: 2 routes
+   ⛰️  Crag: Dancing in the hell
+      📍 Sector: 3 routes
+   ⛰️  Crag: Paparazzi
+      📍 Sector: 2 routes
+   ⛰️  Crag: Goan corner
+      📍 Sector: 3 routes
+   ⛰️  Crag: Corona de espinas
+      📍 Sector: 2 routes
+   ⛰️  Crag: Salvame del plus
+      📍 Sector: 2 routes
+   ⛰️  Crag: Bailarina
+      📍 Sector: 2 routes
+   ⛰️  Crag: Fundación
+      📍 Sector: 9 routes
+   ⛰️  Crag: Villabloc
+      📍 Sector: 3 routes
+   ⛰️  Crag: Sr. Bloque
+      📍 Sector: 14 routes
+   ⛰️  Crag: El Cubo
+      📍 Sector: 10 routes
+   ⛰️  Crag: Fisuras
+      📍 Sector: 1 routes
+   ⛰️  Crag: Vilafranca
+      📍 Sector: 47 routes
+   ⛰️  Crag: Vilavella
+      📍 Sector: 1 routes
+   ⛰️  Crag: Villahermosa del Río
+      📍 Sector: 1 routes
+   ⛰️  Crag: Xert
+      📍 Sector: 18 routes
+      📍 Sector: 26 routes
+      📍 Sector: 12 routes
+      📍 Sector: 32 routes
+   ⛰️  Crag: Alcublas
+      📍 Sector: 10 routes
+      📍 Sector: 18 routes
+      📍 Sector: 4 routes
+      📍 Sector: 7 routes
+      📍 Sector: 8 routes
+      📍 Sector: 7 routes
+      📍 Sector: 6 routes
+      📍 Sector: 10 routes
+   ⛰️  Crag: Algímia d'Alfara
+      📍 Sector: 23 routes
+   ⛰️  Crag: Cova del Sol
+      📍 Sector: 87 routes
+   ⛰️  Crag: Sector exterior Cova del Sol. La Garrofera
+      📍 Sector: 23 routes
+   ⛰️  Crag: Sector d'enmig
+      📍 Sector: 3 routes
+   ⛰️  Crag: Torre esquerra
+      📍 Sector: 8 routes
+   ⛰️  Crag: Escondite
+      📍 Sector: 2 routes
+   ⛰️  Crag: Almiserà
+      📍 Sector: 6 routes
+   ⛰️  Crag: Alzira
+      📍 Sector: 25 routes
+      📍 Sector: 22 routes
+      📍 Sector: 13 routes
+      📍 Sector: 36 routes
+      📍 Sector: 23 routes
+      📍 Sector: 11 routes
+      📍 Sector: 19 routes
+      📍 Sector: 12 routes
+      📍 Sector: 27 routes
+      📍 Sector: 25 routes
+      📍 Sector: 26 routes
+      📍 Sector: 9 routes
+   ⛰️  Crag: Andilla
+      📍 Sector: 1 routes
+   ⛰️  Crag: Antella
+      📍 Sector: 26 routes
+   ⛰️  Crag: Barx
+      📍 Sector: 26 routes
+   ⛰️  Crag: Aventador
+      📍 Sector: 46 routes
+      📍 Sector: 26 routes
+      📍 Sector: 17 routes

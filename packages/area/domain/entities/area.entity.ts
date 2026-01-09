@@ -1,4 +1,12 @@
-import { BetaInfo, ExternalId, Geometry, Name } from '@climb-zone/shared'
+import {
+  BetaInfo,
+  Coordinates,
+  ExternalId,
+  Geometry,
+  Name,
+  Seasonality,
+  AltNames,
+} from '@climb-zone/shared'
 import { AreaId } from '../value-objects/area-id.vo'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 
@@ -19,8 +27,10 @@ export class AreaEntity {
     public readonly cragId: CragId,
     public readonly parentAreaId: AreaId | null,
     public readonly name: Name,
+    public readonly altNames: AltNames,
     public readonly type: AreaType,
     public readonly geometry: Geometry | null,
+    public readonly seasonality: Seasonality,
     public readonly beta: BetaInfo,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
@@ -46,6 +56,14 @@ export class AreaEntity {
     return this.beta.getDescription()
   }
 
+  getBestMonths(): number[] {
+    return this.seasonality.getBestMonths()
+  }
+
+  isGoodMonth(month: number): boolean {
+    return this.seasonality.isGoodMonth(month)
+  }
+
   toJSON(): Record<string, unknown> {
     return {
       id: this.id.toString(),
@@ -53,10 +71,12 @@ export class AreaEntity {
       cragId: this.cragId.toString(),
       parentAreaId: this.parentAreaId?.toString() ?? null,
       name: this.name.toString(),
+      altNames: this.altNames.toArray(),
       type: this.type,
       latitude: this.latitude,
       longitude: this.longitude,
       geometry: this.geometry?.toJSON(),
+      seasonality: this.seasonality.toArray(),
       beta: this.beta.toJSON(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,

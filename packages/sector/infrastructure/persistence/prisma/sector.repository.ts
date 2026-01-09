@@ -16,6 +16,10 @@ import {
 } from '@sector/domain/value-objects/sector-stats.vo'
 import { PriceCategory } from '@sector/domain/value-objects/price-category.vo'
 import { Kudos } from '@sector/domain/value-objects/kudos.vo'
+import { Orientation } from '@sector/domain/value-objects/orientation.vo'
+import { RockType } from '@sector/domain/value-objects/rock-type.vo'
+import { ClimbingStyle } from '@sector/domain/value-objects/climbing-style.vo'
+import { SunExposure } from '@sector/domain/value-objects/sun-exposure.vo'
 import { AreaId } from '@area/domain/value-objects/area-id.vo'
 
 interface SectorPrismaData {
@@ -27,6 +31,11 @@ interface SectorPrismaData {
   latitude: number | null
   longitude: number | null
   geometry: unknown
+  orientation: string | null
+  rockType: string | null
+  climbingStyle: string[]
+  sunExposure: string | null
+  sheltered: boolean | null
   seasonality: number[]
   beta: unknown
   routeCount: number
@@ -40,6 +49,7 @@ interface SectorPrismaData {
   priceCategory: string | null
   hasTopo: boolean
   kudos: number | null
+  tagsRaw: unknown
   createdAt: Date
   updatedAt: Date
 }
@@ -50,6 +60,9 @@ export interface SectorFilter {
   maxGradeIndex?: number
   minRoutes?: number
   hasTopo?: boolean
+  orientation?: string
+  rockType?: string
+  hasOverhangs?: boolean
   limit?: number
   offset?: number
 }
@@ -124,6 +137,18 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
 
     if (filters.hasTopo !== undefined) {
       where.hasTopo = filters.hasTopo
+    }
+
+    if (filters.orientation) {
+      where.orientation = filters.orientation
+    }
+
+    if (filters.rockType) {
+      where.rockType = filters.rockType
+    }
+
+    if (filters.hasOverhangs) {
+      where.climbingStyle = { hasSome: ['Overhang', 'Roof'] }
     }
 
     const sectors = await this.prisma.sector.findMany({
@@ -238,6 +263,11 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       Name.create(data.name),
       data.type as SectorType,
       Geometry.fromJSON(data.geometry as Record<string, unknown>),
+      Orientation.create(data.orientation),
+      RockType.create(data.rockType),
+      ClimbingStyle.create(data.climbingStyle),
+      SunExposure.create(data.sunExposure),
+      data.sheltered,
       Seasonality.create(data.seasonality),
       BetaInfo.fromJSON(data.beta as BetaItemData[]),
       new SectorStats(
@@ -253,6 +283,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       PriceCategory.create(data.priceCategory),
       data.hasTopo,
       Kudos.create(data.kudos),
+      data.tagsRaw as Record<string, unknown> | null,
       data.createdAt,
       data.updatedAt,
     )
@@ -268,6 +299,11 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       latitude: entity.latitude,
       longitude: entity.longitude,
       geometry: entity.geometry?.toJSON() ?? null,
+      orientation: entity.orientation?.toString() ?? null,
+      rockType: entity.rockType?.toString() ?? null,
+      climbingStyle: entity.climbingStyle.toArray(),
+      sunExposure: entity.sunExposure?.toString() ?? null,
+      sheltered: entity.sheltered,
       seasonality: entity.seasonality.toArray(),
       beta: entity.beta.toJSON(),
       routeCount: entity.stats.routeCount,
@@ -281,6 +317,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       priceCategory: entity.priceCategory?.toString() ?? null,
       hasTopo: entity.hasTopo,
       kudos: entity.kudos?.toNumber() ?? null,
+      tagsRaw: entity.tagsRaw,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }

@@ -4,7 +4,14 @@ import { AreaEntity, type AreaType } from '@climb-zone/area'
 import { CountryId, CragEntity } from '@climb-zone/crag'
 import { RegionId } from '@climb-zone/region'
 import { RouteEntity } from '@climb-zone/route'
-import { SectorEntity, type SectorType } from '@climb-zone/sector'
+import {
+  SectorEntity,
+  type SectorType,
+  Orientation,
+  RockType,
+  ClimbingStyle,
+  SunExposure,
+} from '@climb-zone/sector'
 import type { GeometryData } from '@climb-zone/shared'
 import {
   BetaInfo,
@@ -14,6 +21,9 @@ import {
   Name,
   Seasonality,
   Url,
+  AltNames,
+  Locatedness,
+  PermitInfo,
 } from '@climb-zone/shared'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
@@ -46,10 +56,26 @@ export interface ValidatedCragData {
   countryId: CountryId
   regionId: RegionId | null
   name: Name
+  altNames: AltNames
   geometry: Geometry | null
+  locatedness: Locatedness | null
   seasonality: Seasonality
   beta: BetaInfo
+  numberPhotos: number | null
+  numberTopos: number | null
+  hasTopo: boolean
+  totalFavorites: number | null
+  kudos: Kudos | null
+  ascentCount: number | null
+  maxPop: number | null
+  priceCategory: PriceCategory | null
+  permitNode: PermitInfo
+  tagsRaw: Record<string, unknown> | null
   sourceUrl: Url
+  urlStub: string | null
+  urlAncestorStub: string | null
+  lastPDFSize: string | null
+  lastPDFStaticDate: string | null
 }
 
 /**
@@ -61,8 +87,10 @@ export interface ValidatedAreaData {
   cragId: CragId
   parentAreaId: AreaId | null
   name: Name
+  altNames: AltNames
   type: AreaType
   geometry: Geometry | null
+  seasonality: Seasonality
   beta: BetaInfo
 }
 
@@ -74,14 +102,34 @@ export interface ValidatedSectorData {
   externalId: ExternalId
   areaId: AreaId
   name: Name
+  altNames: AltNames
   type: SectorType
   geometry: Geometry | null
+  locatedness: Locatedness | null
+  orientation: Orientation | null
+  rockType: RockType | null
+  climbingStyle: ClimbingStyle
+  sunExposure: SunExposure | null
+  sheltered: boolean | null
   seasonality: Seasonality
   beta: BetaInfo
   stats: SectorStats
+  numberPhotos: number | null
+  numberTopos: number | null
+  totalFavorites: number | null
+  isTLC: boolean
+  ascentCount: number | null
+  maxPop: number | null
   priceCategory: PriceCategory | null
   hasTopo: boolean
   kudos: Kudos | null
+  permitNode: PermitInfo
+  siblingLabel: string | null
+  tagsRaw: Record<string, unknown> | null
+  urlStub: string | null
+  urlAncestorStub: string | null
+  lastPDFSize: string | null
+  lastPDFStaticDate: string | null
 }
 
 /**
@@ -130,16 +178,52 @@ export class ScrapedDataMapperService {
     const seasonality = Seasonality.create(info?.seasonality)
     const sourceUrl = Url.forTheCrag(info?.urlStub, rawExternalId)
 
+    // Alta prioridad
+    const altNames = AltNames.create(info?.altNames)
+    const locatedness = Locatedness.create(info?.locatedness)
+    const numberPhotos = info?.numberPhotos ?? null
+    const numberTopos = info?.numberTopos ?? null
+    const hasTopo = Boolean(info?.hasTopo)
+    const totalFavorites = info?.totalFavorites ?? null
+    const kudos = Kudos.create(info?.kudos)
+    const urlStub = info?.urlStub ?? null
+    const urlAncestorStub = info?.urlAncestorStub ?? null
+
+    // Media prioridad
+    const ascentCount = info?.ascentCount ?? null
+    const maxPop = info?.maxPop ?? null
+    const priceCategory = PriceCategory.create(info?.priceCategory)
+    const permitNode = PermitInfo.create(info?.permitNode)
+    const tagsRaw = info?.tags ?? null
+    const lastPDFSize = info?.lastPDFSize ?? null
+    const lastPDFStaticDate = info?.lastPDFStaticDate ?? null
+
     return {
       id: CragId.generate(),
       externalId,
       countryId,
       regionId,
       name,
+      altNames,
       geometry,
+      locatedness,
       seasonality,
       beta,
+      numberPhotos,
+      numberTopos,
+      hasTopo,
+      totalFavorites,
+      kudos,
+      ascentCount,
+      maxPop,
+      priceCategory,
+      permitNode,
+      tagsRaw,
       sourceUrl,
+      urlStub,
+      urlAncestorStub,
+      lastPDFSize,
+      lastPDFStaticDate,
     }
   }
 
@@ -160,6 +244,10 @@ export class ScrapedDataMapperService {
     const beta = BetaInfo.fromJSON(info?.beta)
     const name = Name.create(rawName)
     const type = this.validateAreaType(rawType)
+    
+    // Alta prioridad
+    const altNames = AltNames.create(info?.altNames)
+    const seasonality = Seasonality.create(info?.seasonality)
 
     return {
       id: AreaId.generate(),
@@ -167,8 +255,10 @@ export class ScrapedDataMapperService {
       cragId,
       parentAreaId,
       name,
+      altNames,
       type,
       geometry,
+      seasonality,
       beta,
     }
   }
@@ -193,19 +283,65 @@ export class ScrapedDataMapperService {
     const priceCategory = PriceCategory.create(info?.priceCategory)
     const kudos = Kudos.create(info?.kudos)
 
+    // Parse tag fields (ya existentes)
+    const orientation = Orientation.create(info?.orientation)
+    const rockType = RockType.create(info?.rockType)
+    const climbingStyle = ClimbingStyle.create(info?.climbingStyle)
+    const sunExposure = SunExposure.create(info?.sunExposure)
+    const sheltered = info?.sheltered ?? null
+    const tagsRaw = info?.tags ?? null
+
+    // Alta prioridad (NUEVOS)
+    const altNames = AltNames.create(info?.altNames)
+    const locatedness = Locatedness.create(info?.locatedness)
+    const numberPhotos = info?.numberPhotos ?? null
+    const numberTopos = info?.numberTopos ?? null
+    const totalFavorites = info?.totalFavorites ?? null
+    const isTLC = Boolean(info?.isTLC)
+    const urlStub = info?.urlStub ?? null
+    const urlAncestorStub = info?.urlAncestorStub ?? null
+
+    // Media prioridad (NUEVOS)
+    const ascentCount = info?.ascentCount ?? null
+    const maxPop = info?.maxPop ?? null
+    const permitNode = PermitInfo.create(info?.permitNode)
+    const siblingLabel = info?.siblingLabel ?? null
+    const lastPDFSize = info?.lastPDFSize ?? null
+    const lastPDFStaticDate = info?.lastPDFStaticDate ?? null
+
     return {
       id: SectorId.generate(),
       externalId,
       areaId,
       name,
+      altNames,
       type,
       geometry,
+      locatedness,
+      orientation,
+      rockType,
+      climbingStyle,
+      sunExposure,
+      sheltered,
       seasonality,
       beta,
       stats: SectorStats.empty(),
+      numberPhotos,
+      numberTopos,
+      totalFavorites,
+      isTLC,
+      ascentCount,
+      maxPop,
       priceCategory,
       hasTopo: Boolean(info?.hasTopo),
       kudos,
+      permitNode,
+      siblingLabel,
+      tagsRaw,
+      urlStub,
+      urlAncestorStub,
+      lastPDFSize,
+      lastPDFStaticDate,
     }
   }
 
@@ -251,10 +387,26 @@ export class ScrapedDataMapperService {
       data.countryId,
       data.regionId,
       data.name,
+      data.altNames,
       data.geometry,
+      data.locatedness,
       data.seasonality,
       data.beta,
+      data.numberPhotos,
+      data.numberTopos,
+      data.hasTopo,
+      data.totalFavorites,
+      data.kudos,
+      data.ascentCount,
+      data.maxPop,
+      data.priceCategory,
+      data.permitNode,
+      data.tagsRaw,
       data.sourceUrl,
+      data.urlStub,
+      data.urlAncestorStub,
+      data.lastPDFSize,
+      data.lastPDFStaticDate,
     )
   }
 
@@ -268,8 +420,10 @@ export class ScrapedDataMapperService {
       data.cragId,
       data.parentAreaId,
       data.name,
+      data.altNames,
       data.type,
       data.geometry,
+      data.seasonality,
       data.beta,
     )
   }
@@ -283,14 +437,34 @@ export class ScrapedDataMapperService {
       data.externalId,
       data.areaId,
       data.name,
+      data.altNames,
       data.type,
       data.geometry,
+      data.locatedness,
+      data.orientation,
+      data.rockType,
+      data.climbingStyle,
+      data.sunExposure,
+      data.sheltered,
       data.seasonality,
       data.beta,
       data.stats,
+      data.numberPhotos,
+      data.numberTopos,
+      data.totalFavorites,
+      data.isTLC,
+      data.ascentCount,
+      data.maxPop,
       data.priceCategory,
       data.hasTopo,
       data.kudos,
+      data.permitNode,
+      data.siblingLabel,
+      data.tagsRaw,
+      data.urlStub,
+      data.urlAncestorStub,
+      data.lastPDFSize,
+      data.lastPDFStaticDate,
     )
   }
 

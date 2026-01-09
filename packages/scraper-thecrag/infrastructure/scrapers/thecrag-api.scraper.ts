@@ -222,7 +222,18 @@ export class TheCragApiScraper {
 
     // Metadata
     if (data.seasonality) info.seasonality = data.seasonality
-    if (data.tags) info.tags = data.tags
+    if (data.tags) {
+      info.tags = data.tags
+      // Parse structured tags from raw tags object
+      const parsedTags = this.parseTagsToStructuredFields(data.tags)
+      if (parsedTags.orientation) info.orientation = parsedTags.orientation
+      if (parsedTags.rockType) info.rockType = parsedTags.rockType
+      if (parsedTags.climbingStyle && parsedTags.climbingStyle.length > 0)
+        info.climbingStyle = parsedTags.climbingStyle
+      if (parsedTags.sunExposure) info.sunExposure = parsedTags.sunExposure
+      if (parsedTags.sheltered !== undefined)
+        info.sheltered = parsedTags.sheltered
+    }
 
     // Beta (approach, description, etc.)
     if (data.beta && Array.isArray(data.beta) && data.beta.length > 0) {
@@ -273,6 +284,81 @@ export class TheCragApiScraper {
     if (data.unique !== undefined) info.unique = data.unique
 
     return Object.keys(info).length > 0 ? info : null
+  }
+
+  /**
+   * Parse TheCrag tags object into structured fields
+   * Tags typically contain: orientation, rock type, climbing style, etc.
+   */
+  private parseTagsToStructuredFields(tags: Record<string, unknown>): {
+    orientation?: string
+    rockType?: string
+    climbingStyle?: string[]
+    sunExposure?: string
+    sheltered?: boolean
+  } {
+    const result: {
+      orientation?: string
+      rockType?: string
+      climbingStyle?: string[]
+      sunExposure?: string
+      sheltered?: boolean
+    } = {}
+
+    // Common tag keys that TheCrag uses (may vary)
+    // Orientation
+    if (tags.orientation || tags.facing || tags.aspect) {
+      result.orientation = String(
+        tags.orientation || tags.facing || tags.aspect,
+      )
+    }
+
+    // Rock type
+    if (tags.rockType || tags.rock || tags['rock-type']) {
+      result.rockType = String(tags.rockType || tags.rock || tags['rock-type'])
+    }
+
+    // Climbing style (can be multiple)
+    const styleKeys = [
+      'style',
+      'climbingStyle',
+      'type',
+      'angle',
+      'feature',
+      'features',
+    ]
+    const styles: string[] = []
+    for (const key of styleKeys) {
+      if (tags[key]) {
+        const value = tags[key]
+        if (Array.isArray(value)) {
+          styles.push(...value.map(String))
+        } else if (typeof value === 'string') {
+          styles.push(value)
+        }
+      }
+    }
+    if (styles.length > 0) {
+      result.climbingStyle = styles
+    }
+
+    // Sun exposure
+    if (tags.sun || tags.shade || tags.exposure || tags.sunExposure) {
+      result.sunExposure = String(
+        tags.sun || tags.shade || tags.exposure || tags.sunExposure,
+      )
+    }
+
+    // Sheltered
+    if (tags.sheltered !== undefined) {
+      result.sheltered = Boolean(tags.sheltered)
+    } else if (tags.protected !== undefined) {
+      result.sheltered = Boolean(tags.protected)
+    } else if (tags.wind !== undefined) {
+      result.sheltered = String(tags.wind).toLowerCase().includes('protected')
+    }
+
+    return result
   }
 
   /**

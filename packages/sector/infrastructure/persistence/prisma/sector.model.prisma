@@ -3,10 +3,23 @@ model Sector {
   externalId        BigInt   @unique
   areaId            String
   name              String
+  altNames          String[] // Nombres alternativos
   type              String   // Sector, Cliff
+  
+  // Ubicación
   latitude          Float?
   longitude         Float?
   geometry          Json?
+  locatedness       Int?     // Precisión de coordenadas 0-100
+  
+  // Características físicas
+  orientation       String?  // N, S, E, W, NE, NW, SE, SW, Variable
+  rockType          String?  // Limestone, Granite, Sandstone, etc
+  climbingStyle     String[] // Overhang, Slab, Vertical, Roof, Arete
+  sunExposure       String?  // Shaded, Sun, Morning, Afternoon, Mixed
+  sheltered         Boolean? // true = protegido, false = expuesto
+  
+  // Información temporal
   seasonality       Int[]
   beta              Json?    // [{name, markdown}]
 
@@ -20,10 +33,31 @@ model Sector {
   averageHeight     Float?
   totalAscents      Int?
 
+  // Estadísticas de TheCrag (ALTA PRIORIDAD)
+  numberPhotos      Int?     // Número de fotos
+  numberTopos       Int?     // Número de topos/croquis
+  totalFavorites    Int?     // Total de favoritos (popularidad)
+  isTLC             Boolean  @default(false) // Top Level Crag (destacado)
+  
+  // Estadísticas adicionales (MEDIA PRIORIDAD)
+  ascentCount       Int?     // Número total de ascensos
+  maxPop            Int?     // Popularidad máxima (métrica TheCrag)
+  
   // Metadata de TheCrag
   priceCategory     String?
   hasTopo           Boolean  @default(false)
   kudos             Int?
+  permitNode        Json?    // Información sobre permisos necesarios
+  siblingLabel      String?  // Etiqueta del hermano (organización)
+  tagsRaw           Json?    // Tags originales de TheCrag sin procesar
+  
+  // URLs de TheCrag (ALTA PRIORIDAD)
+  urlStub           String?  // URL del sector en TheCrag
+  urlAncestorStub   String?
+  
+  // PDF Info (MEDIA PRIORIDAD)
+  lastPDFSize       String?
+  lastPDFStaticDate String?
 
   area   Area    @relation(fields: [areaId], references: [id], onDelete: Cascade)
   routes Route[]
@@ -36,5 +70,10 @@ model Sector {
   @@index([maxGradeIndex])
   @@index([routeCount])
   @@index([latitude, longitude])
+  @@index([orientation])
+  @@index([rockType])
+  @@index([totalFavorites])
+  @@index([numberPhotos])
+  @@index([isTLC])
   @@map("sectors")
 }

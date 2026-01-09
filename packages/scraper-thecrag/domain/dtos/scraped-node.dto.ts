@@ -28,6 +28,11 @@ export interface ScrapedNodeInfo {
   googleMapsUrl?: string
   seasonality?: number[]
   tags?: Record<string, unknown>
+  orientation?: string
+  rockType?: string
+  climbingStyle?: string[]
+  sunExposure?: string
+  sheltered?: boolean
   beta?: BetaItemData[]
   ascentCount?: number
   averageHeight?: number | [number, string]

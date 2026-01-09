@@ -4,11 +4,15 @@ model Area {
   cragId       String
   parentAreaId String?  // Para áreas anidadas (Cliff dentro de Area)
   name         String
+  altNames     String[] // Nombres alternativos
   type         String   // Area, Cliff
   latitude     Float?
   longitude    Float?
   geometry     Json?
   beta         Json?    // [{name, markdown}]
+  
+  // Información temporal
+  seasonality  Int[]    // Seasonality también para áreas
 
   crag       Crag   @relation(fields: [cragId], references: [id], onDelete: Cascade)
   parentArea Area?  @relation("AreaHierarchy", fields: [parentAreaId], references: [id])
