@@ -2,14 +2,20 @@ import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 
 // Get the API URL based on platform
-// - Web: localhost works fine
+// - Production: uses https://climb-zone.onrender.com/api (configured in app.json)
+// - Development: can use localhost or emulator IP
 // - Android Emulator: 10.0.2.2 is the special IP that routes to host machine's localhost
 // - iOS Simulator: localhost works fine
-// - Physical devices: need actual network IP (set in app.json extra.apiUrl)
+// - Physical devices: use production URL (set in app.json extra.apiUrl)
 const getApiBaseUrl = (): string => {
   const configUrl = Constants.expoConfig?.extra?.apiUrl
 
-  // If running in development and on Android emulator, use 10.0.2.2
+  // In production builds, always use the configured URL (production server)
+  if (!__DEV__) {
+    return configUrl || 'https://climb-zone.onrender.com/api'
+  }
+
+  // Development mode: allow localhost for emulators
   if (__DEV__ && Platform.OS === 'android') {
     // Check if we're using the default localhost URL
     if (!configUrl || configUrl.includes('localhost')) {
@@ -17,7 +23,8 @@ const getApiBaseUrl = (): string => {
     }
   }
 
-  return configUrl || 'http://localhost:4000/api'
+  // Use configured URL or fallback to production
+  return configUrl || 'https://climb-zone.onrender.com/api'
 }
 
 const API_BASE_URL = getApiBaseUrl()

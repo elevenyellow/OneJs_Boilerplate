@@ -113,9 +113,85 @@ bun run ios
 bun run web
 ```
 
+## Compilación para Android
+
+La app está configurada para usar el servidor de producción `https://climb-zone.onrender.com/api` cuando se compila para Android.
+
+### Requisitos Previos
+
+1. **Instalar EAS CLI**:
+   ```bash
+   npm install -g eas-cli
+   ```
+
+2. **Iniciar sesión en Expo**:
+   ```bash
+   eas login
+   ```
+
+3. **Configurar el proyecto** (si es la primera vez):
+   ```bash
+   cd apps/mobile
+   eas build:configure
+   ```
+
+### Compilar APK/AAB
+
+#### Opción 1: Usando el script (recomendado)
+```bash
+cd apps/mobile
+./build-android.sh
+```
+
+El script te preguntará si quieres compilar:
+- **APK de desarrollo**: Para testing rápido
+- **AAB para Google Play**: Para producción
+
+#### Opción 2: Comandos directos
+
+**APK de desarrollo:**
+```bash
+cd apps/mobile
+eas build --platform android --profile development
+```
+
+**AAB para producción (Google Play Store):**
+```bash
+cd apps/mobile
+eas build --platform android --profile production
+```
+
+### Verificar la Configuración
+
+Antes de compilar, verifica que `app.json` tenga la URL correcta:
+```json
+{
+  "expo": {
+    "extra": {
+      "apiUrl": "https://climb-zone.onrender.com/api"
+    }
+  }
+}
+```
+
+### Descargar el Build
+
+Una vez completada la compilación:
+1. Visita https://expo.dev
+2. Ve a tu proyecto "climb-zone"
+3. Descarga el archivo APK o AAB desde la sección "Builds"
+
+### Notas Importantes
+
+- **Desarrollo**: En modo desarrollo (`expo start`), la app puede usar `localhost` o la IP local configurada
+- **Producción**: En builds compilados, siempre usa `https://climb-zone.onrender.com/api`
+- **Variables de entorno**: La URL está hardcodeada en `app.json` para builds de producción
+
 ## API Integration
 
-La app se conecta al backend en `http://localhost:4000/api` (configurable vía `EXPO_PUBLIC_API_URL`).
+La app se conecta al backend:
+- **Desarrollo**: `http://localhost:4000/api` o IP local configurada
+- **Producción**: `https://climb-zone.onrender.com/api` (configurado en `app.json`)
 
 ### Endpoints Utilizados
 
@@ -264,7 +340,9 @@ Selector visual de rango de dificultades.
 **Solución:** Verificar permisos de ubicación en configuración del dispositivo.
 
 ### Error: No se cargan sectores
-**Solución:** Verificar que el backend esté corriendo en `localhost:4000` y que la red esté configurada correctamente.
+**Solución:** 
+- En desarrollo: Verificar que el backend esté corriendo en `localhost:4000` y que la red esté configurada correctamente
+- En producción: Verificar que `https://climb-zone.onrender.com/api` esté accesible y que la URL esté correctamente configurada en `app.json`
 
 ### Bottom sheet no se muestra
 **Solución:** Verificar que `react-native-reanimated` esté configurado en `babel.config.js`:
