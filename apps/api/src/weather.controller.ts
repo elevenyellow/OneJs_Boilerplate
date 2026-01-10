@@ -23,6 +23,14 @@ export class WeatherController {
     }
 
     const forecast = await this.weatherService.getZoneForecast(request)
+    
+    // 🚀 HTTP Cache headers - clima cambia cada hora, caché por 30 minutos
+    context.set.headers = {
+      ...context.set.headers,
+      'Cache-Control': 'public, max-age=1800', // 30 minutos
+      'Vary': 'Accept-Encoding',
+    }
+    
     context.set.status = 200
     return forecast
   }
@@ -32,6 +40,14 @@ export class WeatherController {
     const { id } = context.params as { id: string }
 
     const summary = await this.weatherService.getZoneForecastSummary(id)
+    
+    // 🚀 HTTP Cache headers - resumen de clima, caché por 30 minutos
+    context.set.headers = {
+      ...context.set.headers,
+      'Cache-Control': 'public, max-age=1800', // 30 minutos
+      'Vary': 'Accept-Encoding',
+    }
+    
     context.set.status = 200
     return summary
   }
@@ -59,6 +75,13 @@ export class WeatherByCoordinatesController {
     const weather = await this.weatherService
       .getByCoordinates({ latitude: lat, longitude: lon })
       .parsed()
+
+    // 🚀 HTTP Cache headers - clima por coordenadas, caché por 30 minutos
+    context.set.headers = {
+      ...context.set.headers,
+      'Cache-Control': 'public, max-age=1800', // 30 minutos
+      'Vary': 'Accept-Encoding',
+    }
 
     context.set.status = 200
     return weather

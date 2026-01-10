@@ -3,6 +3,7 @@ import { BootstrapLoader } from '@OneJs/core/bootstrap/bootstrap-loader'
 import { PrismaPlugin } from '@OneJs/prisma'
 import { Server, ServerPlugin } from '@OneJs/server'
 import cors from '@elysiajs/cors'
+import { compression } from '@labzzhq/compressor'
 
 // Import bootstrap services to register them
 // import './src/startup/world-scraper.bootstrap' // Disabled: Enable when needed
@@ -22,6 +23,12 @@ const server = container.get(Server)
 server
   .setPrefix('/api')
   .use(cors({ credentials: true }) as any)
+  // 🚀 Compresión automática de responses (gzip/deflate/brotli)
+  // Reduce el tamaño de respuestas en 60-80%
+  .use(compression({
+    encoding: 'gzip', // gzip es el más compatible
+    threshold: 1024,  // Solo comprimir responses > 1KB
+  }))
   .start(Number(process.env.PORT ?? 4000), () => {
-    logger.info('api:startup', 'Server started on port 4000')
+    logger.info('api:startup', 'Server started on port 4000 with gzip compression')
   })

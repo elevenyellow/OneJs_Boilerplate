@@ -68,6 +68,13 @@ export class CragController {
     // Execute search
     const response = await this.searchCragsUseCase.execute(body)
 
+    // 🚀 HTTP Cache headers - búsqueda de crags, caché por 5 minutos
+    context.set.headers = {
+      ...context.set.headers,
+      'Cache-Control': 'private, max-age=300', // 5 minutos
+      'Vary': 'Accept-Encoding',
+    }
+
     context.set.status = 200
     return response
   }
@@ -160,6 +167,13 @@ export class CragController {
       }
     })
 
+    // 🚀 HTTP Cache headers - lista de crags nearby, caché por 10 minutos
+    context.set.headers = {
+      ...context.set.headers,
+      'Cache-Control': 'public, max-age=600', // 10 minutos
+      'Vary': 'Accept-Encoding',
+    }
+
     context.set.status = 200
     return {
       results,
@@ -198,6 +212,14 @@ export class CragController {
 
     try {
       const detail = await this.getCragDetailUseCase.execute(id, gradeRange)
+      
+      // 🚀 HTTP Cache headers - detalle de crag, caché por 15 minutos
+      context.set.headers = {
+        ...context.set.headers,
+        'Cache-Control': 'public, max-age=900', // 15 minutos
+        'Vary': 'Accept-Encoding',
+      }
+      
       context.set.status = 200
       return detail
     } catch (error: unknown) {

@@ -79,6 +79,13 @@ export class SectorController {
     // Execute search
     const response = await this.searchSectorsUseCase.execute(body)
 
+    // 🚀 HTTP Cache headers - permite caché del cliente por 5 minutos
+    context.set.headers = {
+      ...context.set.headers,
+      'Cache-Control': 'private, max-age=300', // 5 minutos
+      'Vary': 'Accept-Encoding',
+    }
+
     context.set.status = 200
     return response
   }
@@ -126,6 +133,13 @@ export class SectorController {
       // For now, we'll fetch all routes for the sector
 
       const routes = await this.routeRepository.findWithFilters(filters)
+
+      // 🚀 HTTP Cache headers - rutas cambian raramente, caché por 15 minutos
+      context.set.headers = {
+        ...context.set.headers,
+        'Cache-Control': 'public, max-age=900', // 15 minutos
+        'Vary': 'Accept-Encoding',
+      }
 
       context.set.status = 200
       return {

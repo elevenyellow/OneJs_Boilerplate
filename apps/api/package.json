@@ -8,7 +8,8 @@
     "start:build": "bun build ./index.ts --outdir ./dist"
   },
   "dependencies": {
-    "@elysiajs/cors": "^1.4.1"
+    "@elysiajs/cors": "^1.4.1",
+    "@labzzhq/compressor": "^1.1.1"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
