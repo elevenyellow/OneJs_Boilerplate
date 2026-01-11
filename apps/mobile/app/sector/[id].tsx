@@ -389,6 +389,35 @@ export default function SectorDetailScreen() {
     return allRoutes.filter(isRouteInGlobalRange).length
   }, [allRoutes, globalMinGradeIndex, globalMaxGradeIndex])
 
+  // Group routes by topo image
+  // Returns an array of { topo, routes } for topos with routes, plus a "noTopo" array for routes not in any topo
+  const routesByTopo = useMemo(() => {
+    if (topos.length === 0) {
+      return { topoGroups: [], routesWithoutTopo: filteredAndSortedRoutes }
+    }
+
+    // Build a set of all route IDs that appear in any topo
+    const routeIdsInTopos = new Set<string>()
+    for (const topo of topos) {
+      for (const routePos of topo.routes || []) {
+        routeIdsInTopos.add(routePos.routeId)
+      }
+    }
+
+    // Create groups for each topo
+    const topoGroups = topos.map((topo) => {
+      const topoRouteIds = new Set((topo.routes || []).map(r => r.routeId))
+      // Filter the sorted routes to only include those in this topo, maintaining the sort order
+      const routesInTopo = filteredAndSortedRoutes.filter(route => topoRouteIds.has(route.id))
+      return { topo, routes: routesInTopo }
+    }).filter(group => group.routes.length > 0)
+
+    // Routes that are not in any topo
+    const routesWithoutTopo = filteredAndSortedRoutes.filter(route => !routeIdsInTopos.has(route.id))
+
+    return { topoGroups, routesWithoutTopo }
+  }, [topos, filteredAndSortedRoutes])
+
   // Computed stats from routes
   const routeStats = useMemo(() => {
     if (allRoutes.length === 0) return null
@@ -426,6 +455,183 @@ export default function SectorDetailScreen() {
     if (gradeNum <= 6) return '#F59E0B'
     if (gradeNum <= 7) return '#EF4444'
     return '#7C3AED'
+  }
+
+  // Helper function to render a route row
+  const renderRouteRow = (route: RouteSearchInfo, index: number) => {
+    const inRange = isRouteInGlobalRange(route)
+    const gradeColor = getGradeColor(route.grade)
+    const isHighlighted = route.id === highlightedRouteId
+
+    return (
+      <Pressable
+        key={route.id || `route-${index}`}
+        onPress={() => handleRoutePress(route)}
+        style={[
+          styles.routeRow,
+          {
+            backgroundColor: isHighlighted
+              ? colors.primary + '15'
+              : colors.card,
+            borderColor: isHighlighted
+              ? colors.primary
+              : colors.border,
+          },
+        ]}
+      >
+        {/* Number badge */}
+        <View
+          style={[
+            styles.routeNumBadge,
+            {
+              backgroundColor: isHighlighted
+                ? colors.primary
+                : colors.muted,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.routeNumText,
+              { color: isHighlighted ? '#FFF' : colors.text },
+            ]}
+          >
+            {route.topoNumber || index + 1}
+          </Text>
+        </View>
+
+        {/* Route info */}
+        <View style={styles.routeInfo}>
+          <View style={styles.routeNameRow}>
+            {inRange && (
+              <Ionicons
+                name="checkmark-circle"
+                size={14}
+                color="#22C55E"
+                style={{ marginRight: 4 }}
+              />
+            )}
+            <Text
+              style={[styles.routeName, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {route.name}
+            </Text>
+          </View>
+          <View style={styles.routeMeta}>
+            {route.height !== null && route.height > 0 && (
+              <View style={styles.routeMetaItem}>
+                <Ionicons
+                  name="resize-outline"
+                  size={11}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.routeMetaText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {route.height}m
+                </Text>
+              </View>
+            )}
+            {route.pitches !== null && route.pitches > 1 && (
+              <View style={styles.routeMetaItem}>
+                <Ionicons
+                  name="layers-outline"
+                  size={11}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.routeMetaText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {route.pitches}L
+                </Text>
+              </View>
+            )}
+            {route.bolts !== null && route.bolts > 0 && (
+              <View style={styles.routeMetaItem}>
+                <Ionicons
+                  name="link-outline"
+                  size={11}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.routeMetaText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {route.bolts}
+                </Text>
+              </View>
+            )}
+            {route.stars !== null && route.stars > 0 && (
+              <View style={styles.routeMetaItem}>
+                <Ionicons name="star" size={11} color="#F59E0B" />
+                <Text
+                  style={[styles.routeMetaText, { color: '#F59E0B' }]}
+                >
+                  {route.stars.toFixed(1)}
+                </Text>
+              </View>
+            )}
+            {route.ascents !== null && route.ascents > 0 && (
+              <View style={styles.routeMetaItem}>
+                <Ionicons
+                  name="people-outline"
+                  size={11}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.routeMetaText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {route.ascents}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Grade badge */}
+        <View
+          style={[
+            styles.gradeBadge,
+            { backgroundColor: gradeColor + '20' },
+          ]}
+        >
+          <Text style={[styles.gradeText, { color: gradeColor }]}>
+            {route.grade || '-'}
+          </Text>
+        </View>
+
+        {/* Details button */}
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation()
+            handleViewRouteDetails(route)
+          }}
+          hitSlop={8}
+          style={[
+            styles.detailsButton,
+            { backgroundColor: colors.muted },
+          ]}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={20}
+            color={colors.primary}
+          />
+        </Pressable>
+      </Pressable>
+    )
   }
 
   if (isLoadingRoutes && !routesData) {
@@ -905,63 +1111,7 @@ export default function SectorDetailScreen() {
           </View>
         )}
 
-        {/* Topos / Photos */}
-        {(topos.length > 0 || isLoadingTopos) && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="image-outline" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Topos {topos.length > 0 && `(${topos.length})`}
-              </Text>
-              {isLoadingTopos && (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.primary}
-                  style={{ marginLeft: 8 }}
-                />
-              )}
-            </View>
-
-            {topos.length > 0 ? (
-              <View style={styles.toposContainer}>
-                {topos.map((topo) => (
-                  <TopoViewer
-                    key={topo.id}
-                    topo={topo}
-                    highlightedRouteId={highlightedRouteId || undefined}
-                    gradeRange={
-                      userMinGradeIndex !== null && userMaxGradeIndex !== null
-                        ? { min: userMinGradeIndex, max: userMaxGradeIndex }
-                        : undefined
-                    }
-                    routeDetails={allRoutes}
-                    showRouteList={false}
-                    onRoutePress={(routePos) => {
-                      setHighlightedRouteId((prev) =>
-                        prev === routePos.routeId ? null : routePos.routeId,
-                      )
-                    }}
-                  />
-                ))}
-              </View>
-            ) : (
-              !isLoadingTopos && (
-                <View
-                  style={[
-                    styles.textContainer,
-                    { backgroundColor: colors.muted },
-                  ]}
-                >
-                  <Text style={[styles.text, { color: colors.textSecondary }]}>
-                    No topos available
-                  </Text>
-                </View>
-              )
-            )}
-          </View>
-        )}
-
-        {/* Routes */}
+        {/* Routes Section Header and Filters */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="list-outline" size={20} color={colors.primary} />
@@ -972,7 +1122,7 @@ export default function SectorDetailScreen() {
                 : ''}
               )
             </Text>
-            {isLoadingRoutes && (
+            {(isLoadingRoutes || isLoadingTopos) && (
               <ActivityIndicator
                 size="small"
                 color={colors.primary}
@@ -1063,7 +1213,7 @@ export default function SectorDetailScreen() {
             />
           </FilterChipsRow>
 
-          {/* Routes List */}
+          {/* Empty state */}
           {filteredAndSortedRoutes.length === 0 && !isLoadingRoutes && (
             <View
               style={[styles.emptyContainer, { backgroundColor: colors.muted }]}
@@ -1075,185 +1225,61 @@ export default function SectorDetailScreen() {
               </Text>
             </View>
           )}
-
-          {filteredAndSortedRoutes.map(
-            (route: RouteSearchInfo, index: number) => {
-              const inRange = isRouteInGlobalRange(route)
-              const gradeColor = getGradeColor(route.grade)
-              const isHighlighted = route.id === highlightedRouteId
-
-              return (
-                <Pressable
-                  key={route.id || `route-${index}`}
-                  onPress={() => handleRoutePress(route)}
-                  style={[
-                    styles.routeRow,
-                    {
-                      backgroundColor: isHighlighted
-                        ? colors.primary + '15'
-                        : colors.card,
-                      borderColor: isHighlighted
-                        ? colors.primary
-                        : colors.border,
-                    },
-                  ]}
-                >
-                  {/* Number badge */}
-                  <View
-                    style={[
-                      styles.routeNumBadge,
-                      {
-                        backgroundColor: isHighlighted
-                          ? colors.primary
-                          : colors.muted,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.routeNumText,
-                        { color: isHighlighted ? '#FFF' : colors.text },
-                      ]}
-                    >
-                      {route.topoNumber || index + 1}
-                    </Text>
-                  </View>
-
-                  {/* Route info */}
-                  <View style={styles.routeInfo}>
-                    <View style={styles.routeNameRow}>
-                      {inRange && (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={14}
-                          color="#22C55E"
-                          style={{ marginRight: 4 }}
-                        />
-                      )}
-                      <Text
-                        style={[styles.routeName, { color: colors.text }]}
-                        numberOfLines={1}
-                      >
-                        {route.name}
-                      </Text>
-                    </View>
-                    <View style={styles.routeMeta}>
-                      {route.height !== null && route.height > 0 && (
-                        <View style={styles.routeMetaItem}>
-                          <Ionicons
-                            name="resize-outline"
-                            size={11}
-                            color={colors.textSecondary}
-                          />
-                          <Text
-                            style={[
-                              styles.routeMetaText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {route.height}m
-                          </Text>
-                        </View>
-                      )}
-                      {route.pitches !== null && route.pitches > 1 && (
-                        <View style={styles.routeMetaItem}>
-                          <Ionicons
-                            name="layers-outline"
-                            size={11}
-                            color={colors.textSecondary}
-                          />
-                          <Text
-                            style={[
-                              styles.routeMetaText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {route.pitches}L
-                          </Text>
-                        </View>
-                      )}
-                      {route.bolts !== null && route.bolts > 0 && (
-                        <View style={styles.routeMetaItem}>
-                          <Ionicons
-                            name="link-outline"
-                            size={11}
-                            color={colors.textSecondary}
-                          />
-                          <Text
-                            style={[
-                              styles.routeMetaText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {route.bolts}
-                          </Text>
-                        </View>
-                      )}
-                      {route.stars !== null && route.stars > 0 && (
-                        <View style={styles.routeMetaItem}>
-                          <Ionicons name="star" size={11} color="#F59E0B" />
-                          <Text
-                            style={[styles.routeMetaText, { color: '#F59E0B' }]}
-                          >
-                            {route.stars.toFixed(1)}
-                          </Text>
-                        </View>
-                      )}
-                      {route.ascents !== null && route.ascents > 0 && (
-                        <View style={styles.routeMetaItem}>
-                          <Ionicons
-                            name="people-outline"
-                            size={11}
-                            color={colors.textSecondary}
-                          />
-                          <Text
-                            style={[
-                              styles.routeMetaText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {route.ascents}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Grade badge */}
-                  <View
-                    style={[
-                      styles.gradeBadge,
-                      { backgroundColor: gradeColor + '20' },
-                    ]}
-                  >
-                    <Text style={[styles.gradeText, { color: gradeColor }]}>
-                      {route.grade || '-'}
-                    </Text>
-                  </View>
-
-                  {/* Details button */}
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation()
-                      handleViewRouteDetails(route)
-                    }}
-                    hitSlop={8}
-                    style={[
-                      styles.detailsButton,
-                      { backgroundColor: colors.muted },
-                    ]}
-                  >
-                    <Ionicons
-                      name="information-circle-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  </Pressable>
-                </Pressable>
-              )
-            },
-          )}
         </View>
+
+        {/* Topos with their routes grouped */}
+        {routesByTopo.topoGroups.map((group, topoIndex) => (
+          <View key={group.topo.id} style={styles.topoSection}>
+            {/* Topo Image */}
+            <View style={styles.topoImageContainer}>
+              <View style={styles.topoHeader}>
+                <Ionicons name="image-outline" size={16} color={colors.primary} />
+                <Text style={[styles.topoTitle, { color: colors.text }]}>
+                  Topo {topoIndex + 1} ({group.routes.length} routes)
+                </Text>
+              </View>
+              <TopoViewer
+                topo={group.topo}
+                highlightedRouteId={highlightedRouteId || undefined}
+                gradeRange={
+                  userMinGradeIndex !== null && userMaxGradeIndex !== null
+                    ? { min: userMinGradeIndex, max: userMaxGradeIndex }
+                    : undefined
+                }
+                routeDetails={allRoutes}
+                showRouteList={false}
+                onRoutePress={(routePos) => {
+                  setHighlightedRouteId((prev) =>
+                    prev === routePos.routeId ? null : routePos.routeId,
+                  )
+                }}
+              />
+            </View>
+
+            {/* Routes for this topo */}
+            <View style={styles.topoRoutesList}>
+              {group.routes.map((route, index) => renderRouteRow(route, index))}
+            </View>
+          </View>
+        ))}
+
+        {/* Routes without topo */}
+        {routesByTopo.routesWithoutTopo.length > 0 && (
+          <View style={styles.topoSection}>
+            <View style={styles.topoHeader}>
+              <Ionicons name="list-outline" size={16} color={colors.textSecondary} />
+              <Text style={[styles.topoTitle, { color: colors.text }]}>
+                {routesByTopo.topoGroups.length > 0 
+                  ? `Other Routes (${routesByTopo.routesWithoutTopo.length})`
+                  : `All Routes (${routesByTopo.routesWithoutTopo.length})`
+                }
+              </Text>
+            </View>
+            <View style={styles.topoRoutesList}>
+              {routesByTopo.routesWithoutTopo.map((route, index) => renderRouteRow(route, index))}
+            </View>
+          </View>
+        )}
 
         {/* Description */}
         {sector.description && (
@@ -1558,5 +1584,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
+  },
+  // Topo sections with grouped routes
+  topoSection: {
+    marginTop: 16,
+  },
+  topoImageContainer: {
+    marginBottom: 12,
+  },
+  topoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  topoTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  topoRoutesList: {
+    gap: 0,
   },
 })

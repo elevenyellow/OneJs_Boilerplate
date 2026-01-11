@@ -591,6 +591,8 @@ export function TopoViewer({
         visible={zoomModalVisible}
         animationType="fade"
         transparent={false}
+        statusBarTranslucent={true}
+        presentationStyle="fullScreen"
         onRequestClose={() => setZoomModalVisible(false)}
       >
         <ZoomableTopoImage
@@ -653,14 +655,18 @@ const styles = StyleSheet.create({
   },
   // Zoom Modal
   zoomModalContainer: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   zoomCloseButton: {
     position: 'absolute',
-    top: 50,
+    top: 60,
     right: 20,
     zIndex: 10,
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -669,7 +675,7 @@ const styles = StyleSheet.create({
   },
   zoomHintText: {
     position: 'absolute',
-    top: 60,
+    top: 70,
     left: 0,
     right: 0,
     textAlign: 'center',
