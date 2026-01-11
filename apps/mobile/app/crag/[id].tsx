@@ -5,7 +5,7 @@ import { useCragDetail } from '@/hooks/useCragDetail'
 import type { SearchSectorResult } from '@/lib/api'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Linking,
@@ -59,6 +59,47 @@ function getScoreColor(score: number): string {
 
 // Sun preference type
 type SunPreference = 'any' | 'sun' | 'shade'
+
+// Grade options for comparison (same order as GradeRangeSlider)
+const GRADE_OPTIONS = [
+  '4a', '4c', '5a', '5b', '5c',
+  '6a', '6a+', '6b', '6b+', '6c', '6c+',
+  '7a', '7a+', '7b', '7b+', '7c', '7c+',
+  '8a', '8a+', '8b',
+]
+
+// Get grade index for comparison
+function getGradeIndex(grade: string | null): number {
+  if (!grade) return -1
+  const normalized = grade.toLowerCase().trim()
+  return GRADE_OPTIONS.findIndex(g => g.toLowerCase() === normalized)
+}
+
+// Check if sector grade range overlaps with filter range
+function sectorOverlapsGradeRange(
+  sectorMinGrade: string | null,
+  sectorMaxGrade: string | null,
+  filterMinGrade: string,
+  filterMaxGrade: string
+): boolean {
+  const sectorMinIdx = getGradeIndex(sectorMinGrade)
+  const sectorMaxIdx = getGradeIndex(sectorMaxGrade)
+  const filterMinIdx = getGradeIndex(filterMinGrade)
+  const filterMaxIdx = getGradeIndex(filterMaxGrade)
+  
+  // If sector has no grade info, include it
+  if (sectorMinIdx === -1 && sectorMaxIdx === -1) return true
+  
+  // If filter range is invalid, include all
+  if (filterMinIdx === -1 || filterMaxIdx === -1) return true
+  
+  // Use available sector grade if only one is present
+  const effectiveSectorMin = sectorMinIdx !== -1 ? sectorMinIdx : sectorMaxIdx
+  const effectiveSectorMax = sectorMaxIdx !== -1 ? sectorMaxIdx : sectorMinIdx
+  
+  // Check overlap: sector range overlaps with filter range
+  return effectiveSectorMax >= filterMinIdx && effectiveSectorMin <= filterMaxIdx
+}
 
 export default function CragDetailScreen() {
   const {
@@ -134,7 +175,13 @@ export default function CragDetailScreen() {
     if (appliedWithTopo !== undefined) {
       setWithTopo(appliedWithTopo === 'true')
     }
-  }, [appliedGradeMin, appliedGradeMax, appliedSunPreference, appliedMinRoutes, appliedWithTopo])
+  }, [
+    appliedGradeMin,
+    appliedGradeMax,
+    appliedSunPreference,
+    appliedMinRoutes,
+    appliedWithTopo,
+  ])
 
   // Get today's forecast
   const todayForecast = useMemo(() => {
@@ -213,7 +260,7 @@ export default function CragDetailScreen() {
   const isSectorInSun = (orientation: string | null): boolean => {
     if (!orientation) return true // Unknown = treat as sun
     const hour = new Date().getHours()
-    // Simplified sun logic: 
+    // Simplified sun logic:
     // Morning (6-12): E, SE, S facing walls get sun
     // Afternoon (12-18): S, SW, W facing walls get sun
     // Evening (18-20): W, NW facing walls get sun
@@ -225,7 +272,7 @@ export default function CragDetailScreen() {
     let period = 'morning'
     if (hour >= 12 && hour < 18) period = 'afternoon'
     else if (hour >= 18) period = 'evening'
-    
+
     return sunnyOrientations[period].includes(orientation)
   }
 
@@ -233,32 +280,41 @@ export default function CragDetailScreen() {
   const filteredSectors = useMemo(() => {
     return allSectors.filter((sectorResult) => {
       const sector = sectorResult.sector
-      
+
+      // Filter by grade range
+      if (isGradeRangeModified) {
+        const overlaps = sectorOverlapsGradeRange(
+          sector.minGrade,
+          sector.maxGrade,
+          gradeMin,
+          gradeMax
+        )
+        if (!overlaps) return false
+      }
+
       // Filter by sun preference
       if (sunPreference !== 'any') {
         const inSun = isSectorInSun(sector.orientation)
         if (sunPreference === 'sun' && !inSun) return false
         if (sunPreference === 'shade' && inSun) return false
       }
-      
+
       // Filter by minimum routes
       if (minRoutes > 0 && sectorResult.routesInUserRange < minRoutes) {
         return false
       }
 
       // Filter by with topo (check if sector has topo images)
-      // For now, we assume sectors have a hasTopo property or we check headerImageUrl
       if (withTopo) {
-        // Check if sector has topo - using headerImageUrl as proxy for now
-        // In the future, this should check actual topo data
-        if (!sector.headerImageUrl) {
+        // Check if sector has topo - using hasTopo property or headerImageUrl as fallback
+        if (!sector.hasTopo && !sector.headerImageUrl) {
           return false
         }
       }
-      
+
       return true
     })
-  }, [allSectors, sunPreference, minRoutes, withTopo])
+  }, [allSectors, isGradeRangeModified, gradeMin, gradeMax, sunPreference, minRoutes, withTopo])
 
   // Count active filters
   const activeFiltersCount = useMemo(() => {
@@ -407,7 +463,8 @@ export default function CragDetailScreen() {
         stats={[
           { label: 'sectors', value: crag.totalSectors, icon: 'grid' },
           { label: 'routes', value: crag.totalRoutes, icon: 'git-branch' },
-          ...(crag.totalRoutesInRange > 0 && crag.totalRoutesInRange !== crag.totalRoutes
+          ...(crag.totalRoutesInRange > 0 &&
+          crag.totalRoutesInRange !== crag.totalRoutes
             ? [
                 {
                   label: 'in range',
@@ -459,26 +516,46 @@ export default function CragDetailScreen() {
                 <Text style={[styles.weatherCardTemp, { color: colors.text }]}>
                   {Math.round(todayForecast.temperature?.mean || 0)}°C
                 </Text>
-                <Text style={[styles.weatherCardRange, { color: colors.textSecondary }]}>
-                  {Math.round(todayForecast.temperature?.min || 0)}° / {Math.round(todayForecast.temperature?.max || 0)}°
+                <Text
+                  style={[
+                    styles.weatherCardRange,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {Math.round(todayForecast.temperature?.min || 0)}° /{' '}
+                  {Math.round(todayForecast.temperature?.max || 0)}°
                 </Text>
               </View>
             </View>
             <View style={styles.weatherCardRight}>
               <View style={styles.weatherCardDetail}>
                 <Ionicons name="water" size={16} color="#3B82F6" />
-                <Text style={[styles.weatherCardDetailText, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.weatherCardDetailText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   {Math.round(todayForecast.precipitation?.probability || 0)}%
                 </Text>
               </View>
               <View style={styles.weatherCardDetail}>
                 <Ionicons name="leaf" size={16} color="#10B981" />
-                <Text style={[styles.weatherCardDetailText, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.weatherCardDetailText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   {Math.round(todayForecast.wind?.mean || 0)} m/s
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
           </Pressable>
         )}
 
@@ -543,7 +620,12 @@ export default function CragDetailScreen() {
               Filters
             </Text>
             {activeFiltersCount > 0 && (
-              <View style={[styles.filterBadge, { backgroundColor: colors.primary }]}>
+              <View
+                style={[
+                  styles.filterBadge,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
                 <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
               </View>
             )}
@@ -559,31 +641,63 @@ export default function CragDetailScreen() {
             style={styles.activeFiltersRow}
           >
             {isGradeRangeModified && (
-              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <Ionicons name="trending-up-outline" size={12} color={colors.primary} />
+              <View
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: colors.muted, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name="trending-up-outline"
+                  size={12}
+                  color={colors.primary}
+                />
                 <Text style={[styles.filterChipText, { color: colors.text }]}>
                   {gradeMin} - {gradeMax}
                 </Text>
               </View>
             )}
             {sunPreference !== 'any' && (
-              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <Ionicons name={sunPreference === 'sun' ? 'sunny' : 'moon'} size={12} color={colors.primary} />
+              <View
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: colors.muted, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name={sunPreference === 'sun' ? 'sunny' : 'moon'}
+                  size={12}
+                  color={colors.primary}
+                />
                 <Text style={[styles.filterChipText, { color: colors.text }]}>
                   {sunPreference === 'sun' ? 'Sun' : 'Shade'}
                 </Text>
               </View>
             )}
             {minRoutes > 0 && (
-              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <Ionicons name="git-branch-outline" size={12} color={colors.primary} />
+              <View
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: colors.muted, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name="git-branch-outline"
+                  size={12}
+                  color={colors.primary}
+                />
                 <Text style={[styles.filterChipText, { color: colors.text }]}>
                   {minRoutes}+ routes
                 </Text>
               </View>
             )}
             {withTopo && (
-              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: colors.muted, borderColor: colors.border },
+                ]}
+              >
                 <Ionicons name="map-outline" size={12} color={colors.primary} />
                 <Text style={[styles.filterChipText, { color: colors.text }]}>
                   With Topo
@@ -594,8 +708,14 @@ export default function CragDetailScreen() {
               onPress={clearFilters}
               style={[styles.clearFiltersChip, { borderColor: colors.border }]}
             >
-              <Ionicons name="close-circle" size={12} color={colors.destructive} />
-              <Text style={[styles.clearFiltersText, { color: colors.destructive }]}>
+              <Ionicons
+                name="close-circle"
+                size={12}
+                color={colors.destructive}
+              />
+              <Text
+                style={[styles.clearFiltersText, { color: colors.destructive }]}
+              >
                 Clear
               </Text>
             </Pressable>
@@ -604,129 +724,148 @@ export default function CragDetailScreen() {
 
         {/* Sectors (filtered) */}
         {filteredSectors.length > 0 ? (
-          <View
-            style={[
-              styles.section,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
+          <View style={styles.sectorsContainer}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitleInCard, { color: colors.text }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Sectors
               </Text>
               <Text
                 style={[styles.sectorCount, { color: colors.textSecondary }]}
               >
-                {filteredSectors.length}{activeFiltersCount > 0 ? ` of ${allSectors.length}` : ''}
+                {filteredSectors.length}
+                {activeFiltersCount > 0 ? ` of ${allSectors.length}` : ''}
               </Text>
             </View>
             <View style={styles.sectorsList}>
               {filteredSectors.map((sectorResult) => {
+                const sector = sectorResult.sector
                 const isGoodDay = sectorResult.conditions?.isGoodDay
                 const isHighScore = sectorResult.relevanceScore >= 70
                 const isRecommended = isGoodDay || isHighScore
+                
+                // Get sector stats
+                const totalRoutes = sector.routeCount || sector.routes?.length || 0
+                const routesInRange = sectorResult.routesInUserRange
+                const minGrade = sector.minGrade
+                const maxGrade = sector.maxGrade
+                const hasTopo = sector.hasTopo || sector.headerImageUrl
+                const orientation = sector.orientation
+                const rockType = sector.rockType
+                
+                // Determine current sun status
+                const inSun = isSectorInSun(orientation)
 
                 return (
                   <Pressable
-                    key={sectorResult.sector.id}
+                    key={sector.id}
                     style={[
-                      styles.sectorItem,
-                      {
-                        borderColor: colors.border,
-                        backgroundColor: isRecommended
-                          ? colors.card
-                          : colors.muted,
-                      },
-                      isRecommended && styles.sectorItemRecommended,
+                      styles.sectorCard,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      isRecommended && styles.sectorCardRecommended,
                     ]}
                     onPress={() => handleSectorPress(sectorResult)}
                   >
-                    {/* Recommended indicator bar */}
-                    {isRecommended && <View style={styles.recommendedBar} />}
-
-                    <View style={styles.sectorInfo}>
-                      <View style={styles.sectorNameRow}>
+                    {/* Header row with name and score */}
+                    <View style={styles.sectorHeader}>
+                      <View style={styles.sectorTitleArea}>
                         <Text
                           style={[styles.sectorName, { color: colors.text }]}
+                          numberOfLines={1}
                         >
-                          {sectorResult.sector.name}
+                          {sector.name}
                         </Text>
                         {isGoodDay && (
-                          <View style={styles.goodDayBadge}>
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={12}
-                              color="#FFFFFF"
-                            />
-                            <Text style={styles.goodDayText}>Ideal today</Text>
+                          <View style={styles.idealBadge}>
+                            <Ionicons name="sparkles" size={10} color="#FFFFFF" />
+                            <Text style={styles.idealBadgeText}>Ideal</Text>
                           </View>
                         )}
                       </View>
-                      <View style={styles.sectorMeta}>
-                        <Text
-                          style={[
-                            styles.sectorMetaText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {sectorResult.routesInUserRange} routes in range
-                        </Text>
-                        {sectorResult.sector.orientation && (
-                          <>
-                            <Text
-                              style={[
-                                styles.sectorMetaText,
-                                { color: colors.textSecondary },
-                              ]}
-                            >
-                              {' '}
-                              •{' '}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.sectorMetaText,
-                                { color: colors.textSecondary },
-                              ]}
-                            >
-                              {sectorResult.sector.orientation}
-                            </Text>
-                          </>
-                        )}
-                      </View>
-                      {/* Show match reasons from backend */}
-                      {sectorResult.matchReasons &&
-                        sectorResult.matchReasons.length > 0 && (
-                          <Text
+                      <View style={styles.sectorHeaderRight}>
+                        {sectorResult.relevanceScore > 0 && (
+                          <View
                             style={[
-                              styles.matchReason,
-                              { color: colors.textSecondary },
+                              styles.scoreBadge,
+                              { backgroundColor: getScoreColor(sectorResult.relevanceScore) },
                             ]}
-                            numberOfLines={1}
                           >
-                            {sectorResult.matchReasons[0]}
-                          </Text>
+                            <Text style={styles.scoreText}>
+                              {Math.round(sectorResult.relevanceScore)}
+                            </Text>
+                          </View>
                         )}
+                        <Ionicons
+                          name="chevron-forward"
+                          size={18}
+                          color={colors.textSecondary}
+                        />
+                      </View>
                     </View>
-                    <View style={styles.sectorRight}>
-                      <View
-                        style={[
-                          styles.miniScoreBadge,
-                          {
-                            backgroundColor: getScoreColor(
-                              sectorResult.relevanceScore,
-                            ),
-                          },
-                        ]}
-                      >
-                        <Text style={styles.miniScoreText}>
-                          {Math.round(sectorResult.relevanceScore)}
+
+                    {/* Stats row */}
+                    <View style={styles.sectorStats}>
+                      {/* Routes count */}
+                      <View style={styles.statItem}>
+                        <Ionicons name="git-branch-outline" size={14} color={colors.primary} />
+                        <Text style={[styles.statText, { color: colors.text }]}>
+                          {routesInRange > 0 && routesInRange !== totalRoutes
+                            ? `${routesInRange}/${totalRoutes}`
+                            : totalRoutes}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                          routes
                         </Text>
                       </View>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={20}
-                        color={colors.textSecondary}
-                      />
+
+                      {/* Grade range */}
+                      {minGrade && maxGrade && (
+                        <View style={styles.statItem}>
+                          <Ionicons name="trending-up-outline" size={14} color="#F59E0B" />
+                          <Text style={[styles.statText, { color: colors.text }]}>
+                            {minGrade === maxGrade ? minGrade : `${minGrade}-${maxGrade}`}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Orientation with sun/shade indicator */}
+                      {orientation && (
+                        <View style={styles.statItem}>
+                          <Ionicons
+                            name={inSun ? 'sunny-outline' : 'moon-outline'}
+                            size={14}
+                            color={inSun ? '#F59E0B' : '#6366F1'}
+                          />
+                          <Text style={[styles.statText, { color: colors.text }]}>
+                            {orientation}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Topo indicator */}
+                      {hasTopo && (
+                        <View style={[styles.statItem, styles.topoIndicator]}>
+                          <Ionicons name="map-outline" size={14} color="#10B981" />
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Additional info row */}
+                    <View style={styles.sectorMeta}>
+                      {rockType && (
+                        <View style={[styles.metaChip, { backgroundColor: colors.muted }]}>
+                          <Text style={[styles.metaChipText, { color: colors.textSecondary }]}>
+                            {rockType}
+                          </Text>
+                        </View>
+                      )}
+                      {sectorResult.matchReasons && sectorResult.matchReasons.length > 0 && (
+                        <Text
+                          style={[styles.matchReason, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          {sectorResult.matchReasons[0]}
+                        </Text>
+                      )}
                     </View>
                   </Pressable>
                 )
@@ -734,23 +873,39 @@ export default function CragDetailScreen() {
             </View>
           </View>
         ) : (
-          <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+          <View
+            style={[
+              styles.emptyState,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Ionicons
+              name="search-outline"
+              size={48}
+              color={colors.textSecondary}
+            />
             <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
               No sectors match filters
             </Text>
-            <Text style={[styles.emptyStateMessage, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.emptyStateMessage,
+                { color: colors.textSecondary },
+              ]}
+            >
               Try adjusting your filters to see more results
             </Text>
             <Pressable
               onPress={clearFilters}
-              style={[styles.emptyStateButton, { backgroundColor: colors.primary }]}
+              style={[
+                styles.emptyStateButton,
+                { backgroundColor: colors.primary },
+              ]}
             >
               <Text style={styles.emptyStateButtonText}>Clear Filters</Text>
             </Pressable>
           </View>
         )}
-
       </View>
     </ScrollView>
   )
@@ -936,11 +1091,9 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  section: {
+  // Sectors container
+  sectorsContainer: {
     marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -948,7 +1101,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  sectionTitleInCard: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
   },
@@ -956,89 +1109,108 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   sectorsList: {
-    gap: 8,
+    gap: 10,
   },
-  sectorItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 12,
+  // Sector Card
+  sectorCard: {
+    borderRadius: 14,
     borderWidth: 1,
-    overflow: 'hidden',
+    padding: 14,
+    gap: 10,
   },
-  sectorItemRecommended: {
+  sectorCardRecommended: {
     borderColor: '#10B981',
     borderWidth: 2,
   },
-  recommendedBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 5,
-    backgroundColor: '#10B981',
-  },
-  sectorInfo: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  sectorNameRow: {
+  sectorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  sectorTitleArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginRight: 12,
   },
   sectorName: {
     fontSize: 16,
     fontWeight: '700',
+    flexShrink: 1,
   },
-  goodDayBadge: {
+  idealBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  idealBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  sectorHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scoreBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 32,
+    alignItems: 'center',
+  },
+  scoreText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  // Stats row
+  sectorStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#10B981',
+  },
+  statText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  statLabel: {
+    fontSize: 12,
+  },
+  topoIndicator: {
+    opacity: 0.8,
+  },
+  // Meta row
+  sectorMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  metaChip: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  goodDayText: {
+  metaChipText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  sectorMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 6,
-  },
-  sectorMetaText: {
-    fontSize: 13,
     fontWeight: '500',
   },
   matchReason: {
-    fontSize: 12,
+    fontSize: 11,
     fontStyle: 'italic',
-    marginTop: 6,
-    opacity: 0.8,
-  },
-  sectorRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginLeft: 12,
-  },
-  miniScoreBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  miniScoreText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
+    flex: 1,
   },
 })

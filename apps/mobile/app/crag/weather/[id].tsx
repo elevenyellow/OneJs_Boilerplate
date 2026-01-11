@@ -60,8 +60,14 @@ function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
   }
 }
 
-function formatHour(timestamp: string): string {
+function formatHour(timestamp: string | null | undefined): string {
+  if (!timestamp) return '--:--'
+  
   const date = new Date(timestamp)
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) return '--:--'
+  
   return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -80,15 +86,15 @@ export default function WeatherScreen() {
 
   const todayForecast = crag?.forecast?.[0] || null
 
+  // Use all hourly data available (backend should filter by relevant dates)
   const todayHourlyForecast = useMemo(() => {
-    if (!crag?.hourlyForecast || !todayForecast?.date) return []
-    const targetDate = todayForecast.date.split('T')[0]
-    return crag.hourlyForecast.filter((h: CragDetailHourlyForecast) => {
-      if (!h.timestamp) return false
-      const hourDate = new Date(h.timestamp).toISOString().split('T')[0]
-      return hourDate === targetDate
+    if (!crag?.hourlyForecast) return []
+    // Return all hourly forecasts, sorted by timestamp
+    return [...crag.hourlyForecast].sort((a, b) => {
+      if (!a.timestamp || !b.timestamp) return 0
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     })
-  }, [crag?.hourlyForecast, todayForecast?.date])
+  }, [crag?.hourlyForecast])
 
   if (isLoading) {
     return (
@@ -245,64 +251,77 @@ export default function WeatherScreen() {
             Hourly Forecast
           </Text>
           {todayHourlyForecast.length === 0 ? (
-            <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
-              No hourly data available
-            </Text>
+            <View style={[styles.noDataContainer, { backgroundColor: colors.muted }]}>
+              <Ionicons name="time-outline" size={32} color={colors.textSecondary} />
+              <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+                Hourly data not available for this location
+              </Text>
+            </View>
           ) : (
-            todayHourlyForecast.map((hour: CragDetailHourlyForecast, index: number) => (
-              <View
-                key={hour.timestamp || `hour-${index}`}
-                style={[
-                  styles.hourlyRow,
-                  { borderBottomColor: colors.border },
-                ]}
-              >
-                <View style={styles.hourlyTime}>
-                  <Text style={[styles.hourlyTimeText, { color: colors.text }]}>
-                    {formatHour(hour.timestamp || '')}
-                  </Text>
-                  {hour.isDaylight ? (
-                    <Ionicons name="sunny" size={14} color="#F59E0B" />
-                  ) : (
-                    <Ionicons name="moon" size={14} color="#6366F1" />
-                  )}
-                </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hourlyScrollContent}
+            >
+              {todayHourlyForecast.slice(0, 24).map((hour: CragDetailHourlyForecast, index: number) => (
+                <View
+                  key={hour.timestamp || `hour-${index}`}
+                  style={[
+                    styles.hourlyCard,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
+                >
+                  {/* Time */}
+                  <View style={styles.hourlyCardTime}>
+                    <Text style={[styles.hourlyCardTimeText, { color: colors.text }]}>
+                      {formatHour(hour.timestamp || '')}
+                    </Text>
+                    {hour.isDaylight ? (
+                      <Ionicons name="sunny" size={10} color="#F59E0B" />
+                    ) : (
+                      <Ionicons name="moon" size={10} color="#6366F1" />
+                    )}
+                  </View>
 
-                <View style={styles.hourlyWeather}>
+                  {/* Weather Icon */}
                   <Ionicons
                     name={getWeatherIcon(hour.weatherCode)}
-                    size={24}
+                    size={28}
                     color={colors.primary}
                   />
-                </View>
 
-                <View style={styles.hourlyTemp}>
-                  <Text style={[styles.hourlyTempText, { color: colors.text }]}>
+                  {/* Temperature */}
+                  <Text style={[styles.hourlyCardTemp, { color: colors.text }]}>
                     {Math.round(hour.temperature)}°
                   </Text>
-                  <Text style={[styles.hourlyFeelsLike, { color: colors.textSecondary }]}>
-                    Feels {Math.round(hour.feelsLike)}°
-                  </Text>
-                </View>
 
-                <View style={styles.hourlyDetails}>
-                  {hour.precipitation > 0 && (
-                    <View style={styles.hourlyDetailItem}>
-                      <Ionicons name="water" size={12} color="#3B82F6" />
-                      <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
-                        {hour.precipitation}mm
+                  {/* Conditions */}
+                  <View style={[styles.hourlyCardConditions, { backgroundColor: colors.muted }]}>
+                    {hour.precipitation > 0 ? (
+                      <View style={styles.hourlyCardConditionRow}>
+                        <Ionicons name="water" size={10} color="#3B82F6" />
+                        <Text style={[styles.hourlyCardConditionText, { color: colors.textSecondary }]}>
+                          {hour.precipitation.toFixed(1)}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.hourlyCardConditionRow}>
+                        <Ionicons name="water-outline" size={10} color={colors.textSecondary} />
+                        <Text style={[styles.hourlyCardConditionText, { color: colors.textSecondary }]}>
+                          0
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.hourlyCardConditionRow}>
+                      <Ionicons name="leaf" size={10} color={colors.textSecondary} />
+                      <Text style={[styles.hourlyCardConditionText, { color: colors.textSecondary }]}>
+                        {Math.round(hour.windSpeed)}
                       </Text>
                     </View>
-                  )}
-                  <View style={styles.hourlyDetailItem}>
-                    <Ionicons name="leaf" size={12} color={colors.textSecondary} />
-                    <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
-                      {Math.round(hour.windSpeed)} m/s
-                    </Text>
                   </View>
                 </View>
-              </View>
-            ))
+              ))}
+            </ScrollView>
           )}
         </View>
 
@@ -312,57 +331,105 @@ export default function WeatherScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               7-Day Forecast
             </Text>
-            {crag.forecast.slice(0, 7).map((day, index) => (
-              <View
-                key={day.date || `day-${index}`}
-                style={[
-                  styles.weeklyRow,
-                  { borderBottomColor: colors.border },
-                ]}
-              >
-                <View style={styles.weeklyDay}>
-                  <Text style={[styles.weeklyDayText, { color: colors.text }]}>
-                    {formatForecastDate(day.date)}
-                  </Text>
-                </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.weeklyScrollContent}
+            >
+              {crag.forecast.slice(0, 7).map((day, index) => {
+                const isToday = index === 0
+                const rainChance = day.precipitation?.probability || 0
+                const isGoodDay = rainChance < 30 && (day.wind?.mean || 0) < 8
+                
+                return (
+                  <View
+                    key={day.date || `day-${index}`}
+                    style={[
+                      styles.dayCard,
+                      { 
+                        backgroundColor: isToday ? colors.primary : colors.card,
+                        borderColor: isGoodDay && !isToday ? '#10B981' : colors.border,
+                        borderWidth: isGoodDay && !isToday ? 2 : 1,
+                      },
+                    ]}
+                  >
+                    {/* Day label */}
+                    <Text style={[
+                      styles.dayCardLabel,
+                      { color: isToday ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
+                    ]}>
+                      {formatForecastDate(day.date)}
+                    </Text>
 
-                <View style={styles.weeklyWeather}>
-                  <Ionicons
-                    name={getWeatherIcon(day.weatherCode)}
-                    size={28}
-                    color={colors.primary}
-                  />
-                </View>
+                    {/* Weather icon */}
+                    <View style={styles.dayCardIconContainer}>
+                      <Ionicons
+                        name={getWeatherIcon(day.weatherCode)}
+                        size={36}
+                        color={isToday ? '#FFFFFF' : colors.primary}
+                      />
+                      {isGoodDay && !isToday && (
+                        <View style={styles.goodDayIndicator}>
+                          <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                        </View>
+                      )}
+                    </View>
 
-                <View style={styles.weeklyTemps}>
-                  <Text style={[styles.weeklyTempHigh, { color: colors.text }]}>
-                    {Math.round(day.temperature?.max || 0)}°
-                  </Text>
-                  <Text style={[styles.weeklyTempLow, { color: colors.textSecondary }]}>
-                    {Math.round(day.temperature?.min || 0)}°
-                  </Text>
-                </View>
-
-                <View style={styles.weeklyConditions}>
-                  {day.precipitation?.probability > 0 && (
-                    <View style={styles.weeklyConditionItem}>
-                      <Ionicons name="water" size={14} color="#3B82F6" />
-                      <Text style={[styles.weeklyConditionText, { color: colors.textSecondary }]}>
-                        {Math.round(day.precipitation.probability)}%
+                    {/* Temperature */}
+                    <View style={styles.dayCardTemps}>
+                      <Text style={[
+                        styles.dayCardTempHigh,
+                        { color: isToday ? '#FFFFFF' : colors.text }
+                      ]}>
+                        {Math.round(day.temperature?.max || 0)}°
+                      </Text>
+                      <Text style={[
+                        styles.dayCardTempLow,
+                        { color: isToday ? 'rgba(255,255,255,0.7)' : colors.textSecondary }
+                      ]}>
+                        {Math.round(day.temperature?.min || 0)}°
                       </Text>
                     </View>
-                  )}
-                  {day.wind?.mean > 0 && (
-                    <View style={styles.weeklyConditionItem}>
-                      <Ionicons name="leaf" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.weeklyConditionText, { color: colors.textSecondary }]}>
-                        {Math.round(day.wind.mean)} m/s
-                      </Text>
+
+                    {/* Conditions */}
+                    <View style={[
+                      styles.dayCardConditions,
+                      { backgroundColor: isToday ? 'rgba(255,255,255,0.15)' : colors.muted }
+                    ]}>
+                      {/* Rain */}
+                      <View style={styles.dayCardConditionRow}>
+                        <Ionicons 
+                          name="water" 
+                          size={12} 
+                          color={rainChance > 50 ? '#3B82F6' : (isToday ? 'rgba(255,255,255,0.6)' : colors.textSecondary)} 
+                        />
+                        <Text style={[
+                          styles.dayCardConditionText,
+                          { color: isToday ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
+                        ]}>
+                          {Math.round(rainChance)}%
+                        </Text>
+                      </View>
+                      
+                      {/* Wind */}
+                      <View style={styles.dayCardConditionRow}>
+                        <Ionicons 
+                          name="leaf" 
+                          size={12} 
+                          color={isToday ? 'rgba(255,255,255,0.6)' : colors.textSecondary} 
+                        />
+                        <Text style={[
+                          styles.dayCardConditionText,
+                          { color: isToday ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
+                        ]}>
+                          {Math.round(day.wind?.mean || 0)}m/s
+                        </Text>
+                      </View>
                     </View>
-                  )}
-                </View>
-              </View>
-            ))}
+                  </View>
+                )
+              })}
+            </ScrollView>
           </View>
         )}
       </ScrollView>
@@ -464,100 +531,115 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 12,
   },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
   noDataText: {
     fontSize: 14,
     textAlign: 'center',
-    paddingVertical: 20,
   },
-  hourlyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+  // Hourly Forecast Cards
+  hourlyScrollContent: {
+    paddingRight: 20,
     gap: 8,
   },
-  hourlyTime: {
-    width: 60,
-    flexDirection: 'row',
+  hourlyCard: {
+    width: 70,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10,
     alignItems: 'center',
     gap: 6,
   },
-  hourlyTimeText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  hourlyWeather: {
-    width: 36,
-    alignItems: 'center',
-  },
-  hourlyTemp: {
-    width: 70,
-    alignItems: 'flex-start',
-  },
-  hourlyTempText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  hourlyFeelsLike: {
-    fontSize: 12,
-  },
-  hourlyDetails: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  hourlyDetailItem: {
+  hourlyCardTime: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  hourlyDetailText: {
+  hourlyCardTimeText: {
     fontSize: 12,
-  },
-  weeklyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    gap: 12,
-  },
-  weeklyDay: {
-    width: 80,
-  },
-  weeklyDayText: {
-    fontSize: 15,
     fontWeight: '600',
   },
-  weeklyWeather: {
-    width: 44,
-    alignItems: 'center',
+  hourlyCardTemp: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  weeklyTemps: {
+  hourlyCardConditions: {
+    width: '100%',
+    borderRadius: 6,
+    padding: 4,
+    gap: 2,
+  },
+  hourlyCardConditionRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  hourlyCardConditionText: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  // 7-Day Forecast Cards
+  weeklyScrollContent: {
+    paddingRight: 20,
+    gap: 10,
+  },
+  dayCard: {
+    width: 90,
+    borderRadius: 16,
+    padding: 12,
     alignItems: 'center',
     gap: 8,
-    width: 70,
   },
-  weeklyTempHigh: {
-    fontSize: 16,
+  dayCardLabel: {
+    fontSize: 12,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  weeklyTempLow: {
-    fontSize: 14,
+  dayCardIconContainer: {
+    position: 'relative',
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  weeklyConditions: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
+  goodDayIndicator: {
+    position: 'absolute',
+    top: -2,
+    right: -8,
   },
-  weeklyConditionItem: {
+  dayCardTemps: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  dayCardTempHigh: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  dayCardTempLow: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  dayCardConditions: {
+    width: '100%',
+    borderRadius: 8,
+    padding: 6,
+    gap: 4,
+    marginTop: 4,
+  },
+  dayCardConditionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
   },
-  weeklyConditionText: {
-    fontSize: 13,
+  dayCardConditionText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 })

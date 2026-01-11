@@ -64,9 +64,7 @@ export default function RootLayout() {
           <Stack.Screen
             name="crag/[id]"
             options={{
-              title: '',
-              headerTransparent: true,
-              headerTintColor: '#FFFFFF',
+              headerShown: false,
             }}
           />
           <Stack.Screen

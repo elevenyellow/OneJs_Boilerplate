@@ -139,10 +139,27 @@ export function HeroHeader({
 
   const renderContent = () => (
     <>
-      {/* Top bar for action buttons only */}
-      {actions && actions.length > 0 && (
-        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-          <View style={{ flex: 1 }} />
+      {/* Top bar with back button and actions */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        {/* Back button */}
+        <Pressable 
+          style={styles.backButton} 
+          onPress={handleBackPress}
+          hitSlop={8}
+        >
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={80} tint="dark" style={styles.backButtonBlur}>
+              <Ionicons name="arrow-back" size={20} color="#FFF" />
+            </BlurView>
+          ) : (
+            <View style={styles.backButtonAndroid}>
+              <Ionicons name="arrow-back" size={20} color="#FFF" />
+            </View>
+          )}
+        </Pressable>
+
+        {/* Action buttons */}
+        {actions && actions.length > 0 && (
           <View style={styles.actionsRow}>
             {actions.map((action, index) => (
               <Pressable 
@@ -155,7 +172,7 @@ export function HeroHeader({
                 hitSlop={8}
               >
                 {Platform.OS === 'ios' ? (
-                  <BlurView intensity={80} tint={colorScheme} style={styles.actionButtonBlur}>
+                  <BlurView intensity={80} tint="dark" style={styles.actionButtonBlur}>
                     <Ionicons name={action.icon} size={20} color={action.color || '#FFF'} />
                   </BlurView>
                 ) : (
@@ -166,8 +183,8 @@ export function HeroHeader({
               </Pressable>
             ))}
           </View>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* Bottom overlay with content */}
       <LinearGradient
@@ -175,19 +192,11 @@ export function HeroHeader({
         style={styles.overlay}
       >
         <View style={styles.headerContent}>
-          {/* Title row with back button */}
-          <View style={styles.titleRow}>
-            <Pressable 
-              style={styles.backButtonInline} 
-              onPress={handleBackPress}
-              hitSlop={8}
-            >
-              <Ionicons name="arrow-back" size={22} color="#FFF" />
-            </Pressable>
+          {/* Title with badge */}
+          <View style={styles.titleContainer}>
             <Text style={styles.title} numberOfLines={2}>
               {title}
             </Text>
-            {/* Badge next to title */}
             {badge && (
               <View
                 style={[
@@ -268,13 +277,36 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
+  // Top bar
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     zIndex: 10,
   },
+  // Back button
+  backButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  backButtonBlur: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  backButtonAndroid: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  // Action buttons
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -299,6 +331,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
+  // Bottom overlay
   overlay: {
     position: 'absolute',
     bottom: 0,
@@ -309,15 +342,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerContent: {
-    gap: 6,
-  },
-  titleRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  backButtonInline: {
-    padding: 4,
+  titleContainer: {
+    alignItems: 'center',
+    gap: 8,
   },
   badgeInline: {
     flexDirection: 'row',
@@ -333,11 +363,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
-    flex: 1,
     fontSize: 24,
     fontWeight: '800',
     color: '#FFF',
     letterSpacing: -0.5,
+    textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -345,6 +375,7 @@ const styles = StyleSheet.create({
   subtitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
   },
   subtitle: {
@@ -354,8 +385,9 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 8,
-    marginTop: 6,
+    marginTop: 4,
     flexWrap: 'wrap',
   },
   statItem: {
