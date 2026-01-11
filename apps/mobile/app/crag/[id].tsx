@@ -937,6 +937,11 @@ export default function CragDetailScreen() {
                         const percentage = totalRoutes > 0 ? Math.round((routesInRange / totalRoutes) * 100) : 0
                         return (
                           <View style={[styles.mainStatBox, { backgroundColor: inRangeColor + '15', borderColor: inRangeColor + '30' }]}>
+                            <Ionicons
+                              name="trail-sign"
+                              size={22}
+                              color={inRangeColor}
+                            />
                             <Text style={[styles.mainStatValue, { color: inRangeColor }]}>
                               {routesInRange}
                             </Text>
@@ -951,11 +956,16 @@ export default function CragDetailScreen() {
                       })()}
 
                       {/* Grade range */}
-                      <View style={[styles.mainStatBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                      <View style={[styles.mainStatBox, { backgroundColor: '#F59E0B' + '15', borderColor: '#F59E0B' + '30' }]}>
+                        <Ionicons
+                          name="trending-up"
+                          size={22}
+                          color="#F59E0B"
+                        />
                         <Text style={[styles.mainStatValue, { color: colors.text }]}>
                           {sector.minGrade || '?'} - {sector.maxGrade || '?'}
                         </Text>
-                        <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>
+                        <Text style={[styles.mainStatLabel, { color: '#F59E0B' }]}>
                           grades
                         </Text>
                         {avgGrade && (
@@ -968,6 +978,11 @@ export default function CragDetailScreen() {
                       {/* Height */}
                       {(avgHeight || maxHeight) && (
                         <View style={[styles.mainStatBox, { backgroundColor: '#8B5CF6' + '15', borderColor: '#8B5CF6' + '30' }]}>
+                          <Ionicons
+                            name="arrow-up"
+                            size={22}
+                            color="#8B5CF6"
+                          />
                           <Text style={[styles.mainStatValue, { color: '#8B5CF6' }]}>
                             {maxHeight ? `${Math.round(maxHeight)}m` : `${Math.round(avgHeight!)}m`}
                           </Text>
@@ -1402,24 +1417,23 @@ const styles = StyleSheet.create({
   mainStatBox: {
     flex: 1,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     minWidth: 80,
+    gap: 2,
   },
   mainStatValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   mainStatLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    marginTop: 2,
   },
   mainStatSub: {
-    fontSize: 10,
-    marginTop: 2,
+    fontSize: 9,
   },
   statItem: {
     flexDirection: 'row',
