@@ -15,6 +15,7 @@ import {
   Dimensions,
   Image,
   Linking,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,6 +24,12 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler'
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
 import Svg, { Ellipse, G, Path, Text as SvgText } from 'react-native-svg'
 
 function getScoreColor(score: number): string {
@@ -92,20 +99,71 @@ const normalizeImageUrl = (url: string): string => {
   return url
 }
 
-// Panoramic Topo Component - displays thumbnail and navigates to full page
+// Sector info for modal display
+interface SectorDisplayInfo {
+  id: string
+  name: string
+  routeCount: number
+  avgStars: number | null
+  kidFriendly: boolean | null
+  beginner: boolean | null
+  hasTopo: boolean
+  orientation: string | null
+}
+
+// Panoramic Topo Component with zoom modal
 interface PanoramicTopoProps {
   topo: CragTopoImage
-  cragName: string
   highlightedSectorId: string | null
   // Map of sector name (lowercase) to sector ID for fallback matching
   sectorNameToId: Map<string, string>
+  // Map of sector ID to sector display info
+  sectorInfoMap: Map<string, SectorDisplayInfo>
+  // Callback to navigate to sector detail
+  onSectorNavigate: (sectorId: string) => void
+  // Callback to select/highlight a sector (for syncing with parent)
+  onSectorSelect: (sectorId: string | null) => void
 }
 
-function PanoramicTopo({ topo, cragName, highlightedSectorId, sectorNameToId }: PanoramicTopoProps) {
-  const router = useRouter()
+function PanoramicTopo({ topo, highlightedSectorId, sectorNameToId, sectorInfoMap, onSectorNavigate, onSectorSelect }: PanoramicTopoProps) {
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
   const [imageLoading, setImageLoading] = useState(true)
+  const [zoomModalVisible, setZoomModalVisible] = useState(false)
+  // Local state for selected sector in modal (independent from parent's highlightedSectorId)
+  const [modalSelectedSectorId, setModalSelectedSectorId] = useState<string | null>(null)
+  
+  // When modal opens, initialize with the highlighted sector from parent
+  const handleOpenModal = () => {
+    setModalSelectedSectorId(highlightedSectorId)
+    setZoomModalVisible(true)
+  }
+
+  // Handle sector click - if already selected, navigate; otherwise select
+  const handleSectorClick = (effectiveSectorId: string | null, isModal: boolean) => {
+    if (!effectiveSectorId) return
+    
+    if (isModal) {
+      // In modal: check against modalSelectedSectorId
+      if (modalSelectedSectorId === effectiveSectorId) {
+        // Already selected - navigate to sector detail
+        setZoomModalVisible(false)
+        onSectorNavigate(effectiveSectorId)
+      } else {
+        // Select this sector
+        setModalSelectedSectorId(effectiveSectorId)
+      }
+    } else {
+      // In thumbnail/main page: check against highlightedSectorId
+      if (highlightedSectorId === effectiveSectorId) {
+        // Already selected - navigate to sector detail
+        onSectorNavigate(effectiveSectorId)
+      } else {
+        // Select this sector
+        onSectorSelect(effectiveSectorId)
+      }
+    }
+  }
 
   const imageUrl = normalizeImageUrl(topo.fullImageUrl)
   const screenWidth = Dimensions.get('window').width
@@ -120,71 +178,128 @@ function PanoramicTopo({ topo, cragName, highlightedSectorId, sectorNameToId }: 
 
   const sectorPositions = Array.isArray(topo.sectorPositions) ? topo.sectorPositions : []
 
-  const handleOpenPanoramic = () => {
-    // Convert Map to object for URL params
-    const mappingObj: Record<string, string> = {}
-    sectorNameToId.forEach((id, name) => {
-      mappingObj[name] = id
+  // Zoom modal state
+  const scale = useSharedValue(1)
+  const savedScale = useSharedValue(1)
+  const translateX = useSharedValue(0)
+  const translateY = useSharedValue(0)
+  const savedTranslateX = useSharedValue(0)
+  const savedTranslateY = useSharedValue(0)
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((event) => {
+      scale.value = Math.min(Math.max(savedScale.value * event.scale, 1), 5)
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value
+      if (scale.value < 1.1) {
+        scale.value = withSpring(1)
+        savedScale.value = 1
+        translateX.value = withSpring(0)
+        translateY.value = withSpring(0)
+        savedTranslateX.value = 0
+        savedTranslateY.value = 0
+      }
     })
 
-    // Use router.push with params object to avoid URL encoding issues
-    router.push({
-      pathname: `/crag/panoramic/${topo.id}`,
-      params: {
-        cragName: cragName,
-        topoData: JSON.stringify(topo),
-        sectorMapping: JSON.stringify(mappingObj),
-        highlightedSectorId: highlightedSectorId || '',
-      },
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      if (scale.value > 1) {
+        const zoomDisplayWidth = screenWidth
+        const zoomDisplayHeight = zoomDisplayWidth / aspectRatio
+        const maxTranslateX = (zoomDisplayWidth * (scale.value - 1)) / 2
+        const maxTranslateY = (zoomDisplayHeight * (scale.value - 1)) / 2
+        translateX.value = Math.min(Math.max(savedTranslateX.value + event.translationX, -maxTranslateX), maxTranslateX)
+        translateY.value = Math.min(Math.max(savedTranslateY.value + event.translationY, -maxTranslateY), maxTranslateY)
+      }
     })
-  }
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value
+      savedTranslateY.value = translateY.value
+    })
 
-  const renderSvgOverlay = () => (
-    <Svg
-      width={displayWidth}
-      height={displayHeight}
-      viewBox={`0 0 ${originalWidth} ${originalHeight}`}
-      style={StyleSheet.absoluteFill}
-    >
-      {sectorPositions.map((position, index) => {
-        const points = parsePoints(position.points)
-        if (points.length < 3) return null
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (scale.value > 1) {
+        scale.value = withSpring(1)
+        savedScale.value = 1
+        translateX.value = withSpring(0)
+        translateY.value = withSpring(0)
+        savedTranslateX.value = 0
+        savedTranslateY.value = 0
+      } else {
+        scale.value = withSpring(3)
+        savedScale.value = 3
+      }
+    })
 
-        const effectiveSectorId = position.sectorId || 
-          sectorNameToId.get(position.areaName.toLowerCase()) || 
-          null
-        const isHighlighted = effectiveSectorId === highlightedSectorId
-        const pathData = pointsToPolygonPath(points)
-        const bottomCenter = getPolygonBottomCenter(points)
-        const lineColor = isHighlighted ? SECTOR_HIGHLIGHT_COLOR : SECTOR_COLOR
-        const lineWidth = isHighlighted ? 3 : 2
-        const labelSize = isHighlighted ? 16 : 12
-        const fontSize = isHighlighted ? 8 : 7
-        const labelOffset = 10
-        const labelY = bottomCenter.y + labelOffset
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, doubleTapGesture)
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }))
 
-        return (
-          <G key={position.externalAreaId || `sector-${index}`}>
-            <Path d={pathData} stroke="#000" strokeWidth={lineWidth + 3} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
-            <Path d={pathData} stroke="#fff" strokeWidth={lineWidth + 1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <Path d={pathData} stroke={lineColor} strokeWidth={lineWidth} fill={lineColor} fillOpacity={0.15} strokeLinecap="round" strokeLinejoin="round" />
-            <G>
-              <Ellipse cx={bottomCenter.x + 1} cy={labelY + 1} rx={labelSize / 2 + 2} ry={labelSize / 2 + 2} fill="#000" opacity={0.5} />
-              <Ellipse cx={bottomCenter.x} cy={labelY} rx={labelSize / 2 + 2} ry={labelSize / 2 + 2} fill="#fff" />
-              <Ellipse cx={bottomCenter.x} cy={labelY} rx={labelSize / 2} ry={labelSize / 2} fill={lineColor} />
-              <SvgText x={bottomCenter.x} y={labelY + fontSize / 3} textAnchor="middle" fontSize={fontSize} fontWeight="bold" fill="#000">
-                {position.areaNumber}
-              </SvgText>
+  const zoomDisplayWidth = screenWidth
+  const zoomDisplayHeight = zoomDisplayWidth / aspectRatio
+
+  const renderSvgOverlay = (width: number, height: number, isZoom = false) => {
+    // Use modalSelectedSectorId for modal, highlightedSectorId for thumbnail
+    const activeHighlightId = isZoom ? modalSelectedSectorId : highlightedSectorId
+    
+    return (
+      <Svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${originalWidth} ${originalHeight}`}
+        style={StyleSheet.absoluteFill}
+      >
+        {sectorPositions.map((position, index) => {
+          const points = parsePoints(position.points)
+          if (points.length < 3) return null
+
+          // Get effective sector ID - use sectorId if available, otherwise try to match by name
+          const effectiveSectorId = position.sectorId || 
+            sectorNameToId.get(position.areaName.toLowerCase()) || 
+            null
+          const isHighlighted = effectiveSectorId === activeHighlightId
+          const pathData = pointsToPolygonPath(points)
+          const bottomCenter = getPolygonBottomCenter(points)
+          const lineColor = isHighlighted ? SECTOR_HIGHLIGHT_COLOR : SECTOR_COLOR
+          const lineWidth = isHighlighted ? (isZoom ? 4 : 3) : (isZoom ? 2.5 : 2)
+          // Label sizes for number badge below polygon
+          const labelSize = isHighlighted ? (isZoom ? 22 : 16) : (isZoom ? 18 : 12)
+          const fontSize = isHighlighted ? (isZoom ? 11 : 8) : (isZoom ? 9 : 7)
+          // Position label below the polygon with offset
+          const labelOffset = isZoom ? 14 : 10
+          const labelY = bottomCenter.y + labelOffset
+
+          return (
+            <G key={position.externalAreaId || `sector-${index}`}>
+              <Path d={pathData} stroke="#000" strokeWidth={lineWidth + 3} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
+              <Path d={pathData} stroke="#fff" strokeWidth={lineWidth + 1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <Path d={pathData} stroke={lineColor} strokeWidth={lineWidth} fill={lineColor} fillOpacity={0.15} strokeLinecap="round" strokeLinejoin="round" />
+              <G>
+                <Ellipse cx={bottomCenter.x + 1} cy={labelY + 1} rx={labelSize / 2 + 2} ry={labelSize / 2 + 2} fill="#000" opacity={0.5} />
+                <Ellipse cx={bottomCenter.x} cy={labelY} rx={labelSize / 2 + 2} ry={labelSize / 2 + 2} fill="#fff" />
+                <Ellipse cx={bottomCenter.x} cy={labelY} rx={labelSize / 2} ry={labelSize / 2} fill={lineColor} />
+                <SvgText x={bottomCenter.x} y={labelY + fontSize / 3} textAnchor="middle" fontSize={fontSize} fontWeight="bold" fill="#000">
+                  {position.areaNumber}
+                </SvgText>
+              </G>
             </G>
-          </G>
-        )
-      })}
-    </Svg>
-  )
+          )
+        })}
+      </Svg>
+    )
+  }
 
   return (
     <View style={panoramicStyles.container}>
-      <Pressable onPress={handleOpenPanoramic}>
+      <Pressable onPress={handleOpenModal}>
         <View style={[panoramicStyles.topoContainer, { width: displayWidth, height: displayHeight, borderColor: colors.border }]}>
           <Image
             source={{ uri: imageUrl }}
@@ -198,12 +313,128 @@ function PanoramicTopo({ topo, cragName, highlightedSectorId, sectorNameToId }: 
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           )}
-          {!imageLoading && originalWidth > 0 && originalHeight > 0 && renderSvgOverlay()}
+          {!imageLoading && originalWidth > 0 && originalHeight > 0 && renderSvgOverlay(displayWidth, displayHeight)}
           <View style={panoramicStyles.zoomIconOverlay}>
             <Ionicons name="expand-outline" size={20} color="#fff" />
           </View>
         </View>
       </Pressable>
+
+      <Modal 
+        visible={zoomModalVisible} 
+        animationType="fade" 
+        transparent={false} 
+        statusBarTranslucent={true}
+        presentationStyle="fullScreen"
+        onRequestClose={() => setZoomModalVisible(false)}
+      >
+        <View style={panoramicStyles.zoomModalContainer}>
+          {/* Header */}
+          <View style={panoramicStyles.zoomHeader}>
+            <Text style={panoramicStyles.zoomHintText}>Pinch to zoom • Double tap to enlarge</Text>
+            <Pressable style={panoramicStyles.zoomCloseButton} onPress={() => setZoomModalVisible(false)}>
+              <Ionicons name="close" size={28} color="#fff" />
+            </Pressable>
+          </View>
+
+          {/* Zoomable Image */}
+          <GestureHandlerRootView style={panoramicStyles.zoomGestureContainer}>
+            <GestureDetector gesture={composedGesture}>
+              <Animated.View style={[panoramicStyles.zoomImageContainer, { width: zoomDisplayWidth, height: zoomDisplayHeight }, animatedStyle]}>
+                <Image source={{ uri: imageUrl }} style={{ width: zoomDisplayWidth, height: zoomDisplayHeight }} resizeMode="contain" />
+                {renderSvgOverlay(zoomDisplayWidth, zoomDisplayHeight, true)}
+              </Animated.View>
+            </GestureDetector>
+          </GestureHandlerRootView>
+          
+          {/* Sector list below image */}
+          <View style={panoramicStyles.sectorListContainer}>
+            <View style={panoramicStyles.sectorListHeader}>
+              <Ionicons name="layers-outline" size={16} color="#fff" />
+              <Text style={panoramicStyles.sectorListTitle}>Sectors</Text>
+              <Text style={panoramicStyles.sectorListCount}>{sectorPositions.length}</Text>
+            </View>
+            <ScrollView 
+              style={panoramicStyles.sectorListScroll}
+              showsVerticalScrollIndicator={true}
+            >
+              {sectorPositions.map((position) => {
+                const effectiveSectorId = position.sectorId || 
+                  sectorNameToId.get(position.areaName.toLowerCase()) || 
+                  null
+                const isHighlighted = effectiveSectorId === modalSelectedSectorId
+                const sectorInfo = effectiveSectorId ? sectorInfoMap.get(effectiveSectorId) : null
+                return (
+                  <Pressable 
+                    key={position.externalAreaId || position.areaNumber} 
+                    style={[
+                      panoramicStyles.sectorListItem,
+                      isHighlighted && panoramicStyles.sectorListItemHighlighted
+                    ]}
+                    onPress={() => handleSectorClick(effectiveSectorId, true)}
+                  >
+                    <View style={[
+                      panoramicStyles.sectorListBadge,
+                      { backgroundColor: isHighlighted ? SECTOR_HIGHLIGHT_COLOR : SECTOR_COLOR }
+                    ]}>
+                      <Text style={panoramicStyles.sectorListBadgeText}>{position.areaNumber}</Text>
+                    </View>
+                    <View style={panoramicStyles.sectorListContent}>
+                      <Text style={[
+                        panoramicStyles.sectorListName,
+                        isHighlighted && panoramicStyles.sectorListNameHighlighted
+                      ]} numberOfLines={1}>
+                        {position.areaName}
+                      </Text>
+                      {sectorInfo && (
+                        <View style={panoramicStyles.sectorListMeta}>
+                          {/* Route count */}
+                          <View style={panoramicStyles.sectorListMetaItem}>
+                            <Ionicons name="git-branch-outline" size={10} color="rgba(255,255,255,0.5)" />
+                            <Text style={panoramicStyles.sectorListMetaText}>{sectorInfo.routeCount}</Text>
+                          </View>
+                          {/* Stars */}
+                          {sectorInfo.avgStars && sectorInfo.avgStars > 0 && (
+                            <View style={panoramicStyles.sectorListMetaItem}>
+                              <Ionicons name="star" size={10} color="#F59E0B" />
+                              <Text style={[panoramicStyles.sectorListMetaText, { color: '#F59E0B' }]}>
+                                {sectorInfo.avgStars.toFixed(1)}
+                              </Text>
+                            </View>
+                          )}
+                          {/* Beginner friendly */}
+                          {sectorInfo.beginner === true && (
+                            <View style={panoramicStyles.sectorListMetaItem}>
+                              <Ionicons name="school-outline" size={10} color="#3B82F6" />
+                            </View>
+                          )}
+                          {/* Kid friendly */}
+                          {sectorInfo.kidFriendly === true && (
+                            <View style={panoramicStyles.sectorListMetaItem}>
+                              <Ionicons name="happy-outline" size={10} color="#8B5CF6" />
+                            </View>
+                          )}
+                          {/* Has topo */}
+                          {sectorInfo.hasTopo && (
+                            <View style={panoramicStyles.sectorListMetaItem}>
+                              <Ionicons name="map-outline" size={10} color="#10B981" />
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                    <Ionicons 
+                      name={isHighlighted ? "arrow-forward-circle" : "chevron-forward"}
+                      size={isHighlighted ? 20 : 16} 
+                      color={isHighlighted ? SECTOR_HIGHLIGHT_COLOR : 'rgba(255,255,255,0.4)'} 
+                    />
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -214,6 +445,29 @@ const panoramicStyles = StyleSheet.create({
   baseImage: { position: 'absolute', top: 0, left: 0 },
   loadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(26, 26, 46, 0.8)' },
   zoomIconOverlay: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 16, padding: 6 },
+  // Modal styles - full screen
+  zoomModalContainer: { flex: 1, backgroundColor: '#0f0f1a', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  zoomHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12 },
+  zoomHintText: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
+  zoomCloseButton: { padding: 8 },
+  zoomGestureContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  zoomImageContainer: { position: 'relative' },
+  // Sector list styles
+  sectorListContainer: { backgroundColor: '#1a1a2e', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: 250, paddingBottom: 20 },
+  sectorListHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  sectorListTitle: { color: '#fff', fontSize: 16, fontWeight: '600', flex: 1 },
+  sectorListCount: { color: 'rgba(255,255,255,0.5)', fontSize: 14 },
+  sectorListScroll: { paddingHorizontal: 12 },
+  sectorListItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, marginVertical: 2 },
+  sectorListItemHighlighted: { backgroundColor: 'rgba(0, 255, 127, 0.15)' },
+  sectorListBadge: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  sectorListBadgeText: { color: '#000', fontSize: 12, fontWeight: '700' },
+  sectorListContent: { flex: 1 },
+  sectorListName: { fontSize: 14, fontWeight: '500', color: '#fff' },
+  sectorListNameHighlighted: { color: SECTOR_HIGHLIGHT_COLOR },
+  sectorListMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  sectorListMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  sectorListMetaText: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
 })
 
 // Sun preference type
@@ -447,6 +701,25 @@ export default function CragDetailScreen() {
     }
     return map
   }, [crag?.topoImages, sectorNameToId])
+
+  // Build sector info map for modal display
+  const sectorInfoMap = useMemo(() => {
+    const map = new Map<string, SectorDisplayInfo>()
+    for (const sectorResult of allSectors) {
+      const sector = sectorResult.sector
+      map.set(sector.id, {
+        id: sector.id,
+        name: sector.name,
+        routeCount: sector.routeCount || 0,
+        avgStars: sector.avgStars || null,
+        kidFriendly: sector.kidFriendly ?? null,
+        beginner: sector.beginner ?? null,
+        hasTopo: sector.hasTopo || false,
+        orientation: sector.orientation || null,
+      })
+    }
+    return map
+  }, [allSectors])
 
   // Get rock type from first sector if available
   const primaryRockType = allSectors[0]?.sector?.rockType || null
@@ -697,6 +970,17 @@ export default function CragDetailScreen() {
     }
 
     router.push(`/sector/${sector.id}?${params.toString()}`)
+  }
+
+  // Navigate to sector by ID (used by PanoramicTopo component)
+  const handleSectorNavigateById = (sectorId: string) => {
+    const sectorResult = allSectors.find(s => s.sector.id === sectorId)
+    if (sectorResult) {
+      handleSectorPress(sectorResult)
+    } else {
+      // Fallback: simple navigation without params
+      router.push(`/sector/${sectorId}`)
+    }
   }
 
   if (isLoading) {
@@ -1059,9 +1343,11 @@ export default function CragDetailScreen() {
           {crag.topoImages && crag.topoImages.length > 0 && crag.topoImages[0].sectorPositions?.length > 0 && (
             <PanoramicTopo
               topo={crag.topoImages[0]}
-              cragName={crag.name}
               highlightedSectorId={highlightedSectorId}
               sectorNameToId={sectorNameToId}
+              sectorInfoMap={sectorInfoMap}
+              onSectorNavigate={handleSectorNavigateById}
+              onSectorSelect={setHighlightedSectorId}
             />
           )}
 
@@ -1098,12 +1384,12 @@ export default function CragDetailScreen() {
                       },
                     ]}
                     onPress={() => {
-                      // Toggle selection on tap (like routes)
-                      setHighlightedSectorId(prev => prev === sector.id ? null : sector.id)
-                    }}
-                    onLongPress={() => {
-                      // Navigate on long press
-                      handleSectorPress(sectorResult)
+                      // If already selected, navigate to detail; otherwise select
+                      if (highlightedSectorId === sector.id) {
+                        handleSectorPress(sectorResult)
+                      } else {
+                        setHighlightedSectorId(sector.id)
+                      }
                     }}
                   >
                     {/* Number badge - use areaNumber from topo if available */}
