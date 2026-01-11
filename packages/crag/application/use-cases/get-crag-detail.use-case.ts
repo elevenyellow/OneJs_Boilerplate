@@ -1,5 +1,6 @@
 import { Inject, Injectable, OneJsError } from '@OneJs/core'
 import { PrismaClientOneJs } from '@OneJs/prisma'
+import { SectorTags } from '@sector'
 import { WeatherService } from '@weather'
 import type { DailyForecast, HourlyForecast } from '@weather/domain/entities/weather-response.entity'
 
@@ -26,6 +27,9 @@ export interface SectorSummary {
   // Stats for client-side grade filtering and scoring
   gradeDistribution: Record<string, number>
   avgStars: number | null
+  // Tags for filtering and display
+  kidFriendly: boolean | null
+  beginner: boolean | null
 }
 
 /**
@@ -176,6 +180,8 @@ export class GetCragDetailUseCase {
     // Client will calculate routesInRange and scoring using gradeDistribution
     const sectorSummaries: SectorSummary[] = sectors.map((sector) => {
       const actualRouteCount = routeCountMap.get(sector.id) || sector.routeCount || 0
+      // Parse tags using SectorTags value object
+      const tags = SectorTags.create(sector.tagsRaw as Record<string, unknown> | null)
 
       return {
         id: sector.id,
@@ -197,6 +203,9 @@ export class GetCragDetailUseCase {
         headerImageUrl: sector.headerImageUrl,
         gradeDistribution: (sector.gradeDistribution as Record<string, number>) || {},
         avgStars: sector.avgStars || null,
+        // Tags for filtering and display (using SectorTags value object)
+        kidFriendly: tags.kidFriendly,
+        beginner: tags.beginner,
       }
     })
 

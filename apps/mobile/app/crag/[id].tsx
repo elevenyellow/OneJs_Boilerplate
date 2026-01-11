@@ -5,13 +5,15 @@ import { WeatherCard } from '@/components/WeatherCard'
 import { Colors } from '@/constants/Colors'
 import { useGradeRange } from '@/contexts/FiltersContext'
 import { useCragDetail } from '@/hooks/useCragDetail'
-import type { SearchSectorResult } from '@/lib/api'
+import type { CragTopoImage, SearchSectorResult } from '@/lib/api'
 import { countRoutesInGradeRange } from '@/utils/gradeConverter'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
+  Dimensions,
+  Image,
   Linking,
   Pressable,
   RefreshControl,
@@ -21,6 +23,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import Svg, { Ellipse, G, Path, Text as SvgText } from 'react-native-svg'
 
 function getScoreColor(score: number): string {
   if (score >= 75) return '#10B981'
@@ -29,23 +32,189 @@ function getScoreColor(score: number): string {
   return '#64748B'
 }
 
-/**
- * Get color for routes in range based on percentage of total routes
- * @param routesInRange - Number of routes in user's grade range
- * @param totalRoutes - Total routes in the sector
- * @returns Color string
- */
-function getRoutesInRangeColor(routesInRange: number, totalRoutes: number): string {
-  if (routesInRange === 0) return '#EF4444' // Red - no routes in range
-  if (totalRoutes === 0) return '#64748B' // Gray - no data
-  
-  const percentage = (routesInRange / totalRoutes) * 100
-  
-  if (percentage >= 50) return '#10B981' // Green - 50%+ routes in range
-  if (percentage >= 25) return '#F59E0B' // Amber - 25-49% routes in range
-  if (percentage >= 10) return '#F97316' // Orange - 10-24% routes in range
-  return '#EF4444' // Red - less than 10%
+// SVG Helper functions
+const SECTOR_COLOR = '#FFEA00' // Yellow
+const SECTOR_HIGHLIGHT_COLOR = '#00FF7F' // Green
+
+function parsePoints(pointsStr: string): Array<{ x: number; y: number }> {
+  if (!pointsStr || typeof pointsStr !== 'string') return []
+  const points: Array<{ x: number; y: number }> = []
+  const segments = pointsStr.split(',')
+  for (const segment of segments) {
+    const trimmed = segment.trim()
+    if (!trimmed) continue
+    const parts = trimmed.split(/\s+/)
+    if (parts.length >= 2) {
+      const x = parseFloat(parts[0])
+      const y = parseFloat(parts[1])
+      if (!isNaN(x) && !isNaN(y) && isFinite(x) && isFinite(y)) {
+        points.push({ x, y })
+      }
+    }
+  }
+  return points
 }
+
+function pointsToPolygonPath(points: Array<{ x: number; y: number }>): string {
+  if (!points || points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  let path = `M ${points[0].x} ${points[0].y}`
+  for (let i = 1; i < points.length; i++) {
+    path += ` L ${points[i].x} ${points[i].y}`
+  }
+  path += ' Z'
+  return path
+}
+
+// Get the bottom center of the polygon (for placing label below sector)
+function getPolygonBottomCenter(points: Array<{ x: number; y: number }>): { x: number; y: number } {
+  if (points.length === 0) return { x: 0, y: 0 }
+  
+  // Find max Y (bottom) and calculate horizontal center
+  let maxY = points[0].y
+  let minX = points[0].x
+  let maxX = points[0].x
+  
+  for (const point of points) {
+    if (point.y > maxY) maxY = point.y
+    if (point.x < minX) minX = point.x
+    if (point.x > maxX) maxX = point.x
+  }
+  
+  const centerX = (minX + maxX) / 2
+  return { x: centerX, y: maxY }
+}
+
+const normalizeImageUrl = (url: string): string => {
+  if (!url) return ''
+  if (url.startsWith('//')) return `https:${url}`
+  if (url.startsWith('/')) return `https://www.thecrag.com${url}`
+  return url
+}
+
+// Panoramic Topo Component - displays thumbnail and navigates to full page
+interface PanoramicTopoProps {
+  topo: CragTopoImage
+  cragName: string
+  highlightedSectorId: string | null
+  // Map of sector name (lowercase) to sector ID for fallback matching
+  sectorNameToId: Map<string, string>
+}
+
+function PanoramicTopo({ topo, cragName, highlightedSectorId, sectorNameToId }: PanoramicTopoProps) {
+  const router = useRouter()
+  const colorScheme = useColorScheme() ?? 'light'
+  const colors = Colors[colorScheme]
+  const [imageLoading, setImageLoading] = useState(true)
+
+  const imageUrl = normalizeImageUrl(topo.fullImageUrl)
+  const screenWidth = Dimensions.get('window').width
+  const maxWidth = screenWidth - 32
+
+  const originalWidth = topo.originalWidth > 0 ? topo.originalWidth : topo.width > 0 ? topo.width : 800
+  const originalHeight = topo.originalHeight > 0 ? topo.originalHeight : topo.height > 0 ? topo.height : 600
+
+  const aspectRatio = originalWidth / originalHeight
+  const displayWidth = Math.min(maxWidth, originalWidth)
+  const displayHeight = aspectRatio > 0 ? displayWidth / aspectRatio : displayWidth * 0.75
+
+  const sectorPositions = Array.isArray(topo.sectorPositions) ? topo.sectorPositions : []
+
+  const handleOpenPanoramic = () => {
+    // Convert Map to object for URL params
+    const mappingObj: Record<string, string> = {}
+    sectorNameToId.forEach((id, name) => {
+      mappingObj[name] = id
+    })
+
+    // Use router.push with params object to avoid URL encoding issues
+    router.push({
+      pathname: `/crag/panoramic/${topo.id}`,
+      params: {
+        cragName: cragName,
+        topoData: JSON.stringify(topo),
+        sectorMapping: JSON.stringify(mappingObj),
+        highlightedSectorId: highlightedSectorId || '',
+      },
+    })
+  }
+
+  const renderSvgOverlay = () => (
+    <Svg
+      width={displayWidth}
+      height={displayHeight}
+      viewBox={`0 0 ${originalWidth} ${originalHeight}`}
+      style={StyleSheet.absoluteFill}
+    >
+      {sectorPositions.map((position, index) => {
+        const points = parsePoints(position.points)
+        if (points.length < 3) return null
+
+        const effectiveSectorId = position.sectorId || 
+          sectorNameToId.get(position.areaName.toLowerCase()) || 
+          null
+        const isHighlighted = effectiveSectorId === highlightedSectorId
+        const pathData = pointsToPolygonPath(points)
+        const bottomCenter = getPolygonBottomCenter(points)
+        const lineColor = isHighlighted ? SECTOR_HIGHLIGHT_COLOR : SECTOR_COLOR
+        const lineWidth = isHighlighted ? 3 : 2
+        const labelSize = isHighlighted ? 16 : 12
+        const fontSize = isHighlighted ? 8 : 7
+        const labelOffset = 10
+        const labelY = bottomCenter.y + labelOffset
+
+        return (
+          <G key={position.externalAreaId || `sector-${index}`}>
+            <Path d={pathData} stroke="#000" strokeWidth={lineWidth + 3} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
+            <Path d={pathData} stroke="#fff" strokeWidth={lineWidth + 1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d={pathData} stroke={lineColor} strokeWidth={lineWidth} fill={lineColor} fillOpacity={0.15} strokeLinecap="round" strokeLinejoin="round" />
+            <G>
+              <Ellipse cx={bottomCenter.x + 1} cy={labelY + 1} rx={labelSize / 2 + 2} ry={labelSize / 2 + 2} fill="#000" opacity={0.5} />
+              <Ellipse cx={bottomCenter.x} cy={labelY} rx={labelSize / 2 + 2} ry={labelSize / 2 + 2} fill="#fff" />
+              <Ellipse cx={bottomCenter.x} cy={labelY} rx={labelSize / 2} ry={labelSize / 2} fill={lineColor} />
+              <SvgText x={bottomCenter.x} y={labelY + fontSize / 3} textAnchor="middle" fontSize={fontSize} fontWeight="bold" fill="#000">
+                {position.areaNumber}
+              </SvgText>
+            </G>
+          </G>
+        )
+      })}
+    </Svg>
+  )
+
+  return (
+    <View style={panoramicStyles.container}>
+      <Pressable onPress={handleOpenPanoramic}>
+        <View style={[panoramicStyles.topoContainer, { width: displayWidth, height: displayHeight, borderColor: colors.border }]}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={[panoramicStyles.baseImage, { width: displayWidth, height: displayHeight }]}
+            resizeMode="contain"
+            onLoadStart={() => setImageLoading(true)}
+            onLoadEnd={() => setImageLoading(false)}
+          />
+          {imageLoading && (
+            <View style={panoramicStyles.loadingOverlay}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          )}
+          {!imageLoading && originalWidth > 0 && originalHeight > 0 && renderSvgOverlay()}
+          <View style={panoramicStyles.zoomIconOverlay}>
+            <Ionicons name="expand-outline" size={20} color="#fff" />
+          </View>
+        </View>
+      </Pressable>
+    </View>
+  )
+}
+
+const panoramicStyles = StyleSheet.create({
+  container: { width: '100%', marginBottom: 12 },
+  topoContainer: { alignSelf: 'center', borderRadius: 12, overflow: 'hidden', backgroundColor: '#1a1a2e', position: 'relative', borderWidth: 1 },
+  baseImage: { position: 'absolute', top: 0, left: 0 },
+  loadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(26, 26, 46, 0.8)' },
+  zoomIconOverlay: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 16, padding: 6 },
+})
 
 // Sun preference type
 type SunPreference = 'any' | 'sun' | 'shade'
@@ -98,6 +267,14 @@ export default function CragDetailScreen() {
   const [minRoutes, setMinRoutes] = useState(0)
   const [withTopo, setWithTopo] = useState(false)
 
+  // Sort state
+  type SortOption = 'score' | 'number' | 'name' | 'stars' | 'routes' | 'grade'
+  const [sortBy, setSortBy] = useState<SortOption>('score')
+  const [sortAscending, setSortAscending] = useState(false)
+
+  // Highlighted sector state (for panoramic topo interaction)
+  const [highlightedSectorId, setHighlightedSectorId] = useState<string | null>(null)
+
   // Update filters when returning from filter screen
   useEffect(() => {
     if (appliedSunPreference) {
@@ -136,6 +313,9 @@ export default function CragDetailScreen() {
       headerImageUrl?: string | null
       gradeDistribution?: Record<string, number>
       avgStars?: number | null
+      // Tags
+      kidFriendly?: boolean | null
+      beginner?: boolean | null
     }): SearchSectorResult => {
       // Calculate routes in range locally using gradeDistribution
       const routesInRange = countRoutesInGradeRange(
@@ -164,6 +344,9 @@ export default function CragDetailScreen() {
           climbingStyle: null,
           headerImageUrl: s.headerImageUrl || null,
           gradeDistribution: s.gradeDistribution || {},
+          // Tags
+          kidFriendly: s.kidFriendly || null,
+          beginner: s.beginner || null,
         },
         relevanceScore: 0, // Calculated client-side in filteredAndSortedSectors
         distance: 0,
@@ -214,6 +397,9 @@ export default function CragDetailScreen() {
               hasTopo: cragSector.hasTopo || sr.sector.hasTopo,
               avgStars: cragSector.avgStars || sr.sector.avgStars,
               gradeDistribution,
+              // Tags
+              kidFriendly: cragSector.kidFriendly ?? sr.sector.kidFriendly ?? null,
+              beginner: cragSector.beginner ?? sr.sector.beginner ?? null,
             },
             routesInUserRange: routesInRange,
           }
@@ -238,6 +424,29 @@ export default function CragDetailScreen() {
       .map(convertToSearchResult)
       .sort((a, b) => b.relevanceScore - a.relevanceScore)
   }, [scoredSectors, crag?.sectors, globalGradeRange])
+
+  // Create a map of sector names (lowercase) to their IDs for topo matching
+  const sectorNameToId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const sr of allSectors) {
+      map.set(sr.sector.name.toLowerCase(), sr.sector.id)
+    }
+    return map
+  }, [allSectors])
+
+  // Create a map of sector ID to its areaNumber from the topo positions
+  const sectorIdToAreaNumber = useMemo(() => {
+    const map = new Map<string, string>()
+    const topoPositions = crag?.topoImages?.[0]?.sectorPositions || []
+    for (const pos of topoPositions) {
+      // Try to match by sectorId first, then by name
+      const sectorId = pos.sectorId || sectorNameToId.get(pos.areaName.toLowerCase())
+      if (sectorId) {
+        map.set(sectorId, pos.areaNumber)
+      }
+    }
+    return map
+  }, [crag?.topoImages, sectorNameToId])
 
   // Get rock type from first sector if available
   const primaryRockType = allSectors[0]?.sector?.rockType || null
@@ -363,13 +572,54 @@ export default function CragDetailScreen() {
       return true
     })
 
-    // Sort by combined score - highest first
-    return filtered.sort((a, b) => b.calculatedScore - a.calculatedScore)
+    // Sort based on selected option
+    return filtered.sort((a, b) => {
+      let comparison = 0
+      
+      switch (sortBy) {
+        case 'score':
+          comparison = b.calculatedScore - a.calculatedScore
+          break
+        case 'number': {
+          // Sort by area number from topo (if available)
+          const aNum = sectorIdToAreaNumber.get(a.sector.id)
+          const bNum = sectorIdToAreaNumber.get(b.sector.id)
+          const aNumInt = aNum ? parseInt(aNum, 10) : 999
+          const bNumInt = bNum ? parseInt(bNum, 10) : 999
+          comparison = aNumInt - bNumInt
+          break
+        }
+        case 'name':
+          comparison = a.sector.name.localeCompare(b.sector.name)
+          break
+        case 'stars':
+          comparison = (b.sector.avgStars || 0) - (a.sector.avgStars || 0)
+          break
+        case 'routes':
+          comparison = (b.routesInUserRange || 0) - (a.routesInUserRange || 0)
+          break
+        case 'grade': {
+          // Sort by minimum grade index
+          const aGrade = a.sector.minGrade || 'z'
+          const bGrade = b.sector.minGrade || 'z'
+          comparison = aGrade.localeCompare(bGrade)
+          break
+        }
+        default:
+          comparison = b.calculatedScore - a.calculatedScore
+      }
+      
+      // Apply ascending/descending
+      return sortAscending ? -comparison : comparison
+    })
   }, [
     allSectors,
     sunPreference,
     minRoutes,
     withTopo,
+    sortBy,
+    sortAscending,
+    sectorIdToAreaNumber,
   ])
 
   // Alias for backwards compatibility with template
@@ -680,311 +930,361 @@ export default function CragDetailScreen() {
           />
         </FilterChipsRow>
 
-        {/* Sectors (sorted by combined score) */}
-        {filteredSectors.length > 0 ? (
-          <View style={styles.sectorsContainer}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Sectors
-                </Text>
-                <Text style={[styles.sortIndicator, { color: colors.textSecondary }]}>
-                  sorted by relevance
-                </Text>
-              </View>
-              <Text
-                style={[styles.sectorCount, { color: colors.textSecondary }]}
-              >
-                {filteredSectors.length}
-                {filteredSectors.length !== allSectors.length ? ` of ${allSectors.length}` : ''}
+        {/* Legend */}
+        <View style={[styles.legendContainer, { backgroundColor: colors.muted }]}>
+          <View style={styles.legendRow}>
+            <View style={styles.legendItem}>
+              <Ionicons name="sparkles" size={12} color="#10B981" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>ideal</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>in range</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="git-branch-outline" size={12} color={colors.textSecondary} />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>routes</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="sunny-outline" size={12} color="#F59E0B" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>sun</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="moon-outline" size={12} color="#6366F1" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>shade</Text>
+            </View>
+          </View>
+          <View style={styles.legendRow}>
+            <View style={styles.legendItem}>
+              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>quality</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="happy-outline" size={12} color="#8B5CF6" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>kids</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="school-outline" size={12} color="#3B82F6" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>beginner</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="map-outline" size={12} color="#10B981" />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>topo</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <Ionicons name="resize-outline" size={12} color={colors.textSecondary} />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>height</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Sectors Section */}
+        <View style={styles.sectorsContainer}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="layers-outline" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Sectors
               </Text>
             </View>
-            <View style={styles.sectorsList}>
-              {filteredSectors.map((sectorResult) => {
-                const sector = sectorResult.sector
+            <Text style={[styles.sectorCount, { color: colors.textSecondary }]}>
+              {filteredSectors.length}
+              {filteredSectors.length !== allSectors.length ? ` of ${allSectors.length}` : ''}
+            </Text>
+          </View>
 
-                // Get sector stats
-                const totalRoutes =
-                  sector.routeCount || sector.routes?.length || 0
+          {/* Sort Options */}
+          <View style={styles.sortContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.sortScrollContent}
+            >
+              {([
+                { key: 'score', label: 'Score', icon: 'analytics-outline' },
+                { key: 'number', label: 'Number', icon: 'list-outline' },
+                { key: 'name', label: 'Name', icon: 'text-outline' },
+                { key: 'stars', label: 'Stars', icon: 'star-outline' },
+                { key: 'routes', label: 'Routes', icon: 'git-branch-outline' },
+                { key: 'grade', label: 'Grade', icon: 'trending-up-outline' },
+              ] as { key: SortOption; label: string; icon: string }[]).map((option) => {
+                const isActive = sortBy === option.key
+                return (
+                  <Pressable
+                    key={option.key}
+                    style={[
+                      styles.sortChip,
+                      { 
+                        backgroundColor: isActive ? colors.primary + '20' : colors.muted,
+                        borderColor: isActive ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      if (sortBy === option.key) {
+                        // Toggle ascending/descending
+                        setSortAscending(!sortAscending)
+                      } else {
+                        setSortBy(option.key)
+                        setSortAscending(false)
+                      }
+                    }}
+                  >
+                    <Ionicons 
+                      name={option.icon as keyof typeof Ionicons.glyphMap} 
+                      size={14} 
+                      color={isActive ? colors.primary : colors.textSecondary} 
+                    />
+                    <Text 
+                      style={[
+                        styles.sortChipText, 
+                        { color: isActive ? colors.primary : colors.textSecondary }
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                    {isActive && (
+                      <Ionicons 
+                        name={sortAscending ? 'arrow-up' : 'arrow-down'} 
+                        size={12} 
+                        color={colors.primary} 
+                      />
+                    )}
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Panoramic Topo Image */}
+          {crag.topoImages && crag.topoImages.length > 0 && crag.topoImages[0].sectorPositions?.length > 0 && (
+            <PanoramicTopo
+              topo={crag.topoImages[0]}
+              cragName={crag.name}
+              highlightedSectorId={highlightedSectorId}
+              sectorNameToId={sectorNameToId}
+            />
+          )}
+
+          {/* Sectors List */}
+          {filteredSectors.length > 0 ? (
+            <View style={styles.sectorsList}>
+              {filteredSectors.map((sectorResult, index) => {
+                const sector = sectorResult.sector
+                const totalRoutes = sector.routeCount || sector.routes?.length || 0
                 const routesInRange = sectorResult.routesInUserRange
-                
-                // Calculate if sector is "Ideal" based on multiple factors:
-                // 1. Must have routes in user's grade range (required)
-                // 2. Good combined score (>= 65)
-                // 3. Good weather conditions (optional boost)
                 const hasRoutesInRange = routesInRange > 0
                 const hasGoodScore = sectorResult.calculatedScore >= 65
                 const hasGoodWeather = sectorResult.conditions?.isGoodDay || 
                                        (sectorResult.conditions?.weatherScore ?? 50) >= 60
                 const isIdeal = hasRoutesInRange && hasGoodScore && hasGoodWeather
-                const avgGrade = sector.avgGrade
-                const avgHeight = sector.avgHeight
-                const maxHeight = sector.maxHeight
                 const hasTopo = sector.hasTopo || sector.headerImageUrl
                 const orientation = sector.orientation
-                const rockType = sector.rockType
-
-                // Determine current sun status
+                const avgHeight = sector.avgHeight
+                const maxHeight = sector.maxHeight
+                const avgStars = sector.avgStars
                 const inSun = isSectorInSun(orientation)
+                const isHighlighted = sector.id === highlightedSectorId
+                const isKidFriendly = sector.kidFriendly === true
+                const isBeginner = sector.beginner === true
 
                 return (
                   <Pressable
                     key={sector.id}
                     style={[
-                      styles.sectorCard,
+                      styles.sectorRow,
                       {
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
+                        backgroundColor: isHighlighted ? colors.primary + '15' : colors.card,
+                        borderColor: isHighlighted ? colors.primary : colors.border,
                       },
                     ]}
-                    onPress={() => handleSectorPress(sectorResult)}
+                    onPress={() => {
+                      // Toggle selection on tap (like routes)
+                      setHighlightedSectorId(prev => prev === sector.id ? null : sector.id)
+                    }}
+                    onLongPress={() => {
+                      // Navigate on long press
+                      handleSectorPress(sectorResult)
+                    }}
                   >
-                    {/* Header row with name and badges */}
-                    <View style={styles.sectorHeader}>
-                      <View style={styles.sectorTitleArea}>
+                    {/* Number badge - use areaNumber from topo if available */}
+                    <View
+                      style={[
+                        styles.sectorNumBadge,
+                        { backgroundColor: isHighlighted ? colors.primary : colors.muted },
+                      ]}
+                    >
+                      <Text style={[styles.sectorNumText, { color: isHighlighted ? '#FFF' : colors.text }]}>
+                        {sectorIdToAreaNumber.get(sector.id) || (index + 1)}
+                      </Text>
+                    </View>
+
+                    {/* Sector info */}
+                    <View style={styles.sectorInfo}>
+                      <View style={styles.sectorNameRow}>
+                        {isIdeal && (
+                          <Ionicons
+                            name="sparkles"
+                            size={14}
+                            color="#10B981"
+                            style={{ marginRight: 4 }}
+                          />
+                        )}
+                        {hasRoutesInRange && !isIdeal && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={14}
+                            color="#22C55E"
+                            style={{ marginRight: 4 }}
+                          />
+                        )}
                         <Text
-                          style={[styles.sectorName, { color: colors.text }]}
+                          style={[styles.sectorNameText, { color: colors.text, fontWeight: isHighlighted ? '700' : '600' }]}
                           numberOfLines={1}
                         >
                           {sector.name}
                         </Text>
                       </View>
-                      <View style={styles.sectorHeaderRight}>
-                        {isIdeal && (
-                          <View style={styles.idealBadge}>
-                            <Ionicons
-                              name="sparkles"
-                              size={10}
-                              color="#FFFFFF"
-                            />
-                            <Text style={styles.idealBadgeText}>Ideal</Text>
-                          </View>
-                        )}
-                        {/* Show combined score badge */}
-                        {sectorResult.calculatedScore > 0 && (
-                          <View
-                            style={[
-                              styles.scoreBadge,
-                              {
-                                backgroundColor: getScoreColor(sectorResult.calculatedScore),
-                              },
-                            ]}
-                          >
-                            <Text style={styles.scoreText}>
-                              {Math.round(sectorResult.calculatedScore)}
-                            </Text>
-                          </View>
-                        )}
-                        <Ionicons
-                          name="chevron-forward"
-                          size={18}
-                          color={colors.textSecondary}
-                        />
-                      </View>
-                    </View>
-
-                    {/* Main stats - prominent display */}
-                    <View style={styles.sectorMainStats}>
-                      {/* Routes in range - most important */}
-                      {(() => {
-                        const inRangeColor = getRoutesInRangeColor(routesInRange, totalRoutes)
-                        const percentage = totalRoutes > 0 ? Math.round((routesInRange / totalRoutes) * 100) : 0
-                        return (
-                          <View style={[styles.mainStatBox, { backgroundColor: inRangeColor + '15', borderColor: inRangeColor + '30' }]}>
-                            <Ionicons
-                              name="trail-sign"
-                              size={22}
-                              color={inRangeColor}
-                            />
-                            <Text style={[styles.mainStatValue, { color: inRangeColor }]}>
-                              {routesInRange}
-                            </Text>
-                            <Text style={[styles.mainStatLabel, { color: inRangeColor }]}>
-                              in range
-                            </Text>
-                            <Text style={[styles.mainStatSub, { color: colors.textSecondary }]}>
-                              of {totalRoutes} ({percentage}%)
-                            </Text>
-                          </View>
-                        )
-                      })()}
-
-                      {/* Grade range */}
-                      <View style={[styles.mainStatBox, { backgroundColor: '#F59E0B' + '15', borderColor: '#F59E0B' + '30' }]}>
-                        <Ionicons
-                          name="trending-up"
-                          size={22}
-                          color="#F59E0B"
-                        />
-                        <Text style={[styles.mainStatValue, { color: colors.text }]}>
-                          {sector.minGrade || '?'} - {sector.maxGrade || '?'}
-                        </Text>
-                        <Text style={[styles.mainStatLabel, { color: '#F59E0B' }]}>
-                          grades
-                        </Text>
-                        {avgGrade && (
-                          <Text style={[styles.mainStatSub, { color: colors.textSecondary }]}>
-                            avg {avgGrade}
-                          </Text>
-                        )}
-                      </View>
-
-                      {/* Height */}
-                      {(avgHeight || maxHeight) && (
-                        <View style={[styles.mainStatBox, { backgroundColor: '#8B5CF6' + '15', borderColor: '#8B5CF6' + '30' }]}>
+                      <View style={styles.sectorMeta}>
+                        {/* Routes total / in range */}
+                        <View style={styles.sectorMetaItem}>
                           <Ionicons
-                            name="arrow-up"
-                            size={22}
-                            color="#8B5CF6"
+                            name="git-branch-outline"
+                            size={11}
+                            color={colors.textSecondary}
                           />
-                          <Text style={[styles.mainStatValue, { color: '#8B5CF6' }]}>
-                            {maxHeight ? `${Math.round(maxHeight)}m` : `${Math.round(avgHeight!)}m`}
+                          <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
+                            {routesInRange > 0 ? `${routesInRange}/${totalRoutes}` : totalRoutes}
                           </Text>
-                          <Text style={[styles.mainStatLabel, { color: '#8B5CF6' }]}>
-                            {maxHeight ? 'max height' : 'avg height'}
-                          </Text>
-                          {avgHeight && maxHeight && (
-                            <Text style={[styles.mainStatSub, { color: colors.textSecondary }]}>
-                              avg {Math.round(avgHeight)}m
+                        </View>
+                        {/* Sun/Shade indicator - always show based on orientation */}
+                        <View style={styles.sectorMetaItem}>
+                          <Ionicons
+                            name={inSun ? 'sunny-outline' : 'moon-outline'}
+                            size={11}
+                            color={inSun ? '#F59E0B' : '#6366F1'}
+                          />
+                          {orientation && (
+                            <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
+                              {orientation}
                             </Text>
                           )}
                         </View>
-                      )}
-                    </View>
-
-                    {/* Secondary stats row */}
-                    <View style={styles.sectorSecondaryStats}>
-                      {/* Weather indicator - OK/NO based on conditions */}
-                      {(() => {
-                        const weatherOk = sectorResult.conditions?.isGoodDay || 
-                                          (sectorResult.conditions?.weatherScore ?? 50) >= 60
-                        return (
-                          <View
-                            style={[
-                              styles.secondaryStatChip,
-                              weatherOk ? styles.weatherOkChip : styles.weatherNoChip,
-                            ]}
-                          >
-                            <Ionicons
-                              name={weatherOk ? 'checkmark-circle' : 'close-circle'}
-                              size={12}
-                              color={weatherOk ? '#10B981' : '#EF4444'}
-                            />
-                            <Text
-                              style={[
-                                styles.secondaryStatText,
-                                { color: weatherOk ? '#10B981' : '#EF4444' },
-                              ]}
-                            >
-                              {weatherOk ? 'Weather OK' : 'Weather'}
+                        {/* Stars - quality indicator */}
+                        {avgStars && avgStars > 0 && (
+                          <View style={styles.sectorMetaItem}>
+                            <Ionicons name="star" size={11} color="#F59E0B" />
+                            <Text style={[styles.sectorMetaText, { color: '#F59E0B' }]}>
+                              {avgStars.toFixed(1)}
                             </Text>
                           </View>
-                        )
-                      })()}
-
-                      {/* Orientation with sun/shade indicator */}
-                      {orientation && (
-                        <View
-                          style={[
-                            styles.secondaryStatChip,
-                            { backgroundColor: colors.muted },
-                          ]}
-                        >
-                          <Ionicons
-                            name={inSun ? 'sunny-outline' : 'moon-outline'}
-                            size={12}
-                            color={inSun ? '#F59E0B' : '#6366F1'}
-                          />
-                          <Text
-                            style={[
-                              styles.secondaryStatText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {orientation}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Rock type */}
-                      {rockType && (
-                        <View
-                          style={[
-                            styles.secondaryStatChip,
-                            { backgroundColor: colors.muted },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.secondaryStatText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {rockType}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Topo indicator */}
-                      {hasTopo && (
-                        <View
-                          style={[styles.secondaryStatChip, styles.topoChip]}
-                        >
-                          <Ionicons
-                            name="map-outline"
-                            size={12}
-                            color="#10B981"
-                          />
-                          <Text
-                            style={[
-                              styles.secondaryStatText,
-                              { color: '#10B981' },
-                            ]}
-                          >
-                            Topo
-                          </Text>
-                        </View>
-                      )}
+                        )}
+                        {/* Height */}
+                        {(avgHeight || maxHeight) && (
+                          <View style={styles.sectorMetaItem}>
+                            <Ionicons name="resize-outline" size={11} color={colors.textSecondary} />
+                            <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
+                              {maxHeight ? `${Math.round(maxHeight)}m` : `${Math.round(avgHeight!)}m`}
+                            </Text>
+                          </View>
+                        )}
+                        {/* Topo indicator */}
+                        {hasTopo && (
+                          <View style={styles.sectorMetaItem}>
+                            <Ionicons name="map-outline" size={11} color="#10B981" />
+                          </View>
+                        )}
+                        {/* Beginner friendly */}
+                        {isBeginner && (
+                          <View style={styles.sectorMetaItem}>
+                            <Ionicons name="school-outline" size={11} color="#3B82F6" />
+                          </View>
+                        )}
+                        {/* Kid friendly */}
+                        {isKidFriendly && (
+                          <View style={styles.sectorMetaItem}>
+                            <Ionicons name="happy-outline" size={11} color="#8B5CF6" />
+                          </View>
+                        )}
+                      </View>
                     </View>
+
+                    {/* Grade badge */}
+                    <View
+                      style={[
+                        styles.gradeBadge,
+                        { backgroundColor: '#F59E0B20' },
+                      ]}
+                    >
+                      <Text style={[styles.gradeText, { color: '#F59E0B' }]}>
+                        {sector.minGrade || '?'}-{sector.maxGrade || '?'}
+                      </Text>
+                    </View>
+
+                    {/* Score badge */}
+                    {sectorResult.calculatedScore > 0 && (
+                      <View
+                        style={[
+                          styles.scoreBadge,
+                          { backgroundColor: getScoreColor(sectorResult.calculatedScore) },
+                        ]}
+                      >
+                        <Text style={styles.scoreText}>
+                          {Math.round(sectorResult.calculatedScore)}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Navigate button */}
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation()
+                        handleSectorPress(sectorResult)
+                      }}
+                      hitSlop={8}
+                      style={[
+                        styles.navigateButton,
+                        { backgroundColor: colors.muted },
+                      ]}
+                    >
+                      <Ionicons
+                        name="arrow-forward-circle-outline"
+                        size={22}
+                        color={colors.primary}
+                      />
+                    </Pressable>
                   </Pressable>
                 )
               })}
             </View>
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.emptyState,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons
-              name="search-outline"
-              size={48}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-              No sectors match filters
-            </Text>
-            <Text
+          ) : (
+            <View
               style={[
-                styles.emptyStateMessage,
-                { color: colors.textSecondary },
+                styles.emptyState,
+                { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
-              Try adjusting your filters to see more results
-            </Text>
-            <Pressable
-              onPress={clearFilters}
-              style={[
-                styles.emptyStateButton,
-                { backgroundColor: colors.primary },
-              ]}
-            >
-              <Text style={styles.emptyStateButtonText}>Clear Filters</Text>
-            </Pressable>
-          </View>
-        )}
+              <Ionicons
+                name="search-outline"
+                size={48}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+                No sectors match filters
+              </Text>
+              <Text
+                style={[styles.emptyStateMessage, { color: colors.textSecondary }]}
+              >
+                Try adjusting your filters to see more results
+              </Text>
+              <Pressable
+                onPress={clearFilters}
+                style={[styles.emptyStateButton, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.emptyStateButtonText}>Clear Filters</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </View>
     </ScrollView>
   )
@@ -1098,6 +1398,25 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
+  // Legend
+  legendContainer: {
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 16,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 6,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendText: {
+    fontSize: 10,
+  },
   // Sectors container
   sectorsContainer: {
     marginBottom: 16,
@@ -1109,152 +1428,114 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitleRow: {
-    flexDirection: 'column',
-    gap: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
   },
-  sortIndicator: {
-    fontSize: 11,
-    fontStyle: 'italic',
-  },
   sectorCount: {
     fontSize: 14,
   },
-  sectorsList: {
-    gap: 10,
+  // Sort options
+  sortContainer: {
+    marginBottom: 12,
   },
-  // Sector Card
-  sectorCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    gap: 10,
-  },
-  sectorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectorTitleArea: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  sortScrollContent: {
     gap: 8,
-    marginRight: 12,
+    paddingRight: 16,
   },
-  sectorName: {
-    fontSize: 17,
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+  },
+  sortChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sectorsList: {
+    gap: 8,
+  },
+  // Sector Row (matching route row format)
+  sectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 12,
+  },
+  sectorNumBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectorNumText: {
+    fontSize: 12,
     fontWeight: '700',
-    flexShrink: 1,
-    letterSpacing: -0.3,
   },
-  idealBadge: {
+  sectorInfo: {
+    flex: 1,
+  },
+  sectorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectorNameText: {
+    fontSize: 15,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  sectorMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 4,
+    gap: 8,
+  },
+  sectorMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
   },
-  idealBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  sectorMetaText: {
+    fontSize: 12,
   },
-  sectorHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  scoreBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  gradeBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    minWidth: 32,
-    justifyContent: 'center',
+  },
+  gradeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  scoreBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 28,
+    alignItems: 'center',
   },
   scoreText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  // Stats row
-  sectorStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  // Main stats - prominent boxes
-  sectorMainStats: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  mainStatBox: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    minWidth: 80,
-    gap: 2,
-  },
-  mainStatValue: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '700',
   },
-  mainStatLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  mainStatSub: {
-    fontSize: 9,
-  },
-  statItem: {
-    flexDirection: 'row',
+  navigateButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statLabel: {
-    fontSize: 12,
-  },
-  // Secondary stats row
-  sectorSecondaryStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  secondaryStatChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  secondaryStatText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  topoChip: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-  },
-  weatherOkChip: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-  },
-  weatherNoChip: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
   },
 })
