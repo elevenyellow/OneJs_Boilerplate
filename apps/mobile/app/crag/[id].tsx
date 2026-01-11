@@ -685,15 +685,14 @@ export default function CragDetailScreen() {
           </Pressable>
         </View>
 
-        {/* Active Filters Chips */}
-        {activeFiltersCount > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.activeFiltersContent}
-            style={styles.activeFiltersRow}
-          >
-            {/* Grade range chip - always shown since it affects scoring */}
+        {/* Active Filters Chips - Always shown with default values */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.activeFiltersContent}
+          style={styles.activeFiltersRow}
+        >
+            {/* Grade range chip - always shown */}
             <View
               style={[
                 styles.filterChip,
@@ -709,70 +708,64 @@ export default function CragDetailScreen() {
                 {globalGradeRange.min} - {globalGradeRange.max}
               </Text>
             </View>
-            {sunPreference !== 'any' && (
-              <View
-                style={[
-                  styles.filterChip,
-                  { backgroundColor: colors.muted, borderColor: colors.border },
-                ]}
-              >
-                <Ionicons
-                  name={sunPreference === 'sun' ? 'sunny' : 'moon'}
-                  size={12}
-                  color={colors.primary}
-                />
-                <Text style={[styles.filterChipText, { color: colors.text }]}>
-                  {sunPreference === 'sun' ? 'Sun' : 'Shade'}
-                </Text>
-              </View>
-            )}
-            {minRoutes > 0 && (
-              <View
-                style={[
-                  styles.filterChip,
-                  { backgroundColor: colors.muted, borderColor: colors.border },
-                ]}
-              >
-                <Ionicons
-                  name="git-branch-outline"
-                  size={12}
-                  color={colors.primary}
-                />
-                <Text style={[styles.filterChipText, { color: colors.text }]}>
-                  {minRoutes}+ routes
-                </Text>
-              </View>
-            )}
-            {withTopo && (
-              <View
-                style={[
-                  styles.filterChip,
-                  { backgroundColor: colors.muted, borderColor: colors.border },
-                ]}
-              >
-                <Ionicons name="map-outline" size={12} color={colors.primary} />
-                <Text style={[styles.filterChipText, { color: colors.text }]}>
-                  With Topo
-                </Text>
-              </View>
-            )}
-            <Pressable
-              onPress={clearFilters}
-              style={[styles.clearFiltersChip, { borderColor: colors.border }]}
+
+            {/* Sun preference chip - always shown */}
+            <View
+              style={[
+                styles.filterChip,
+                sunPreference !== 'any' 
+                  ? { backgroundColor: colors.primary + '20', borderColor: colors.primary }
+                  : { backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
             >
               <Ionicons
-                name="close-circle"
+                name={sunPreference === 'sun' ? 'sunny' : sunPreference === 'shade' ? 'moon' : 'ellipse-outline'}
                 size={12}
-                color={colors.destructive}
+                color={sunPreference !== 'any' ? colors.primary : colors.textSecondary}
               />
-              <Text
-                style={[styles.clearFiltersText, { color: colors.destructive }]}
-              >
-                Clear
+              <Text style={[styles.filterChipText, { color: sunPreference !== 'any' ? colors.primary : colors.textSecondary }]}>
+                {sunPreference === 'sun' ? 'Sun' : sunPreference === 'shade' ? 'Shade' : 'Any'}
               </Text>
-            </Pressable>
+            </View>
+
+            {/* Min routes chip - always shown */}
+            <View
+              style={[
+                styles.filterChip,
+                minRoutes > 0 
+                  ? { backgroundColor: colors.primary + '20', borderColor: colors.primary }
+                  : { backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons
+                name="git-branch-outline"
+                size={12}
+                color={minRoutes > 0 ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.filterChipText, { color: minRoutes > 0 ? colors.primary : colors.textSecondary }]}>
+                {minRoutes > 0 ? `${minRoutes}+` : 'Any'} routes
+              </Text>
+            </View>
+
+            {/* Topo chip - always shown */}
+            <View
+              style={[
+                styles.filterChip,
+                withTopo 
+                  ? { backgroundColor: colors.primary + '20', borderColor: colors.primary }
+                  : { backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons 
+                name="map-outline" 
+                size={12} 
+                color={withTopo ? colors.primary : colors.textSecondary} 
+              />
+              <Text style={[styles.filterChipText, { color: withTopo ? colors.primary : colors.textSecondary }]}>
+                {withTopo ? 'With Topo' : 'Topo'}
+              </Text>
+            </View>
           </ScrollView>
-        )}
 
         {/* Sectors (sorted by combined score) */}
         {filteredSectors.length > 0 ? (
@@ -998,6 +991,34 @@ export default function CragDetailScreen() {
 
                     {/* Secondary stats row */}
                     <View style={styles.sectorSecondaryStats}>
+                      {/* Weather indicator - OK/NO based on conditions */}
+                      {(() => {
+                        const weatherOk = sectorResult.conditions?.isGoodDay || 
+                                          (sectorResult.conditions?.weatherScore ?? 50) >= 60
+                        return (
+                          <View
+                            style={[
+                              styles.secondaryStatChip,
+                              weatherOk ? styles.weatherOkChip : styles.weatherNoChip,
+                            ]}
+                          >
+                            <Ionicons
+                              name={weatherOk ? 'checkmark-circle' : 'close-circle'}
+                              size={12}
+                              color={weatherOk ? '#10B981' : '#EF4444'}
+                            />
+                            <Text
+                              style={[
+                                styles.secondaryStatText,
+                                { color: weatherOk ? '#10B981' : '#EF4444' },
+                              ]}
+                            >
+                              {weatherOk ? 'Weather OK' : 'Weather'}
+                            </Text>
+                          </View>
+                        )
+                      })()}
+
                       {/* Orientation with sun/shade indicator */}
                       {orientation && (
                         <View
@@ -1411,5 +1432,11 @@ const styles = StyleSheet.create({
   },
   topoChip: {
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  weatherOkChip: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  weatherNoChip: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
 })
