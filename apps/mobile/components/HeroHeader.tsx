@@ -239,10 +239,16 @@ export function HeroHeader({
     </>
   );
 
+  // Dynamic height based on safe area insets
+  const containerHeight = 220 + insets.top;
+
   if (imageError) {
     // Fallback to dark gradient (neutral, no blue)
     return (
-      <LinearGradient colors={['#1E293B', '#0F172A', '#020617']} style={styles.container}>
+      <LinearGradient 
+        colors={['#1E293B', '#0F172A', '#020617']} 
+        style={[styles.container, { height: containerHeight }]}
+      >
         <View style={styles.iconContainer}>
           <Ionicons name={icon} size={56} color="rgba(255,255,255,0.2)" />
         </View>
@@ -254,7 +260,7 @@ export function HeroHeader({
   return (
     <ImageBackground
       source={{ uri: selectedImageUrl }}
-      style={styles.container}
+      style={[styles.container, { height: containerHeight }]}
       resizeMode="cover"
       onError={() => setImageError(true)}
     >
@@ -265,7 +271,6 @@ export function HeroHeader({
 
 const styles = StyleSheet.create({
   container: {
-    height: 220,
     width: SCREEN_WIDTH,
     position: 'relative',
     justifyContent: 'space-between',

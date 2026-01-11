@@ -202,9 +202,15 @@ export default function CragDetailScreen() {
       orientation: string | null
       rockType: string | null
       sunExposure: string | null
+      routeCount?: number
       routesInGradeRange?: number
+      minGrade?: string | null
+      maxGrade?: string | null
+      hasTopo?: boolean
       headerImageUrl?: string | null
       score?: number
+      maxHeight?: number | null
+      avgHeight?: number | null
     }): SearchSectorResult => ({
       sector: {
         id: s.id,
@@ -212,6 +218,12 @@ export default function CragDetailScreen() {
         orientation: s.orientation,
         rockType: s.rockType,
         sunExposure: s.sunExposure,
+        routeCount: s.routeCount || 0,
+        minGrade: s.minGrade || null,
+        maxGrade: s.maxGrade || null,
+        hasTopo: s.hasTopo || false,
+        maxHeight: s.maxHeight || null,
+        avgHeight: s.avgHeight || null,
         routes: [],
         coordinates: null,
         avgStars: null,
@@ -804,18 +816,26 @@ export default function CragDetailScreen() {
 
                     {/* Stats row */}
                     <View style={styles.sectorStats}>
-                      {/* Routes count */}
+                      {/* Total routes */}
                       <View style={styles.statItem}>
                         <Ionicons name="git-branch-outline" size={14} color={colors.primary} />
                         <Text style={[styles.statText, { color: colors.text }]}>
-                          {routesInRange > 0 && routesInRange !== totalRoutes
-                            ? `${routesInRange}/${totalRoutes}`
-                            : totalRoutes}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                          routes
+                          {totalRoutes}
                         </Text>
                       </View>
+
+                      {/* Routes in grade range */}
+                      {routesInRange > 0 && (
+                        <View style={styles.statItem}>
+                          <Ionicons name="checkmark-circle-outline" size={14} color="#10B981" />
+                          <Text style={[styles.statText, { color: colors.text }]}>
+                            {routesInRange}
+                          </Text>
+                          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                            in range
+                          </Text>
+                        </View>
+                      )}
 
                       {/* Grade range */}
                       {minGrade && maxGrade && (
@@ -827,46 +847,55 @@ export default function CragDetailScreen() {
                         </View>
                       )}
 
+                      {/* Height info */}
+                      {(sector.maxHeight || sector.avgHeight) && (
+                        <View style={styles.statItem}>
+                          <Ionicons name="resize-outline" size={14} color="#8B5CF6" />
+                          <Text style={[styles.statText, { color: colors.text }]}>
+                            {sector.avgHeight ? `${Math.round(sector.avgHeight)}m` : ''}
+                            {sector.avgHeight && sector.maxHeight ? ' / ' : ''}
+                            {sector.maxHeight ? `${sector.maxHeight}m` : ''}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Secondary stats row */}
+                    <View style={styles.sectorSecondaryStats}>
                       {/* Orientation with sun/shade indicator */}
                       {orientation && (
-                        <View style={styles.statItem}>
+                        <View style={[styles.secondaryStatChip, { backgroundColor: colors.muted }]}>
                           <Ionicons
                             name={inSun ? 'sunny-outline' : 'moon-outline'}
-                            size={14}
+                            size={12}
                             color={inSun ? '#F59E0B' : '#6366F1'}
                           />
-                          <Text style={[styles.statText, { color: colors.text }]}>
+                          <Text style={[styles.secondaryStatText, { color: colors.textSecondary }]}>
                             {orientation}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Rock type */}
+                      {rockType && (
+                        <View style={[styles.secondaryStatChip, { backgroundColor: colors.muted }]}>
+                          <Text style={[styles.secondaryStatText, { color: colors.textSecondary }]}>
+                            {rockType}
                           </Text>
                         </View>
                       )}
 
                       {/* Topo indicator */}
                       {hasTopo && (
-                        <View style={[styles.statItem, styles.topoIndicator]}>
-                          <Ionicons name="map-outline" size={14} color="#10B981" />
+                        <View style={[styles.secondaryStatChip, styles.topoChip]}>
+                          <Ionicons name="map-outline" size={12} color="#10B981" />
+                          <Text style={[styles.secondaryStatText, { color: '#10B981' }]}>
+                            Topo
+                          </Text>
                         </View>
                       )}
                     </View>
 
-                    {/* Additional info row */}
-                    <View style={styles.sectorMeta}>
-                      {rockType && (
-                        <View style={[styles.metaChip, { backgroundColor: colors.muted }]}>
-                          <Text style={[styles.metaChipText, { color: colors.textSecondary }]}>
-                            {rockType}
-                          </Text>
-                        </View>
-                      )}
-                      {sectorResult.matchReasons && sectorResult.matchReasons.length > 0 && (
-                        <Text
-                          style={[styles.matchReason, { color: colors.textSecondary }]}
-                          numberOfLines={1}
-                        >
-                          {sectorResult.matchReasons[0]}
-                        </Text>
-                      )}
-                    </View>
                   </Pressable>
                 )
               })}
@@ -1189,28 +1218,26 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
   },
-  topoIndicator: {
-    opacity: 0.8,
-  },
-  // Meta row
-  sectorMeta: {
+  // Secondary stats row
+  sectorSecondaryStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     flexWrap: 'wrap',
+    gap: 6,
   },
-  metaChip: {
+  secondaryStatChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    gap: 4,
   },
-  metaChipText: {
+  secondaryStatText: {
     fontSize: 11,
     fontWeight: '500',
   },
-  matchReason: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    flex: 1,
+  topoChip: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
   },
 })

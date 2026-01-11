@@ -15,17 +15,24 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-function formatForecastDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return ''
+function formatForecastDate(dateStr: string | null | undefined): { day: string; date: string } {
+  if (!dateStr) return { day: '', date: '' }
   const date = new Date(dateStr)
   const today = new Date()
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
-  if (date.toDateString() === today.toDateString()) return 'Today'
-  if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
+  if (date.toDateString() === today.toDateString()) {
+    return { day: 'Today', date: '' }
+  }
+  if (date.toDateString() === tomorrow.toDateString()) {
+    return { day: 'Tom', date: '' }
+  }
 
-  return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
+  return {
+    day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    date: date.getDate().toString(),
+  }
 }
 
 function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
@@ -339,7 +346,7 @@ export default function WeatherScreen() {
               {crag.forecast.slice(0, 7).map((day, index) => {
                 const isToday = index === 0
                 const rainChance = day.precipitation?.probability || 0
-                const isGoodDay = rainChance < 30 && (day.wind?.mean || 0) < 8
+                const { day: dayName, date: dayDate } = formatForecastDate(day.date)
                 
                 return (
                   <View
@@ -348,32 +355,34 @@ export default function WeatherScreen() {
                       styles.dayCard,
                       { 
                         backgroundColor: isToday ? colors.primary : colors.card,
-                        borderColor: isGoodDay && !isToday ? '#10B981' : colors.border,
-                        borderWidth: isGoodDay && !isToday ? 2 : 1,
+                        borderColor: colors.border,
                       },
                     ]}
                   >
                     {/* Day label */}
-                    <Text style={[
-                      styles.dayCardLabel,
-                      { color: isToday ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
-                    ]}>
-                      {formatForecastDate(day.date)}
-                    </Text>
-
-                    {/* Weather icon */}
-                    <View style={styles.dayCardIconContainer}>
-                      <Ionicons
-                        name={getWeatherIcon(day.weatherCode)}
-                        size={36}
-                        color={isToday ? '#FFFFFF' : colors.primary}
-                      />
-                      {isGoodDay && !isToday && (
-                        <View style={styles.goodDayIndicator}>
-                          <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                        </View>
+                    <View style={styles.dayCardLabelContainer}>
+                      <Text style={[
+                        styles.dayCardLabel,
+                        { color: isToday ? '#FFFFFF' : colors.text }
+                      ]}>
+                        {dayName}
+                      </Text>
+                      {dayDate && (
+                        <Text style={[
+                          styles.dayCardDate,
+                          { color: isToday ? 'rgba(255,255,255,0.7)' : colors.textSecondary }
+                        ]}>
+                          {dayDate}
+                        </Text>
                       )}
                     </View>
+
+                    {/* Weather icon */}
+                    <Ionicons
+                      name={getWeatherIcon(day.weatherCode)}
+                      size={36}
+                      color={isToday ? '#FFFFFF' : colors.primary}
+                    />
 
                     {/* Temperature */}
                     <View style={styles.dayCardTemps}>
@@ -590,28 +599,24 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dayCard: {
-    width: 90,
+    width: 85,
     borderRadius: 16,
+    borderWidth: 1,
     padding: 12,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  dayCardLabelContainer: {
+    alignItems: 'center',
+    gap: 2,
   },
   dayCardLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '700',
   },
-  dayCardIconContainer: {
-    position: 'relative',
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  goodDayIndicator: {
-    position: 'absolute',
-    top: -2,
-    right: -8,
+  dayCardDate: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   dayCardTemps: {
     alignItems: 'center',
