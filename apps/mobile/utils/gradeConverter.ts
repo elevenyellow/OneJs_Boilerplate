@@ -140,3 +140,39 @@ export function getDefaultGradeRange(level: 'beginner' | 'intermediate' | 'advan
       return { min: '5c', max: '6c' };
   }
 }
+
+/**
+ * Count routes in grade range using gradeDistribution
+ * This is O(n) where n is number of unique grades, very fast for client-side calculations
+ * 
+ * @param gradeDistribution - Object mapping grade strings to route counts
+ * @param minGrade - Minimum grade string (e.g., "5c")
+ * @param maxGrade - Maximum grade string (e.g., "7a")
+ * @returns Number of routes within the grade range
+ */
+export function countRoutesInGradeRange(
+  gradeDistribution: Record<string, number> | null | undefined,
+  minGrade: string,
+  maxGrade: string
+): number {
+  if (!gradeDistribution || typeof gradeDistribution !== 'object') {
+    return 0;
+  }
+
+  const minIndex = gradeToIndex(minGrade);
+  const maxIndex = gradeToIndex(maxGrade);
+
+  if (minIndex === null || maxIndex === null) {
+    return 0;
+  }
+
+  let count = 0;
+  for (const [gradeStr, routeCount] of Object.entries(gradeDistribution)) {
+    const gradeIndex = gradeToIndex(gradeStr);
+    if (gradeIndex !== null && gradeIndex >= minIndex && gradeIndex <= maxIndex) {
+      count += routeCount;
+    }
+  }
+
+  return count;
+}

@@ -417,6 +417,9 @@ export interface SectorSummary {
   theCragUrl: string | null
   headerImageUrl: string | null
   score: number
+  // Stats for client-side calculations
+  gradeDistribution: Record<string, number> // {"6a": 5, "6b": 12, ...}
+  avgStars: number | null // Average star rating (0-5)
 }
 
 export interface RouteHighlight {
@@ -622,15 +625,10 @@ export const api = {
 
     /**
      * Get detailed crag information
+     * Note: Grade filtering is now done client-side using gradeDistribution
      */
-    getById: (id: string, gradeRange?: { min: string; max: string }) => {
-      const params = new URLSearchParams()
-      if (gradeRange) {
-        params.set('minGrade', gradeRange.min)
-        params.set('maxGrade', gradeRange.max)
-      }
-      const query = params.toString()
-      return fetcher<CragDetail>(`/crags/${id}${query ? `?${query}` : ''}`)
+    getById: (id: string) => {
+      return fetcher<CragDetail>(`/crags/${id}`)
     },
   },
 }

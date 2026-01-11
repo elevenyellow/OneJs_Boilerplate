@@ -6,6 +6,7 @@ export interface RouteData {
   grade: string | null
   height: number | null
   ascents: number | null
+  stars: number | null
 }
 
 /**
@@ -32,6 +33,8 @@ export class SectorStatsService {
     let maxHeight: number | null = null
     let heightCount = 0
     let totalAscents = 0
+    let totalStars = 0
+    let starsCount = 0
 
     for (const route of routes) {
       // Grade distribution
@@ -71,9 +74,16 @@ export class SectorStatsService {
       if (route.ascents !== null) {
         totalAscents += route.ascents
       }
+
+      // Stars
+      if (route.stars !== null && route.stars > 0) {
+        totalStars += route.stars
+        starsCount++
+      }
     }
 
     const averageHeight = heightCount > 0 ? Math.round(totalHeight / heightCount * 10) / 10 : null
+    const avgStars = starsCount > 0 ? Math.round(totalStars / starsCount * 10) / 10 : null
     
     // Calculate average grade
     let avgGrade: string | null = null
@@ -95,6 +105,7 @@ export class SectorStatsService {
       averageHeight,
       maxHeight,
       totalAscents > 0 ? totalAscents : null,
+      avgStars,
     )
   }
 

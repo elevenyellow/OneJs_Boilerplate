@@ -35,6 +35,7 @@ model Sector {
   averageHeight     Float? // Altura media de las rutas
   maxHeight         Float? // Altura máxima de las rutas
   totalAscents      Int?
+  avgStars          Float? // Media de estrellas (0-5)
 
   // Estadísticas de TheCrag (ALTA PRIORIDAD)
   numberPhotos   Int? // Número de fotos

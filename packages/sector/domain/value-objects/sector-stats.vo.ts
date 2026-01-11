@@ -16,6 +16,7 @@ export interface SectorStatsData {
   averageHeight: number | null
   maxHeight: number | null
   totalAscents: number | null
+  avgStars: number | null // Average star rating (0-5)
 }
 
 /**
@@ -35,6 +36,7 @@ export class SectorStats {
     public readonly averageHeight: number | null,
     public readonly maxHeight: number | null,
     public readonly totalAscents: number | null,
+    public readonly avgStars: number | null = null,
   ) {}
 
   /**
@@ -81,6 +83,7 @@ export class SectorStats {
       averageHeight: this.averageHeight,
       maxHeight: this.maxHeight,
       totalAscents: this.totalAscents,
+      avgStars: this.avgStars,
     }
   }
 
@@ -99,10 +102,11 @@ export class SectorStats {
       data.averageHeight,
       data.maxHeight ?? null,
       data.totalAscents,
+      data.avgStars ?? null,
     )
   }
 
   static empty(): SectorStats {
-    return new SectorStats(0, null, null, null, null, null, null, {}, null, null, null)
+    return new SectorStats(0, null, null, null, null, null, null, {}, null, null, null, null)
   }
 }

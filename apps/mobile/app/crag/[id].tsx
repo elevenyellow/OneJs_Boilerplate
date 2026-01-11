@@ -3,6 +3,7 @@ import { Colors } from '@/constants/Colors'
 import { useGradeRange } from '@/contexts/FiltersContext'
 import { useCragDetail } from '@/hooks/useCragDetail'
 import type { SearchSectorResult } from '@/lib/api'
+import { countRoutesInGradeRange } from '@/utils/gradeConverter'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -119,7 +120,7 @@ export default function CragDetailScreen() {
     isError,
     refetch,
     isRefetching,
-  } = useCragDetail(id || '', { gradeRange: globalGradeRange })
+  } = useCragDetail(id || '')
 
   // Filter state (grade range comes from global context, not local state)
   const [sunPreference, setSunPreference] = useState<SunPreference>('any')
@@ -156,6 +157,7 @@ export default function CragDetailScreen() {
   // scoredSectors come from search navigation, crag.sectors come from API
   const allSectors = useMemo((): SearchSectorResult[] => {
     // Helper to convert SectorSummary to SearchSectorResult
+    // Now calculates routesInUserRange locally using gradeDistribution
     const convertToSearchResult = (s: {
       id: string
       name: string
@@ -172,40 +174,50 @@ export default function CragDetailScreen() {
       hasTopo?: boolean
       headerImageUrl?: string | null
       score?: number
-    }): SearchSectorResult => ({
-      sector: {
-        id: s.id,
-        name: s.name,
-        orientation: s.orientation,
-        rockType: s.rockType,
-        sunExposure: s.sunExposure,
-        routeCount: s.routeCount || 0,
-        minGrade: s.minGrade || null,
-        maxGrade: s.maxGrade || null,
-        avgGrade: s.avgGrade || null,
-        avgHeight: s.avgHeight || null,
-        maxHeight: s.maxHeight || null,
-        hasTopo: s.hasTopo || false,
-        routes: [],
-        coordinates: null,
-        avgStars: null,
-        climbingStyle: null,
-        headerImageUrl: s.headerImageUrl || null,
-      },
-      relevanceScore: s.score || 0,
-      distance: 0,
-      routesInUserRange: s.routesInGradeRange || 0,
-      matchReasons: [],
-      scoringBreakdown: {
-        gradeMatch: 0,
+      gradeDistribution?: Record<string, number>
+      avgStars?: number | null
+    }): SearchSectorResult => {
+      // Calculate routes in range locally using gradeDistribution
+      const routesInRange = s.gradeDistribution 
+        ? countRoutesInGradeRange(s.gradeDistribution, globalGradeRange.min, globalGradeRange.max)
+        : s.routesInGradeRange || 0
+      
+      return {
+        sector: {
+          id: s.id,
+          name: s.name,
+          orientation: s.orientation,
+          rockType: s.rockType,
+          sunExposure: s.sunExposure,
+          routeCount: s.routeCount || 0,
+          minGrade: s.minGrade || null,
+          maxGrade: s.maxGrade || null,
+          avgGrade: s.avgGrade || null,
+          avgHeight: s.avgHeight || null,
+          maxHeight: s.maxHeight || null,
+          hasTopo: s.hasTopo || false,
+          routes: [],
+          coordinates: null,
+          avgStars: s.avgStars || null,
+          climbingStyle: null,
+          headerImageUrl: s.headerImageUrl || null,
+          gradeDistribution: s.gradeDistribution || {},
+        },
+        relevanceScore: s.score || 0,
         distance: 0,
-        orientation: 0,
-        popularity: 0,
-        routeCount: 0,
-        quality: 0,
-      },
-      conditions: undefined,
-    })
+        routesInUserRange: routesInRange,
+        matchReasons: [],
+        scoringBreakdown: {
+          gradeMatch: 0,
+          distance: 0,
+          orientation: 0,
+          popularity: 0,
+          routeCount: 0,
+          quality: 0,
+        },
+        conditions: undefined,
+      }
+    }
 
     // If we have scored sectors from search, use them as base
     // but enrich them with data from crag.sectors
@@ -215,10 +227,15 @@ export default function CragDetailScreen() {
       )
 
       // Enrich scored sectors with crag sector data
-      // IMPORTANT: Always use fresh routesInGradeRange from API (reflects current grade range)
+      // Calculate routesInUserRange locally using gradeDistribution
       const enrichedScoredSectors = scoredSectors.map((sr) => {
         const cragSector = cragSectorsMap.get(sr.sector.id)
         if (cragSector) {
+          // Calculate routes in range locally using gradeDistribution
+          const routesInRange = cragSector.gradeDistribution
+            ? countRoutesInGradeRange(cragSector.gradeDistribution, globalGradeRange.min, globalGradeRange.max)
+            : cragSector.routesInGradeRange ?? sr.routesInUserRange ?? 0
+          
           return {
             ...sr,
             sector: {
@@ -230,9 +247,10 @@ export default function CragDetailScreen() {
               avgHeight: cragSector.avgHeight || sr.sector.avgHeight,
               maxHeight: cragSector.maxHeight || sr.sector.maxHeight,
               hasTopo: cragSector.hasTopo || sr.sector.hasTopo,
+              avgStars: cragSector.avgStars || sr.sector.avgStars,
+              gradeDistribution: cragSector.gradeDistribution || sr.sector.gradeDistribution || {},
             },
-            // Prioritize fresh data from API (recalculated with current grade range)
-            routesInUserRange: cragSector.routesInGradeRange ?? sr.routesInUserRange ?? 0,
+            routesInUserRange: routesInRange,
           }
         }
         return sr
@@ -254,7 +272,7 @@ export default function CragDetailScreen() {
     return (crag?.sectors || [])
       .map(convertToSearchResult)
       .sort((a, b) => b.relevanceScore - a.relevanceScore)
-  }, [scoredSectors, crag?.sectors])
+  }, [scoredSectors, crag?.sectors, globalGradeRange])
 
   // Get rock type from first sector if available
   const primaryRockType = allSectors[0]?.sector?.rockType || null

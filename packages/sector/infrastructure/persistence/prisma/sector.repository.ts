@@ -80,6 +80,7 @@ interface SectorPrismaData {
   averageHeight: number | null
   maxHeight: number | null
   totalAscents: number | null
+  avgStars: number | null
   numberPhotos: number | null
   numberTopos: number | null
   totalFavorites: number | null
@@ -329,6 +330,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         averageHeight: stats.averageHeight,
         maxHeight: stats.maxHeight,
         totalAscents: stats.totalAscents,
+        avgStars: stats.avgStars,
         updatedAt: new Date(),
       },
     })
@@ -616,6 +618,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         data.averageHeight,
         data.maxHeight,
         data.totalAscents,
+        data.avgStars,
       ),
       data.numberPhotos,
       data.numberTopos,
@@ -717,6 +720,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       averageHeight: entity.stats.averageHeight,
       maxHeight: entity.stats.maxHeight,
       totalAscents: entity.stats.totalAscents,
+      avgStars: entity.stats.avgStars,
       numberPhotos: entity.numberPhotos,
       numberTopos: entity.numberTopos,
       totalFavorites: entity.totalFavorites,

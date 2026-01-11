@@ -25,6 +25,9 @@ export interface SectorSummary {
   theCragUrl: string | null
   headerImageUrl: string | null // Sector header image
   score: number // Calculated relevance score
+  // Grade distribution for client-side filtering
+  gradeDistribution: Record<string, number>
+  avgStars: number | null // Average star rating
 }
 
 /**
@@ -188,6 +191,9 @@ export class GetCragDetailUseCase {
           : null,
         headerImageUrl: sector.headerImageUrl,
         score,
+        // Stats for client-side calculations
+        gradeDistribution: (sector.gradeDistribution as Record<string, number>) || {},
+        avgStars: sector.avgStars || null,
       }
     })
 
