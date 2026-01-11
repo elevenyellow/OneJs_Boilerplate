@@ -60,73 +60,12 @@ function getScoreColor(score: number): string {
 // Sun preference type
 type SunPreference = 'any' | 'sun' | 'shade'
 
-// Grade options for comparison (same order as GradeRangeSlider)
-const GRADE_OPTIONS = [
-  '4a',
-  '4c',
-  '5a',
-  '5b',
-  '5c',
-  '6a',
-  '6a+',
-  '6b',
-  '6b+',
-  '6c',
-  '6c+',
-  '7a',
-  '7a+',
-  '7b',
-  '7b+',
-  '7c',
-  '7c+',
-  '8a',
-  '8a+',
-  '8b',
-]
-
-// Get grade index for comparison
-function getGradeIndex(grade: string | null): number {
-  if (!grade) return -1
-  const normalized = grade.toLowerCase().trim()
-  return GRADE_OPTIONS.findIndex((g) => g.toLowerCase() === normalized)
-}
-
-// Check if sector grade range overlaps with filter range
-function sectorOverlapsGradeRange(
-  sectorMinGrade: string | null,
-  sectorMaxGrade: string | null,
-  filterMinGrade: string,
-  filterMaxGrade: string,
-): boolean {
-  const sectorMinIdx = getGradeIndex(sectorMinGrade)
-  const sectorMaxIdx = getGradeIndex(sectorMaxGrade)
-  const filterMinIdx = getGradeIndex(filterMinGrade)
-  const filterMaxIdx = getGradeIndex(filterMaxGrade)
-
-  // If sector has no grade info, include it
-  if (sectorMinIdx === -1 && sectorMaxIdx === -1) return true
-
-  // If filter range is invalid, include all
-  if (filterMinIdx === -1 || filterMaxIdx === -1) return true
-
-  // Use available sector grade if only one is present
-  const effectiveSectorMin = sectorMinIdx !== -1 ? sectorMinIdx : sectorMaxIdx
-  const effectiveSectorMax = sectorMaxIdx !== -1 ? sectorMaxIdx : sectorMinIdx
-
-  // Check overlap: sector range overlaps with filter range
-  return (
-    effectiveSectorMax >= filterMinIdx && effectiveSectorMin <= filterMaxIdx
-  )
-}
-
 export default function CragDetailScreen() {
   const {
     id,
     sectorsData,
     avgScore,
     distance: distanceParam,
-    appliedGradeMin,
-    appliedGradeMax,
     appliedSunPreference,
     appliedMinRoutes,
     appliedWithTopo,
@@ -135,8 +74,6 @@ export default function CragDetailScreen() {
     sectorsData?: string
     avgScore?: string
     distance?: string
-    appliedGradeMin?: string
-    appliedGradeMax?: string
     appliedSunPreference?: string
     appliedMinRoutes?: string
     appliedWithTopo?: string
@@ -145,7 +82,7 @@ export default function CragDetailScreen() {
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
 
-  // Get global grade range
+  // Get global grade range (shared with Explorer and Filter screens)
   const { gradeRange: globalGradeRange } = useGradeRange()
 
   // Parse pre-scored sectors from navigation params (already scored by backend)
@@ -166,24 +103,13 @@ export default function CragDetailScreen() {
     isRefetching,
   } = useCragDetail(id || '', { gradeRange: globalGradeRange })
 
-  // Filter state
-  const [gradeMin, setGradeMin] = useState('5a')
-  const [gradeMax, setGradeMax] = useState('7a')
+  // Filter state (grade range comes from global context, not local state)
   const [sunPreference, setSunPreference] = useState<SunPreference>('any')
   const [minRoutes, setMinRoutes] = useState(0)
   const [withTopo, setWithTopo] = useState(false)
 
-  // Check if grade range is modified from default
-  const isGradeRangeModified = gradeMin !== '5a' || gradeMax !== '7a'
-
   // Update filters when returning from filter screen
   useEffect(() => {
-    if (appliedGradeMin) {
-      setGradeMin(appliedGradeMin)
-    }
-    if (appliedGradeMax) {
-      setGradeMax(appliedGradeMax)
-    }
     if (appliedSunPreference) {
       setSunPreference(appliedSunPreference as SunPreference)
     }
@@ -194,8 +120,6 @@ export default function CragDetailScreen() {
       setWithTopo(appliedWithTopo === 'true')
     }
   }, [
-    appliedGradeMin,
-    appliedGradeMax,
     appliedSunPreference,
     appliedMinRoutes,
     appliedWithTopo,
@@ -336,21 +260,23 @@ export default function CragDetailScreen() {
     return sunnyOrientations[period].includes(orientation)
   }
 
-  // Filter sectors based on user selections
-  const filteredSectors = useMemo(() => {
-    return allSectors.filter((sectorResult) => {
-      const sector = sectorResult.sector
-
-      // Filter by grade range
-      if (isGradeRangeModified) {
-        const overlaps = sectorOverlapsGradeRange(
-          sector.minGrade,
-          sector.maxGrade,
-          gradeMin,
-          gradeMax,
-        )
-        if (!overlaps) return false
+  // Calculate score for each sector based on routes in grade range
+  // Then filter and sort: show ALL sectors, ordered by score (routes in range)
+  const filteredAndSortedSectors = useMemo(() => {
+    // First, calculate score for each sector based on routes in user's grade range
+    const sectorsWithScore = allSectors.map((sectorResult) => {
+      // Score is primarily based on number of routes in user's grade range
+      const routesInRange = sectorResult.routesInUserRange || 0
+      return {
+        ...sectorResult,
+        // Use routesInRange as the primary score for sorting
+        calculatedScore: routesInRange,
       }
+    })
+
+    // Apply non-grade filters (sun preference, min routes, topo)
+    const filtered = sectorsWithScore.filter((sectorResult) => {
+      const sector = sectorResult.sector
 
       // Filter by sun preference
       if (sunPreference !== 'any') {
@@ -359,14 +285,13 @@ export default function CragDetailScreen() {
         if (sunPreference === 'shade' && inSun) return false
       }
 
-      // Filter by minimum routes
+      // Filter by minimum routes in range
       if (minRoutes > 0 && sectorResult.routesInUserRange < minRoutes) {
         return false
       }
 
       // Filter by with topo (check if sector has topo images)
       if (withTopo) {
-        // Check if sector has topo - using hasTopo property or headerImageUrl as fallback
         if (!sector.hasTopo && !sector.headerImageUrl) {
           return false
         }
@@ -374,30 +299,30 @@ export default function CragDetailScreen() {
 
       return true
     })
+
+    // Sort by score (routes in range) - highest first
+    return filtered.sort((a, b) => b.calculatedScore - a.calculatedScore)
   }, [
     allSectors,
-    isGradeRangeModified,
-    gradeMin,
-    gradeMax,
     sunPreference,
     minRoutes,
     withTopo,
   ])
 
-  // Count active filters
+  // Alias for backwards compatibility with template
+  const filteredSectors = filteredAndSortedSectors
+
+  // Count active filters (grade range always counts since it's used for scoring)
   const activeFiltersCount = useMemo(() => {
-    let count = 0
-    if (isGradeRangeModified) count++
+    let count = 1 // Grade range is always active (used for scoring)
     if (sunPreference !== 'any') count++
     if (minRoutes > 0) count++
     if (withTopo) count++
     return count
-  }, [isGradeRangeModified, sunPreference, minRoutes, withTopo])
+  }, [sunPreference, minRoutes, withTopo])
 
-  // Clear all filters
+  // Clear all filters (except grade range which is global)
   const clearFilters = () => {
-    setGradeMin('5a')
-    setGradeMax('7a')
     setSunPreference('any')
     setMinRoutes(0)
     setWithTopo(false)
@@ -665,8 +590,7 @@ export default function CragDetailScreen() {
           <Pressable
             onPress={() => {
               const params = new URLSearchParams()
-              params.set('gradeMin', gradeMin)
-              params.set('gradeMax', gradeMax)
+              // Grade range comes from global context, no need to pass it
               if (sunPreference !== 'any') {
                 params.set('sunPreference', sunPreference)
               }
@@ -708,23 +632,22 @@ export default function CragDetailScreen() {
             contentContainerStyle={styles.activeFiltersContent}
             style={styles.activeFiltersRow}
           >
-            {isGradeRangeModified && (
-              <View
-                style={[
-                  styles.filterChip,
-                  { backgroundColor: colors.muted, borderColor: colors.border },
-                ]}
-              >
-                <Ionicons
-                  name="trending-up-outline"
-                  size={12}
-                  color={colors.primary}
-                />
-                <Text style={[styles.filterChipText, { color: colors.text }]}>
-                  {gradeMin} - {gradeMax}
-                </Text>
-              </View>
-            )}
+            {/* Grade range chip - always shown since it affects scoring */}
+            <View
+              style={[
+                styles.filterChip,
+                { backgroundColor: colors.primary + '20', borderColor: colors.primary },
+              ]}
+            >
+              <Ionicons
+                name="trending-up-outline"
+                size={12}
+                color={colors.primary}
+              />
+              <Text style={[styles.filterChipText, { color: colors.primary }]}>
+                {globalGradeRange.min} - {globalGradeRange.max}
+              </Text>
+            </View>
             {sunPreference !== 'any' && (
               <View
                 style={[
@@ -790,18 +713,23 @@ export default function CragDetailScreen() {
           </ScrollView>
         )}
 
-        {/* Sectors (filtered) */}
+        {/* Sectors (sorted by routes in grade range) */}
         {filteredSectors.length > 0 ? (
           <View style={styles.sectorsContainer}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Sectors
-              </Text>
+              <View style={styles.sectionTitleRow}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Sectors
+                </Text>
+                <Text style={[styles.sortIndicator, { color: colors.textSecondary }]}>
+                  sorted by routes in range
+                </Text>
+              </View>
               <Text
                 style={[styles.sectorCount, { color: colors.textSecondary }]}
               >
                 {filteredSectors.length}
-                {activeFiltersCount > 0 ? ` of ${allSectors.length}` : ''}
+                {filteredSectors.length !== allSectors.length ? ` of ${allSectors.length}` : ''}
               </Text>
             </View>
             <View style={styles.sectorsList}>
@@ -856,19 +784,24 @@ export default function CragDetailScreen() {
                         )}
                       </View>
                       <View style={styles.sectorHeaderRight}>
-                        {sectorResult.relevanceScore > 0 && (
+                        {/* Show routes in range as the primary score badge */}
+                        {routesInRange > 0 && (
                           <View
                             style={[
                               styles.scoreBadge,
                               {
-                                backgroundColor: getScoreColor(
-                                  sectorResult.relevanceScore,
-                                ),
+                                backgroundColor: '#10B981',
                               },
                             ]}
                           >
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={10}
+                              color="#FFFFFF"
+                              style={{ marginRight: 2 }}
+                            />
                             <Text style={styles.scoreText}>
-                              {Math.round(sectorResult.relevanceScore)}
+                              {routesInRange}
                             </Text>
                           </View>
                         )}
@@ -1308,9 +1241,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  sectionTitleRow: {
+    flexDirection: 'column',
+    gap: 2,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  sortIndicator: {
+    fontSize: 11,
+    fontStyle: 'italic',
   },
   sectorCount: {
     fontSize: 14,
@@ -1362,11 +1303,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     minWidth: 32,
-    alignItems: 'center',
+    justifyContent: 'center',
   },
   scoreText: {
     color: '#FFFFFF',
