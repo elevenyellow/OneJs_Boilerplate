@@ -52,6 +52,10 @@ export class CragEntity {
     public readonly lastPDFStaticDate: string | null,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
+    // Header image
+    public readonly headerImageUrl: string | null = null,
+    public readonly headerImageWidth: number | null = null,
+    public readonly headerImageHeight: number | null = null,
   ) {}
 
   get latitude(): number | null {
@@ -141,6 +145,13 @@ export class CragEntity {
       theCragUrl: this.getTheCragUrl(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      headerImageUrl: this.headerImageUrl,
+      headerImageWidth: this.headerImageWidth,
+      headerImageHeight: this.headerImageHeight,
     }
+  }
+
+  hasHeaderImage(): boolean {
+    return this.headerImageUrl !== null
   }
 }

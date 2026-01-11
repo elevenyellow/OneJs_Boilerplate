@@ -1,0 +1,57 @@
+// TopoImage - Photo topo from TheCrag or other sources
+model TopoImage {
+  id            String   @id @default(cuid())
+  externalId    String   @unique // TheCrag topoId
+  sectorId      String
+  
+  // Image URLs
+  thumbnailUrl  String
+  fullImageUrl  String
+  
+  // Dimensions
+  width         Int
+  height        Int
+  originalWidth Int
+  originalHeight Int
+  viewScale     Float    @default(1.0)
+  
+  // Metadata
+  sourceUrl     String?  // Link to original topo page
+  
+  // Relations
+  sector        Sector   @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  routePositions RouteTopoPosition[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([sectorId])
+  @@map("topo_images")
+}
+
+// RouteTopoPosition - Links a route to its position on a topo image
+model RouteTopoPosition {
+  id          String    @id @default(cuid())
+  routeId     String
+  topoImageId String
+  
+  // Position data
+  topoNumber  String    // Display number on this topo (e.g., "17", "18a")
+  points      String    // SVG path points: "x1 y1,x2 y2,..."
+  zindex      Int       @default(0)
+  order       Int       @default(0)
+  
+  // Visual metadata (from TheCrag)
+  gradeClass  String?   // e.g., "gb3" for grade band coloring
+  
+  // Relations
+  route       Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  topoImage   TopoImage @relation(fields: [topoImageId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([routeId, topoImageId]) // A route can only appear once per topo
+  @@index([routeId])
+  @@index([topoImageId])
+  @@map("route_topo_positions")
+}

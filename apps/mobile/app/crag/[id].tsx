@@ -1,9 +1,15 @@
+import { GradeRangeBadge } from '@/components/GradeRangeBadge'
+import { HeroHeader } from '@/components/HeroHeader'
+import { LanguageApproachSection } from '@/components/LanguageApproachSection'
+import { LanguageTextSection } from '@/components/LanguageTextSection'
 import { Colors } from '@/constants/Colors'
+import { useGradeRange } from '@/contexts/FiltersContext'
 import { useCragDetail } from '@/hooks/useCragDetail'
-import type { SearchSectorResult } from '@/lib/api'
+import type { CragDetailHourlyForecast, SearchSectorResult } from '@/lib/api'
+import { t } from '@/lib/i18n'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Linking,
@@ -15,8 +21,6 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-import { HeroHeader } from '@/components/HeroHeader'
-import { LanguageApproachSection } from '@/components/LanguageApproachSection'
 
 function formatForecastDate(dateStr: string | null | undefined): string {
   if (!dateStr) return ''
@@ -25,54 +29,45 @@ function formatForecastDate(dateStr: string | null | undefined): string {
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
-  if (date.toDateString() === today.toDateString()) return 'Hoy'
-  if (date.toDateString() === tomorrow.toDateString()) return 'Mañana'
+  if (date.toDateString() === today.toDateString()) return 'Today'
+  if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
 
-  return date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })
+  return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
 }
 
 function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
-  // WMO Weather interpretation codes
-  // https://open-meteo.com/en/docs
+  // Meteoblue daily pictocodes (1-17)
+  // https://content.meteoblue.com/en/help/standards/symbols-and-pictograms
   switch (code) {
-    case 0: // Clear sky
+    case 1: // Sunny, cloudless sky
       return 'sunny'
-    case 1: // Mainly clear
-    case 2: // Partly cloudy
+    case 2: // Mostly sunny, few clouds
       return 'partly-sunny'
-    case 3: // Overcast
+    case 3: // Partly cloudy
+      return 'partly-sunny'
+    case 4: // Mostly cloudy
       return 'cloudy'
-    case 45: // Fog
-    case 48: // Depositing rime fog
-      return 'cloudy' // No specific fog icon in Ionicons
-    case 51: // Light drizzle
-    case 53: // Moderate drizzle
-    case 55: // Dense drizzle
-    case 56: // Light freezing drizzle
-    case 57: // Dense freezing drizzle
+    case 5: // Overcast
+      return 'cloudy'
+    case 6: // Overcast with light rain
+    case 9: // Overcast with rain showers
+    case 11: // Mostly cloudy with rain
       return 'rainy'
-    case 61: // Slight rain
-    case 63: // Moderate rain
-    case 65: // Heavy rain
-    case 66: // Light freezing rain
-    case 67: // Heavy freezing rain
-    case 80: // Slight rain showers
-    case 81: // Moderate rain showers
-    case 82: // Violent rain showers
-      return 'rainy'
-    case 71: // Slight snowfall
-    case 73: // Moderate snowfall
-    case 75: // Heavy snowfall
-    case 77: // Snow grains
-    case 85: // Slight snow showers
-    case 86: // Heavy snow showers
+    case 7: // Overcast with light snow
+    case 10: // Overcast with snow showers
+    case 12: // Mostly cloudy with snow
       return 'snow'
-    case 95: // Slight or moderate thunderstorm
-    case 96: // Thunderstorm with slight hail
-    case 99: // Thunderstorm with heavy hail
+    case 8: // Overcast with rain and snow mixed
+    case 13: // Mostly cloudy with rain and snow
+      return 'rainy'
+    case 14: // Mostly cloudy with rain, thunderstorm
+    case 15: // Mostly cloudy with snow, thunderstorm
       return 'thunderstorm'
+    case 16: // Fog
+    case 17: // Light fog / Mist
+      return 'cloudy' // No specific fog icon in Ionicons
     default:
-      return 'cloud'
+      return 'partly-sunny'
   }
 }
 
@@ -81,6 +76,209 @@ function getScoreColor(score: number): string {
   if (score >= 50) return '#F59E0B'
   if (score >= 25) return '#EF4444'
   return '#64748B'
+}
+
+function formatHour(timestamp: string): string {
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+function getHoursForDate(
+  hourlyForecast: CragDetailHourlyForecast[] | null,
+  dateStr: string | null
+): CragDetailHourlyForecast[] {
+  if (!hourlyForecast || !dateStr) return []
+  const targetDate = dateStr.split('T')[0]
+  return hourlyForecast.filter((h) => {
+    if (!h.timestamp) return false
+    const hourDate = new Date(h.timestamp).toISOString().split('T')[0]
+    return hourDate === targetDate
+  })
+}
+
+interface ForecastSectionProps {
+  forecast: Array<{
+    date: string
+    temperature: { min: number; max: number; mean: number }
+    precipitation: { amount: number; probability: number }
+    wind: { min: number; max: number; mean: number; direction: string }
+    weatherCode: number
+  }> | null
+  hourlyForecast: CragDetailHourlyForecast[] | null
+  colors: typeof Colors.light
+  colorScheme: 'light' | 'dark'
+}
+
+function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: ForecastSectionProps) {
+  const [expandedDay, setExpandedDay] = useState<string | null>(null)
+
+  if (!forecast || forecast.length === 0) {
+    return null
+  }
+
+  const toggleDay = (date: string) => {
+    setExpandedDay(expandedDay === date ? null : date)
+  }
+
+  return (
+    <View
+      style={[
+        styles.section,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.forecastHeader}>
+        <Text style={[styles.sectionTitleInCard, { color: colors.text }]}>
+          7-Day Forecast
+        </Text>
+        <Text
+          style={[
+            styles.forecastSubtitle,
+            { color: colors.textSecondary },
+          ]}
+        >
+          Tap for hourly
+        </Text>
+      </View>
+
+      {forecast.slice(0, 7).map((day, index) => {
+        const isExpanded = expandedDay === day.date
+        const hoursForDay = getHoursForDate(hourlyForecast, day.date)
+        const hasHourlyData = hoursForDay.length > 0
+
+        return (
+          <View key={day.date || `forecast-${index}`}>
+            <Pressable
+              onPress={() => hasHourlyData && day.date && toggleDay(day.date)}
+              style={[
+                styles.forecastDayRow,
+                {
+                  backgroundColor: isExpanded ? colors.muted : 'transparent',
+                  borderBottomColor: colors.border,
+                },
+              ]}
+            >
+              <View style={styles.forecastDayLeft}>
+                <Ionicons
+                  name={getWeatherIcon(day.weatherCode)}
+                  size={28}
+                  color={colors.primary}
+                />
+                <View>
+                  <Text style={[styles.forecastDayName, { color: colors.text }]}>
+                    {formatForecastDate(day.date)}
+                  </Text>
+                  <View style={styles.forecastDayStats}>
+                    {day.precipitation?.probability > 0 && (
+                      <View style={styles.forecastExtraItem}>
+                        <Ionicons name="water" size={12} color="#3B82F6" />
+                        <Text
+                          style={[
+                            styles.forecastExtraText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {Math.round(day.precipitation.probability)}%
+                        </Text>
+                      </View>
+                    )}
+                    {day.wind?.mean > 0 && (
+                      <View style={[styles.forecastExtraItem, { marginLeft: 8 }]}>
+                        <Ionicons name="leaf" size={12} color={colors.textSecondary} />
+                        <Text
+                          style={[
+                            styles.forecastExtraText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {Math.round(day.wind.mean)} m/s
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.forecastDayRight}>
+                <Text style={[styles.forecastTempMax, { color: colors.text }]}>
+                  {Math.round(day.temperature?.max || 0)}°
+                </Text>
+                <Text
+                  style={[styles.forecastTempMin, { color: colors.textSecondary }]}
+                >
+                  {Math.round(day.temperature?.min || 0)}°
+                </Text>
+                {hasHourlyData && (
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={colors.textSecondary}
+                    style={{ marginLeft: 8 }}
+                  />
+                )}
+              </View>
+            </Pressable>
+
+            {/* Hourly Breakdown */}
+            {isExpanded && hoursForDay.length > 0 && (
+              <View style={[styles.hourlyContainer, { backgroundColor: colors.muted }]}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.hourlyScroll}
+                >
+                  {hoursForDay.map((hour, hIndex) => (
+                    <View
+                      key={`${hour.timestamp}-${hIndex}`}
+                      style={[
+                        styles.hourlyItem,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.hourlyTime, { color: colors.text }]}>
+                        {formatHour(hour.timestamp)}
+                      </Text>
+                      <Ionicons
+                        name={getWeatherIcon(hour.weatherCode)}
+                        size={20}
+                        color={colors.primary}
+                      />
+                      <Text style={[styles.hourlyTemp, { color: colors.text }]}>
+                        {Math.round(hour.temperature)}°
+                      </Text>
+                      <View style={styles.hourlyDetails}>
+                        <View style={styles.hourlyDetailRow}>
+                          <Ionicons name="water" size={10} color="#3B82F6" />
+                          <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                            {hour.precipitation.toFixed(1)}mm
+                          </Text>
+                        </View>
+                        <View style={styles.hourlyDetailRow}>
+                          <Ionicons name="leaf" size={10} color={colors.textSecondary} />
+                          <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                            {Math.round(hour.windSpeed)}m/s
+                          </Text>
+                        </View>
+                        <View style={styles.hourlyDetailRow}>
+                          <Ionicons name="water-outline" size={10} color={colors.textSecondary} />
+                          <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                            {Math.round(hour.humidity)}%
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        )
+      })}
+    </View>
+  )
 }
 
 export default function CragDetailScreen() {
@@ -98,6 +296,9 @@ export default function CragDetailScreen() {
   const router = useRouter()
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
+  
+  // Get global grade range
+  const { gradeRange: globalGradeRange } = useGradeRange()
 
   // Parse pre-scored sectors from navigation params (already scored by backend)
   const scoredSectors: SearchSectorResult[] = useMemo(() => {
@@ -115,7 +316,7 @@ export default function CragDetailScreen() {
     isError,
     refetch,
     isRefetching,
-  } = useCragDetail(id || '')
+  } = useCragDetail(id || '', { gradeRange: globalGradeRange })
 
   // Get today's forecast
   const todayForecast = useMemo(() => {
@@ -137,6 +338,7 @@ export default function CragDetailScreen() {
       rockType: string | null
       sunExposure: string | null
       routesInGradeRange?: number
+      headerImageUrl?: string | null
       score?: number
     }): SearchSectorResult => ({
       sector: {
@@ -149,6 +351,7 @@ export default function CragDetailScreen() {
         coordinates: null,
         avgStars: null,
         climbingStyle: null,
+        headerImageUrl: s.headerImageUrl || null,
       },
       relevanceScore: s.score || 0,
       distance: 0,
@@ -228,6 +431,14 @@ export default function CragDetailScreen() {
     if (sector.coordinates?.lon) {
       params.set('longitude', sector.coordinates.lon.toString())
     }
+    
+    // Add header image if available (sector image, or fallback to crag image)
+    if (sector.headerImageUrl) {
+      params.set('headerImageUrl', sector.headerImageUrl)
+    } else if (crag?.headerImageUrl) {
+      // Fallback to crag header image if sector doesn't have one
+      params.set('headerImageUrl', crag.headerImageUrl)
+    }
 
     router.push(`/sector/${sector.id}?${params.toString()}`)
   }
@@ -297,6 +508,7 @@ export default function CragDetailScreen() {
       <HeroHeader
         title={crag.name}
         subtitle={crag.region ? `${crag.region}, ${crag.country}` : crag.country}
+        imageUrl={crag.headerImageUrl}
         theCragUrl={crag.theCragUrl}
         rockType={primaryRockType}
         icon="layers"
@@ -325,6 +537,9 @@ export default function CragDetailScreen() {
       />
 
       <View style={styles.content}>
+        {/* Grade Range Badge - Tappable to change */}
+        <GradeRangeBadge style={styles.gradeRangeBadge} />
+
         {/* Current Weather */}
         {todayForecast && (
           <View
@@ -556,122 +771,20 @@ export default function CragDetailScreen() {
           </View>
         )}
 
-        {/* Forecast */}
-        {crag.forecast && crag.forecast.length > 0 && (
-          <View
-            style={[
-              styles.section,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.forecastHeader}>
-              <Text style={[styles.sectionTitleInCard, { color: colors.text }]}>
-                Previsión próximos días
-              </Text>
-              <Text
-                style={[
-                  styles.forecastSubtitle,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                Máx / Mín
-              </Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.forecastScroll}
-            >
-              {crag.forecast.slice(0, 7).map((day, index) => (
-                <View
-                  key={day.date || `forecast-${index}`}
-                  style={[
-                    styles.forecastDay,
-                    {
-                      backgroundColor: colors.muted,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[styles.forecastDayName, { color: colors.text }]}
-                  >
-                    {formatForecastDate(day.date)}
-                  </Text>
-                  <Ionicons
-                    name={getWeatherIcon(day.weatherCode)}
-                    size={32}
-                    color={colors.primary}
-                  />
-                  <View style={styles.forecastTemps}>
-                    <Text
-                      style={[styles.forecastTempMax, { color: colors.text }]}
-                    >
-                      {Math.round(day.temperature?.max || 0)}°
-                    </Text>
-                    <Text
-                      style={[
-                        styles.forecastTempMin,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {Math.round(day.temperature?.min || 0)}°
-                    </Text>
-                  </View>
-                  {/* Additional info */}
-                  <View style={styles.forecastExtra}>
-                    {day.precipitation?.probability > 0 && (
-                      <View style={styles.forecastExtraItem}>
-                        <Ionicons name="water" size={12} color="#3B82F6" />
-                        <Text
-                          style={[
-                            styles.forecastExtraText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {Math.round(day.precipitation.probability)}%
-                        </Text>
-                      </View>
-                    )}
-                    {day.wind?.mean > 0 && (
-                      <View style={styles.forecastExtraItem}>
-                        <Ionicons
-                          name="leaf"
-                          size={12}
-                          color={colors.textSecondary}
-                        />
-                        <Text
-                          style={[
-                            styles.forecastExtraText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {Math.round(day.wind.mean)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        {/* Forecast with Hourly Detail */}
+        <ForecastSection
+          forecast={crag.forecast}
+          hourlyForecast={crag.hourlyForecast}
+          colors={colors}
+          colorScheme={colorScheme}
+        />
 
         {/* Description */}
         {crag.description && (
-          <View
-            style={[
-              styles.section,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <Text style={[styles.sectionTitleInCard, { color: colors.text }]}>
-              Description
-            </Text>
-            <Text style={[styles.description, { color: colors.textSecondary }]}>
-              {crag.description}
-            </Text>
-          </View>
+          <LanguageTextSection
+            text={crag.description}
+            title={t('description')}
+          />
         )}
 
         {/* Approach */}
@@ -1010,6 +1123,66 @@ const styles = StyleSheet.create({
   forecastExtraText: {
     fontSize: 11,
   },
+  forecastDayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+  },
+  forecastDayLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  forecastDayRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  forecastDayStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  hourlyContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  hourlyScroll: {
+    flexDirection: 'row',
+  },
+  hourlyItem: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginRight: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    minWidth: 70,
+    gap: 4,
+  },
+  hourlyTime: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  hourlyTemp: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  hourlyDetails: {
+    marginTop: 4,
+    gap: 2,
+  },
+  hourlyDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  hourlyDetailText: {
+    fontSize: 10,
+  },
   description: {
     fontSize: 15,
     lineHeight: 22,
@@ -1044,5 +1217,8 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  gradeRangeBadge: {
+    marginBottom: 16,
   },
 })

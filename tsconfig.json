@@ -135,6 +135,12 @@
       ],
       "@region/*": [
         "./packages/region/*"
+      ],
+      "@climb-zone/topo": [
+        "./packages/topo"
+      ],
+      "@topo/*": [
+        "./packages/topo/*"
       ]
     }
   }

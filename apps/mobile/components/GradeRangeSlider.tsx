@@ -66,17 +66,19 @@ export function GradeRangeSlider({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
 
     if (selectingMin) {
-      if (index <= maxIndex || maxIndex === -1) {
-        onChange(grade, maxValue)
-      } else {
+      // If selected min is greater than current max, adjust max too
+      if (index > maxIndex && maxIndex !== -1) {
         onChange(grade, grade)
+      } else {
+        onChange(grade, maxValue)
       }
       setSelectingMin(false)
     } else {
-      if (index >= minIndex || minIndex === -1) {
-        onChange(minValue, grade)
-      } else {
+      // If selected max is less than current min, adjust min too
+      if (index < minIndex && minIndex !== -1) {
         onChange(grade, grade)
+      } else {
+        onChange(minValue, grade)
       }
       setSelectingMin(true)
     }
@@ -130,7 +132,7 @@ export function GradeRangeSlider({
           ]}
         />
         <Text style={[styles.hint, { color: colors.textSecondary }]}>
-          {selectingMin ? 'Toca para seleccionar mínimo' : 'Toca para seleccionar máximo'}
+          {selectingMin ? 'Tap to select minimum' : 'Tap to select maximum'}
         </Text>
       </View>
 

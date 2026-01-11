@@ -13,6 +13,7 @@ export { FirstAscent } from './domain/value-objects/first-ascent.vo'
 export { RouteType } from './domain/value-objects/route-type.vo'
 export { Tags } from './domain/value-objects/tags.vo'
 export { Warnings } from './domain/value-objects/warnings.vo'
+export { TopoNumber } from './domain/value-objects/topo-number.vo'
 
 // Application
 export { SearchRoutesUseCase } from './application/use-cases/search-routes.use-case'

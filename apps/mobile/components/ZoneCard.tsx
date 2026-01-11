@@ -10,11 +10,11 @@ interface ZoneCardProps {
 }
 
 const climbingTypeLabels: Record<string, string> = {
-  sport: 'Deportiva',
-  trad: 'Clásica',
+  sport: 'Sport',
+  trad: 'Trad',
   boulder: 'Boulder',
-  'multi-pitch': 'Largo',
-  mixed: 'Mixta',
+  'multi-pitch': 'Multi-pitch',
+  mixed: 'Mixed',
 };
 
 export function ZoneCard({ zone }: ZoneCardProps) {

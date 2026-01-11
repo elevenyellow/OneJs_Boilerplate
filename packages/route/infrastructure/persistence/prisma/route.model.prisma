@@ -15,8 +15,10 @@ model Route {
   firstAscent String?
   tags        Json?
   warnings    Json?
+  topoNumber  String?  // Número de la ruta en el topo (ej: "17", "18a")
 
-  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  sector        Sector              @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  topoPositions RouteTopoPosition[]
 
   createdAt DateTime @default(now())
 

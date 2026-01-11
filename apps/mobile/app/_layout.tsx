@@ -1,5 +1,8 @@
+import { GlobalGradePickerModal } from '@/components/GlobalGradePickerModal'
 import { Colors } from '@/constants/Colors'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { FiltersProvider } from '@/contexts/FiltersContext'
+import { asyncStoragePersister, queryClient } from '@/lib/queryClient'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
@@ -9,15 +12,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync()
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000,
-      refetchOnWindowFocus: false,
-    },
-  },
-})
 
 export default function RootLayout() {
   const colorScheme = useColorScheme() ?? 'light'
@@ -30,9 +24,13 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        <Stack
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{ persister: asyncStoragePersister }}
+      >
+        <FiltersProvider>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <Stack
           screenOptions={{
             headerStyle: {
               backgroundColor: colors.background,
@@ -71,8 +69,10 @@ export default function RootLayout() {
               headerTintColor: '#FFFFFF',
             }}
           />
-        </Stack>
-      </QueryClientProvider>
+          </Stack>
+          <GlobalGradePickerModal />
+        </FiltersProvider>
+      </PersistQueryClientProvider>
     </GestureHandlerRootView>
   )
 }

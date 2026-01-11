@@ -16,11 +16,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Colors, OrientationGradients } from '@/constants/Colors'
 import type { SearchSectorsDto } from '@/lib/api'
+import { LocationPicker } from './LocationPicker'
+import type { CustomLocation } from '@/hooks/useUserLocation'
 
 interface FilterPanelProps {
   filters: Partial<SearchSectorsDto>
   onFiltersChange: (filters: Partial<SearchSectorsDto>) => void
   onApply: () => void
+  // Location props
+  locationName?: string
+  isCustomLocation?: boolean
+  onLocationChange?: (location: CustomLocation) => void
+  onResetToGPS?: () => void
+  gpsLocation?: { latitude: number | null; longitude: number | null }
 }
 
 export interface FilterPanelRef {
@@ -65,19 +73,29 @@ const indexToGrade = (index: number): string => {
 }
 
 export const FilterPanel = forwardRef<FilterPanelRef, FilterPanelProps>(
-  ({ filters, onFiltersChange, onApply }, ref) => {
+  ({ 
+    filters, 
+    onFiltersChange, 
+    onApply,
+    locationName = 'Tu ubicación',
+    isCustomLocation = false,
+    onLocationChange,
+    onResetToGPS,
+    gpsLocation,
+  }, ref) => {
     const colorScheme = useColorScheme() ?? 'light'
     const colors = Colors[colorScheme]
     const [visible, setVisible] = useState(false)
+    const [locationPickerVisible, setLocationPickerVisible] = useState(false)
 
     // Local state for sliders - use refs for slider values to avoid re-render loops
     const [localDistance, setLocalDistance] = useState(filters.maxDistance || 100)
     const [displayDistance, setDisplayDistance] = useState(filters.maxDistance || 100)
     const [localMinGrade, setLocalMinGrade] = useState(
-      gradeToIndex(filters.gradeRange?.min || '5c')
+      gradeToIndex(filters.gradeRange?.min || '5c') ?? 10 // 10 is index for '5c'
     )
     const [localMaxGrade, setLocalMaxGrade] = useState(
-      gradeToIndex(filters.gradeRange?.max || '6c')
+      gradeToIndex(filters.gradeRange?.max || '6c') ?? 16 // 16 is index for '6c'
     )
     const [displayMinGrade, setDisplayMinGrade] = useState(localMinGrade)
     const [displayMaxGrade, setDisplayMaxGrade] = useState(localMaxGrade)
@@ -91,8 +109,8 @@ export const FilterPanel = forwardRef<FilterPanelRef, FilterPanelProps>(
     useImperativeHandle(ref, () => ({
       open: () => {
         // Reset local state to current filters
-        const minGradeIdx = gradeToIndex(filters.gradeRange?.min || '5c')
-        const maxGradeIdx = gradeToIndex(filters.gradeRange?.max || '6c')
+        const minGradeIdx = gradeToIndex(filters.gradeRange?.min || '5c') ?? 10
+        const maxGradeIdx = gradeToIndex(filters.gradeRange?.max || '6c') ?? 16
         setLocalDistance(filters.maxDistance || 100)
         setDisplayDistance(filters.maxDistance || 100)
         setLocalMinGrade(minGradeIdx)
@@ -132,8 +150,8 @@ export const FilterPanel = forwardRef<FilterPanelRef, FilterPanelProps>(
 
     const handleReset = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-      const minIdx = gradeToIndex('5c')
-      const maxIdx = gradeToIndex('6c')
+      const minIdx = gradeToIndex('5c') ?? 10
+      const maxIdx = gradeToIndex('6c') ?? 16
       setLocalDistance(100)
       setDisplayDistance(100)
       setLocalMinGrade(minIdx)
@@ -167,6 +185,68 @@ export const FilterPanel = forwardRef<FilterPanelRef, FilterPanelProps>(
 
           {/* Content */}
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            {/* Search Zone / Location */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="navigate" size={20} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Zona de búsqueda
+                </Text>
+              </View>
+              
+              <Pressable
+                style={({ pressed }) => [
+                  styles.locationSelector,
+                  { 
+                    backgroundColor: pressed ? colors.muted : colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setLocationPickerVisible(true)
+                }}
+              >
+                <View style={[styles.locationIconContainer, { backgroundColor: colors.primary }]}>
+                  <Ionicons 
+                    name={isCustomLocation ? 'location' : 'locate'} 
+                    size={20} 
+                    color="#FFFFFF" 
+                  />
+                </View>
+                <View style={styles.locationTextContainer}>
+                  <Text style={[styles.locationTitle, { color: colors.text }]} numberOfLines={1}>
+                    {locationName}
+                  </Text>
+                  <Text style={[styles.locationSubtitle, { color: colors.textSecondary }]}>
+                    {isCustomLocation ? 'Ubicación personalizada' : 'Ubicación GPS'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </Pressable>
+
+              {isCustomLocation && onResetToGPS && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.resetLocationButton,
+                    { 
+                      backgroundColor: pressed ? colors.muted : 'transparent',
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                    onResetToGPS()
+                  }}
+                >
+                  <Ionicons name="locate" size={16} color={colors.primary} />
+                  <Text style={[styles.resetLocationText, { color: colors.primary }]}>
+                    Volver a mi ubicación GPS
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+
             {/* Distance Slider */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -439,6 +519,23 @@ export const FilterPanel = forwardRef<FilterPanelRef, FilterPanelProps>(
             </Pressable>
           </View>
         </SafeAreaView>
+
+        {/* Location Picker Modal */}
+        <LocationPicker
+          visible={locationPickerVisible}
+          onClose={() => setLocationPickerVisible(false)}
+          onSelect={(location) => {
+            if (onLocationChange) {
+              onLocationChange(location)
+            }
+          }}
+          currentLocation={isCustomLocation ? {
+            lat: filters.userLocation?.lat ?? 0,
+            lon: filters.userLocation?.lon ?? 0,
+            name: locationName,
+          } : null}
+          gpsLocation={gpsLocation}
+        />
       </Modal>
     )
   }
@@ -607,5 +704,46 @@ const styles = StyleSheet.create({
   applyButtonText: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  locationSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  locationIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationTextContainer: {
+    flex: 1,
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  locationSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  resetLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  resetLocationText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 })

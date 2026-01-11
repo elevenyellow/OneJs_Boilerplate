@@ -1,63 +1,67 @@
 model Crag {
-  id          String  @id @default(cuid())
-  externalId  BigInt  @unique
+  id          String   @id @default(cuid())
+  externalId  BigInt   @unique
   countryId   String
   regionId    String?
   name        String
   altNames    String[] // Nombres alternativos
   latitude    Float?
   longitude   Float?
-  geometry    Json?    // {boundary, bbox, center, areasize}
-  locatedness Int?     // Precisión de coordenadas 0-100
-  
+  geometry    Json? // {boundary, bbox, center, areasize}
+  locatedness Int? // Precisión de coordenadas 0-100
+
   // Información temporal
-  seasonality Int[]    // [215, 117, 103, ...] - 12 meses + extra
-  
+  seasonality Int[] // [215, 117, 103, ...] - 12 meses + extra
+
   // Beta / Información descriptiva
-  description String?  @db.Text
-  approach    String?  @db.Text
-  ethic       String?  @db.Text
-  
+  description String? @db.Text
+  approach    String? @db.Text
+  ethic       String? @db.Text
+
   // Estadísticas de TheCrag (ALTA PRIORIDAD)
-  numberPhotos      Int?     // Número de fotos
-  numberTopos       Int?     // Número de topos/croquis
-  hasTopo           Boolean  @default(false)
-  totalFavorites    Int?     // Total de favoritos (popularidad)
-  kudos             Int?     // Kudos recibidos
-  
+  numberPhotos   Int? // Número de fotos
+  numberTopos    Int? // Número de topos/croquis
+  hasTopo        Boolean @default(false)
+  totalFavorites Int? // Total de favoritos (popularidad)
+  kudos          Int? // Kudos recibidos
+
   // Estadísticas adicionales (MEDIA PRIORIDAD)
-  ascentCount       Int?     // Número total de ascensos
-  maxPop            Int?     // Popularidad máxima (métrica TheCrag)
-  
+  ascentCount Int? // Número total de ascensos
+  maxPop      Int? // Popularidad máxima (métrica TheCrag)
+
   // Metadata de TheCrag
-  priceCategory     String?  // Categoría de precio
-  permitNode        Json?    // Información sobre permisos necesarios
-  tagsRaw           Json?    // Tags originales de TheCrag sin procesar
-  
+  priceCategory String? // Categoría de precio
+  permitNode    Json? // Información sobre permisos necesarios
+  tagsRaw       Json? // Tags originales de TheCrag sin procesar
+
   // URLs de TheCrag (ALTA PRIORIDAD)
-  sourceUrl         String   // URL principal
-  urlStub           String?  // URL stub en TheCrag
-  urlAncestorStub   String?
-  
+  sourceUrl       String // URL principal
+  urlStub         String? // URL stub en TheCrag
+  urlAncestorStub String?
+
+  // Imagen de cabecera
+  headerImageUrl    String? // URL de la imagen principal del crag
+  headerImageWidth  Int?
+  headerImageHeight Int?
+
   // PDF Info (MEDIA PRIORIDAD)
   lastPDFSize       String?
   lastPDFStaticDate String?
-  
-  // Campos adicionales de TheCrag
-  averageHeight     Float?   // Altura promedio de rutas
-  numberRoutes      Int?     // Total de rutas en el crag
-  subAreaCount      Int?     // Número de sub-áreas
-  redirectStubs     String[] @default([]) // URLs alternativas
-  tlc               Json?    // Top Level Crag reference
-  lastPDFStaticSize String?  // Tamaño del PDF estático
-  
-  // API Response Raw (para análisis futuro)
-  apiResponseRaw    Json?    // Respuesta completa de la API
 
-  country Country @relation(fields: [countryId], references: [id])
-  region  Region? @relation(fields: [regionId], references: [id])
-  areas   Area[]
-  embedding ZoneEmbedding?
+  // Campos adicionales de TheCrag
+  averageHeight     Float? // Altura promedio de rutas
+  numberRoutes      Int? // Total de rutas en el crag
+  subAreaCount      Int? // Número de sub-áreas
+  redirectStubs     String[] @default([]) // URLs alternativas
+  tlc               Json? // Top Level Crag reference
+  lastPDFStaticSize String? // Tamaño del PDF estático
+
+  // API Response Raw (para análisis futuro)
+  apiResponseRaw Json? // Respuesta completa de la API
+
+  country   Country        @relation(fields: [countryId], references: [id])
+  region    Region?        @relation(fields: [regionId], references: [id])
+  areas     Area[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

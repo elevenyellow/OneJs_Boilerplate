@@ -96,6 +96,9 @@ interface SectorPrismaData {
   redirectStubs: string[]
   tlc: unknown
   apiResponseRaw: unknown
+  headerImageUrl: string | null
+  headerImageWidth: number | null
+  headerImageHeight: number | null
   createdAt: Date
   updatedAt: Date
 }
@@ -389,12 +392,19 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
             cragId: { in: cragIds },
           },
         },
-        // Grade range overlap
+        // Grade range overlap - also include sectors without grade data (null values)
+        // This ensures we don't exclude sectors that haven't been indexed yet
         {
-          minGradeIndex: { lte: filters.maxGradeIndex },
+          OR: [
+            { minGradeIndex: null },
+            { minGradeIndex: { lte: filters.maxGradeIndex } },
+          ],
         },
         {
-          maxGradeIndex: { gte: filters.minGradeIndex },
+          OR: [
+            { maxGradeIndex: null },
+            { maxGradeIndex: { gte: filters.minGradeIndex } },
+          ],
         },
       ],
     }
@@ -472,6 +482,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
             ascents: true,
             subType: true,
             firstAscent: true,
+            topoNumber: true,
           },
           orderBy: { gradeIndex: 'asc' },
         },
@@ -500,6 +511,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         ascents: r.ascents,
         subType: r.subType,
         firstAscent: r.firstAscent,
+        topoNumber: r.topoNumber,
       }))
 
       // Extract crag info
@@ -614,6 +626,9 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       data.lastPDFStaticDate,
       data.createdAt,
       data.updatedAt,
+      data.headerImageUrl,
+      data.headerImageWidth,
+      data.headerImageHeight,
     )
   }
 
@@ -706,8 +721,31 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       urlAncestorStub: entity.urlAncestorStub,
       lastPDFSize: entity.lastPDFSize,
       lastPDFStaticDate: entity.lastPDFStaticDate,
+      headerImageUrl: entity.headerImageUrl,
+      headerImageWidth: entity.headerImageWidth,
+      headerImageHeight: entity.headerImageHeight,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }
+  }
+
+  /**
+   * Update header image for a sector
+   */
+  async updateHeaderImage(
+    sectorId: SectorId,
+    headerImageUrl: string,
+    headerImageWidth?: number,
+    headerImageHeight?: number,
+  ): Promise<void> {
+    await this.prisma.sector.update({
+      where: { id: sectorId.toString() },
+      data: {
+        headerImageUrl,
+        headerImageWidth: headerImageWidth ?? null,
+        headerImageHeight: headerImageHeight ?? null,
+        updatedAt: new Date(),
+      },
+    })
   }
 }

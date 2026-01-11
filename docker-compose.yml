@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: docker.io/ankane/pgvector:latest  # PostgreSQL with pgvector extension
+    image: docker.io/library/postgres:17
     container_name: postgresdb
     ports:
       - "5432:5432"
@@ -12,7 +12,6 @@ services:
       POSTGRES_PASSWORD: admin123          # Password (make sure to change in production)
     volumes:
       - ./data:/var/lib/postgresql/data    # Data persistence
-      - ./init-pgvector.sql:/docker-entrypoint-initdb.d/init.sql  # pgvector initialization
 
   redis:
     image: docker.io/library/redis:7-alpine

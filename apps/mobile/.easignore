@@ -1,0 +1,11 @@
+# Ignore root monorepo files that cause workspace resolution issues
+../package.json
+../../package.json
+../../bun.lock
+../../node_modules
+../../packages
+../../.oneJs
+../../apps/api
+../../apps/admin  
+../../apps/web
+../../prisma

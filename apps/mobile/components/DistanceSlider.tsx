@@ -15,12 +15,12 @@ interface DistanceSliderProps {
 }
 
 const DISTANCE_OPTIONS = [
-  { value: 25, label: '25', icon: 'walk-outline' as const, description: 'Muy cerca' },
-  { value: 50, label: '50', icon: 'bicycle-outline' as const, description: 'Cerca' },
-  { value: 75, label: '75', icon: 'car-outline' as const, description: 'Accesible' },
-  { value: 100, label: '100', icon: 'car-sport-outline' as const, description: 'Viaje corto' },
-  { value: 150, label: '150', icon: 'bus-outline' as const, description: 'Excursión' },
-  { value: 200, label: '200', icon: 'airplane-outline' as const, description: 'Aventura' },
+  { value: 25, label: '25', icon: 'walk-outline' as const, description: 'Very close' },
+  { value: 50, label: '50', icon: 'bicycle-outline' as const, description: 'Close' },
+  { value: 75, label: '75', icon: 'car-outline' as const, description: 'Accessible' },
+  { value: 100, label: '100', icon: 'car-sport-outline' as const, description: 'Short trip' },
+  { value: 150, label: '150', icon: 'bus-outline' as const, description: 'Day trip' },
+  { value: 200, label: '200', icon: 'airplane-outline' as const, description: 'Adventure' },
 ]
 
 export function DistanceSlider({
@@ -70,7 +70,7 @@ export function DistanceSlider({
         <View style={styles.selectedInfo}>
           <Text style={styles.selectedValue}>{value} km</Text>
           <Text style={styles.selectedDescription}>
-            {selectedOption?.description || 'Radio de búsqueda'}
+            {selectedOption?.description || 'Search radius'}
           </Text>
         </View>
         <Ionicons name="navigate" size={20} color="rgba(255,255,255,0.7)" />

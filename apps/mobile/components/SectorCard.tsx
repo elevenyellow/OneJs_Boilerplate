@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
@@ -13,7 +13,11 @@ interface SectorCardProps {
   compact?: boolean;
 }
 
-export function SectorCard({ result, compact = false }: SectorCardProps) {
+/**
+ * Memoized SectorCard component for better performance
+ * Only re-renders when sector ID or relevance score changes
+ */
+export const SectorCard = memo(function SectorCard({ result, compact = false }: SectorCardProps) {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -49,7 +53,7 @@ export function SectorCard({ result, compact = false }: SectorCardProps) {
     const orientation = sector.orientation?.toLowerCase() || '';
     
     if (sunExposure.includes('sun') || orientation.includes('s')) {
-      return { icon: 'sunny' as const, label: 'Sol', color: '#F59E0B' };
+      return { icon: 'sunny' as const, label: 'Sun', color: '#F59E0B' };
     }
     if (sunExposure.includes('shade') || orientation.includes('n')) {
       return { icon: 'moon' as const, label: 'Shade', color: '#6366F1' };
@@ -309,7 +313,14 @@ export function SectorCard({ result, compact = false }: SectorCardProps) {
       </View>
     </Pressable>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if sector ID or score changes
+  return (
+    prevProps.result.sector.id === nextProps.result.sector.id &&
+    prevProps.result.relevanceScore === nextProps.result.relevanceScore &&
+    prevProps.compact === nextProps.compact
+  );
+});
 
 function getScoreColor(score: number): string {
   if (score >= 75) return '#10B981'; // emerald

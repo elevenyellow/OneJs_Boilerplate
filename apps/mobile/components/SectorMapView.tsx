@@ -17,12 +17,14 @@ import {
 let MapViewComponent: React.ComponentType<any> | null = null
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic import for platform-specific module
 let MarkerComponent: React.ComponentType<any> | null = null
+let PROVIDER_MAPBOX: string | null = null
 
 if (Platform.OS !== 'web') {
   try {
     const Maps = require('react-native-maps')
     MapViewComponent = Maps.default
     MarkerComponent = Maps.Marker
+    PROVIDER_MAPBOX = Maps.PROVIDER_DEFAULT // Use default provider for OpenStreetMap tiles
   } catch {
     // Maps not available
   }
@@ -181,7 +183,7 @@ export function SectorMapView({
       >
         <Ionicons name="map-outline" size={48} color={colors.textSecondary} />
         <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>
-          Mapa no disponible en esta plataforma
+          Map not available on this platform
         </Text>
         <Text
           style={[styles.fallbackSubtext, { color: colors.mutedForeground }]}
@@ -192,11 +194,33 @@ export function SectorMapView({
     )
   }
 
-  const handleMarkerPress = (sectorResult: SearchSectorResult) => {
+  const handleMarkerPress = (sectorResult: SearchSectorResult, cragName?: string) => {
     if (onSectorPress) {
       onSectorPress(sectorResult)
     } else {
-      router.push(`/sector/${sectorResult.sector.id}`)
+      const sector = sectorResult.sector
+      const params = new URLSearchParams({
+        name: sector.name || '',
+        cragName: cragName || '',
+        orientation: sector.orientation || '',
+        sunExposure: sector.sunExposure || '',
+        rockType: sector.rockType || '',
+      })
+      
+      // Add header image if available
+      if (sector.headerImageUrl) {
+        params.set('headerImageUrl', sector.headerImageUrl)
+      }
+      
+      // Add coordinates if available
+      if (sector.coordinates?.lat) {
+        params.set('latitude', sector.coordinates.lat.toString())
+      }
+      if (sector.coordinates?.lon) {
+        params.set('longitude', sector.coordinates.lon.toString())
+      }
+      
+      router.push(`/sector/${sector.id}?${params.toString()}`)
     }
   }
 
@@ -207,8 +231,9 @@ export function SectorMapView({
         initialRegion={getInitialRegion()}
         showsUserLocation
         showsMyLocationButton
+        mapType="standard"
       >
-        {sectorsWithCoords.map(({ sectorResult, coordinates }) => {
+        {sectorsWithCoords.map(({ sectorResult, cragName, coordinates }) => {
           const { sector, relevanceScore } = sectorResult
           const markerColor = getMarkerColor(relevanceScore)
 
@@ -216,11 +241,11 @@ export function SectorMapView({
             <MarkerComponent
               key={sector.id}
               coordinate={coordinates}
-              onCalloutPress={() => handleMarkerPress(sectorResult)}
+              onCalloutPress={() => handleMarkerPress(sectorResult, cragName)}
               tracksViewChanges={false}
             >
               <TouchableOpacity
-                onPress={() => handleMarkerPress(sectorResult)}
+                onPress={() => handleMarkerPress(sectorResult, cragName)}
                 style={[styles.customMarker, { backgroundColor: markerColor }]}
                 activeOpacity={0.8}
               >

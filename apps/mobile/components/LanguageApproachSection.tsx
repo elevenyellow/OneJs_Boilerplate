@@ -52,8 +52,9 @@ export function LanguageApproachSection({
 
   // Selected language state
   const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
-    // Default to first available language, prefer 'es' if available
-    if (languageContent['es']) return 'es'
+    // Default to English if available, then first available language
+    if (languageContent['en']) return 'en'
+    if (languageContent['gb']) return 'gb'
     if (languageContent['default']) return 'default'
     return availableLanguages[0] || 'default'
   })

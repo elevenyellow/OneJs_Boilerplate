@@ -3,6 +3,7 @@ import type { Context } from '@OneJs/server'
 import { Controller, Get, Post } from '@OneJs/server'
 import { SearchSectorsUseCase, type SearchSectorsDto } from '@sector'
 import { RoutePrismaRepository } from '@route/infrastructure/persistence/prisma/route.repository'
+import { TopoPrismaRepository } from '@climb-zone/topo'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 
 /**
@@ -20,6 +21,8 @@ export class SectorController {
     private readonly searchSectorsUseCase: SearchSectorsUseCase,
     @Inject(RoutePrismaRepository)
     private readonly routeRepository: RoutePrismaRepository,
+    @Inject(TopoPrismaRepository)
+    private readonly topoRepository: TopoPrismaRepository,
   ) {}
 
   /**
@@ -145,7 +148,97 @@ export class SectorController {
       return {
         sectorId: id,
         total: routes.length,
-        routes: routes.map((route) => route.toJSON()),
+        routes: routes.map((route) => {
+          const json = route.toJSON()
+          return {
+            ...json,
+            stars: json.rating, // Frontend expects 'stars', entity uses 'rating'
+          }
+        }),
+      }
+    } catch {
+      context.set.status = 400
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_SECTOR_ID',
+          message: `Invalid sector ID: ${id}`,
+        },
+      }
+    }
+  }
+
+  /**
+   * GET /api/sectors/:id/topos
+   * Get all topo images for a specific sector
+   *
+   * Response includes:
+   * - Topo image URLs (thumbnail and full)
+   * - Image dimensions
+   * - Routes on each topo with their SVG path coordinates
+   */
+  @Get('/:id/topos')
+  async getSectorTopos(context: Context) {
+    const { id } = context.params as { id: string }
+
+    try {
+      const sectorId = SectorId.fromString(id)
+
+      // Get all topo images for this sector
+      const topoImages = await this.topoRepository.findBySectorId(sectorId)
+
+      // For each topo, get the route positions
+      const toposWithRoutes = await Promise.all(
+        topoImages.map(async (topo) => {
+          const positions = await this.topoRepository.findPositionsByTopoId(topo.id)
+
+          // Get route details for each position
+          const routeIds = positions.map(p => p.routeId)
+          const routes = await Promise.all(
+            routeIds.map(routeId => this.routeRepository.findById(routeId))
+          )
+
+          // Combine position data with route details
+          const routesData = positions.map((position, idx) => {
+            const route = routes[idx]
+            return {
+              routeId: position.routeId.toString(),
+              routeExternalId: route?.externalId.toNumber() ?? 0,
+              topoNumber: position.topoNumber,
+              points: position.points,
+              gradeClass: position.gradeClass,
+              name: route?.name.toString() ?? 'Unknown',
+              grade: route?.gradeString ?? null,
+            }
+          })
+
+          return {
+            id: topo.id.toString(),
+            externalId: topo.externalId,
+            sectorId: topo.sectorId.toString(),
+            thumbnailUrl: topo.thumbnailUrl,
+            fullImageUrl: topo.fullImageUrl,
+            width: topo.width,
+            height: topo.height,
+            originalWidth: topo.originalWidth,
+            originalHeight: topo.originalHeight,
+            viewScale: topo.viewScale,
+            routes: routesData,
+          }
+        })
+      )
+
+      // 🚀 HTTP Cache headers - topos cambian muy raramente
+      context.set.headers = {
+        ...context.set.headers,
+        'Cache-Control': 'public, max-age=3600', // 1 hora
+        'Vary': 'Accept-Encoding',
+      }
+
+      context.set.status = 200
+      return {
+        sectorId: id,
+        topos: toposWithRoutes,
       }
     } catch {
       context.set.status = 400

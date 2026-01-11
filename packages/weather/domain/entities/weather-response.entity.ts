@@ -173,7 +173,7 @@ export class WeatherDataParser {
       feelsLike: hourlyData.felttemperature[i],
       windSpeed: hourlyData.windspeed[i],
       windDirection: hourlyData.winddirection[i],
-      windGust: hourlyData.gust[i],
+      windGust: hourlyData.gust?.[i] ?? 0,
       precipitation: hourlyData.precipitation[i],
       humidity: hourlyData.relativehumidity[i],
       weatherCode: hourlyData.pictocode[i],

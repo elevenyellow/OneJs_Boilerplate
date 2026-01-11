@@ -1,23 +1,39 @@
 import { Colors } from '@/constants/Colors'
+import { useWeatherByCoordinates } from '@/hooks/useWeatherByCoordinates'
 import type { CragWithSectors } from '@/lib/api'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import React from 'react'
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import React, { memo } from 'react'
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 
 interface CragGroupProps {
   cragWithSectors: CragWithSectors
 }
 
-export function CragGroup({ cragWithSectors }: CragGroupProps) {
+/**
+ * Memoized CragGroup component for better performance
+ * Only re-renders when crag ID or score changes
+ */
+export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupProps) {
   const router = useRouter()
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
 
   const { crag, sectors, distance, totalRoutesInRange, avgRelevanceScore, totalSectorsInCrag } =
     cragWithSectors
+
+  // Fetch real weather for this crag's coordinates
+  const { data: weatherData, isLoading: isLoadingWeather } = useWeatherByCoordinates(
+    crag.latitude,
+    crag.longitude,
+    crag.latitude !== null && crag.longitude !== null
+  )
+
+  // Get today's temperature from weather data
+  const todayWeather = weatherData?.daily?.[0]
+  const temperature = todayWeather?.temperature?.mean
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -31,6 +47,40 @@ export function CragGroup({ cragWithSectors }: CragGroupProps) {
         distance: distance.toString(),
       },
     })
+  }
+
+  const handleGetDirections = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    
+    if (crag.latitude === null || crag.longitude === null) {
+      Alert.alert(
+        'Location unavailable',
+        'No coordinates available for this zone.',
+      )
+      return
+    }
+
+    const lat = crag.latitude
+    const lon = crag.longitude
+    const label = encodeURIComponent(crag.name)
+
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
+    const appleMapsUrl = `maps://app?daddr=${lat},${lon}&q=${label}`
+
+    if (Platform.OS === 'ios') {
+      Linking.canOpenURL(appleMapsUrl)
+        .then((supported) => {
+          if (supported) {
+            return Linking.openURL(appleMapsUrl)
+          } else {
+            return Linking.openURL(googleMapsUrl)
+          }
+        })
+        .catch(() => Linking.openURL(googleMapsUrl))
+    } else {
+      Linking.openURL(googleMapsUrl)
+    }
   }
 
   // Format distance nicely
@@ -81,7 +131,7 @@ export function CragGroup({ cragWithSectors }: CragGroupProps) {
               >
                 {crag.name}
               </Text>
-              {/* Location info */}
+              {/* Location and temperature info */}
               <View style={styles.locationRow}>
                 <Ionicons name="location" size={14} color={colors.primary} />
                 <Text
@@ -89,6 +139,23 @@ export function CragGroup({ cragWithSectors }: CragGroupProps) {
                 >
                   {formatDistance(distance)}
                 </Text>
+                <View style={[styles.locationDot, { backgroundColor: colors.border }]} />
+                {isLoadingWeather ? (
+                  <ActivityIndicator size={12} color={colors.textSecondary} />
+                ) : temperature !== undefined ? (
+                  <>
+                    <Ionicons 
+                      name="thermometer" 
+                      size={14} 
+                      color={temperature > 25 ? '#FF5722' : temperature < 10 ? '#2196F3' : '#4CAF50'} 
+                    />
+                    <Text
+                      style={[styles.locationText, { color: colors.textSecondary }]}
+                    >
+                      {Math.round(temperature)}°C
+                    </Text>
+                  </>
+                ) : null}
               </View>
             </View>
           </View>
@@ -185,42 +252,62 @@ export function CragGroup({ cragWithSectors }: CragGroupProps) {
           </View>
         </View>
 
-        {/* Quick badges */}
-        <View style={styles.badgesRow}>
-          {crag.hasTopo && (
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: colors.primary + '15',
-                  borderColor: colors.primary + '30',
-                },
-              ]}
+        {/* Quick badges and directions button */}
+        <View style={styles.bottomRow}>
+          <View style={styles.badgesRow}>
+            {crag.hasTopo && (
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: colors.primary + '15',
+                    borderColor: colors.primary + '30',
+                  },
+                ]}
+              >
+                <Ionicons name="map" size={12} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                  Topo
+                </Text>
+              </View>
+            )}
+            {crag.numberPhotos !== null && crag.numberPhotos > 0 && (
+              <View
+                style={[
+                  styles.badge,
+                  { backgroundColor: colors.muted, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="camera" size={12} color={colors.textSecondary} />
+                <Text style={[styles.badgeText, { color: colors.textSecondary }]}>
+                  {crag.numberPhotos}
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Directions button */}
+          {crag.latitude !== null && crag.longitude !== null && (
+            <Pressable
+              style={styles.directionsButton}
+              onPress={handleGetDirections}
             >
-              <Ionicons name="map" size={12} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.primary }]}>
-                Topo
-              </Text>
-            </View>
-          )}
-          {crag.numberPhotos !== null && crag.numberPhotos > 0 && (
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: colors.muted, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons name="camera" size={12} color={colors.textSecondary} />
-              <Text style={[styles.badgeText, { color: colors.textSecondary }]}>
-                {crag.numberPhotos}
-              </Text>
-            </View>
+              <Ionicons name="navigate" size={16} color="#FFFFFF" />
+              <Text style={styles.directionsButtonText}>Directions</Text>
+            </Pressable>
           )}
         </View>
       </View>
     </Pressable>
   )
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if crag ID or score changes
+  return (
+    prevProps.cragWithSectors.crag.id === nextProps.cragWithSectors.crag.id &&
+    prevProps.cragWithSectors.avgRelevanceScore === nextProps.cragWithSectors.avgRelevanceScore &&
+    prevProps.cragWithSectors.sectors.length === nextProps.cragWithSectors.sectors.length
+  );
+});
 
 function getScoreColor(score: number): string {
   if (score >= 75) return '#10B981' // emerald
@@ -282,6 +369,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  locationDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginHorizontal: 4,
   },
   locationText: {
     fontSize: 14,
@@ -353,10 +446,16 @@ const styles = StyleSheet.create({
     width: 1,
     height: 24,
   },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    flex: 1,
   },
   badge: {
     flexDirection: 'row',
@@ -370,5 +469,24 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  directionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  directionsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 })

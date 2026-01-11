@@ -2,7 +2,7 @@ import { Inject, Injectable, OneJsError } from '@OneJs/core'
 import { PrismaClientOneJs } from '@OneJs/prisma'
 import { Grade } from '@climb-zone/shared'
 import { WeatherService } from '@weather'
-import type { DailyForecast } from '@weather/domain/entities/weather-response.entity'
+import type { DailyForecast, HourlyForecast } from '@weather/domain/entities/weather-response.entity'
 
 /**
  * Sector summary for crag detail view
@@ -20,6 +20,7 @@ export interface SectorSummary {
   totalFavorites: number | null
   hasTopo: boolean
   theCragUrl: string | null
+  headerImageUrl: string | null // Sector header image
   score: number // Calculated relevance score
 }
 
@@ -62,9 +63,11 @@ export interface CragDetailResponse {
   numberTopos: number | null
   hasTopo: boolean
   theCragUrl: string | null
+  headerImageUrl: string | null
   
-  // Weather forecast (7 days)
+  // Weather forecast (7 days daily + hourly for first 2 days)
   forecast: DailyForecast[] | null
+  hourlyForecast: HourlyForecast[] | null
   
   // Recommended sectors
   sectors: SectorSummary[]
@@ -162,6 +165,7 @@ export class GetCragDetailUseCase {
           theCragUrl: sector.urlStub
             ? `https://www.thecrag.com${sector.urlStub}`
             : null,
+          headerImageUrl: sector.headerImageUrl,
           score,
         }
       }),
@@ -210,8 +214,9 @@ export class GetCragDetailUseCase {
       sectorName: route.sector.name,
     }))
 
-    // 7. Fetch weather forecast (7 days)
+    // 7. Fetch weather forecast (7 days daily + hourly for first 2 days)
     let forecast: DailyForecast[] | null = null
+    let hourlyForecast: HourlyForecast[] | null = null
 
     if (crag.latitude && crag.longitude) {
       try {
@@ -223,6 +228,8 @@ export class GetCragDetailUseCase {
           .parsed()
 
         forecast = weatherData.daily.slice(0, 7)
+        // Include hourly forecast for the first 48 hours (2 days)
+        hourlyForecast = weatherData.hourly?.slice(0, 48) || null
       } catch (error) {
         console.warn('Failed to fetch weather for crag:', error)
         // Continue without weather data
@@ -252,7 +259,9 @@ export class GetCragDetailUseCase {
       theCragUrl: crag.urlStub
         ? `https://www.thecrag.com${crag.urlStub}`
         : crag.sourceUrl,
+      headerImageUrl: crag.headerImageUrl,
       forecast,
+      hourlyForecast,
       sectors: sectorSummaries,
       topRoutes: routeHighlights,
       bestSeasons: crag.seasonality || [],

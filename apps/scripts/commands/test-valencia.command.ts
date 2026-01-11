@@ -22,6 +22,13 @@ import {
 import { RoutePrismaRepository } from '@climb-zone/route'
 import { SectorPrismaRepository } from '@climb-zone/sector'
 import { ExternalId, Geometry, Name } from '@climb-zone/shared'
+import {
+  TopoImageEntity,
+  TopoImageId,
+  TopoPrismaRepository,
+} from '@climb-zone/topo'
+import { RouteId } from '@route/domain/value-objects/route-id.vo'
+import type { TopoImageData } from '@scraper-thecrag'
 import { TheCragApiScraper } from '@scraper-thecrag'
 import { ScrapedDataMapperService } from '@scraper-thecrag/application/services/scraped-data-mapper.service'
 
@@ -70,6 +77,9 @@ interface Stats {
   areas: number
   sectors: number
   routes: number
+  topos: number
+  topoPositions: number
+  headerImages: number
   errors: number
   newFieldsSampled: {
     altNames: number
@@ -93,10 +103,12 @@ export async function testValencia(container: any, cookie: string) {
   const areaRepo = container.get(AreaPrismaRepository)
   const sectorRepo = container.get(SectorPrismaRepository)
   const routeRepo = container.get(RoutePrismaRepository)
+  const topoRepo = container.get(TopoPrismaRepository)
 
-  // Configure scraper
+  // Configure scraper with topos enabled
   scraper.setCookie(cookie)
-  scraper.setDelay(50) // Fast for testing
+  scraper.setDelay(100) // Slightly slower to allow topo fetching
+  scraper.setOptions({ includeTopos: true })
 
   const stats: Stats = {
     regions: 0,
@@ -104,6 +116,9 @@ export async function testValencia(container: any, cookie: string) {
     areas: 0,
     sectors: 0,
     routes: 0,
+    topos: 0,
+    topoPositions: 0,
+    headerImages: 0,
     errors: 0,
     newFieldsSampled: {
       altNames: 0,
@@ -225,6 +240,7 @@ export async function testValencia(container: any, cookie: string) {
     areaRepo,
     sectorRepo,
     routeRepo,
+    topoRepo,
     stats,
   )
 
@@ -265,6 +281,9 @@ function printFinalReport(stats: Stats) {
   console.log(`Areas: ${stats.areas}`)
   console.log(`Sectors: ${stats.sectors}`)
   console.log(`Routes: ${stats.routes}`)
+  console.log(`Topos: ${stats.topos}`)
+  console.log(`Topo Positions: ${stats.topoPositions}`)
+  console.log(`Header Images: ${stats.headerImages}`)
   console.log(`Errors: ${stats.errors}`)
   console.log('\n📊 New Fields Sampling:')
   console.log(`  altNames found in: ${stats.newFieldsSampled.altNames} nodes`)
@@ -297,6 +316,7 @@ async function processRegionChildren(
   areaRepo: AreaPrismaRepository,
   sectorRepo: SectorPrismaRepository,
   routeRepo: RoutePrismaRepository,
+  topoRepo: TopoPrismaRepository,
   stats: Stats,
 ): Promise<void> {
   const children = await scraper.getChildren(nodeId)
@@ -355,6 +375,7 @@ async function processRegionChildren(
               areaRepo,
               sectorRepo,
               routeRepo,
+              topoRepo,
               stats,
             )
           } else {
@@ -369,6 +390,7 @@ async function processRegionChildren(
               areaRepo,
               sectorRepo,
               routeRepo,
+              topoRepo,
               stats,
             )
           }
@@ -395,6 +417,7 @@ async function processCragChildren(
   areaRepo: AreaPrismaRepository,
   sectorRepo: SectorPrismaRepository,
   routeRepo: RoutePrismaRepository,
+  topoRepo: TopoPrismaRepository,
   stats: Stats,
   parentAreaId: AreaId | null = null,
 ): Promise<void> {
@@ -404,6 +427,14 @@ async function processCragChildren(
     scraper.getChildren(nodeId),
     scraper.getRoutes(nodeId),
   ])
+
+  // Fetch topos from sector page (needs urlStub for full path)
+  let topos: TopoImageData[] = []
+  if (info?.urlStub) {
+    // urlStub already contains the full path like "spain/bellus/area-name"
+    const fullPath = `/en/climbing/${info.urlStub}`
+    topos = await scraper.getToposFromSectorPage(fullPath).catch(() => [] as TopoImageData[])
+  }
 
   // Sample new fields
   sampleNewFields(info, stats)
@@ -460,12 +491,27 @@ async function processCragChildren(
     )
     stats.sectors++
 
+    // Build topo number map from topo data
+    const topoNumberMap = new Map<number, string>()
+    for (const topo of topos) {
+      for (const topoRoute of topo.routes) {
+        if (topoRoute.id && topoRoute.num && !topoNumberMap.has(topoRoute.id)) {
+          topoNumberMap.set(topoRoute.id, topoRoute.num)
+        }
+      }
+    }
+
     // Save routes sequentially to avoid DB overload (they share one connection)
+    const savedRouteIds = new Map<number, RouteId>() // externalId -> internal RouteId
     for (const route of routes) {
       await retryWithBackoff(
         async () => {
-          const routeData = mapper.mapToRoute(route, sector.id)
-          await routeRepo.saveByExternalId(mapper.createRouteEntity(routeData))
+          const topoNum = topoNumberMap.get(route.id)
+          const routeData = mapper.mapToRoute(route, sector.id, topoNum)
+          const savedRoute = await routeRepo.saveByExternalId(
+            mapper.createRouteEntity(routeData),
+          )
+          savedRouteIds.set(route.id, savedRoute.id)
         },
         3,
         1000,
@@ -474,7 +520,81 @@ async function processCragChildren(
       stats.routes++
     }
 
-    console.log(`      📍 Sector: ${sectorName} (${routes.length} routes)`)
+    // Save topos with route positions
+    if (topos.length > 0) {
+      for (const topoData of topos) {
+        try {
+          const topoEntity = new TopoImageEntity(
+            TopoImageId.generate(),
+            topoData.topoId,
+            sector.id,
+            topoData.thumbnailUrl,
+            topoData.fullImageUrl,
+            topoData.width,
+            topoData.height,
+            topoData.originalWidth,
+            topoData.originalHeight,
+            topoData.viewScale,
+            null,
+          )
+
+          // Build positions for routes that we saved
+          const positions: Array<{
+            routeId: RouteId
+            topoNumber: string
+            points: string
+            zindex?: number
+            order?: number
+            gradeClass?: string | null
+          }> = []
+
+          for (const topoRoute of topoData.routes) {
+            const internalRouteId = savedRouteIds.get(topoRoute.id)
+            if (internalRouteId) {
+              positions.push({
+                routeId: internalRouteId,
+                topoNumber: topoRoute.num,
+                points: topoRoute.points,
+                zindex: parseInt(topoRoute.zindex) || 0,
+                order: topoRoute.order,
+                gradeClass: topoRoute.gradeClass,
+              })
+            }
+          }
+
+          if (positions.length > 0) {
+            const { positionsCreated } =
+              await topoRepo.saveTopoImageWithPositions(topoEntity, positions)
+            stats.topos++
+            stats.topoPositions += positionsCreated
+          }
+        } catch {
+          console.warn(`      ⚠️  Failed to save topo ${topoData.topoId}`)
+        }
+      }
+    }
+
+    // Use first topo image as header image (if available)
+    let headerImageInfo = ''
+    if (topos.length > 0 && topos[0].fullImageUrl) {
+      try {
+        await sectorRepo.updateHeaderImage(
+          sector.id,
+          topos[0].fullImageUrl,
+          topos[0].originalWidth,
+          topos[0].originalHeight,
+        )
+        stats.headerImages++
+        headerImageInfo = ' 🖼️'
+      } catch {
+        // Header image is optional, ignore errors
+      }
+    }
+
+    const topoInfo = topos.length > 0 ? ` + ${topos.length} topos` : ''
+    console.log(
+      `      📍 Sector: ${sectorName} (${routes.length} routes${topoInfo})${headerImageInfo}`,
+    )
   }
 
   // Process children sequentially to avoid DB overload
@@ -488,6 +608,7 @@ async function processCragChildren(
       areaRepo,
       sectorRepo,
       routeRepo,
+      topoRepo,
       stats,
       parentAreaId,
     )

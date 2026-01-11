@@ -37,6 +37,7 @@ import { FirstAscent } from '@route/domain/value-objects/first-ascent.vo'
 import { RouteType } from '@route/domain/value-objects/route-type.vo'
 import { Tags } from '@route/domain/value-objects/tags.vo'
 import { Warnings } from '@route/domain/value-objects/warnings.vo'
+import { TopoNumber } from '@route/domain/value-objects/topo-number.vo'
 import type {
   ScrapedNodeInfo,
   ScrapedRouteData,
@@ -76,6 +77,16 @@ export interface ValidatedCragData {
   urlAncestorStub: string | null
   lastPDFSize: string | null
   lastPDFStaticDate: string | null
+  // Additional fields from TheCrag API
+  averageHeight: number | null
+  numberRoutes: number | null
+  subAreaCount: number | null
+  redirectStubs: string[]
+  tlc: Record<string, unknown> | null
+  lastPDFStaticSize: string | null
+  apiResponseRaw: Record<string, unknown> | null
+  // Header image (solo URL)
+  headerImageUrl: string | null
 }
 
 /**
@@ -142,6 +153,8 @@ export interface ValidatedSectorData {
   redirectStubs: string[]
   tlc: Record<string, unknown> | null
   apiResponseRaw: Record<string, unknown> | null
+  // Header image (solo URL)
+  headerImageUrl: string | null
 }
 
 /**
@@ -163,6 +176,7 @@ export interface ValidatedRouteData {
   firstAscent: FirstAscent | null
   tags: Tags
   warnings: Warnings
+  topoNumber: TopoNumber | null
 }
 
 /**
@@ -226,6 +240,9 @@ export class ScrapedDataMapperService {
     const tlc = raw?.tlc ?? null
     const lastPDFStaticSize = raw?.lastPDFStaticSize ?? info?.lastPDFStaticSize ?? null
 
+    // Header image (solo URL)
+    const headerImageUrl = info?.headerImageUrl ?? null
+
     return {
       id: CragId.generate(),
       externalId,
@@ -259,6 +276,7 @@ export class ScrapedDataMapperService {
       tlc,
       lastPDFStaticSize,
       apiResponseRaw: info?.apiResponseRaw ?? null,
+      headerImageUrl,
     }
   }
 
@@ -376,6 +394,9 @@ export class ScrapedDataMapperService {
     const redirectStubs = Array.isArray(raw?.redirectStubs) ? raw.redirectStubs : []
     const tlc = raw?.tlc ?? null
 
+    // Header image (solo URL)
+    const headerImageUrl = info?.headerImageUrl ?? null
+
     return {
       id: SectorId.generate(),
       externalId,
@@ -412,15 +433,20 @@ export class ScrapedDataMapperService {
       redirectStubs,
       tlc,
       apiResponseRaw: info?.apiResponseRaw ?? null,
+      headerImageUrl,
     }
   }
 
   /**
    * Map scraped route data to validated Route data
+   * @param rawRoute - Raw route data from TheCrag API
+   * @param sectorId - The sector this route belongs to
+   * @param topoNumber - Optional topo number from topo annotation data
    */
   mapToRoute(
     rawRoute: ScrapedRouteData,
     sectorId: SectorId,
+    topoNumber?: string | null,
   ): ValidatedRouteData {
     const externalId = ExternalId.create(rawRoute.id)
     const name = Name.create(rawRoute.name)
@@ -444,6 +470,7 @@ export class ScrapedDataMapperService {
       firstAscent: FirstAscent.create(rawRoute.firstAscent),
       tags: Tags.create(rawRoute.tags),
       warnings: Warnings.create(rawRoute.warnings),
+      topoNumber: TopoNumber.create(topoNumber),
     }
   }
 
@@ -477,6 +504,11 @@ export class ScrapedDataMapperService {
       data.urlAncestorStub,
       data.lastPDFSize,
       data.lastPDFStaticDate,
+      undefined, // createdAt
+      undefined, // updatedAt
+      data.headerImageUrl,
+      null, // headerImageWidth - no guardamos dimensiones
+      null, // headerImageHeight - no guardamos dimensiones
     )
   }
 
@@ -535,6 +567,11 @@ export class ScrapedDataMapperService {
       data.urlAncestorStub,
       data.lastPDFSize,
       data.lastPDFStaticDate,
+      undefined, // createdAt
+      undefined, // updatedAt
+      data.headerImageUrl,
+      null, // headerImageWidth - no guardamos dimensiones
+      null, // headerImageHeight - no guardamos dimensiones
     )
   }
 
@@ -558,6 +595,7 @@ export class ScrapedDataMapperService {
       data.firstAscent,
       data.tags,
       data.warnings,
+      data.topoNumber,
     )
   }
 

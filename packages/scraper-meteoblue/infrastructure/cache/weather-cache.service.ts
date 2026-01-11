@@ -1,12 +1,20 @@
 import { ConfigService, Inject, Injectable, Logger } from '@OneJs/core'
-import IORedis from 'ioredis'
 import type { ZoneWeatherDto } from '../../domain/dtos/weather-data.dto'
+
+// Dynamic import of ioredis to avoid build errors when not installed
+type IORedisType = typeof import('ioredis').default
+let IORedis: IORedisType | null = null
+try {
+  IORedis = (await import('ioredis')).default
+} catch {
+  // ioredis not available, will use in-memory cache
+}
 
 const DEFAULT_TTL_SECONDS = 3 * 60 * 60 // 3 hours
 
 @Injectable()
 export class WeatherCacheService {
-  private readonly redis: IORedis | null
+  private redis: InstanceType<IORedisType> | null = null
   private readonly ttlSeconds: number
   private readonly inMemoryCache: Map<
     string,
@@ -26,13 +34,13 @@ export class WeatherCacheService {
     this.inMemoryCache = new Map()
 
     const redisUrl = config.get('REDIS_URL')
-    if (redisUrl) {
+    if (redisUrl && IORedis) {
       try {
         this.redis = new IORedis(redisUrl, {
           maxRetriesPerRequest: 3,
           lazyConnect: true,
         })
-        this.redis.on('error', (err) => {
+        this.redis.on('error', (err: Error) => {
           this.logger.warn('cache:weather', `Redis error: ${err.message}`)
         })
         this.logger.debug('cache:weather', 'Redis cache initialized')
@@ -46,7 +54,7 @@ export class WeatherCacheService {
     } else {
       this.logger.debug(
         'cache:weather',
-        'No REDIS_URL configured, using in-memory cache',
+        'No REDIS_URL configured or ioredis not available, using in-memory cache',
       )
       this.redis = null
     }

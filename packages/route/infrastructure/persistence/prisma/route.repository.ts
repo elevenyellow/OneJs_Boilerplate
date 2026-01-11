@@ -13,6 +13,7 @@ import { FirstAscent } from '@route/domain/value-objects/first-ascent.vo'
 import { RouteType } from '@route/domain/value-objects/route-type.vo'
 import { Tags } from '@route/domain/value-objects/tags.vo'
 import { Warnings } from '@route/domain/value-objects/warnings.vo'
+import { TopoNumber } from '@route/domain/value-objects/topo-number.vo'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 
 interface RoutePrismaData {
@@ -32,6 +33,7 @@ interface RoutePrismaData {
   firstAscent: string | null
   tags: unknown
   warnings: unknown
+  topoNumber: string | null
   createdAt: Date
 }
 
@@ -233,6 +235,7 @@ export class RoutePrismaRepository extends PrismaRepository<'route'> {
       FirstAscent.create(data.firstAscent),
       Tags.create(data.tags),
       Warnings.create(data.warnings),
+      TopoNumber.create(data.topoNumber),
       data.createdAt,
     )
   }
@@ -255,6 +258,7 @@ export class RoutePrismaRepository extends PrismaRepository<'route'> {
       firstAscent: entity.firstAscent?.toString() ?? null,
       tags: entity.tags.toJSON(),
       warnings: entity.warnings.toJSON(),
+      topoNumber: entity.topoNumber?.toString() ?? null,
       createdAt: entity.createdAt,
     }
   }

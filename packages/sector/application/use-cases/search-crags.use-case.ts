@@ -87,17 +87,28 @@ export class SearchCragsUseCase {
     }
 
     // 6. Fetch all candidate sectors
-    const sectors =
+    const sectorsWithRoutes =
       await this.sectorRepository.searchWithAdvancedFilters(advancedFilters)
 
-    // 7. Score all sectors
-    const scoredSectors = sectors.map((sector) => {
-      return this.scoringService.scoreSector(sector, {
+    // 7. Score all sectors (calculate routesInUserRange from actual routes)
+    const scoredSectors = sectorsWithRoutes.map((sectorWithRoutes) => {
+      const baseScore = this.scoringService.scoreSector(sectorWithRoutes.entity, {
         userLocation,
         minGradeIndex,
         maxGradeIndex,
         orientationPreference,
       })
+
+      // Calculate routes in range from actual routes instead of gradeDistribution
+      const routesInRange = sectorWithRoutes.routes.filter((route) => {
+        if (!route.gradeIndex) return false
+        return route.gradeIndex >= minGradeIndex && route.gradeIndex <= maxGradeIndex
+      })
+
+      return {
+        ...baseScore,
+        routesInUserRange: routesInRange.length,
+      }
     })
 
     // 8. Group sectors by crag

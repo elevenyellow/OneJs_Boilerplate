@@ -10,12 +10,14 @@ import { PrismaPlugin } from '@OneJs/prisma'
 
 // Tipos de comandos disponibles
 type Command =
+  | 'test-altura'
   | 'test-valencia'
   | 'test-country'
   | 'scrape-spain'
   | 'scrape-world'
   | 'seed-countries'
   | 'verify-data'
+  | 'fix-crag-coordinates'
   | 'help'
 
 interface CommandDefinition {
@@ -30,6 +32,14 @@ const COOKIE =
 
 // Comandos disponibles
 const COMMANDS: Record<string, CommandDefinition> = {
+  'test-altura': {
+    name: 'test-altura',
+    description: 'Test pequeño: Altura (Castellón) - verificar imágenes y topos',
+    execute: async (container) => {
+      const { testAltura } = await import('./commands/test-altura.command')
+      await testAltura(container, COOKIE)
+    },
+  },
   'test-valencia': {
     name: 'test-valencia',
     description: 'Scrape solo la región de Valencia para testing',
@@ -88,6 +98,14 @@ const COMMANDS: Record<string, CommandDefinition> = {
       await verifyData(container)
     },
   },
+  'fix-crag-coordinates': {
+    name: 'fix-crag-coordinates',
+    description: 'Actualizar coordenadas de crags desde el texto de approach/beta',
+    execute: async (container) => {
+      const { fixCragCoordinates } = await import('./commands/fix-crag-coordinates.command')
+      await fixCragCoordinates(container)
+    },
+  },
   help: {
     name: 'help',
     description: 'Muestra esta ayuda',
@@ -107,6 +125,7 @@ function printHelp() {
   })
 
   console.log('\nEjemplos:')
+  console.log('  bun run apps/scripts/cli.ts test-altura    # Test pequeño para verificar imágenes')
   console.log('  bun run apps/scripts/cli.ts test-valencia')
   console.log('  bun run apps/scripts/cli.ts test-country Spain')
   console.log('  bun run apps/scripts/cli.ts test-country France')

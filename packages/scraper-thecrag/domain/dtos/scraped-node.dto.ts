@@ -1,4 +1,5 @@
-import type { GeometryData, BetaItemData } from '@climb-zone/shared'
+import type { BetaItemData, GeometryData } from '@climb-zone/shared'
+import type { TopoImageData } from './topo-image.dto'
 
 /**
  * Raw route data from TheCrag API
@@ -65,6 +66,8 @@ export interface ScrapedNodeInfo {
   hide?: unknown
   hasUnarchivedChildren?: number | boolean
   unique?: boolean
+  // Imagen de cabecera (solo URL)
+  headerImageUrl?: string
 }
 
 /**
@@ -77,6 +80,8 @@ export interface ScrapedCragNode {
   info?: ScrapedNodeInfo
   children: ScrapedCragNode[]
   routes?: ScrapedRouteData[]
+  /** Photo topos with route annotations (for Sector/Cliff nodes) */
+  topos?: TopoImageData[]
 }
 
 /**

@@ -1,5 +1,5 @@
 import { api, type SearchSectorsDto } from '@/lib/api'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 
 const PAGE_SIZE = 10
 
@@ -7,6 +7,7 @@ export function useSectorSearch(
   filters: SearchSectorsDto | null,
   enabled = true,
 ) {
+  const queryClient = useQueryClient()
   const isEnabled = enabled && !!filters?.userLocation && !!filters?.gradeRange
 
   return useInfiniteQuery({
@@ -19,6 +20,7 @@ export function useSectorSearch(
           limit: PAGE_SIZE,
           offset: pageParam,
         })
+        
         console.log(
           '[useSectorSearch] Results:',
           result?.results?.length ?? 0,
@@ -27,6 +29,42 @@ export function useSectorSearch(
           'sectors, offset:',
           pageParam,
         )
+
+        // 🚀 PREFETCHING: Pre-cargar datos de los sectores más relevantes
+        if (pageParam === 0 && result.results.length > 0) {
+          // Obtener top 3 sectores más relevantes
+          const topSectors = result.results
+            .flatMap(crag => crag.sectors)
+            .sort((a, b) => b.relevanceScore - a.relevanceScore)
+            .slice(0, 3)
+
+          console.log('[useSectorSearch] Prefetching data for top 3 sectors')
+
+          // Pre-cargar rutas de cada sector en paralelo
+          topSectors.forEach(sectorResult => {
+            const sector = sectorResult.sector
+
+            // Prefetch routes
+            queryClient.prefetchQuery({
+              queryKey: ['sectors', sector.id, 'routes'],
+              queryFn: () => api.sectors.getRoutes(sector.id, { limit: 100 }),
+              staleTime: 10 * 60 * 1000, // 10 minutos
+            })
+
+            // Prefetch weather si tiene coordenadas
+            if (sector.coordinates?.lat && sector.coordinates?.lon) {
+              queryClient.prefetchQuery({
+                queryKey: ['weather', 'coordinates', sector.coordinates.lat, sector.coordinates.lon],
+                queryFn: () => api.weather.getByCoordinates(
+                  sector.coordinates.lat,
+                  sector.coordinates.lon
+                ),
+                staleTime: 15 * 60 * 1000, // 15 minutos
+              })
+            }
+          })
+        }
+
         return result
       } catch (error) {
         console.error('[useSectorSearch] Error:', error)
@@ -55,10 +93,16 @@ export function useZoneSectors(
   options?: {
     maxDistance?: number
     limit?: number
+    gradeRange?: { min: string; max: string }
   },
   enabled = true,
 ) {
   const isEnabled = enabled && !!zoneCoordinates?.latitude && !!zoneCoordinates?.longitude
+
+  // Use provided grade range or fallback to wide range
+  const gradeRange = options?.gradeRange?.min && options?.gradeRange?.max
+    ? options.gradeRange
+    : { min: '4a', max: '9a' }
 
   const filters: SearchSectorsDto | null = zoneCoordinates
     ? {
@@ -66,15 +110,14 @@ export function useZoneSectors(
           lat: zoneCoordinates.latitude,
           lon: zoneCoordinates.longitude,
         },
-        // Use a wide grade range to get all sectors
-        gradeRange: { min: '4a', max: '9a' },
+        gradeRange,
         maxDistance: options?.maxDistance ?? 30, // 30km radius around the zone
         limit: options?.limit ?? 10,
       }
     : null
 
   return useQuery({
-    queryKey: ['zones', 'sectors', zoneCoordinates, options],
+    queryKey: ['zones', 'sectors', zoneCoordinates, options, gradeRange],
     queryFn: async () => {
       if (!filters) throw new Error('Zone coordinates required')
       try {

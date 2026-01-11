@@ -1,23 +1,22 @@
+import { AreaId } from '@area/domain/value-objects/area-id.vo'
 import {
+  AltNames,
   BetaInfo,
   Coordinates,
   ExternalId,
   Geometry,
-  Name,
-  Seasonality,
-  AltNames,
   Locatedness,
+  Name,
   PermitInfo,
-  Url,
+  Seasonality,
 } from '@climb-zone/shared'
-import { SectorId } from '../value-objects/sector-id.vo'
-import { AreaId } from '@area/domain/value-objects/area-id.vo'
-import { SectorStats } from '../value-objects/sector-stats.vo'
-import { PriceCategory } from '../value-objects/price-category.vo'
+import { ClimbingStyle } from '../value-objects/climbing-style.vo'
 import { Kudos } from '../value-objects/kudos.vo'
 import { Orientation } from '../value-objects/orientation.vo'
+import { PriceCategory } from '../value-objects/price-category.vo'
 import { RockType } from '../value-objects/rock-type.vo'
-import { ClimbingStyle } from '../value-objects/climbing-style.vo'
+import { SectorId } from '../value-objects/sector-id.vo'
+import { SectorStats } from '../value-objects/sector-stats.vo'
 import { SunExposure } from '../value-objects/sun-exposure.vo'
 
 export type SectorType = 'Sector' | 'Cliff'
@@ -62,6 +61,10 @@ export class SectorEntity {
     public readonly lastPDFStaticDate: string | null,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
+    // Header image
+    public readonly headerImageUrl: string | null = null,
+    public readonly headerImageWidth: number | null = null,
+    public readonly headerImageHeight: number | null = null,
   ) {}
 
   get latitude(): number | null {
@@ -183,6 +186,13 @@ export class SectorEntity {
       theCragUrl: this.getTheCragUrl(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      headerImageUrl: this.headerImageUrl,
+      headerImageWidth: this.headerImageWidth,
+      headerImageHeight: this.headerImageHeight,
     }
+  }
+
+  hasHeaderImage(): boolean {
+    return this.headerImageUrl !== null
   }
 }

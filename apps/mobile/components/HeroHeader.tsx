@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -124,6 +124,11 @@ export function HeroHeader({
   const [imageError, setImageError] = useState(false);
 
   const selectedImageUrl = getImageUrl(imageUrl, theCragUrl, rockType, climbingType);
+
+  // Reset error state when imageUrl changes (e.g., when topos load)
+  useEffect(() => {
+    setImageError(false);
+  }, [imageUrl]);
 
   // Fallback gradient colors when image fails
   const gradientColors =

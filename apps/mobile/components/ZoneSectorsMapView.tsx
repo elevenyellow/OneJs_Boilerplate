@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'
 import React from 'react'
 import {
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,7 +18,6 @@ import {
 let MapViewComponent: React.ComponentType<any> | null = null
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic import for platform-specific module
 let MarkerComponent: React.ComponentType<any> | null = null
-
 if (Platform.OS !== 'web') {
   try {
     const Maps = require('react-native-maps')
@@ -50,7 +50,7 @@ const getSuitabilityColor = (score: number): { color: string; label: string } =>
   if (score >= 75) return { color: '#22C55E', label: 'Excellent' } // green
   if (score >= 50) return { color: '#84CC16', label: 'Good' } // lime
   if (score >= 25) return { color: '#F59E0B', label: 'Fair' } // amber
-  return { color: '#EF4444', label: 'Poco idóneo' } // red
+  return { color: '#EF4444', label: 'Poor' } // red
 }
 
 export function ZoneSectorsMapView({
@@ -175,7 +175,7 @@ export function ZoneSectorsMapView({
     poor: sectorsWithCoords.filter((s) => s.sectorResult.relevanceScore < 25).length,
   }
 
-  // Fallback for web or when maps not available
+  // Fallback for web or when maps not available - show interactive list
   if (!MapViewComponent || Platform.OS === 'web') {
     return (
       <View
@@ -185,54 +185,153 @@ export function ZoneSectorsMapView({
           style,
         ]}
       >
-        <Ionicons name="map-outline" size={48} color={colors.textSecondary} />
-        <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>
-          Mapa no disponible en esta plataforma
-        </Text>
-        <Text
-          style={[styles.fallbackSubtext, { color: colors.mutedForeground }]}
-        >
-          {totalSectors} sectors in {crags.length} zones
-        </Text>
+        {/* Header with stats */}
+        <View style={styles.webHeader}>
+          <Ionicons name="map-outline" size={32} color={colors.primary} />
+          <Text style={[styles.webHeaderText, { color: colors.text }]}>
+            {totalSectors} sectors in {crags.length} zones
+          </Text>
+        </View>
 
-        {/* Show suitability breakdown even in fallback */}
+        {/* Suitability legend */}
         {showLegend && (
-          <View style={styles.fallbackLegend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                Excellent: {suitabilityCounts.excellent}
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#84CC16' }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                Good: {suitabilityCounts.good}
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                Fair: {suitabilityCounts.fair}
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                Poco idóneo: {suitabilityCounts.poor}
-              </Text>
+          <View style={[styles.webLegend, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                  Excellent ({suitabilityCounts.excellent})
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#84CC16' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                  Good ({suitabilityCounts.good})
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                  Fair ({suitabilityCounts.fair})
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                  Poor ({suitabilityCounts.poor})
+                </Text>
+              </View>
             </View>
           </View>
         )}
+
+        {/* Scrollable sector list for web */}
+        <ScrollView style={styles.webSectorList} showsVerticalScrollIndicator={false}>
+          {sectorsWithCoords.slice(0, 20).map(({ sectorResult, cragName }) => {
+            const { sector, relevanceScore, distance } = sectorResult
+            const { color } = getSuitabilityColor(relevanceScore)
+
+            return (
+              <TouchableOpacity
+                key={sector.id}
+                style={[styles.webSectorCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => {
+                  if (onSectorPress) {
+                    onSectorPress(sectorResult)
+                  } else {
+                    handleMarkerPress(sectorResult, cragName)
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.sectorColorBar, { backgroundColor: color }]} />
+                <View style={styles.sectorCardContent}>
+                  <View style={styles.sectorCardHeader}>
+                    <Text style={[styles.sectorName, { color: colors.text }]} numberOfLines={1}>
+                      {sector.name}
+                    </Text>
+                    <View style={[styles.scoreBadge, { backgroundColor: color + '20' }]}>
+                      <Text style={[styles.scoreText, { color }]}>{Math.round(relevanceScore)}%</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.cragName, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {cragName}
+                  </Text>
+                  <View style={styles.sectorMeta}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="navigate-outline" size={12} color={colors.textSecondary} />
+                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                        {distance.toFixed(1)} km
+                      </Text>
+                    </View>
+                    {sectorResult.routesInUserRange > 0 && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
+                        <Text style={[styles.metaText, { color: '#22C55E' }]}>
+                          {sectorResult.routesInUserRange} in range
+                        </Text>
+                      </View>
+                    )}
+                    {sector.routeCount != null && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="git-branch-outline" size={12} color={colors.textSecondary} />
+                        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                          {sector.routeCount} total
+                        </Text>
+                      </View>
+                    )}
+                    {sector.orientation && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="compass-outline" size={12} color={colors.textSecondary} />
+                        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                          {sector.orientation}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )
+          })}
+          
+          {sectorsWithCoords.length > 20 && (
+            <Text style={[styles.moreText, { color: colors.textSecondary }]}>
+              +{sectorsWithCoords.length - 20} more sectors...
+            </Text>
+          )}
+        </ScrollView>
       </View>
     )
   }
 
-  const handleMarkerPress = (sectorResult: SearchSectorResult) => {
+  const handleMarkerPress = (sectorResult: SearchSectorResult, cragName?: string) => {
     if (onSectorPress) {
       onSectorPress(sectorResult)
     } else {
-      router.push(`/sector/${sectorResult.sector.id}`)
+      const sector = sectorResult.sector
+      const params = new URLSearchParams({
+        name: sector.name || '',
+        cragName: cragName || '',
+        orientation: sector.orientation || '',
+        sunExposure: sector.sunExposure || '',
+        rockType: sector.rockType || '',
+      })
+      
+      // Add header image if available
+      if (sector.headerImageUrl) {
+        params.set('headerImageUrl', sector.headerImageUrl)
+      }
+      
+      // Add coordinates if available
+      if (sector.coordinates?.lat) {
+        params.set('latitude', sector.coordinates.lat.toString())
+      }
+      if (sector.coordinates?.lon) {
+        params.set('longitude', sector.coordinates.lon.toString())
+      }
+      
+      router.push(`/sector/${sector.id}?${params.toString()}`)
     }
   }
 
@@ -243,8 +342,9 @@ export function ZoneSectorsMapView({
         initialRegion={getInitialRegion()}
         showsUserLocation
         showsMyLocationButton
+        mapType="standard"
       >
-        {sectorsWithCoords.map(({ sectorResult, coordinates }) => {
+        {sectorsWithCoords.map(({ sectorResult, cragName, coordinates }) => {
           const { sector, relevanceScore } = sectorResult
           const { color } = getSuitabilityColor(relevanceScore)
 
@@ -252,11 +352,11 @@ export function ZoneSectorsMapView({
             <MarkerComponent
               key={sector.id}
               coordinate={coordinates}
-              onCalloutPress={() => handleMarkerPress(sectorResult)}
+              onCalloutPress={() => handleMarkerPress(sectorResult, cragName)}
               tracksViewChanges={false}
             >
               <TouchableOpacity
-                onPress={() => handleMarkerPress(sectorResult)}
+                onPress={() => handleMarkerPress(sectorResult, cragName)}
                 style={[styles.customMarker, { backgroundColor: color }]}
                 activeOpacity={0.8}
               >
@@ -282,7 +382,7 @@ export function ZoneSectorsMapView({
           style={[styles.legendOverlay, { backgroundColor: colors.card + 'F2' }]}
         >
           <Text style={[styles.legendTitle, { color: colors.text }]}>
-            Idoneidad
+            Suitability
           </Text>
           <View style={styles.legendGrid}>
             <View style={styles.legendItem}>
@@ -306,7 +406,7 @@ export function ZoneSectorsMapView({
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
               <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                Poco idóneo ({suitabilityCounts.poor})
+                Poor ({suitabilityCounts.poor})
               </Text>
             </View>
           </View>
@@ -325,24 +425,92 @@ const styles = StyleSheet.create({
   },
   fallbackContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     borderRadius: 16,
+    padding: 16,
+  },
+  webHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-    padding: 24,
+    marginBottom: 16,
   },
-  fallbackText: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+  webHeaderText: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  fallbackSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
+  webLegend: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
   },
-  fallbackLegend: {
-    marginTop: 16,
+  legendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-around',
+  },
+  webSectorList: {
+    flex: 1,
     gap: 8,
+  },
+  webSectorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  sectorColorBar: {
+    width: 4,
+    height: '100%',
+    minHeight: 72,
+  },
+  sectorCardContent: {
+    flex: 1,
+    padding: 12,
+    gap: 4,
+  },
+  sectorCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sectorName: {
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+  },
+  scoreBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  scoreText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  cragName: {
+    fontSize: 13,
+  },
+  sectorMeta: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 11,
+  },
+  moreText: {
+    textAlign: 'center',
+    padding: 16,
+    fontSize: 14,
   },
   statsOverlay: {
     position: 'absolute',

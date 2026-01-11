@@ -45,11 +45,13 @@ export class MeteoblueClient {
     this.retryDelayMs = config?.retryDelayMs || 2000
 
     // Default packages (essential fields for climbing conditions)
-    // basic-day: temperature, wind, precipitation, humidity, UV, pictocode
+    // basic-day: temperature, wind, precipitation, humidity, UV, pictocode (daily)
+    // basic-1h: hourly temperature, wind, precipitation, humidity, UV, pictocode
     // sunmoon: sunrise, sunset, sunshinetime (for orientation timing)
     // wind-day: detailed wind data (max, mean, direction)
     this.defaultPackages = config?.defaultPackages || [
       'basic-day',
+      'basic-1h',
       'wind-day',
       'sunmoon',
     ]

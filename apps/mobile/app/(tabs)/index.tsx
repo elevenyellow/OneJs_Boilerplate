@@ -3,7 +3,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { FilterPanel, type FilterPanelRef } from '@/components/FilterPanel'
 import { SectorCardSkeleton } from '@/components/Skeleton'
 import { Colors } from '@/constants/Colors'
-import { useLocation } from '@/hooks/useLocation'
+import { useFilters } from '@/contexts/FiltersContext'
+import { useUserLocation, type CustomLocation } from '@/hooks/useUserLocation'
 import { useSectorSearch } from '@/hooks/useSectorSearch'
 import type { CragWithSectors, SearchSectorsDto } from '@/lib/api'
 import { getMergedFilters, saveFilters } from '@/utils/filterStorage'
@@ -26,12 +27,21 @@ export default function ExploreScreen() {
   const colors = Colors[colorScheme]
   const filterPanelRef = useRef<FilterPanelRef>(null)
 
+  // Use the new hook that supports custom locations
   const {
     latitude,
     longitude,
+    locationName,
+    isCustomLocation,
     loading: locationLoading,
     error: locationError,
-  } = useLocation()
+    setLocation,
+    resetToGPS,
+    gpsLocation,
+  } = useUserLocation()
+
+  // Get global filters from context - these sync with other screens
+  const { filters: globalFilters, setFilters: setGlobalFilters } = useFilters()
 
   const [filters, setFilters] = useState<SearchSectorsDto | null>(null)
 
@@ -49,6 +59,35 @@ export default function ExploreScreen() {
       )
     }
   }, [latitude, longitude, filters])
+
+  // Update filters when location changes (e.g., user selects a different zone)
+  useEffect(() => {
+    if (latitude && longitude && filters) {
+      const currentLat = filters.userLocation?.lat
+      const currentLon = filters.userLocation?.lon
+      
+      // Only update if location actually changed
+      if (currentLat !== latitude || currentLon !== longitude) {
+        setFilters(prev => prev ? {
+          ...prev,
+          userLocation: { lat: latitude, lon: longitude },
+        } : null)
+      }
+    }
+  }, [latitude, longitude, filters])
+
+  // Sync local filters with global grade range changes
+  useEffect(() => {
+    if (filters && globalFilters.gradeRange) {
+      const currentGrade = filters.gradeRange
+      const globalGrade = globalFilters.gradeRange
+      
+      // Only update if the grade range actually changed
+      if (currentGrade?.min !== globalGrade.min || currentGrade?.max !== globalGrade.max) {
+        setFilters(prev => prev ? { ...prev, gradeRange: globalGrade } : null)
+      }
+    }
+  }, [globalFilters.gradeRange, filters])
 
   const {
     data,
@@ -71,8 +110,26 @@ export default function ExploreScreen() {
       // Haptic feedback for apply
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       saveFilters(filters)
+      
+      // Update global context so other screens use the same grade range
+      if (filters.gradeRange) {
+        setGlobalFilters({ gradeRange: filters.gradeRange })
+      }
+      
       refetch()
     }
+  }
+
+  const handleLocationChange = async (location: CustomLocation) => {
+    await setLocation(location)
+    // Filters will be automatically updated via the useEffect above
+    // and refetch will happen on next render
+    refetch()
+  }
+
+  const handleResetToGPS = async () => {
+    await resetToGPS()
+    refetch()
   }
 
   // Get grouped results (crags with sectors) from all pages
@@ -83,6 +140,8 @@ export default function ExploreScreen() {
   const firstPage = data?.pages[0]
   const totalCrags = firstPage?.total ?? 0
   const totalSectorsCount = firstPage?.totalSectors ?? 0
+  const totalRoutes = firstPage?.totalRoutes ?? 0
+  const totalRoutesInRange = firstPage?.totalRoutesInRange ?? 0
 
   // Count total sectors for display
   const totalSectors = cragResults.reduce(
@@ -169,12 +228,15 @@ export default function ExploreScreen() {
             </Text>
             <Text
               style={[styles.headerSubtitle, { color: colors.textSecondary }]}
+              numberOfLines={1}
             >
               {locationLoading
                 ? 'Detecting location...'
                 : locationError
                   ? 'Location unavailable'
-                  : `${totalSectors} sectors nearby`}
+                  : isCustomLocation
+                    ? `${totalSectorsCount || totalSectors} sectors near ${locationName}`
+                    : `${totalSectorsCount || totalSectors} sectors nearby`}
             </Text>
           </View>
 
@@ -316,7 +378,7 @@ export default function ExploreScreen() {
       {firstPage && (
         <View style={styles.resultsInfo}>
           <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
-            {totalSectorsCount} sectors • {totalCrags} zones
+            {totalRoutesInRange}/{totalRoutes} routes • {totalSectorsCount} sectors • {totalCrags} zones
           </Text>
           {firstPage.metadata?.searchTime && (
             <Text
@@ -389,6 +451,19 @@ export default function ExploreScreen() {
           data={cragResults}
           renderItem={({ item }) => <CragGroup cragWithSectors={item} />}
           estimatedItemSize={200}
+          
+          // 🚀 OPTIMIZACIONES DE RENDIMIENTO
+          drawDistance={400} // Reducir distancia de renderizado para mejor rendimiento
+          estimatedListSize={{ height: 800, width: 400 }} // Tamaño estimado de la lista
+          overrideItemLayout={(layout, item) => {
+            // Proporcionar tamaño más preciso para mejor reciclaje
+            const sectorsHeight = item.sectors.length * 120
+            layout.size = sectorsHeight + 120 // header + padding
+          }}
+          
+          // Mejorar reciclaje de componentes
+          getItemType={() => 'crag'} // Mismo tipo = mejor reciclaje de celdas
+          
           ListHeaderComponent={renderHeader}
           ListFooterComponent={
             isFetchingNextPage ? (
@@ -429,6 +504,11 @@ export default function ExploreScreen() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           onApply={handleApplyFilters}
+          locationName={locationName}
+          isCustomLocation={isCustomLocation}
+          onLocationChange={handleLocationChange}
+          onResetToGPS={handleResetToGPS}
+          gpsLocation={gpsLocation}
         />
       )}
     </View>

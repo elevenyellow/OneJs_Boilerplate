@@ -75,6 +75,9 @@ export class SearchSectorsUseCase {
     )
 
     // 5. Build advanced filters
+    // We need to fetch ALL candidates that match the filters to properly score and paginate.
+    // Using a large limit to ensure we get comprehensive results for accurate totals and pagination.
+    // The offset is handled after scoring and grouping by crag.
     const advancedFilters: AdvancedSearchFilters = {
       latitudeMin: latMin,
       latitudeMax: latMax,
@@ -87,8 +90,8 @@ export class SearchSectorsUseCase {
       climbingStyles: dto.climbingStyles,
       hasTopo: dto.hasTopo,
       requiresNoPermit: dto.requiresNoPermit,
-      limit: limit * 3, // Fetch more candidates for scoring
-      offset: 0, // We'll handle pagination after scoring
+      limit: 500, // Fetch a large number of candidates to ensure comprehensive results
+      offset: 0, // We handle pagination after scoring and grouping
     }
 
     // 6. Fetch candidate sectors from database (with routes)
@@ -284,7 +287,7 @@ export class SearchSectorsUseCase {
         cragInfo, // Keep crag info for grouping
         sectorWeatherForecast, // Keep for metadata
         distance: baseScore.distance,
-        routesInUserRange: baseScore.routesInUserRange,
+        routesInUserRange: routesInRange.length, // Use actual filtered routes count instead of gradeDistribution
         matchReasons: baseScore.matchReasons,
         scoringBreakdown: baseScore.scoringBreakdown,
         relevanceScore: Math.min(100, adjustedRelevanceScore), // Cap at 100
@@ -356,6 +359,19 @@ export class SearchSectorsUseCase {
     const searchTime = Date.now() - startTime
     const totalSectors = scoredResults.length
 
+    // 14. Calculate global route totals
+    // Total routes = sum of all routes across all sectors (regardless of grade)
+    const totalRoutes = candidates.reduce(
+      (sum, sectorWithRoutes) => sum + sectorWithRoutes.routes.length,
+      0,
+    )
+
+    // Total routes in range = sum of routesInUserRange across all scored results
+    const totalRoutesInRange = scoredResults.reduce(
+      (sum, result) => sum + result.routesInUserRange,
+      0,
+    )
+
     // Get representative weather from first result (if available)
     const firstResultWithWeather = scoredResults.find(
       (r) => r.sectorWeatherForecast && r.sectorWeatherForecast.length > 0,
@@ -366,6 +382,8 @@ export class SearchSectorsUseCase {
       results: paginatedCrags,
       total: groupedResults.length, // Total number of crags
       totalSectors, // Total number of individual sectors
+      totalRoutes, // Total routes across all sectors
+      totalRoutesInRange, // Total routes in user's grade range
       filters: dto,
       metadata: {
         searchTime,

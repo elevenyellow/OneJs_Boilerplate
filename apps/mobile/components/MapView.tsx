@@ -17,12 +17,14 @@ import {
 let MapViewComponent: React.ComponentType<any> | null = null
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic import for platform-specific module
 let MarkerComponent: React.ComponentType<any> | null = null
+let PROVIDER_MAPBOX: string | null = null
 
 if (Platform.OS !== 'web') {
   try {
     const Maps = require('react-native-maps')
     MapViewComponent = Maps.default
     MarkerComponent = Maps.Marker
+    PROVIDER_MAPBOX = Maps.PROVIDER_DEFAULT // Use default provider for OpenStreetMap tiles
   } catch {
     // Maps not available
   }
@@ -75,7 +77,7 @@ export function ZoneMapView({
         ]}
       >
         <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>
-          Mapa no disponible en esta plataforma
+          Map not available on this platform
         </Text>
         <Text
           style={[styles.fallbackSubtext, { color: colors.mutedForeground }]}
@@ -92,6 +94,7 @@ export function ZoneMapView({
       initialRegion={initialRegion}
       showsUserLocation
       showsMyLocationButton
+      mapType="standard"
     >
       {zones.map((zone) => (
         <MarkerComponent

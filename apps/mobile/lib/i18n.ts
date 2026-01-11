@@ -2,12 +2,35 @@
  * Internationalization utilities for the mobile app
  */
 
-// UI translations (Spanish as default)
+// UI translations (English)
 export const translations = {
-  openInMaps: 'Abrir en mapas',
-  howToGetThere: 'Cómo llegar',
-  selectLanguage: 'Seleccionar idioma',
-  noApproachInfo: 'No hay información de acceso disponible',
+  openInMaps: 'Open in maps',
+  howToGetThere: 'How to get there',
+  selectLanguage: 'Select language',
+  noApproachInfo: 'No access information available',
+  description: 'Description',
+  approach: 'Approach',
+  // Zone/Area stats
+  sectors: 'Sectors',
+  routes: 'Routes',
+  inRange: 'In range',
+  go: 'Go',
+  directions: 'Directions',
+  gradeRange: 'Grade range',
+  altitude: 'Altitude',
+  styles: 'Styles',
+  getDirections: 'Get Directions',
+  // Weather
+  weather: 'Weather',
+  bestDay: 'Best day',
+  today: 'Today',
+  // Climbing
+  climbingTypes: 'Climbing types',
+  bestSeason: 'Best season',
+  recommendedSectors: 'Recommended sectors',
+  viewAllSectors: 'View all sectors',
+  noNearbySectors: 'No nearby sectors found',
+  searchingSectors: 'Searching sectors...',
 } as const
 
 export type TranslationKey = keyof typeof translations

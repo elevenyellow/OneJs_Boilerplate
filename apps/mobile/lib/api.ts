@@ -3,10 +3,9 @@ import { Platform } from 'react-native'
 
 // Get the API URL based on platform
 // - Production: uses https://climb-zone.onrender.com/api (configured in app.json)
-// - Development: can use localhost or emulator IP
+// - Development: always uses local API
 // - Android Emulator: 10.0.2.2 is the special IP that routes to host machine's localhost
 // - iOS Simulator: localhost works fine
-// - Physical devices: use production URL (set in app.json extra.apiUrl)
 const getApiBaseUrl = (): string => {
   const configUrl = Constants.expoConfig?.extra?.apiUrl
 
@@ -15,16 +14,14 @@ const getApiBaseUrl = (): string => {
     return configUrl || 'https://climb-zone.onrender.com/api'
   }
 
-  // Development mode: allow localhost for emulators
-  if (__DEV__ && Platform.OS === 'android') {
-    // Check if we're using the default localhost URL
-    if (!configUrl || configUrl.includes('localhost')) {
-      return 'http://10.0.2.2:4000/api'
-    }
+  // Development mode: always use local API
+  if (Platform.OS === 'android') {
+    // Android Emulator uses 10.0.2.2 to reach host machine's localhost
+    return 'http://192.168.8.178:4000/api'
   }
 
-  // Use configured URL or fallback to production
-  return configUrl || 'https://climb-zone.onrender.com/api'
+  // iOS Simulator and web can use localhost directly
+  return 'http://localhost:4000/api'
 }
 
 const API_BASE_URL = getApiBaseUrl()
@@ -61,6 +58,32 @@ export interface RouteSearchInfo {
   ascents: number | null
   subType: string | null
   firstAscent: string | null
+  topoNumber: string | null
+}
+
+// Topo types
+export interface TopoRoutePosition {
+  routeId: string
+  routeExternalId: number
+  topoNumber: string
+  points: string
+  gradeClass: string | null
+  name: string
+  grade: string | null
+}
+
+export interface TopoImage {
+  id: string
+  externalId: string
+  sectorId: string
+  thumbnailUrl: string
+  fullImageUrl: string
+  width: number
+  height: number
+  originalWidth: number
+  originalHeight: number
+  viewScale: number
+  routes: TopoRoutePosition[]
 }
 
 export interface SearchSectorResult {
@@ -101,6 +124,9 @@ export interface CragInfo {
   totalFavorites: number | null
   urlStub: string | null
   priceCategory: string | null
+  headerImageUrl: string | null
+  headerImageWidth: number | null
+  headerImageHeight: number | null
 }
 
 export interface CragWithSectors {
@@ -116,6 +142,8 @@ export interface SearchSectorsResponse {
   results: CragWithSectors[]
   total: number
   totalSectors: number
+  totalRoutes: number // Total routes across all sectors
+  totalRoutesInRange: number // Total routes in user's grade range
   filters: SearchSectorsDto
   metadata: {
     searchTime: number
@@ -252,6 +280,20 @@ export interface ForecastSummary {
 }
 
 // Weather by coordinates response (from Meteoblue)
+export interface CoordinatesWeatherHourly {
+  timestamp: string
+  temperature: number
+  feelsLike: number
+  windSpeed: number
+  windDirection: string
+  windGust: number
+  precipitation: number
+  humidity: number
+  weatherCode: number
+  uvIndex: number
+  isDaylight: boolean
+}
+
 export interface CoordinatesWeatherDaily {
   date: string
   temperature: {
@@ -310,6 +352,7 @@ export interface CoordinatesWeatherData {
     isDaylight: boolean
     uvIndex?: number
   }
+  hourly: CoordinatesWeatherHourly[]
   daily: CoordinatesWeatherDaily[]
 }
 
@@ -369,6 +412,7 @@ export interface SectorSummary {
   totalFavorites: number | null
   hasTopo: boolean
   theCragUrl: string | null
+  headerImageUrl: string | null
   score: number
 }
 
@@ -383,6 +427,20 @@ export interface RouteHighlight {
   routeType: string | null
   sectorId: string
   sectorName: string
+}
+
+export interface CragDetailHourlyForecast {
+  timestamp: string
+  temperature: number
+  feelsLike: number
+  windSpeed: number
+  windDirection: string
+  windGust: number
+  precipitation: number
+  humidity: number
+  weatherCode: number
+  uvIndex: number
+  isDaylight: boolean
 }
 
 export interface CragDetailForecast {
@@ -437,7 +495,9 @@ export interface CragDetail {
   numberTopos: number | null
   hasTopo: boolean
   theCragUrl: string | null
+  headerImageUrl: string | null
   forecast: CragDetailForecast[] | null
+  hourlyForecast: CragDetailHourlyForecast[] | null
   sectors: SectorSummary[]
   topRoutes: RouteHighlight[]
   bestSeasons: number[]
@@ -486,7 +546,9 @@ export const api = {
       fetcher<ForecastSummary>(`/zones/${zoneId}/weather/summary`),
 
     getByCoordinates: (lat: number, lon: number) =>
-      fetcher<CoordinatesWeatherData>(`/weather/coordinates?lat=${lat}&lon=${lon}`),
+      fetcher<CoordinatesWeatherData>(
+        `/weather/coordinates?lat=${lat}&lon=${lon}`,
+      ),
   },
 
   sectors: {
@@ -503,15 +565,37 @@ export const api = {
       })
     },
 
-    getRoutes: (sectorId: string, options?: { minStars?: number; limit?: number }) => {
+    getRoutes: (
+      sectorId: string,
+      options?: { minStars?: number; limit?: number },
+    ) => {
       const params = new URLSearchParams()
       if (options?.minStars) params.set('minStars', options.minStars.toString())
       if (options?.limit) params.set('limit', options.limit.toString())
       const query = params.toString()
-      return fetcher<{ sectorId: string; total: number; routes: RouteSearchInfo[] }>(
-        `/sectors/${sectorId}/routes${query ? `?${query}` : ''}`
-      )
+      return fetcher<{
+        sectorId: string
+        total: number
+        routes: RouteSearchInfo[]
+      }>(`/sectors/${sectorId}/routes${query ? `?${query}` : ''}`)
     },
+
+    getTopos: (sectorId: string) =>
+      fetcher<{ sectorId: string; topos: TopoImage[] }>(
+        `/sectors/${sectorId}/topos`,
+      ),
+  },
+
+  topos: {
+    getBySectorId: (sectorId: string) =>
+      fetcher<{ sectorId: string; topos: TopoImage[] }>(
+        `/sectors/${sectorId}/topos`,
+      ),
+
+    getByRouteId: (routeId: string) =>
+      fetcher<{ routeId: string; topos: TopoImage[] }>(
+        `/routes/${routeId}/topos`,
+      ),
   },
 
   crags: {

@@ -17,6 +17,7 @@ export interface RouteSearchInfo {
   ascents: number | null
   subType: string | null
   firstAscent: string | null
+  topoNumber: string | null
 }
 
 /**
@@ -115,6 +116,8 @@ export interface SearchSectorsResponse {
   results: CragWithSectors[]
   total: number // Total number of crags with matching sectors
   totalSectors: number // Total number of individual sectors
+  totalRoutes: number // Total number of routes across all sectors
+  totalRoutesInRange: number // Total number of routes in user's grade range
   filters: SearchSectorsDto // applied filters
   metadata: {
     searchTime: number // ms

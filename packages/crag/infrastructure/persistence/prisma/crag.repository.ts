@@ -57,6 +57,10 @@ interface CragPrismaData {
   apiResponseRaw: unknown
   createdAt: Date
   updatedAt: Date
+  // Header image
+  headerImageUrl: string | null
+  headerImageWidth: number | null
+  headerImageHeight: number | null
 }
 
 @Injectable()
@@ -316,6 +320,9 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       data.lastPDFStaticDate,
       data.createdAt,
       data.updatedAt,
+      data.headerImageUrl,
+      data.headerImageWidth,
+      data.headerImageHeight,
     )
   }
 
@@ -353,6 +360,9 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       apiResponseRaw: null, // Placeholder
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+      headerImageUrl: entity.headerImageUrl,
+      headerImageWidth: entity.headerImageWidth,
+      headerImageHeight: entity.headerImageHeight,
     }
   }
 }

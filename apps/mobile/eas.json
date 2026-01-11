@@ -1,10 +1,18 @@
 {
   "cli": {
     "version": ">= 16.28.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "requireCommit": false
   },
   "build": {
+    "base": {
+      "node": "20.19.0",
+      "env": {
+        "EXPO_USE_FAST_RESOLVER": "1"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "android": {
@@ -13,12 +21,14 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "extends": "base",
       "android": {
         "buildType": "app-bundle"
       }
