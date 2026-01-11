@@ -848,12 +848,21 @@ export default function CragDetailScreen() {
             <View style={styles.sectorsList}>
               {filteredSectors.map((sectorResult) => {
                 const sector = sectorResult.sector
-                const isGoodDay = sectorResult.conditions?.isGoodDay
 
                 // Get sector stats
                 const totalRoutes =
                   sector.routeCount || sector.routes?.length || 0
                 const routesInRange = sectorResult.routesInUserRange
+                
+                // Calculate if sector is "Ideal" based on multiple factors:
+                // 1. Must have routes in user's grade range (required)
+                // 2. Good combined score (>= 65)
+                // 3. Good weather conditions (optional boost)
+                const hasRoutesInRange = routesInRange > 0
+                const hasGoodScore = sectorResult.calculatedScore >= 65
+                const hasGoodWeather = sectorResult.conditions?.isGoodDay || 
+                                       (sectorResult.conditions?.weatherScore ?? 50) >= 60
+                const isIdeal = hasRoutesInRange && hasGoodScore && hasGoodWeather
                 const avgGrade = sector.avgGrade
                 const avgHeight = sector.avgHeight
                 const maxHeight = sector.maxHeight
@@ -887,7 +896,7 @@ export default function CragDetailScreen() {
                         </Text>
                       </View>
                       <View style={styles.sectorHeaderRight}>
-                        {isGoodDay && (
+                        {isIdeal && (
                           <View style={styles.idealBadge}>
                             <Ionicons
                               name="sparkles"
