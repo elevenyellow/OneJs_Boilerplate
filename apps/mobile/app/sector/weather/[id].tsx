@@ -14,35 +14,32 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-function getWeatherIcon(
-  code: number,
-): keyof typeof Ionicons.glyphMap {
-  // Map Meteoblue pictocode to Ionicons
+function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
   switch (code) {
     case 1:
       return 'sunny'
     case 2:
-      return 'partly-sunny'
     case 3:
       return 'partly-sunny'
     case 4:
-      return 'cloudy'
     case 5:
       return 'cloudy'
     case 6:
     case 7:
+      return 'cloud'
     case 8:
-    case 12:
-    case 14:
-    case 16:
-      return 'rainy'
     case 9:
     case 10:
     case 11:
+    case 12:
+      return 'rainy'
     case 13:
+    case 14:
     case 15:
-    case 17:
       return 'snow'
+    case 16:
+    case 17:
+      return 'thunderstorm'
     default:
       return 'partly-sunny'
   }
@@ -60,9 +57,14 @@ function formatDayName(dateStr: string): string {
   if (date.toDateString() === tomorrow.toDateString()) {
     return 'Tomorrow'
   }
-  
+
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   return weekdays[date.getDay()]
+}
+
+function formatHour(timestamp: string): string {
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 export default function SectorWeatherScreen() {
@@ -99,6 +101,16 @@ export default function SectorWeatherScreen() {
   }
 
   const forecast = weatherData?.daily || []
+  const hourlyForecast = weatherData?.hourly || []
+  const today = forecast[0]
+
+  // Filter hourly to show next 24 hours
+  const now = new Date()
+  const next24Hours = hourlyForecast.filter((hour) => {
+    const hourDate = new Date(hour.timestamp)
+    const diffHours = (hourDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+    return diffHours >= -1 && diffHours <= 24
+  })
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -128,6 +140,129 @@ export default function SectorWeatherScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Current Conditions - First */}
+        {today && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Climbing Conditions Today
+            </Text>
+            <View style={[styles.currentCard, { backgroundColor: colors.card }]}>
+              {/* Main weather display */}
+              <View style={styles.currentMain}>
+                <Ionicons
+                  name={getWeatherIcon(today.weatherCode)}
+                  size={64}
+                  color={colors.primary}
+                />
+                <View style={styles.currentTemp}>
+                  <Text style={[styles.currentTempText, { color: colors.text }]}>
+                    {Math.round(today.temperature.mean)}°
+                  </Text>
+                  <Text style={[styles.currentTempRange, { color: colors.textSecondary }]}>
+                    {Math.round(today.temperature.min)}° / {Math.round(today.temperature.max)}°
+                  </Text>
+                </View>
+              </View>
+
+              {/* Conditions grid */}
+              <View style={styles.conditionsGrid}>
+                <View style={styles.conditionItem}>
+                  <Ionicons name="water-outline" size={20} color="#3B82F6" />
+                  <Text style={[styles.conditionValue, { color: colors.text }]}>
+                    {today.precipitation.probability}%
+                  </Text>
+                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
+                    Rain
+                  </Text>
+                </View>
+                <View style={styles.conditionItem}>
+                  <Ionicons name="leaf-outline" size={20} color="#22C55E" />
+                  <Text style={[styles.conditionValue, { color: colors.text }]}>
+                    {Math.round(today.wind.mean)} km/h
+                  </Text>
+                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
+                    Wind
+                  </Text>
+                </View>
+                <View style={styles.conditionItem}>
+                  <Ionicons name="sunny-outline" size={20} color="#F59E0B" />
+                  <Text style={[styles.conditionValue, { color: colors.text }]}>
+                    {today.uvIndex}
+                  </Text>
+                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
+                    UV Index
+                  </Text>
+                </View>
+                <View style={styles.conditionItem}>
+                  <Ionicons name="water" size={20} color="#06B6D4" />
+                  <Text style={[styles.conditionValue, { color: colors.text }]}>
+                    {Math.round(today.humidity.mean)}%
+                  </Text>
+                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
+                    Humidity
+                  </Text>
+                </View>
+                <View style={styles.conditionItem}>
+                  <Ionicons name="time-outline" size={20} color="#8B5CF6" />
+                  <Text style={[styles.conditionValue, { color: colors.text }]}>
+                    {Math.round(today.sunshineMinutes / 60)}h
+                  </Text>
+                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
+                    Sunshine
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Hourly Forecast */}
+        {next24Hours.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Hourly Forecast
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hourlyScrollContent}
+            >
+              {next24Hours.map((hour, index) => (
+                <View
+                  key={hour.timestamp || index}
+                  style={[styles.hourlyCard, { backgroundColor: colors.card }]}
+                >
+                  <Text style={[styles.hourlyTime, { color: colors.textSecondary }]}>
+                    {formatHour(hour.timestamp)}
+                  </Text>
+                  <Ionicons
+                    name={getWeatherIcon(hour.weatherCode)}
+                    size={24}
+                    color={hour.isDaylight ? colors.primary : colors.textSecondary}
+                  />
+                  <Text style={[styles.hourlyTemp, { color: colors.text }]}>
+                    {Math.round(hour.temperature)}°
+                  </Text>
+                  <View style={styles.hourlyDetails}>
+                    <View style={styles.hourlyDetail}>
+                      <Ionicons name="water" size={10} color="#3B82F6" />
+                      <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                        {Math.round(hour.precipitation)}%
+                      </Text>
+                    </View>
+                    <View style={styles.hourlyDetail}>
+                      <Ionicons name="leaf" size={10} color="#22C55E" />
+                      <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                        {Math.round(hour.windSpeed)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* 7-Day Forecast */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -181,7 +316,7 @@ export default function SectorWeatherScreen() {
                     </View>
                   )}
                   <View style={styles.forecastDetail}>
-                    <Ionicons name="speedometer-outline" size={14} color={colors.textSecondary} />
+                    <Ionicons name="leaf-outline" size={14} color="#22C55E" />
                     <Text style={[styles.forecastDetailText, { color: colors.textSecondary }]}>
                       {Math.round(day.wind.mean)} km/h
                     </Text>
@@ -191,77 +326,6 @@ export default function SectorWeatherScreen() {
             ))}
           </View>
         </View>
-
-        {/* Climbing Conditions */}
-        {forecast.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Climbing Conditions Today
-            </Text>
-            <View style={[styles.conditionsCard, { backgroundColor: colors.card }]}>
-              <View style={styles.conditionRow}>
-                <View style={styles.conditionItem}>
-                  <Ionicons name="thermometer-outline" size={20} color="#EF4444" />
-                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
-                    Temperature
-                  </Text>
-                  <Text style={[styles.conditionValue, { color: colors.text }]}>
-                    {Math.round(forecast[0].temperature.min)}° - {Math.round(forecast[0].temperature.max)}°
-                  </Text>
-                </View>
-                <View style={styles.conditionItem}>
-                  <Ionicons name="water-outline" size={20} color="#3B82F6" />
-                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
-                    Rain Chance
-                  </Text>
-                  <Text style={[styles.conditionValue, { color: colors.text }]}>
-                    {forecast[0].precipitation.probability}%
-                  </Text>
-                </View>
-                <View style={styles.conditionItem}>
-                  <Ionicons name="leaf-outline" size={20} color="#22C55E" />
-                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
-                    Wind
-                  </Text>
-                  <Text style={[styles.conditionValue, { color: colors.text }]}>
-                    {Math.round(forecast[0].wind.mean)} km/h
-                  </Text>
-                </View>
-              </View>
-
-              {/* Additional info */}
-              <View style={[styles.conditionRow, { marginTop: 16 }]}>
-                <View style={styles.conditionItem}>
-                  <Ionicons name="sunny-outline" size={20} color="#F59E0B" />
-                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
-                    UV Index
-                  </Text>
-                  <Text style={[styles.conditionValue, { color: colors.text }]}>
-                    {forecast[0].uvIndex}
-                  </Text>
-                </View>
-                <View style={styles.conditionItem}>
-                  <Ionicons name="water" size={20} color="#06B6D4" />
-                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
-                    Humidity
-                  </Text>
-                  <Text style={[styles.conditionValue, { color: colors.text }]}>
-                    {Math.round(forecast[0].humidity.mean)}%
-                  </Text>
-                </View>
-                <View style={styles.conditionItem}>
-                  <Ionicons name="time-outline" size={20} color="#8B5CF6" />
-                  <Text style={[styles.conditionLabel, { color: colors.textSecondary }]}>
-                    Sunshine
-                  </Text>
-                  <Text style={[styles.conditionValue, { color: colors.text }]}>
-                    {Math.round(forecast[0].sunshineMinutes / 60)}h
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </View>
   )
@@ -315,6 +379,77 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 12,
   },
+  // Current conditions card
+  currentCard: {
+    borderRadius: 16,
+    padding: 20,
+  },
+  currentMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    marginBottom: 20,
+  },
+  currentTemp: {
+    flex: 1,
+  },
+  currentTempText: {
+    fontSize: 48,
+    fontWeight: '700',
+  },
+  currentTempRange: {
+    fontSize: 16,
+    marginTop: 4,
+  },
+  conditionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  conditionItem: {
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 60,
+  },
+  conditionValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  conditionLabel: {
+    fontSize: 11,
+  },
+  // Hourly forecast
+  hourlyScrollContent: {
+    gap: 10,
+  },
+  hourlyCard: {
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    minWidth: 70,
+    gap: 6,
+  },
+  hourlyTime: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  hourlyTemp: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  hourlyDetails: {
+    gap: 4,
+  },
+  hourlyDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  hourlyDetailText: {
+    fontSize: 10,
+  },
+  // 7-day forecast
   forecastCard: {
     borderRadius: 16,
     overflow: 'hidden',
@@ -365,25 +500,5 @@ const styles = StyleSheet.create({
   },
   forecastDetailText: {
     fontSize: 12,
-  },
-  conditionsCard: {
-    borderRadius: 16,
-    padding: 16,
-  },
-  conditionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  conditionItem: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  conditionLabel: {
-    fontSize: 11,
-    textAlign: 'center',
-  },
-  conditionValue: {
-    fontSize: 14,
-    fontWeight: '600',
   },
 })

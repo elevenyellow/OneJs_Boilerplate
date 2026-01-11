@@ -61,6 +61,28 @@ export interface RouteSearchInfo {
   topoNumber: string | null
 }
 
+// Full route detail from /routes/:id endpoint
+export interface RouteDetail {
+  id: string
+  externalId: number
+  sectorId: string
+  name: string
+  grade: string | null
+  gradeIndex: number | null
+  height: number | null
+  pitches: number | null
+  bolts: number | null
+  rating: number | null
+  quality: number | null
+  ascents: number | null
+  routeType: string | null
+  firstAscent: string | null
+  tags: string[]
+  warnings: string[]
+  topoNumber: string | null
+  createdAt: string
+}
+
 // Topo types
 export interface TopoRoutePosition {
   routeId: string
@@ -588,6 +610,15 @@ export const api = {
     getTopos: (sectorId: string) =>
       fetcher<{ sectorId: string; topos: TopoImage[] }>(
         `/sectors/${sectorId}/topos`,
+      ),
+  },
+
+  routes: {
+    getById: (routeId: string) => fetcher<RouteDetail>(`/routes/${routeId}`),
+
+    getTopos: (routeId: string) =>
+      fetcher<{ routeId: string; topos: TopoImage[] }>(
+        `/routes/${routeId}/topos`,
       ),
   },
 

@@ -842,12 +842,12 @@ export default function SectorDetailScreen() {
 
             {/* Stars Filter */}
             <FilterChip
-              label={minStars > 0 ? `${minStars}+ Stars` : 'Any Stars'}
+              label={minStars > 0 ? `${minStars}+ ★` : 'Any Stars'}
               icon="star"
               isActive={minStars > 0}
               activeColor="#F59E0B"
               onPress={() => {
-                const options = [0, 2, 3, 4]
+                const options = [0, 1, 2, 3]
                 const currentIndex = options.indexOf(minStars)
                 const nextIndex = (currentIndex + 1) % options.length
                 setMinStars(options[nextIndex])
