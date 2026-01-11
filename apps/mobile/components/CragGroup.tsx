@@ -6,7 +6,17 @@ import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import React, { memo } from 'react'
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native'
 
 interface CragGroupProps {
   cragWithSectors: CragWithSectors
@@ -89,41 +99,55 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
     return `${km.toFixed(1)} km`
   }
 
-  // Get gradient based on score
-  const getScoreGradient = (score: number): [string, string] => {
-    if (score >= 75) return ['#10B981', '#059669']
-    if (score >= 50) return ['#F59E0B', '#D97706']
-    if (score >= 25) return ['#EF4444', '#DC2626']
-    return ['#64748B', '#475569']
+  // Get weather color
+  const getWeatherColor = (temp: number) => {
+    if (temp > 30) return '#EF4444'
+    if (temp > 25) return '#F59E0B'
+    if (temp > 15) return '#22C55E'
+    if (temp > 5) return '#3B82F6'
+    return '#6366F1'
+  }
+
+  // Get score gradient
+  const getScoreGradient = (score: number): readonly [string, string] => {
+    if (score >= 75) return ['#10B981', '#059669'] as const
+    if (score >= 50) return ['#F59E0B', '#D97706'] as const
+    if (score >= 25) return ['#EF4444', '#DC2626'] as const
+    return ['#64748B', '#475569'] as const
   }
 
   return (
     <Pressable
       onPress={handlePress}
-      style={[
+      style={({ pressed }) => [
         styles.container,
-        { backgroundColor: colors.card, borderColor: colors.border },
+        { 
+          backgroundColor: colors.card, 
+          borderColor: colors.border,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
       ]}
     >
       {/* Score gradient bar on left */}
       <LinearGradient
-        colors={getScoreGradient(avgRelevanceScore)}
+        colors={[...getScoreGradient(avgRelevanceScore)]}
         style={styles.scoreBar}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       />
 
-      <View style={styles.headerContent}>
-        <View style={styles.headerTop}>
+      <View style={styles.content}>
+        {/* Header Row */}
+        <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: colors.primary + '15' },
-              ]}
+            <LinearGradient
+              colors={colors.gradientPrimary}
+              style={styles.iconContainer}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <Ionicons name="layers" size={22} color={colors.primary} />
-            </View>
+              <Ionicons name="layers" size={20} color="#FFFFFF" />
+            </LinearGradient>
             <View style={styles.headerInfo}>
               <Text
                 style={[styles.cragName, { color: colors.text }]}
@@ -133,29 +157,33 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
               </Text>
               {/* Location and temperature info */}
               <View style={styles.locationRow}>
-                <Ionicons name="location" size={14} color={colors.primary} />
+                <Ionicons name="location" size={13} color={colors.primary} />
                 <Text
                   style={[styles.locationText, { color: colors.textSecondary }]}
                 >
                   {formatDistance(distance)}
                 </Text>
-                <View style={[styles.locationDot, { backgroundColor: colors.border }]} />
-                {isLoadingWeather ? (
-                  <ActivityIndicator size={12} color={colors.textSecondary} />
-                ) : temperature !== undefined ? (
+                {temperature !== undefined && (
                   <>
-                    <Ionicons 
-                      name="thermometer" 
-                      size={14} 
-                      color={temperature > 25 ? '#FF5722' : temperature < 10 ? '#2196F3' : '#4CAF50'} 
-                    />
-                    <Text
-                      style={[styles.locationText, { color: colors.textSecondary }]}
-                    >
-                      {Math.round(temperature)}°C
-                    </Text>
+                    <View style={[styles.locationDot, { backgroundColor: colors.border }]} />
+                    {isLoadingWeather ? (
+                      <ActivityIndicator size={12} color={colors.textSecondary} />
+                    ) : (
+                      <>
+                        <Ionicons 
+                          name="thermometer" 
+                          size={13} 
+                          color={getWeatherColor(temperature)} 
+                        />
+                        <Text
+                          style={[styles.locationText, { color: colors.textSecondary }]}
+                        >
+                          {Math.round(temperature)}°C
+                        </Text>
+                      </>
+                    )}
                   </>
-                ) : null}
+                )}
               </View>
             </View>
           </View>
@@ -163,16 +191,16 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
           <View style={styles.headerRight}>
             {/* Score badge */}
             <View style={styles.scoreBadgeWrapper}>
-              <View
-                style={[
-                  styles.scoreBadge,
-                  { backgroundColor: getScoreColor(avgRelevanceScore) },
-                ]}
+              <LinearGradient
+                colors={[...getScoreGradient(avgRelevanceScore)]}
+                style={styles.scoreBadge}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               >
                 <Text style={styles.scoreText}>
                   {Math.round(avgRelevanceScore)}
                 </Text>
-              </View>
+              </LinearGradient>
               <Text
                 style={[styles.scoreLabel, { color: colors.textSecondary }]}
               >
@@ -181,7 +209,7 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
             </View>
             <Ionicons
               name="chevron-forward"
-              size={22}
+              size={20}
               color={colors.textSecondary}
             />
           </View>
@@ -237,16 +265,16 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
 
           <View style={styles.stat}>
             <View
-              style={[styles.statIcon, { backgroundColor: '#F59E0B' + '20' }]}
+              style={[styles.statIcon, { backgroundColor: colors.warning + '20' }]}
             >
-              <Ionicons name="star" size={14} color="#D97706" />
+              <Ionicons name="star" size={14} color={colors.warning} />
             </View>
             <View style={styles.statContent}>
               <Text style={[styles.statValue, { color: colors.text }]}>
                 {crag.totalFavorites || 0}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                favorites
+                likes
               </Text>
             </View>
           </View>
@@ -260,13 +288,13 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
                 style={[
                   styles.badge,
                   {
-                    backgroundColor: colors.primary + '15',
-                    borderColor: colors.primary + '30',
+                    backgroundColor: colors.info + '15',
+                    borderColor: colors.info + '30',
                   },
                 ]}
               >
-                <Ionicons name="map" size={12} color={colors.primary} />
-                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                <Ionicons name="map" size={12} color={colors.info} />
+                <Text style={[styles.badgeText, { color: colors.info }]}>
                   Topo
                 </Text>
               </View>
@@ -284,16 +312,39 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
                 </Text>
               </View>
             )}
+            {temperature !== undefined && temperature > 15 && temperature < 28 && (
+              <View
+                style={[
+                  styles.badge,
+                  { backgroundColor: colors.success + '15', borderColor: colors.success + '30' },
+                ]}
+              >
+                <Ionicons name="sunny" size={12} color={colors.success} />
+                <Text style={[styles.badgeText, { color: colors.success }]}>
+                  Good weather
+                </Text>
+              </View>
+            )}
           </View>
           
           {/* Directions button */}
           {crag.latitude !== null && crag.longitude !== null && (
             <Pressable
-              style={styles.directionsButton}
+              style={({ pressed }) => [
+                styles.directionsButton,
+                { transform: [{ scale: pressed ? 0.95 : 1 }] },
+              ]}
               onPress={handleGetDirections}
             >
-              <Ionicons name="navigate" size={16} color="#FFFFFF" />
-              <Text style={styles.directionsButtonText}>Directions</Text>
+              <LinearGradient
+                colors={colors.gradientAccent}
+                style={styles.directionsGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="navigate" size={14} color="#FFFFFF" />
+                <Text style={styles.directionsButtonText}>Go</Text>
+              </LinearGradient>
             </Pressable>
           )}
         </View>
@@ -309,36 +360,26 @@ export const CragGroup = memo(function CragGroup({ cragWithSectors }: CragGroupP
   );
 });
 
-function getScoreColor(score: number): string {
-  if (score >= 75) return '#10B981' // emerald
-  if (score >= 50) return '#F59E0B' // amber
-  if (score >= 25) return '#EF4444' // red
-  return '#64748B' // slate
-}
-
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-    borderRadius: 20,
-    borderWidth: 1,
+    marginBottom: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 1,
     overflow: 'hidden',
     flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   scoreBar: {
-    width: 4,
+    width: 5,
     minHeight: '100%',
   },
-  headerContent: {
+  content: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     gap: 12,
   },
-  headerTop: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
@@ -350,9 +391,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -361,44 +402,44 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cragName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   locationDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
     marginHorizontal: 4,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   scoreBadgeWrapper: {
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
   scoreBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    minWidth: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    minWidth: 48,
     alignItems: 'center',
   },
   scoreText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
   scoreLabel: {
@@ -411,9 +452,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderRadius: 14,
   },
   stat: {
     flexDirection: 'row',
@@ -423,9 +464,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -444,7 +485,7 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    height: 24,
+    height: 28,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -462,7 +503,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     gap: 5,
   },
@@ -471,22 +512,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   directionsButton: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  directionsGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10B981',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 6,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
   },
   directionsButtonText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
 })

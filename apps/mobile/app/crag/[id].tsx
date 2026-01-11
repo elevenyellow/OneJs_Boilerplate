@@ -1,4 +1,3 @@
-import { GradeRangeBadge } from '@/components/GradeRangeBadge'
 import { HeroHeader } from '@/components/HeroHeader'
 import { LanguageApproachSection } from '@/components/LanguageApproachSection'
 import { LanguageTextSection } from '@/components/LanguageTextSection'
@@ -21,6 +20,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 function formatForecastDate(dateStr: string | null | undefined): string {
   if (!dateStr) return ''
@@ -80,12 +80,16 @@ function getScoreColor(score: number): string {
 
 function formatHour(timestamp: string): string {
   const date = new Date(timestamp)
-  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 
 function getHoursForDate(
   hourlyForecast: CragDetailHourlyForecast[] | null,
-  dateStr: string | null
+  dateStr: string | null,
 ): CragDetailHourlyForecast[] {
   if (!hourlyForecast || !dateStr) return []
   const targetDate = dateStr.split('T')[0]
@@ -109,7 +113,12 @@ interface ForecastSectionProps {
   colorScheme: 'light' | 'dark'
 }
 
-function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: ForecastSectionProps) {
+function ForecastSection({
+  forecast,
+  hourlyForecast,
+  colors,
+  colorScheme,
+}: ForecastSectionProps) {
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
 
   if (!forecast || forecast.length === 0) {
@@ -132,10 +141,7 @@ function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: Fore
           7-Day Forecast
         </Text>
         <Text
-          style={[
-            styles.forecastSubtitle,
-            { color: colors.textSecondary },
-          ]}
+          style={[styles.forecastSubtitle, { color: colors.textSecondary }]}
         >
           Tap for hourly
         </Text>
@@ -165,7 +171,9 @@ function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: Fore
                   color={colors.primary}
                 />
                 <View>
-                  <Text style={[styles.forecastDayName, { color: colors.text }]}>
+                  <Text
+                    style={[styles.forecastDayName, { color: colors.text }]}
+                  >
                     {formatForecastDate(day.date)}
                   </Text>
                   <View style={styles.forecastDayStats}>
@@ -183,8 +191,14 @@ function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: Fore
                       </View>
                     )}
                     {day.wind?.mean > 0 && (
-                      <View style={[styles.forecastExtraItem, { marginLeft: 8 }]}>
-                        <Ionicons name="leaf" size={12} color={colors.textSecondary} />
+                      <View
+                        style={[styles.forecastExtraItem, { marginLeft: 8 }]}
+                      >
+                        <Ionicons
+                          name="leaf"
+                          size={12}
+                          color={colors.textSecondary}
+                        />
                         <Text
                           style={[
                             styles.forecastExtraText,
@@ -204,7 +218,10 @@ function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: Fore
                   {Math.round(day.temperature?.max || 0)}°
                 </Text>
                 <Text
-                  style={[styles.forecastTempMin, { color: colors.textSecondary }]}
+                  style={[
+                    styles.forecastTempMin,
+                    { color: colors.textSecondary },
+                  ]}
                 >
                   {Math.round(day.temperature?.min || 0)}°
                 </Text>
@@ -221,7 +238,12 @@ function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: Fore
 
             {/* Hourly Breakdown */}
             {isExpanded && hoursForDay.length > 0 && (
-              <View style={[styles.hourlyContainer, { backgroundColor: colors.muted }]}>
+              <View
+                style={[
+                  styles.hourlyContainer,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -252,19 +274,42 @@ function ForecastSection({ forecast, hourlyForecast, colors, colorScheme }: Fore
                       <View style={styles.hourlyDetails}>
                         <View style={styles.hourlyDetailRow}>
                           <Ionicons name="water" size={10} color="#3B82F6" />
-                          <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                          <Text
+                            style={[
+                              styles.hourlyDetailText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
                             {hour.precipitation.toFixed(1)}mm
                           </Text>
                         </View>
                         <View style={styles.hourlyDetailRow}>
-                          <Ionicons name="leaf" size={10} color={colors.textSecondary} />
-                          <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                          <Ionicons
+                            name="leaf"
+                            size={10}
+                            color={colors.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.hourlyDetailText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
                             {Math.round(hour.windSpeed)}m/s
                           </Text>
                         </View>
                         <View style={styles.hourlyDetailRow}>
-                          <Ionicons name="water-outline" size={10} color={colors.textSecondary} />
-                          <Text style={[styles.hourlyDetailText, { color: colors.textSecondary }]}>
+                          <Ionicons
+                            name="water-outline"
+                            size={10}
+                            color={colors.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.hourlyDetailText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
                             {Math.round(hour.humidity)}%
                           </Text>
                         </View>
@@ -296,7 +341,7 @@ export default function CragDetailScreen() {
   const router = useRouter()
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
-  
+
   // Get global grade range
   const { gradeRange: globalGradeRange } = useGradeRange()
 
@@ -318,6 +363,9 @@ export default function CragDetailScreen() {
     isRefetching,
   } = useCragDetail(id || '', { gradeRange: globalGradeRange })
 
+  const insets = useSafeAreaInsets()
+  const [showHourlyModal, setShowHourlyModal] = useState(false)
+
   // Get today's forecast
   const todayForecast = useMemo(() => {
     if (!crag?.forecast?.length) return null
@@ -326,6 +374,17 @@ export default function CragDetailScreen() {
       crag.forecast.find((f) => f.date?.startsWith(today)) || crag.forecast[0]
     )
   }, [crag?.forecast])
+
+  // Get hourly forecast for today
+  const todayHourlyForecast = useMemo(() => {
+    if (!crag?.hourlyForecast?.length || !todayForecast?.date) return []
+    const targetDate = todayForecast.date.split('T')[0]
+    return crag.hourlyForecast.filter((h) => {
+      if (!h.timestamp) return false
+      const hourDate = new Date(h.timestamp).toISOString().split('T')[0]
+      return hourDate === targetDate
+    })
+  }, [crag?.hourlyForecast, todayForecast?.date])
 
   // Combine scored sectors with crag sectors to show all
   // scoredSectors come from search navigation, crag.sectors come from API
@@ -431,7 +490,7 @@ export default function CragDetailScreen() {
     if (sector.coordinates?.lon) {
       params.set('longitude', sector.coordinates.lon.toString())
     }
-    
+
     // Add header image if available (sector image, or fallback to crag image)
     if (sector.headerImageUrl) {
       params.set('headerImageUrl', sector.headerImageUrl)
@@ -507,7 +566,9 @@ export default function CragDetailScreen() {
       {/* Hero Header with Image */}
       <HeroHeader
         title={crag.name}
-        subtitle={crag.region ? `${crag.region}, ${crag.country}` : crag.country}
+        subtitle={
+          crag.region ? `${crag.region}, ${crag.country}` : crag.country
+        }
         imageUrl={crag.headerImageUrl}
         theCragUrl={crag.theCragUrl}
         rockType={primaryRockType}
@@ -517,13 +578,16 @@ export default function CragDetailScreen() {
           { label: 'sectors', value: crag.totalSectors, icon: 'grid' },
           { label: 'routes', value: crag.totalRoutes, icon: 'git-branch' },
           ...(distanceParam
-            ? [{
-                label: 'km',
-                value: Number(distanceParam) < 1
-                  ? `${Math.round(Number(distanceParam) * 1000)}m`
-                  : Number(distanceParam).toFixed(1),
-                icon: 'location' as const,
-              }]
+            ? [
+                {
+                  label: 'km',
+                  value:
+                    Number(distanceParam) < 1
+                      ? `${Math.round(Number(distanceParam) * 1000)}m`
+                      : Number(distanceParam).toFixed(1),
+                  icon: 'location' as const,
+                },
+              ]
             : []),
         ]}
         badge={
@@ -537,9 +601,6 @@ export default function CragDetailScreen() {
       />
 
       <View style={styles.content}>
-        {/* Grade Range Badge - Tappable to change */}
-        <GradeRangeBadge style={styles.gradeRangeBadge} />
-
         {/* Current Weather */}
         {todayForecast && (
           <View
@@ -1217,8 +1278,5 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '700',
-  },
-  gradeRangeBadge: {
-    marginBottom: 16,
   },
 })

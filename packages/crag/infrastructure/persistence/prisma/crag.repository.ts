@@ -365,4 +365,24 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       headerImageHeight: entity.headerImageHeight,
     }
   }
+
+  /**
+   * Update header image for a crag
+   */
+  async updateHeaderImage(
+    cragId: CragId,
+    headerImageUrl: string,
+    headerImageWidth?: number,
+    headerImageHeight?: number,
+  ): Promise<void> {
+    await this.prisma.crag.update({
+      where: { id: cragId.toString() },
+      data: {
+        headerImageUrl,
+        headerImageWidth: headerImageWidth ?? null,
+        headerImageHeight: headerImageHeight ?? null,
+        updatedAt: new Date(),
+      },
+    })
+  }
 }

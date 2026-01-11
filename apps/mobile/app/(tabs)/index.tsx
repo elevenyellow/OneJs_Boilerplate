@@ -10,10 +10,12 @@ import type { CragWithSectors, SearchSectorsDto } from '@/lib/api'
 import { getMergedFilters, saveFilters } from '@/utils/filterStorage'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
+import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,10 +23,12 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function ExploreScreen() {
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
+  const insets = useSafeAreaInsets()
   const filterPanelRef = useRef<FilterPanelRef>(null)
 
   // Use the new hook that supports custom locations
@@ -219,170 +223,159 @@ export default function ExploreScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      {/* Professional Header */}
-      <View style={[styles.header, { backgroundColor: colors.card }]}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerTitleSection}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              Explore
+      {/* Hero Header with Gradient */}
+      <LinearGradient
+        colors={colors.gradientPrimary}
+        style={[styles.heroHeader, { paddingTop: insets.top + 16 }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.heroContent}>
+          <View style={styles.heroTitleSection}>
+            <Text style={styles.heroWelcome}>
+              {getGreeting()} 👋
             </Text>
-            <Text
-              style={[styles.headerSubtitle, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {locationLoading
-                ? 'Detecting location...'
-                : locationError
-                  ? 'Location unavailable'
-                  : isCustomLocation
-                    ? `${totalSectorsCount || totalSectors} sectors near ${locationName}`
-                    : `${totalSectorsCount || totalSectors} sectors nearby`}
+            <Text style={styles.heroTitle}>
+              Find your next climb
             </Text>
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={14} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.heroLocation} numberOfLines={1}>
+                {locationLoading
+                  ? 'Detecting location...'
+                  : locationError
+                    ? 'Location unavailable'
+                    : isCustomLocation
+                      ? locationName
+                      : 'Near your location'}
+              </Text>
+            </View>
           </View>
 
-          {/* Filter Button - Right aligned */}
-          <Pressable
-            style={[styles.filterButton, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-              filterPanelRef.current?.open()
-            }}
-          >
-            <Ionicons name="options" size={18} color="#FFFFFF" />
-            <Text style={styles.filterButtonText}>Filters</Text>
-            {activeFiltersList.length > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>
-                  {activeFiltersList.length}
-                </Text>
-              </View>
-            )}
-          </Pressable>
+          {/* Quick Stats */}
+          <View style={styles.heroStats}>
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{totalSectorsCount || totalSectors}</Text>
+              <Text style={styles.heroStatLabel}>Sectors</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{totalRoutesInRange}</Text>
+              <Text style={styles.heroStatLabel}>Routes</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{totalCrags}</Text>
+              <Text style={styles.heroStatLabel}>Zones</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Active Filters Display - Below the header */}
-        {activeFiltersList.length > 0 && (
-          <View style={styles.activeFiltersContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.activeFiltersContent}
+        {/* Decorative elements */}
+        <View style={styles.heroDecoration}>
+          <Ionicons name="diamond" size={120} color="rgba(255,255,255,0.08)" />
+        </View>
+      </LinearGradient>
+
+      {/* Filter Bar */}
+      <View style={[styles.filterBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Pressable
+          style={[styles.filterButton, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+            filterPanelRef.current?.open()
+          }}
+        >
+          <Ionicons name="options" size={18} color="#FFFFFF" />
+          <Text style={styles.filterButtonText}>Filters</Text>
+          {activeFiltersList.length > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>
+                {activeFiltersList.length}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+
+        {/* Active Filters Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.activeFiltersContent}
+          style={styles.activeFiltersScroll}
+        >
+          {activeFiltersList.map((filter) => (
+            <View
+              key={filter.key}
+              style={[
+                styles.activeFilterChip,
+                {
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                },
+              ]}
             >
-              {activeFiltersList.map((filter) => (
-                <View
-                  key={filter.key}
-                  style={[
-                    styles.activeFilterChip,
-                    {
-                      backgroundColor: colors.muted,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={filter.icon}
-                    size={14}
-                    color={colors.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.activeFilterLabel,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {filter.label}:
-                  </Text>
-                  <Text
-                    style={[styles.activeFilterValue, { color: colors.text }]}
-                  >
-                    {filter.value}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+              <Ionicons
+                name={filter.icon}
+                size={12}
+                color={colors.primary}
+              />
+              <Text
+                style={[styles.activeFilterValue, { color: colors.text }]}
+              >
+                {filter.value}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
       </View>
 
-      {/* Weather Info */}
+      {/* Weather Info Card */}
       {firstPage?.metadata?.weather && (
         <View
           style={[
-            styles.weatherInfoContainer,
+            styles.weatherCard,
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <View style={styles.weatherInfoRow}>
-            {/* Temperature */}
-            <View style={styles.weatherInfoItem}>
+          <View style={styles.weatherLeft}>
+            <View style={[styles.weatherIconContainer, { backgroundColor: getWeatherColor(firstPage.metadata.weather.temperature) + '20' }]}>
               <Ionicons
-                name="thermometer"
+                name={firstPage.metadata.weather.isGoodForClimbing ? 'sunny' : 'cloud'}
                 size={24}
-                color={
-                  firstPage.metadata.weather.temperature > 25
-                    ? '#FF5722'
-                    : firstPage.metadata.weather.temperature < 10
-                      ? '#2196F3'
-                      : '#4CAF50'
-                }
+                color={getWeatherColor(firstPage.metadata.weather.temperature)}
               />
-              <View>
-                <Text
-                  style={[
-                    styles.weatherInfoLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Temperature
-                </Text>
-                <Text style={[styles.weatherInfoValue, { color: colors.text }]}>
-                  {firstPage.metadata.weather.temperature}°C
-                </Text>
-              </View>
             </View>
-
-            {/* Conditions */}
-            <View style={styles.weatherInfoItem}>
-              <Ionicons
-                name={
-                  firstPage.metadata.weather.isGoodForClimbing
-                    ? 'checkmark-circle'
-                    : 'warning'
-                }
-                size={24}
-                color={
-                  firstPage.metadata.weather.isGoodForClimbing
-                    ? '#4CAF50'
-                    : '#FF9800'
-                }
-              />
-              <View>
-                <Text
-                  style={[
-                    styles.weatherInfoLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Conditions
-                </Text>
-                <Text style={[styles.weatherInfoValue, { color: colors.text }]}>
-                  {firstPage.metadata.weather.conditions}
-                </Text>
-              </View>
+            <View>
+              <Text style={[styles.weatherTemp, { color: colors.text }]}>
+                {firstPage.metadata.weather.temperature}°C
+              </Text>
+              <Text style={[styles.weatherCondition, { color: colors.textSecondary }]}>
+                {firstPage.metadata.weather.conditions}
+              </Text>
             </View>
           </View>
+          
+          {firstPage.metadata.weather.isGoodForClimbing && (
+            <View style={[styles.goodDayBadge, { backgroundColor: colors.success + '20' }]}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <Text style={[styles.goodDayText, { color: colors.success }]}>
+                Great day!
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
-      {/* Results Info */}
+      {/* Results Summary */}
       {firstPage && (
         <View style={styles.resultsInfo}>
           <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
-            {totalRoutesInRange}/{totalRoutes} routes • {totalSectorsCount} sectors • {totalCrags} zones
+            Showing {cragResults.length} zones with {totalSectors} matching sectors
           </Text>
           {firstPage.metadata?.searchTime && (
             <Text
-              style={[styles.searchTimeText, { color: colors.textSecondary }]}
+              style={[styles.searchTimeText, { color: colors.mutedForeground }]}
             >
               {firstPage.metadata.searchTime}ms
             </Text>
@@ -396,10 +389,15 @@ export default function ExploreScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {locationLoading || !filters ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            Preparing search...
-          </Text>
+          <LinearGradient
+            colors={colors.gradientPrimary}
+            style={styles.loadingGradient}
+          >
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>
+              Finding climbing spots...
+            </Text>
+          </LinearGradient>
         </View>
       ) : locationError ? (
         <EmptyState
@@ -472,19 +470,24 @@ export default function ExploreScreen() {
               </View>
             ) : hasNextPage ? (
               <View style={styles.loadMoreContainer}>
-                <Text
-                  style={[styles.loadMoreText, { color: colors.textSecondary }]}
+                <Pressable
+                  style={[styles.loadMoreButton, { backgroundColor: colors.muted }]}
+                  onPress={handleLoadMore}
                 >
-                  Scroll for more
-                </Text>
+                  <Text style={[styles.loadMoreText, { color: colors.primary }]}>
+                    Load more zones
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={colors.primary} />
+                </Pressable>
               </View>
             ) : cragResults.length > 0 ? (
               <View style={styles.loadMoreContainer}>
-                <Text
-                  style={[styles.loadMoreText, { color: colors.textSecondary }]}
-                >
-                  All zones loaded
-                </Text>
+                <View style={[styles.endBadge, { backgroundColor: colors.muted }]}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                  <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                    All zones loaded
+                  </Text>
+                </View>
               </View>
             ) : null
           }
@@ -515,50 +518,129 @@ export default function ExploreScreen() {
   )
 }
 
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function getWeatherColor(temp: number): string {
+  if (temp > 30) return '#EF4444'
+  if (temp > 25) return '#F59E0B'
+  if (temp > 15) return '#22C55E'
+  if (temp > 5) return '#3B82F6'
+  return '#6366F1'
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
+  },
+  loadingGradient: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    gap: 20,
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   headerContainer: {
+    marginBottom: 8,
+  },
+  heroHeader: {
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroContent: {
+    zIndex: 1,
+  },
+  heroDecoration: {
+    position: 'absolute',
+    right: -20,
+    top: 20,
+    opacity: 0.5,
+  },
+  heroTitleSection: {
     marginBottom: 16,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+  heroWelcome: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 4,
   },
-  headerTop: {
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  locationRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 6,
   },
-  headerTitleSection: {
+  heroLocation: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
+  },
+  heroStats: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  heroStatItem: {
+    alignItems: 'center',
     flex: 1,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+  heroStatValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
-  headerSubtitle: {
-    fontSize: 14,
+  heroStatLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  filterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginHorizontal: 0,
+    marginTop: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    gap: 10,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 12,
     gap: 6,
   },
@@ -581,84 +663,119 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  activeFiltersContainer: {
-    marginTop: 12,
+  activeFiltersScroll: {
+    flex: 1,
   },
   activeFiltersContent: {
     gap: 8,
+    paddingRight: 8,
   },
   activeFilterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     gap: 4,
-  },
-  activeFilterLabel: {
-    fontSize: 12,
   },
   activeFilterValue: {
     fontSize: 12,
     fontWeight: '600',
   },
-  weatherInfoContainer: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-  },
-  weatherInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  weatherInfoItem: {
+  weatherCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginHorizontal: 0,
+    marginTop: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 1,
   },
-  weatherInfoLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  weatherLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  weatherInfoValue: {
-    fontSize: 14,
+  weatherIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weatherTemp: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  weatherCondition: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  goodDayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  goodDayText: {
+    fontSize: 13,
     fontWeight: '600',
   },
   resultsInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   resultsText: {
     fontSize: 13,
+    fontWeight: '500',
   },
   searchTimeText: {
-    fontSize: 13,
+    fontSize: 12,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 0,
+    paddingBottom: 100,
   },
   emptyActionButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
   },
   emptyActionText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   loadMoreContainer: {
-    paddingVertical: 20,
+    paddingVertical: 24,
     alignItems: 'center',
   },
+  loadMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    gap: 6,
+  },
   loadMoreText: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  endBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 8,
   },
 })

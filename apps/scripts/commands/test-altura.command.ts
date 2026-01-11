@@ -33,13 +33,12 @@ import {
   TopoPrismaRepository,
 } from '@climb-zone/topo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
-import type { TopoImageData } from '@scraper-thecrag'
+import type { ScrapedCragNode } from '@scraper-thecrag'
 import { TheCragApiScraper } from '@scraper-thecrag'
 import { ScrapedDataMapperService } from '@scraper-thecrag/application/services/scraped-data-mapper.service'
 
 // Altura IDs from TheCrag
 const ALTURA_ID = 782524281 // Altura crag
-const CASTELLON_ID = 782515039 // Castellón region (Altura está dentro de Castellón)
 const COMUNIDAD_VALENCIANA_ID = 22687829 // Valencia region
 
 interface Stats {
@@ -50,6 +49,7 @@ interface Stats {
   topos: number
   topoPositions: number
   headerImages: number
+  cragHeaderImageUrl: string | null
   sectorImages: {
     name: string
     headerImageUrl: string | null
@@ -58,18 +58,21 @@ interface Stats {
   errors: string[]
 }
 
-export async function testAltura(container: any, cookie: string) {
+export async function testAltura(container: unknown, cookie: string) {
   // Get repositories and services from container
-  const scraper = container.get(TheCragApiScraper)
-  const mapper = container.get(ScrapedDataMapperService)
-  const countryRepo = container.get(CountryPrismaRepository)
-  const continentRepo = container.get(ContinentPrismaRepository)
-  const regionRepo = container.get(RegionPrismaRepository)
-  const cragRepo = container.get(CragPrismaRepository)
-  const areaRepo = container.get(AreaPrismaRepository)
-  const sectorRepo = container.get(SectorPrismaRepository)
-  const routeRepo = container.get(RoutePrismaRepository)
-  const topoRepo = container.get(TopoPrismaRepository)
+  const dic = container as { get: <T>(token: unknown) => T }
+  const scraper = dic.get<TheCragApiScraper>(TheCragApiScraper)
+  const mapper = dic.get<ScrapedDataMapperService>(ScrapedDataMapperService)
+  const countryRepo = dic.get<CountryPrismaRepository>(CountryPrismaRepository)
+  const continentRepo = dic.get<ContinentPrismaRepository>(
+    ContinentPrismaRepository,
+  )
+  const regionRepo = dic.get<RegionPrismaRepository>(RegionPrismaRepository)
+  const cragRepo = dic.get<CragPrismaRepository>(CragPrismaRepository)
+  const areaRepo = dic.get<AreaPrismaRepository>(AreaPrismaRepository)
+  const sectorRepo = dic.get<SectorPrismaRepository>(SectorPrismaRepository)
+  const routeRepo = dic.get<RoutePrismaRepository>(RoutePrismaRepository)
+  const topoRepo = dic.get<TopoPrismaRepository>(TopoPrismaRepository)
 
   // Configure scraper with topos enabled
   scraper.setCookie(cookie)
@@ -84,6 +87,7 @@ export async function testAltura(container: any, cookie: string) {
     topos: 0,
     topoPositions: 0,
     headerImages: 0,
+    cragHeaderImageUrl: null,
     sectorImages: [],
     errors: [],
   }
@@ -91,10 +95,12 @@ export async function testAltura(container: any, cookie: string) {
   console.log('🏔️  TEST ALTURA - Verificación de imágenes de sectores y topos')
   console.log('='.repeat(80))
   console.log('')
-  console.log('📍 Objetivo: Verificar que las imágenes se guardan correctamente')
-  console.log('   - headerImageUrl en sectores')
+  console.log(
+    '📍 Objetivo: Verificar que las imágenes se guardan correctamente',
+  )
+  console.log('   - headerImageUrl en crags y sectores')
   console.log('   - TopoImage con fullImageUrl y thumbnailUrl')
-  console.log('   - RouteTopoPosition con points')
+  console.log('   - RouteTopoPosition con points (SVG data)')
   console.log('')
 
   const startTime = Date.now()
@@ -102,7 +108,7 @@ export async function testAltura(container: any, cookie: string) {
   try {
     // Step 1: Ensure Spain exists in DB
     console.log('📍 Step 1: Verificando España en la base de datos...')
-    let spainCountryId = await ensureSpainExists(
+    const spainCountryId = await ensureSpainExists(
       scraper,
       countryRepo,
       continentRepo,
@@ -118,75 +124,52 @@ export async function testAltura(container: any, cookie: string) {
       COMUNIDAD_VALENCIANA_ID,
       'Comunidad Valenciana',
     )
-    console.log(`   ✅ Comunidad Valenciana ID: ${valenciaRegion.id.toString()}\n`)
+    console.log(
+      `   ✅ Comunidad Valenciana ID: ${valenciaRegion.id.toString()}\n`,
+    )
 
-    // Step 3: Get Altura crag info
-    console.log('📍 Step 3: Obteniendo información de Altura...')
-    const alturaInfo = await scraper.getNodeInfo(ALTURA_ID)
-    console.log(`   📊 Altura info:`)
-    console.log(`      - Name: ${alturaInfo?.name || 'Altura'}`)
-    console.log(`      - numberRoutes: ${alturaInfo?.numberRoutes ?? 'N/A'}`)
-    console.log(`      - numberTopos: ${alturaInfo?.numberTopos ?? 'N/A'}`)
-    console.log(`      - hasTopo: ${alturaInfo?.hasTopo ?? 'N/A'}`)
-    console.log(`      - urlStub: ${alturaInfo?.urlStub ?? 'N/A'}`)
-    console.log(`      - geometry: ${alturaInfo?.geometry ? `lat: ${alturaInfo.geometry.lat}, lon: ${alturaInfo.geometry.long}` : 'N/A'}`)
+    // Step 3: Use scraper.scrapeCrag() to get all data
+    console.log('📍 Step 3: Ejecutando scraper para Altura...')
+    console.log('   (El scraper obtiene info, imágenes, topos y rutas)')
     console.log('')
 
-    // Step 4: Save Altura as a Crag
-    console.log('📍 Step 4: Guardando Altura como Crag...')
-    const alturaCrag = await saveCrag(
-      scraper,
-      mapper,
-      cragRepo,
-      ALTURA_ID,
-      'Altura',
+    const scrapedData = await scraper.scrapeCrag(ALTURA_ID, 'Altura', 'Crag')
+
+    console.log(`   ✅ Scraping completado:`)
+    console.log(`      - Nombre: ${scrapedData.name}`)
+    console.log(`      - Tipo: ${scrapedData.type}`)
+    console.log(`      - Hijos directos: ${scrapedData.children.length}`)
+    console.log(
+      `      - Header Image: ${scrapedData.info?.headerImageUrl ? '✅' : '❌'}`,
+    )
+    console.log(`      - Rutas directas: ${scrapedData.routes?.length ?? 0}`)
+    console.log(`      - Topos directos: ${scrapedData.topos?.length ?? 0}`)
+    console.log('')
+
+    // Step 4: Save scraped data to database
+    console.log('📍 Step 4: Guardando datos en base de datos...')
+    console.log('')
+
+    await saveScrapedCrag(
+      scrapedData,
       spainCountryId,
       valenciaRegion.id,
-      alturaInfo,
+      mapper,
+      cragRepo,
+      areaRepo,
+      sectorRepo,
+      routeRepo,
+      topoRepo,
+      stats,
     )
-    stats.crags++
-    console.log(`   ✅ Crag guardado:`)
-    console.log(`      - ID interno: ${alturaCrag.id.toString()}`)
-    console.log(`      - External ID: ${alturaCrag.externalId.toNumber()}`)
-    console.log(`      - Country ID: ${alturaCrag.countryId.toString()}`)
-    console.log('')
-
-    // Step 5: Get Altura children (sectors)
-    console.log('📍 Step 5: Obteniendo sectores de Altura...')
-    const alturaChildren = await scraper.getChildren(ALTURA_ID)
-    console.log(`   📊 Encontrados ${alturaChildren.length} hijos\n`)
-
-    // Step 6: Process each sector
-    console.log('📍 Step 6: Procesando sectores...')
-    console.log('')
-
-    for (const child of alturaChildren) {
-      try {
-        await processSectorNode(
-          child.id,
-          child.name,
-          alturaCrag.id,
-          scraper,
-          mapper,
-          areaRepo,
-          sectorRepo,
-          routeRepo,
-          topoRepo,
-          stats,
-        )
-      } catch (error: any) {
-        stats.errors.push(`${child.name}: ${error.message}`)
-        console.error(`   ❌ Error en ${child.name}: ${error.message}`)
-      }
-    }
 
     // Final report
     const duration = ((Date.now() - startTime) / 1000).toFixed(1)
     printFinalReport(stats, duration)
-
-  } catch (error: any) {
-    console.error(`\n❌ Error fatal: ${error.message}`)
-    console.error(error.stack)
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error(`\n❌ Error fatal: ${err.message}`)
+    console.error(err.stack)
     throw error
   }
 }
@@ -203,7 +186,9 @@ async function ensureSpainExists(
   if (spain) return spain.id
 
   // Create Europe if needed
-  let europe = await continentRepo.findByExternalId(ExternalId.create(EUROPE_ID))
+  let europe = await continentRepo.findByExternalId(
+    ExternalId.create(EUROPE_ID),
+  )
   if (!europe) {
     const europeInfo = await scraper.getNodeInfo(EUROPE_ID)
     const newEurope = ContinentEntity.create(
@@ -219,7 +204,7 @@ async function ensureSpainExists(
   const spainInfo = await scraper.getNodeInfo(SPAIN_ID)
   const newSpain = CountryEntity.create(
     ExternalId.create(SPAIN_ID),
-    europe.id.toString(),
+    europe.id,
     'Spain',
     spainInfo?.geometry ? Geometry.fromJSON(spainInfo.geometry) : null,
   )
@@ -235,7 +220,9 @@ async function ensureRegionExists(
   regionExternalId: number,
   regionName: string,
 ): Promise<RegionEntity> {
-  let region = await regionRepo.findByExternalId(ExternalId.create(regionExternalId))
+  let region = await regionRepo.findByExternalId(
+    ExternalId.create(regionExternalId),
+  )
   if (region) return region
 
   const regionInfo = await scraper.getNodeInfo(regionExternalId)
@@ -251,35 +238,76 @@ async function ensureRegionExists(
   return region
 }
 
-async function saveCrag(
-  scraper: TheCragApiScraper,
-  mapper: ScrapedDataMapperService,
-  cragRepo: CragPrismaRepository,
-  cragExternalId: number,
-  cragName: string,
+/**
+ * Save scraped crag data to database
+ * Processes the tree structure returned by scraper.scrapeCrag()
+ */
+async function saveScrapedCrag(
+  scrapedData: ScrapedCragNode,
   countryId: CountryId,
   regionId: RegionId,
-  info: any,
-): Promise<any> {
+  mapper: ScrapedDataMapperService,
+  cragRepo: CragPrismaRepository,
+  areaRepo: AreaPrismaRepository,
+  sectorRepo: SectorPrismaRepository,
+  routeRepo: RoutePrismaRepository,
+  topoRepo: TopoPrismaRepository,
+  stats: Stats,
+): Promise<void> {
+  // Save the crag
+  console.log(`   💾 Guardando Crag: ${scrapedData.name}`)
+
   const cragData = mapper.mapToCrag(
-    cragExternalId,
-    cragName,
+    scrapedData.id,
+    scrapedData.name,
     countryId,
-    info?.geometry,
-    info,
+    scrapedData.info?.geometry,
+    scrapedData.info ?? null,
     regionId,
   )
-  return await cragRepo.saveByExternalId(
+  const crag = await cragRepo.saveByExternalId(
     mapper.createCragEntity(cragData),
-    info?.apiResponseRaw,
+    scrapedData.info?.apiResponseRaw,
   )
+  stats.crags++
+  stats.cragHeaderImageUrl = scrapedData.info?.headerImageUrl ?? null
+
+  console.log(`      ✅ Crag guardado: ${crag.id.toString()}`)
+  console.log(
+    `      - Header Image: ${scrapedData.info?.headerImageUrl ? '✅' : '❌'}`,
+  )
+  console.log('')
+
+  // Process children (sectors/areas)
+  for (const child of scrapedData.children) {
+    try {
+      await processScrapedNode(
+        child,
+        crag.id,
+        null, // No parent area for direct children of crag
+        mapper,
+        areaRepo,
+        sectorRepo,
+        routeRepo,
+        topoRepo,
+        stats,
+      )
+    } catch (error: unknown) {
+      const err = error as Error
+      stats.errors.push(`${child.name}: ${err.message}`)
+      console.error(`   ❌ Error en ${child.name}: ${err.message}`)
+    }
+  }
 }
 
-async function processSectorNode(
-  nodeId: number,
-  nodeName: string,
+/**
+ * Process a scraped node (Area, Sector, or Cliff)
+ * Recursively processes children
+ */
+async function processScrapedNode(
+  node: ScrapedCragNode,
   cragId: CragId,
-  scraper: TheCragApiScraper,
+  parentAreaId: AreaId | null,
   mapper: ScrapedDataMapperService,
   areaRepo: AreaPrismaRepository,
   sectorRepo: SectorPrismaRepository,
@@ -287,97 +315,75 @@ async function processSectorNode(
   topoRepo: TopoPrismaRepository,
   stats: Stats,
 ): Promise<void> {
-  console.log(`   🔍 Procesando: ${nodeName} (ID: ${nodeId})`)
+  console.log(`   🔍 Procesando: ${node.name} (${node.type})`)
 
-  // Fetch data from API
-  const [info, children, routes] = await Promise.all([
-    scraper.getNodeInfo(nodeId),
-    scraper.getChildren(nodeId),
-    scraper.getRoutes(nodeId),
-  ])
+  const hasRoutes = node.routes && node.routes.length > 0
+  const hasTopos = node.topos && node.topos.length > 0
 
-  // Fetch topos from sector page
-  let topos: TopoImageData[] = []
-  // Build URL path - use urlStub if available, otherwise construct from urlAncestorStub + nodeId
-  let sectorPath: string | null = null
-  if (info?.urlStub) {
-    sectorPath = `/en/climbing/${info.urlAncestorStub || ''}${info.urlStub}`
-  } else if (info?.urlAncestorStub) {
-    // Fallback: construct URL from ancestor + area/nodeId
-    sectorPath = `/en/climbing/${info.urlAncestorStub}/area/${nodeId}`
-  }
-  
-  if (sectorPath) {
-    console.log(`      📸 Buscando topos en: ${sectorPath}`)
-    topos = await scraper.getToposFromSectorPage(sectorPath).catch((e) => {
-      console.log(`      ⚠️  Error obteniendo topos: ${e.message}`)
-      return [] as TopoImageData[]
-    })
-  } else {
-    console.log(`      ⚠️  No se puede construir URL del sector`)
-  }
+  console.log(`      📊 Info del scraper:`)
+  console.log(`         - Routes: ${node.routes?.length ?? 0}`)
+  console.log(`         - Topos: ${node.topos?.length ?? 0}`)
+  console.log(
+    `         - Header Image: ${node.info?.headerImageUrl ? '✅' : '❌'}`,
+  )
 
-  // Fetch header image (use same sectorPath we built above)
-  let headerImageUrl: string | null = null
-  if (sectorPath) {
-    headerImageUrl = await scraper.getHeaderImage(nodeId, sectorPath)
-  }
-
-  console.log(`      📊 Info:`)
-  console.log(`         - Routes: ${routes.length}`)
-  console.log(`         - Topos: ${topos.length}`)
-  console.log(`         - Header Image: ${headerImageUrl ? '✅' : '❌'}`)
-
-  // If has routes, this is a sector
-  if (routes.length > 0) {
+  // If this node has routes, treat it as a sector (needs an area parent)
+  if (hasRoutes) {
     // Create area first
-    console.log(`      🔧 Creando Area con cragId: ${cragId.toString()}`)
-    
     const areaData = mapper.mapToArea(
-      nodeId,
-      info?.name || nodeName,
+      node.id,
+      node.name,
       cragId,
-      null,
-      info?.geometry,
-      info,
-      'Area',
+      parentAreaId,
+      node.info?.geometry,
+      node.info ?? null,
+      node.type,
     )
-    console.log(`      🔧 AreaData.cragId: ${areaData.cragId.toString()}`)
-    
-    const areaEntity = mapper.createAreaEntity(areaData)
-    console.log(`      🔧 AreaEntity.cragId: ${areaEntity.cragId.toString()}`)
-    
-    const area = await areaRepo.saveByExternalId(areaEntity, info?.apiResponseRaw)
+    const area = await areaRepo.saveByExternalId(
+      mapper.createAreaEntity(areaData),
+      node.info?.apiResponseRaw,
+    )
     stats.areas++
 
     // Create sector
     const sectorData = mapper.mapToSector(
-      nodeId,
-      info?.name || nodeName,
+      node.id,
+      node.name,
       area.id,
-      info?.geometry,
-      info,
-      'Sector',
+      node.info?.geometry,
+      node.info ?? null,
+      node.type,
     )
     const sector = await sectorRepo.saveByExternalId(
       mapper.createSectorEntity(sectorData),
-      info?.apiResponseRaw,
+      node.info?.apiResponseRaw,
     )
     stats.sectors++
 
+    // Track header image
+    if (node.info?.headerImageUrl) {
+      stats.headerImages++
+    }
+
     // Build topo number map from topo data
     const topoNumberMap = new Map<number, string>()
-    for (const topo of topos) {
-      for (const topoRoute of topo.routes) {
-        if (topoRoute.id && topoRoute.num && !topoNumberMap.has(topoRoute.id)) {
-          topoNumberMap.set(topoRoute.id, topoRoute.num)
+    if (hasTopos) {
+      for (const topo of node.topos!) {
+        for (const topoRoute of topo.routes) {
+          if (
+            topoRoute.id &&
+            topoRoute.num &&
+            !topoNumberMap.has(topoRoute.id)
+          ) {
+            topoNumberMap.set(topoRoute.id, topoRoute.num)
+          }
         }
       }
     }
 
     // Save routes
     const savedRouteIds = new Map<number, RouteId>()
-    for (const route of routes) {
+    for (const route of node.routes!) {
       const topoNum = topoNumberMap.get(route.id)
       const routeData = mapper.mapToRoute(route, sector.id, topoNum)
       const savedRoute = await routeRepo.saveByExternalId(
@@ -387,10 +393,10 @@ async function processSectorNode(
       stats.routes++
     }
 
-    // Save topos with positions
+    // Save topos with positions (SVG data)
     let sectorTopoCount = 0
-    if (topos.length > 0) {
-      for (const topoData of topos) {
+    if (hasTopos) {
+      for (const topoData of node.topos!) {
         try {
           const topoEntity = new TopoImageEntity(
             TopoImageId.generate(),
@@ -406,7 +412,7 @@ async function processSectorNode(
             null,
           )
 
-          // Build positions for routes that we saved
+          // Build positions for routes (contains SVG points data)
           const positions: Array<{
             routeId: RouteId
             topoNumber: string
@@ -422,7 +428,7 @@ async function processSectorNode(
               positions.push({
                 routeId: internalRouteId,
                 topoNumber: topoRoute.num,
-                points: topoRoute.points,
+                points: topoRoute.points, // SVG path data
                 zindex: parseInt(topoRoute.zindex) || 0,
                 order: topoRoute.order,
                 gradeClass: topoRoute.gradeClass,
@@ -431,58 +437,41 @@ async function processSectorNode(
           }
 
           if (positions.length > 0) {
-            const { positionsCreated } = await topoRepo.saveTopoImageWithPositions(
-              topoEntity,
-              positions,
-            )
+            const { positionsCreated } =
+              await topoRepo.saveTopoImageWithPositions(topoEntity, positions)
             stats.topos++
             stats.topoPositions += positionsCreated
             sectorTopoCount++
-            console.log(`      ✅ Topo ${topoData.topoId}: ${positions.length} posiciones guardadas`)
-            console.log(`         - thumbnailUrl: ${topoData.thumbnailUrl.substring(0, 50)}...`)
-            console.log(`         - fullImageUrl: ${topoData.fullImageUrl.substring(0, 50)}...`)
+            console.log(
+              `      ✅ Topo ${topoData.topoId}: ${positions.length} rutas con SVG`,
+            )
           }
-        } catch (error: any) {
-          console.warn(`      ⚠️  Error guardando topo ${topoData.topoId}: ${error.message}`)
+        } catch (error: unknown) {
+          const err = error as Error
+          console.warn(
+            `      ⚠️  Error guardando topo ${topoData.topoId}: ${err.message}`,
+          )
         }
       }
     }
 
-    // Update header image if we have one
-    if (topos.length > 0 && topos[0].fullImageUrl) {
-      await sectorRepo.updateHeaderImage(
-        sector.id,
-        topos[0].fullImageUrl,
-        topos[0].originalWidth,
-        topos[0].originalHeight,
-      )
-      stats.headerImages++
-      headerImageUrl = topos[0].fullImageUrl
-      console.log(`      🖼️  Header image actualizada desde topo`)
-    } else if (headerImageUrl) {
-      await sectorRepo.updateHeaderImage(sector.id, headerImageUrl)
-      stats.headerImages++
-      console.log(`      🖼️  Header image actualizada desde scraping`)
-    }
-
     // Track sector image info
     stats.sectorImages.push({
-      name: nodeName,
-      headerImageUrl: headerImageUrl,
+      name: node.name,
+      headerImageUrl: node.info?.headerImageUrl ?? null,
       topoCount: sectorTopoCount,
     })
 
-    console.log(`      ✅ Sector guardado: ${nodeName}`)
+    console.log(`      ✅ Sector guardado: ${node.name}`)
     console.log('')
   }
 
   // Process children recursively
-  for (const child of children) {
-    await processSectorNode(
-      child.id,
-      child.name,
+  for (const child of node.children) {
+    await processScrapedNode(
+      child,
       cragId,
-      scraper,
+      null, // For simplicity, not tracking nested areas
       mapper,
       areaRepo,
       sectorRepo,
@@ -505,15 +494,24 @@ function printFinalReport(stats: Stats, duration: string) {
   console.log(`   Sectors: ${stats.sectors}`)
   console.log(`   Routes: ${stats.routes}`)
   console.log(`   Topos: ${stats.topos}`)
-  console.log(`   Topo Positions: ${stats.topoPositions}`)
+  console.log(`   Topo Positions (SVG data): ${stats.topoPositions}`)
   console.log(`   Header Images: ${stats.headerImages}`)
   console.log(`   Tiempo: ${duration}s`)
+  console.log('')
+
+  console.log('🖼️  IMAGEN DEL CRAG:')
+  if (stats.cragHeaderImageUrl) {
+    console.log(`   ✅ ${stats.cragHeaderImageUrl.substring(0, 70)}...`)
+  } else {
+    console.log(`   ❌ No se encontró imagen de cabecera para el crag`)
+  }
   console.log('')
 
   console.log('🖼️  IMÁGENES POR SECTOR:')
   for (const sector of stats.sectorImages) {
     const hasHeader = sector.headerImageUrl ? '✅' : '❌'
-    const topoInfo = sector.topoCount > 0 ? `${sector.topoCount} topos` : 'sin topos'
+    const topoInfo =
+      sector.topoCount > 0 ? `${sector.topoCount} topos` : 'sin topos'
     console.log(`   ${hasHeader} ${sector.name}: ${topoInfo}`)
     if (sector.headerImageUrl) {
       console.log(`      URL: ${sector.headerImageUrl.substring(0, 70)}...`)
@@ -530,11 +528,19 @@ function printFinalReport(stats: Stats, duration: string) {
   }
 
   // Summary
-  const sectorsWithImages = stats.sectorImages.filter((s) => s.headerImageUrl).length
-  const sectorsWithTopos = stats.sectorImages.filter((s) => s.topoCount > 0).length
+  const sectorsWithImages = stats.sectorImages.filter(
+    (s) => s.headerImageUrl,
+  ).length
+  const sectorsWithTopos = stats.sectorImages.filter(
+    (s) => s.topoCount > 0,
+  ).length
   console.log('📈 ANÁLISIS:')
-  console.log(`   Sectores con header image: ${sectorsWithImages}/${stats.sectorImages.length}`)
-  console.log(`   Sectores con topos: ${sectorsWithTopos}/${stats.sectorImages.length}`)
+  console.log(
+    `   Sectores con header image: ${sectorsWithImages}/${stats.sectorImages.length}`,
+  )
+  console.log(
+    `   Sectores con topos: ${sectorsWithTopos}/${stats.sectorImages.length}`,
+  )
   console.log('')
 
   if (sectorsWithImages === 0 && stats.sectors > 0) {

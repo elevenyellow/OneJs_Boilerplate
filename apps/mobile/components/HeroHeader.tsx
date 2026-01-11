@@ -6,11 +6,14 @@ import {
   Pressable,
   ImageBackground,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -34,6 +37,11 @@ interface HeroHeaderProps {
     color?: string;
     icon?: keyof typeof Ionicons.glyphMap;
   };
+  actions?: {
+    icon: keyof typeof Ionicons.glyphMap;
+    onPress: () => void;
+    color?: string;
+  }[];
 }
 
 // Unsplash images for climbing - curated collection
@@ -76,14 +84,6 @@ function getImageUrl(
     return imageUrl;
   }
 
-  // 2. Try to construct TheCrag image URL (they have a consistent photo endpoint)
-  // Note: This may not always work, depends on TheCrag's CDN policies
-  if (theCragUrl) {
-    // TheCrag URLs are like: https://www.thecrag.com/climbing/spain/chulilla
-    // Their photos are sometimes at: https://www.thecrag.com/.../.../photos
-    // For now, we'll skip this as it requires authentication
-  }
-
   // 3. Select from curated Unsplash images based on rock type or climbing type
   const rockTypeLower = rockType?.toLowerCase() || '';
   const climbingTypeLower = climbingType?.toLowerCase() || '';
@@ -102,7 +102,7 @@ function getImageUrl(
     images = CLIMBING_IMAGES.sport;
   }
 
-  // Return a random image from the selected category (based on title hash for consistency)
+  // Return a random image from the selected category
   const randomIndex = Math.floor(Math.random() * images.length);
   return images[randomIndex];
 }
@@ -118,36 +118,77 @@ export function HeroHeader({
   onBack,
   stats,
   badge,
+  actions,
 }: HeroHeaderProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const insets = useSafeAreaInsets();
   const [imageError, setImageError] = useState(false);
 
   const selectedImageUrl = getImageUrl(imageUrl, theCragUrl, rockType, climbingType);
 
-  // Reset error state when imageUrl changes (e.g., when topos load)
+  // Reset error state when imageUrl changes
   useEffect(() => {
     setImageError(false);
   }, [imageUrl]);
 
-  // Fallback gradient colors when image fails
-  const gradientColors =
-    colorScheme === 'dark'
-      ? ['#4338CA', '#4F46E5', '#6366F1'] as const
-      : ['#4F46E5', '#6366F1', '#818CF8'] as const;
+  const handleBackPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onBack();
+  };
 
   const renderContent = () => (
     <>
-      {/* Back button */}
-      <Pressable style={styles.backButton} onPress={onBack}>
-        <BlurView intensity={80} tint={colorScheme} style={styles.backButtonBlur}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </BlurView>
-      </Pressable>
+      {/* Top navigation bar */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        {/* Back button */}
+        <Pressable 
+          style={styles.backButton} 
+          onPress={handleBackPress}
+          hitSlop={8}
+        >
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={80} tint={colorScheme} style={styles.backButtonBlur}>
+              <Ionicons name="arrow-back" size={22} color="#FFF" />
+            </BlurView>
+          ) : (
+            <View style={styles.backButtonAndroid}>
+              <Ionicons name="arrow-back" size={22} color="#FFF" />
+            </View>
+          )}
+        </Pressable>
+
+        {/* Action buttons */}
+        {actions && actions.length > 0 && (
+          <View style={styles.actionsRow}>
+            {actions.map((action, index) => (
+              <Pressable 
+                key={index}
+                style={styles.actionButton} 
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  action.onPress();
+                }}
+                hitSlop={8}
+              >
+                {Platform.OS === 'ios' ? (
+                  <BlurView intensity={80} tint={colorScheme} style={styles.actionButtonBlur}>
+                    <Ionicons name={action.icon} size={20} color={action.color || '#FFF'} />
+                  </BlurView>
+                ) : (
+                  <View style={styles.actionButtonAndroid}>
+                    <Ionicons name={action.icon} size={20} color={action.color || '#FFF'} />
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* Bottom overlay with content */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
+        colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
         style={styles.overlay}
       >
         <View style={styles.headerContent}>
@@ -185,7 +226,7 @@ export function HeroHeader({
               {stats.map((stat, index) => (
                 <View key={index} style={styles.statItem}>
                   {stat.icon && (
-                    <Ionicons name={stat.icon} size={14} color="rgba(255,255,255,0.9)" />
+                    <Ionicons name={stat.icon} size={14} color="rgba(255,255,255,0.95)" />
                   )}
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
@@ -201,9 +242,9 @@ export function HeroHeader({
   if (imageError) {
     // Fallback to gradient
     return (
-      <LinearGradient colors={[...gradientColors]} style={styles.container}>
+      <LinearGradient colors={[...colors.gradientPrimary]} style={styles.container}>
         <View style={styles.iconContainer}>
-          <Ionicons name={icon} size={48} color="rgba(255,255,255,0.3)" />
+          <Ionicons name={icon} size={56} color="rgba(255,255,255,0.2)" />
         </View>
         {renderContent()}
       </LinearGradient>
@@ -224,55 +265,89 @@ export function HeroHeader({
 
 const styles = StyleSheet.create({
   container: {
-    height: 280,
+    height: 300,
     width: SCREEN_WIDTH,
     position: 'relative',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
   },
   iconContainer: {
     position: 'absolute',
-    top: '30%',
+    top: '35%',
     left: 0,
     right: 0,
     alignItems: 'center',
   },
-  backButton: {
-    position: 'absolute',
-    top: 52,
-    left: 16,
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     zIndex: 10,
-    borderRadius: 20,
+  },
+  backButton: {
+    borderRadius: 22,
     overflow: 'hidden',
   },
   backButtonBlur: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  backButtonAndroid: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  actionButtonBlur: {
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  actionButtonAndroid: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   overlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingTop: 80,
-    paddingBottom: 20,
+    paddingTop: 100,
+    paddingBottom: 24,
     paddingHorizontal: 20,
   },
   headerContent: {
-    gap: 8,
+    gap: 10,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    gap: 4,
-    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 5,
   },
   badgeText: {
     color: '#FFF',
@@ -280,9 +355,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
     color: '#FFF',
+    letterSpacing: -0.5,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -299,26 +375,27 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
     marginTop: 8,
+    flexWrap: 'wrap',
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   statValue: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   statLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
     fontWeight: '500',
   },
 });

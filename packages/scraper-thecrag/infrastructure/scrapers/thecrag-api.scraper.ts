@@ -20,6 +20,8 @@ interface RawChildData {
   name: string
   type: string
   geometry?: GeometryData
+  urlStub?: string
+  urlAncestorStub?: string
   [key: string]: unknown
 }
 
@@ -129,6 +131,8 @@ export class TheCragApiScraper {
     type: string,
     depth: number,
     geometryFromParent: GeometryData | null,
+    urlStubFromParent?: string,
+    urlAncestorStubFromParent?: string,
   ): Promise<ScrapedCragNode> {
     const node: ScrapedCragNode = {
       id: nodeId,
@@ -153,7 +157,8 @@ export class TheCragApiScraper {
 
       // Paralelizar las llamadas principales
       const needsRoutes = ['Sector', 'Cliff', 'Crag'].includes(type)
-      const needsTopos = this.options.includeTopos && ['Sector', 'Cliff'].includes(type)
+      const needsTopos =
+        this.options.includeTopos && ['Sector', 'Cliff'].includes(type)
 
       const [info, children, routes] = await Promise.all([
         this.getNodeInfo(nodeId),
@@ -161,10 +166,30 @@ export class TheCragApiScraper {
         needsRoutes ? this.getRoutes(nodeId) : Promise.resolve([]),
       ])
 
+      // Use urlStub from parent (children endpoint) if not in info
+      const urlStub = info?.urlStub || urlStubFromParent
+      const urlAncestorStub = info?.urlAncestorStub || urlAncestorStubFromParent
+
+      // Build URL path for fetching HTML pages
+      // Priority: urlStub from info/parent > fallback using urlAncestorStub + area/{nodeId}
+      let sectorPath: string
+      if (urlStub) {
+        sectorPath = `/en/climbing/${urlAncestorStub || ''}${urlStub}`
+      } else if (urlAncestorStub) {
+        // Use ancestor stub + area/{nodeId} format
+        sectorPath = `/en/climbing/${urlAncestorStub}/area/${nodeId}`
+      } else {
+        // Last resort fallback (likely won't work)
+        sectorPath = `/en/climbing/area/${nodeId}`
+      }
+
       // Fetch topos from sector page (not /topos endpoint)
       let topos: TopoImageData[] = []
-      if (needsTopos && info?.urlStub) {
-        const sectorPath = `/en/climbing/${info.urlAncestorStub || ''}${info.urlStub}`
+      if (needsTopos) {
+        logger.info(
+          'scraper:thecrag',
+          `Fetching topos for ${name} from: ${sectorPath}`,
+        )
         topos = await this.getToposFromSectorPage(sectorPath)
       }
 
@@ -172,10 +197,11 @@ export class TheCragApiScraper {
       const needsHeaderImage = ['Crag', 'Sector', 'Cliff'].includes(type)
       let headerImageUrl: string | null = null
       if (needsHeaderImage) {
-        const urlPath = info?.urlStub
-          ? `/en/climbing/${info.urlAncestorStub || ''}${info.urlStub}`
-          : undefined
-        headerImageUrl = await this.getHeaderImage(nodeId, urlPath)
+        logger.info(
+          'scraper:thecrag',
+          `Fetching header image for ${name} from: ${sectorPath}`,
+        )
+        headerImageUrl = await this.getHeaderImage(nodeId, sectorPath)
       }
 
       logger.debug('scraper:thecrag', `Info: ${JSON.stringify(info)}`)
@@ -190,6 +216,16 @@ export class TheCragApiScraper {
 
       if (info) {
         node.info = info
+      }
+
+      // Assign urlStub from parent if not in info
+      if (urlStub && !node.info?.urlStub) {
+        node.info = node.info || {}
+        node.info.urlStub = urlStub
+      }
+      if (urlAncestorStub && !node.info?.urlAncestorStub) {
+        node.info = node.info || {}
+        node.info.urlAncestorStub = urlAncestorStub
       }
 
       // Assign header image URL after info is set
@@ -244,6 +280,8 @@ export class TheCragApiScraper {
             child.type,
             depth + 1,
             child.geometry ?? null,
+            child.urlStub,
+            child.urlAncestorStub,
           ),
         ),
       )
@@ -264,12 +302,24 @@ export class TheCragApiScraper {
     const data = parsed[0] ?? []
 
     // Parse array format: [id, name, urlStub, urlAncestorStub, subAreaCount, subType, asciiName, approach, map, geo, location, geolocation, geometry, ...]
-    return data.map((item: unknown[]) => ({
+    const children = data.map((item: unknown[]) => ({
       id: item[0] as number,
       name: item[1] as string,
+      urlStub: (item[2] as string) || undefined,
+      urlAncestorStub: (item[3] as string) || undefined,
       type: (item[5] as string) || 'Area',
       geometry: item[12] as GeometryData | undefined,
     }))
+
+    // Debug: log first child to see URL structure
+    if (children.length > 0) {
+      logger.info(
+        'scraper:thecrag',
+        `First child URL info: urlStub=${children[0].urlStub}, urlAncestorStub=${children[0].urlAncestorStub}`,
+      )
+    }
+
+    return children
   }
 
   /**
@@ -309,13 +359,16 @@ export class TheCragApiScraper {
     try {
       const url = `${this.BASE_URL}${sectorPath}`
       logger.info('scraper:thecrag', `Fetching topos from sector page: ${url}`)
-      
+
       await this.delay()
       const html = await this.curlRequestHtml(url)
 
       const topos = this.parseToposFromSectorHtml(html)
       if (topos.length > 0) {
-        logger.info('scraper:thecrag', `Found ${topos.length} topos in sector page: ${sectorPath}`)
+        logger.info(
+          'scraper:thecrag',
+          `Found ${topos.length} topos in sector page: ${sectorPath}`,
+        )
       }
       return topos
     } catch (err) {
@@ -345,11 +398,14 @@ export class TheCragApiScraper {
       // Extract image URLs
       const imgEl = $el.find('img').first()
       const thumbnailUrl = this.normalizeImageUrl(imgEl.attr('src') || '')
-      const fullImageUrl = this.normalizeImageUrl(imgEl.attr('data-big') || '') || thumbnailUrl
+      const fullImageUrl =
+        this.normalizeImageUrl(imgEl.attr('data-big') || '') || thumbnailUrl
 
       // Calculate original dimensions
-      const originalWidth = viewScale > 0 ? Math.round(width / viewScale) : width
-      const originalHeight = viewScale > 0 ? Math.round(height / viewScale) : height
+      const originalWidth =
+        viewScale > 0 ? Math.round(width / viewScale) : width
+      const originalHeight =
+        viewScale > 0 ? Math.round(height / viewScale) : height
 
       // Parse route/area annotations (contains SVG points data)
       let routes: TopoRouteAnnotation[] = []
@@ -358,7 +414,8 @@ export class TheCragApiScraper {
         if (Array.isArray(rawRoutes)) {
           routes = rawRoutes.map((r: Record<string, unknown>) => ({
             id: r.id as number,
-            type: ((r.type as string) || 'route') as TopoRouteAnnotation['type'],
+            type: ((r.type as string) ||
+              'route') as TopoRouteAnnotation['type'],
             num: (r.num as string) || '',
             grade: (r.grade as string) || '',
             gradeClass: (r.class as string) || '',
@@ -372,7 +429,10 @@ export class TheCragApiScraper {
           }))
         }
       } catch {
-        logger.warn('scraper:thecrag', `Failed to parse topo annotations for ${topoId}`)
+        logger.warn(
+          'scraper:thecrag',
+          `Failed to parse topo annotations for ${topoId}`,
+        )
       }
 
       // Only add if we have an image
@@ -493,7 +553,8 @@ export class TheCragApiScraper {
    * Get detailed info for a node
    */
   async getNodeInfo(nodeId: number): Promise<ScrapedNodeInfo | null> {
-    const url = `${this.BASE_URL}/api/node/id/${nodeId}?show=info,description,approach,access,beta,history,ethics,tags,geometry`
+    // Include urlStub in the API request
+    const url = `${this.BASE_URL}/api/node/id/${nodeId}?show=info,description,approach,access,beta,history,ethics,tags,geometry,urlStub,urlAncestorStub`
 
     const output = await this.curlRequest(url)
     const parsed = JSON.parse(output)
@@ -513,7 +574,10 @@ export class TheCragApiScraper {
         long: coords.lng,
       }
       info.googleMapsUrl = `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
-      logger.info('scraper:thecrag', `Got coordinates from API for node ${nodeId}: ${coords.lat}, ${coords.lng}`)
+      logger.info(
+        'scraper:thecrag',
+        `Got coordinates from API for node ${nodeId}: ${coords.lat}, ${coords.lng}`,
+      )
     }
 
     // If no geometry from API, try to extract from beta text (approach, description)
@@ -525,7 +589,10 @@ export class TheCragApiScraper {
           long: betaCoords.lng,
         }
         info.googleMapsUrl = `https://www.google.com/maps?q=${betaCoords.lat},${betaCoords.lng}`
-        logger.info('scraper:thecrag', `Got coordinates from beta text for node ${nodeId}: ${betaCoords.lat}, ${betaCoords.lng}`)
+        logger.info(
+          'scraper:thecrag',
+          `Got coordinates from beta text for node ${nodeId}: ${betaCoords.lat}, ${betaCoords.lng}`,
+        )
       }
     }
 
@@ -542,7 +609,10 @@ export class TheCragApiScraper {
             long: webCoords.lng,
           }
           info.googleMapsUrl = `https://www.google.com/maps?q=${webCoords.lat},${webCoords.lng}`
-          logger.info('scraper:thecrag', `Got coordinates from web page for node ${nodeId}: ${webCoords.lat}, ${webCoords.lng}`)
+          logger.info(
+            'scraper:thecrag',
+            `Got coordinates from web page for node ${nodeId}: ${webCoords.lat}, ${webCoords.lng}`,
+          )
         }
       }
     }
@@ -627,7 +697,7 @@ export class TheCragApiScraper {
     try {
       await this.delay()
       const html = await this.curlRequestHtml(`${this.BASE_URL}${pagePath}`)
-      
+
       if (!html || html.length < 500) {
         return null
       }
@@ -666,7 +736,10 @@ export class TheCragApiScraper {
           geoEl.attr('data-lat') || geoEl.attr('data-latitude') || '',
         )
         const lng = parseFloat(
-          geoEl.attr('data-lng') || geoEl.attr('data-lon') || geoEl.attr('data-longitude') || '',
+          geoEl.attr('data-lng') ||
+            geoEl.attr('data-lon') ||
+            geoEl.attr('data-longitude') ||
+            '',
         )
         if (this.isValidCoordinate(lat, lng)) {
           return { lat, lng }
@@ -674,7 +747,9 @@ export class TheCragApiScraper {
       }
 
       // 3. Try Google Maps link (including .loc .mappin links)
-      const mapsLinks = $('a[href*="google.com/maps"], a[href*="maps.google"], .loc a[href*="maps"], .mappin').toArray()
+      const mapsLinks = $(
+        'a[href*="google.com/maps"], a[href*="maps.google"], .loc a[href*="maps"], .mappin',
+      ).toArray()
       for (const link of mapsLinks) {
         const href = $(link).attr('href') || ''
         // Pattern: maps?q=lat,lng or @lat,lng
@@ -683,7 +758,10 @@ export class TheCragApiScraper {
           const lat = parseFloat(match[1])
           const lng = parseFloat(match[2])
           if (this.isValidCoordinate(lat, lng)) {
-            logger.info('scraper:thecrag', `Found coordinates in maps link: ${lat}, ${lng}`)
+            logger.info(
+              'scraper:thecrag',
+              `Found coordinates in maps link: ${lat}, ${lng}`,
+            )
             return { lat, lng }
           }
         }
@@ -694,12 +772,21 @@ export class TheCragApiScraper {
       for (const link of allLinks) {
         const href = $(link).attr('href') || ''
         // Look for coordinates pattern in any href
-        const match = href.match(/[?&@=](-?\d{1,3}\.\d{4,8}),(-?\d{1,3}\.\d{4,8})/)
+        const match = href.match(
+          /[?&@=](-?\d{1,3}\.\d{4,8}),(-?\d{1,3}\.\d{4,8})/,
+        )
         if (match) {
           const lat = parseFloat(match[1])
           const lng = parseFloat(match[2])
-          if (this.isValidCoordinate(lat, lng) && Math.abs(lat) > 20 && Math.abs(lat) < 70) {
-            logger.info('scraper:thecrag', `Found coordinates in link: ${lat}, ${lng}`)
+          if (
+            this.isValidCoordinate(lat, lng) &&
+            Math.abs(lat) > 20 &&
+            Math.abs(lat) < 70
+          ) {
+            logger.info(
+              'scraper:thecrag',
+              `Found coordinates in link: ${lat}, ${lng}`,
+            )
             return { lat, lng }
           }
         }
@@ -707,12 +794,16 @@ export class TheCragApiScraper {
 
       // 5. Try to extract from approach/description text (parking coordinates)
       // TheCrag often has coordinates like ":parking:, 39.826554, -0.574161"
-      const approachText = $('.beta-approach, .approach, [data-beta="Approach"]').text()
+      const approachText = $(
+        '.beta-approach, .approach, [data-beta="Approach"]',
+      ).text()
       const descText = $('.beta-description, .description').text()
       const fullText = approachText + ' ' + descText
 
       // Pattern: coordinates like "39.826554, -0.574161" or "(39.826554, -0.574161)"
-      const coordMatch = fullText.match(/(\d{1,3}\.\d{3,8})\s*,\s*(-?\d{1,3}\.\d{3,8})/)
+      const coordMatch = fullText.match(
+        /(\d{1,3}\.\d{3,8})\s*,\s*(-?\d{1,3}\.\d{3,8})/,
+      )
       if (coordMatch) {
         const lat = parseFloat(coordMatch[1])
         const lng = parseFloat(coordMatch[2])
@@ -723,7 +814,10 @@ export class TheCragApiScraper {
 
       return null
     } catch (err) {
-      logger.warn('scraper:thecrag', `Failed to get coordinates from web page ${pagePath}: ${err}`)
+      logger.warn(
+        'scraper:thecrag',
+        `Failed to get coordinates from web page ${pagePath}: ${err}`,
+      )
       return null
     }
   }
@@ -757,7 +851,9 @@ export class TheCragApiScraper {
     if (data.map) {
       const map = data.map as Record<string, unknown>
       const lat = (map.lat || map.latitude) as number | undefined
-      const lng = (map.lng || map.lon || map.long || map.longitude) as number | undefined
+      const lng = (map.lng || map.lon || map.long || map.longitude) as
+        | number
+        | undefined
       if (lat && lng && this.isValidCoordinate(lat, lng)) {
         return { lat, lng }
       }
@@ -775,7 +871,9 @@ export class TheCragApiScraper {
     if (data.location) {
       const loc = data.location as Record<string, unknown>
       const lat = (loc.lat || loc.latitude) as number | undefined
-      const lng = (loc.lng || loc.lon || loc.long || loc.longitude) as number | undefined
+      const lng = (loc.lng || loc.lon || loc.long || loc.longitude) as
+        | number
+        | undefined
       if (lat && lng && this.isValidCoordinate(lat, lng)) {
         return { lat, lng }
       }
@@ -785,7 +883,9 @@ export class TheCragApiScraper {
     if (data.geo) {
       const geo = data.geo as Record<string, unknown>
       const lat = (geo.lat || geo.latitude) as number | undefined
-      const lng = (geo.lng || geo.lon || geo.long || geo.longitude) as number | undefined
+      const lng = (geo.lng || geo.lon || geo.long || geo.longitude) as
+        | number
+        | undefined
       if (lat && lng && this.isValidCoordinate(lat, lng)) {
         return { lat, lng }
       }
@@ -793,7 +893,9 @@ export class TheCragApiScraper {
 
     // 5. Try direct lat/lng fields
     const lat = (data.lat || data.latitude) as number | undefined
-    const lng = (data.lng || data.lon || data.long || data.longitude) as number | undefined
+    const lng = (data.lng || data.lon || data.long || data.longitude) as
+      | number
+      | undefined
     if (lat && lng && this.isValidCoordinate(lat, lng)) {
       return { lat, lng }
     }
@@ -802,7 +904,9 @@ export class TheCragApiScraper {
     if (data.geolocation) {
       const geoloc = data.geolocation as Record<string, unknown>
       const geoLat = (geoloc.lat || geoloc.latitude) as number | undefined
-      const geoLng = (geoloc.lng || geoloc.lon || geoloc.longitude) as number | undefined
+      const geoLng = (geoloc.lng || geoloc.lon || geoloc.longitude) as
+        | number
+        | undefined
       if (geoLat && geoLng && this.isValidCoordinate(geoLat, geoLng)) {
         return { lat: geoLat, lng: geoLng }
       }

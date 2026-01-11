@@ -6,10 +6,13 @@ import {
   Pressable,
   Text,
   ActivityIndicator,
+  Platform,
 } from 'react-native'
 import { useColorScheme } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ZoneSectorsMapView } from '@/components/ZoneSectorsMapView'
 import { LocationPicker } from '@/components/LocationPicker'
 import { useSectorSearch } from '@/hooks/useSectorSearch'
@@ -21,12 +24,12 @@ import type { SearchSectorsDto } from '@/lib/api'
 export default function ZonesScreen() {
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
+  const insets = useSafeAreaInsets()
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [sectorFilters, setSectorFilters] = useState<SearchSectorsDto | null>(
-    null,
-  )
+  const [sectorFilters, setSectorFilters] = useState<SearchSectorsDto | null>(null)
   const [locationPickerVisible, setLocationPickerVisible] = useState(false)
+  const [mapStyle, setMapStyle] = useState<'standard' | 'satellite'>('standard')
 
   // Get user location for sector search (supports custom locations)
   const { 
@@ -82,17 +85,6 @@ export default function ZonesScreen() {
     sectorFilters,
     !!sectorFilters,
   )
-  
-  // Debug logging
-  console.log('[Zones] State:', {
-    locationLoading,
-    latitude,
-    longitude,
-    hasSectorFilters: !!sectorFilters,
-    isLoadingSectors,
-    sectorsError: sectorsError?.message,
-    resultsCount: sectorsData?.pages?.length ?? 0,
-  })
 
   // Get crag results for the map
   const allCragResults = sectorsData?.pages?.flatMap((page) => page.results) || []
@@ -119,67 +111,96 @@ export default function ZonesScreen() {
     setSearchQuery('')
   }
 
+  const toggleMapStyle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setMapStyle(prev => prev === 'standard' ? 'satellite' : 'standard')
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Search bar */}
-      <View
-        style={[
-          styles.searchContainer,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
+      {/* Header */}
+      <LinearGradient
+        colors={colors.gradientAccent}
+        style={[styles.header, { paddingTop: insets.top + 12 }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View
-          style={[styles.searchInputContainer, { backgroundColor: colors.muted }]}
-        >
-          <Ionicons name="search" size={20} color={colors.textSecondary} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search zones..."
-            placeholderTextColor={colors.mutedForeground}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={clearSearch}>
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </Pressable>
-          )}
+        <View style={styles.headerTop}>
+          <View style={styles.headerTitleSection}>
+            <Text style={styles.headerTitle}>Map</Text>
+            <Text style={styles.headerSubtitle}>
+              {totalSectors} sectors • {cragResults.length} zones
+            </Text>
+          </View>
+          
+          {/* Map style toggle */}
+          <Pressable
+            style={styles.mapStyleButton}
+            onPress={toggleMapStyle}
+          >
+            <Ionicons 
+              name={mapStyle === 'standard' ? 'earth' : 'map'} 
+              size={20} 
+              color="#FFFFFF" 
+            />
+          </Pressable>
         </View>
 
-        {/* Location selector button */}
-        <Pressable
-          style={[styles.locationButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-            setLocationPickerVisible(true)
-          }}
-        >
-          <Ionicons 
-            name={isCustomLocation ? 'location' : 'locate'} 
-            size={20} 
-            color="#FFFFFF" 
-          />
-        </Pressable>
-      </View>
+        {/* Search bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="search" size={20} color="rgba(255,255,255,0.6)" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search zones..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={clearSearch}>
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color="rgba(255,255,255,0.6)"
+                />
+              </Pressable>
+            )}
+          </View>
 
-      {/* Current location indicator */}
+          {/* Location selector button */}
+          <Pressable
+            style={styles.locationButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              setLocationPickerVisible(true)
+            }}
+          >
+            <Ionicons 
+              name={isCustomLocation ? 'location' : 'locate'} 
+              size={20} 
+              color="#FFFFFF" 
+            />
+          </Pressable>
+        </View>
+      </LinearGradient>
+
+      {/* Location indicator */}
       <Pressable
-        style={[styles.locationIndicator, { backgroundColor: colors.muted }]}
+        style={[styles.locationIndicator, { backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           setLocationPickerVisible(true)
         }}
       >
-        <Ionicons 
-          name={isCustomLocation ? 'location' : 'locate'} 
-          size={16} 
-          color={colors.primary} 
-        />
+        <View style={[styles.locationIconContainer, { backgroundColor: colors.primary + '20' }]}>
+          <Ionicons 
+            name={isCustomLocation ? 'location' : 'locate'} 
+            size={16} 
+            color={colors.primary} 
+          />
+        </View>
         <Text 
           style={[styles.locationIndicatorText, { color: colors.text }]}
           numberOfLines={1}
@@ -188,39 +209,35 @@ export default function ZonesScreen() {
         </Text>
         {isCustomLocation && (
           <Pressable
-            style={styles.resetLocationBtn}
+            style={[styles.resetLocationBtn, { backgroundColor: colors.destructive + '15' }]}
             onPress={async (e) => {
               e.stopPropagation()
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
               await resetToGPS()
             }}
           >
-            <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+            <Ionicons name="close" size={14} color={colors.destructive} />
           </Pressable>
         )}
         <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
       </Pressable>
 
-      {/* Results count */}
-      <View style={styles.resultsHeader}>
-        <View style={styles.infoRow}>
-          <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>
-            {totalSectors} sectors • {cragResults.length} zones
-          </Text>
-          {sectorFilters?.gradeRange && (
-            <View
-              style={[
-                styles.gradeBadge,
-                { backgroundColor: colors.primary + '20' },
-              ]}
-            >
-              <Text style={[styles.gradeText, { color: colors.primary }]}>
-                {sectorFilters.gradeRange.min} - {sectorFilters.gradeRange.max}
-              </Text>
-            </View>
-          )}
+      {/* Grade badge */}
+      {sectorFilters?.gradeRange && (
+        <View style={styles.gradeBadgeContainer}>
+          <View
+            style={[
+              styles.gradeBadge,
+              { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40' },
+            ]}
+          >
+            <Ionicons name="trending-up" size={14} color={colors.primary} />
+            <Text style={[styles.gradeText, { color: colors.primary }]}>
+              {sectorFilters.gradeRange.min} - {sectorFilters.gradeRange.max}
+            </Text>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Map content */}
       <View style={styles.mapContainer}>
@@ -228,24 +245,42 @@ export default function ZonesScreen() {
           <View
             style={[styles.loadingContainer, { backgroundColor: colors.muted }]}
           >
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              {locationLoading ? 'Getting location...' : 'Searching sectors...'}
+            <View style={[styles.loadingIconContainer, { backgroundColor: colors.primary + '20' }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+            <Text style={[styles.loadingText, { color: colors.text }]}>
+              {locationLoading ? 'Getting your location...' : 'Loading climbing spots...'}
+            </Text>
+            <Text style={[styles.loadingSubtext, { color: colors.textSecondary }]}>
+              This may take a moment
             </Text>
           </View>
         ) : cragResults.length === 0 ? (
           <View
             style={[styles.emptyMapContainer, { backgroundColor: colors.muted }]}
           >
-            <Ionicons name="map-outline" size={48} color={colors.textSecondary} />
-            <Text style={[styles.emptyMapText, { color: colors.textSecondary }]}>
-              {searchQuery ? `No zones found for "${searchQuery}"` : 'No sectors found'}
+            <LinearGradient
+              colors={colors.gradientPrimary}
+              style={styles.emptyIconGradient}
+            >
+              <Ionicons name="map-outline" size={32} color="#FFFFFF" />
+            </LinearGradient>
+            <Text style={[styles.emptyMapText, { color: colors.text }]}>
+              {searchQuery ? `No zones found for "${searchQuery}"` : 'No sectors found nearby'}
             </Text>
             <Text
-              style={[styles.emptyMapSubtext, { color: colors.mutedForeground }]}
+              style={[styles.emptyMapSubtext, { color: colors.textSecondary }]}
             >
-              {searchQuery ? 'Try a different search' : 'Adjust filters in the search screen'}
+              {searchQuery ? 'Try a different search term' : 'Adjust filters in the Explore tab'}
             </Text>
+            {searchQuery && (
+              <Pressable
+                style={[styles.clearSearchButton, { backgroundColor: colors.primary }]}
+                onPress={clearSearch}
+              >
+                <Text style={styles.clearSearchButtonText}>Clear search</Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <ZoneSectorsMapView
@@ -258,6 +293,24 @@ export default function ZonesScreen() {
           />
         )}
       </View>
+
+      {/* Map Legend */}
+      {cragResults.length > 0 && (
+        <View style={[styles.legend, { backgroundColor: colors.cardGlass, borderColor: colors.border }]}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Best match</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Good match</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#6366F1' }]} />
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>You</Text>
+          </View>
+        </View>
+      )}
 
       {/* Location Picker Modal */}
       <LocationPicker
@@ -279,16 +332,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  headerTitleSection: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  mapStyleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    gap: 10,
   },
   searchInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
@@ -297,35 +383,71 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
-  resultsHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  resultsCount: {
-    fontSize: 13,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  locationButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 0,
+    marginTop: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    gap: 10,
+  },
+  locationIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationIndicatorText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  resetLocationBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gradeBadgeContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   gradeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
   },
   gradeText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   mapContainer: {
     flex: 1,
-    margin: 16,
-    marginTop: 0,
-    borderRadius: 16,
+    margin: 0,
+    marginTop: 8,
+    borderRadius: 0,
     overflow: 'hidden',
   },
   map: {
@@ -336,52 +458,92 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
-    borderRadius: 16,
+    borderRadius: 20,
+  },
+  loadingIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  loadingSubtext: {
     fontSize: 14,
   },
   emptyMapContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    padding: 24,
+    gap: 16,
+    borderRadius: 20,
+    padding: 32,
+  },
+  emptyIconGradient: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyMapText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     textAlign: 'center',
   },
   emptyMapSubtext: {
     fontSize: 14,
     textAlign: 'center',
+    maxWidth: 260,
   },
-  locationButton: {
-    width: 44,
-    height: 44,
+  clearSearchButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
+    marginTop: 8,
   },
-  locationIndicator: {
+  clearSearchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  legend: {
+    position: 'absolute',
+    bottom: 100,
+    left: 24,
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 8,
+    gap: 6,
   },
-  locationIndicatorText: {
-    flex: 1,
-    fontSize: 14,
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 12,
     fontWeight: '500',
-  },
-  resetLocationBtn: {
-    padding: 2,
   },
 })
