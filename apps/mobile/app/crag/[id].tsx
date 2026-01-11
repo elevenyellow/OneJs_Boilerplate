@@ -57,6 +57,24 @@ function getScoreColor(score: number): string {
   return '#64748B'
 }
 
+/**
+ * Get color for routes in range based on percentage of total routes
+ * @param routesInRange - Number of routes in user's grade range
+ * @param totalRoutes - Total routes in the sector
+ * @returns Color string
+ */
+function getRoutesInRangeColor(routesInRange: number, totalRoutes: number): string {
+  if (routesInRange === 0) return '#EF4444' // Red - no routes in range
+  if (totalRoutes === 0) return '#64748B' // Gray - no data
+  
+  const percentage = (routesInRange / totalRoutes) * 100
+  
+  if (percentage >= 50) return '#10B981' // Green - 50%+ routes in range
+  if (percentage >= 25) return '#F59E0B' // Amber - 25-49% routes in range
+  if (percentage >= 10) return '#F97316' // Orange - 10-24% routes in range
+  return '#EF4444' // Red - less than 10%
+}
+
 // Sun preference type
 type SunPreference = 'any' | 'sun' | 'shade'
 
@@ -885,24 +903,29 @@ export default function CragDetailScreen() {
                       </View>
 
                       {/* Routes in grade range */}
-                      <View style={styles.statItem}>
-                        <Ionicons
-                          name="checkmark-circle-outline"
-                          size={14}
-                          color="#10B981"
-                        />
-                        <Text style={[styles.statText, { color: '#10B981' }]}>
-                          {routesInRange}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.statLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          in range
-                        </Text>
-                      </View>
+                      {(() => {
+                        const inRangeColor = getRoutesInRangeColor(routesInRange, totalRoutes)
+                        return (
+                          <View style={styles.statItem}>
+                            <Ionicons
+                              name={routesInRange > 0 ? 'checkmark-circle-outline' : 'close-circle-outline'}
+                              size={14}
+                              color={inRangeColor}
+                            />
+                            <Text style={[styles.statText, { color: inRangeColor }]}>
+                              {routesInRange}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.statLabel,
+                                { color: colors.textSecondary },
+                              ]}
+                            >
+                              in range
+                            </Text>
+                          </View>
+                        )
+                      })()}
 
                       {/* Average grade */}
                       {avgGrade && (
