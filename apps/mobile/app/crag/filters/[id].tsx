@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/Colors'
 import { GradeRangeSlider } from '@/components/GradeRangeSlider'
+import { useGradeRange } from '@/contexts/FiltersContext'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useState } from 'react'
@@ -19,14 +20,10 @@ type SunPreference = 'any' | 'sun' | 'shade'
 
 export default function FiltersScreen() {
   const {
-    gradeMin: gradeMinParam,
-    gradeMax: gradeMaxParam,
     sunPreference: sunPreferenceParam,
     minRoutes: minRoutesParam,
     withTopo: withTopoParam,
   } = useLocalSearchParams<{
-    gradeMin?: string
-    gradeMax?: string
     sunPreference?: string
     minRoutes?: string
     withTopo?: string
@@ -36,9 +33,12 @@ export default function FiltersScreen() {
   const colors = Colors[colorScheme]
   const insets = useSafeAreaInsets()
 
-  // Parse initial values from params
-  const [gradeMin, setGradeMin] = useState(gradeMinParam || '5a')
-  const [gradeMax, setGradeMax] = useState(gradeMaxParam || '7a')
+  // Use global grade range from context (shared with Explorer)
+  const { gradeRange, setGradeRange } = useGradeRange()
+
+  // Local state for grade range (synced with global on apply)
+  const [localGradeMin, setLocalGradeMin] = useState(gradeRange.min)
+  const [localGradeMax, setLocalGradeMax] = useState(gradeRange.max)
   const [sunPreference, setSunPreference] = useState<SunPreference>(
     (sunPreferenceParam as SunPreference) || 'any'
   )
@@ -49,13 +49,10 @@ export default function FiltersScreen() {
     return withTopoParam === 'true'
   })
 
-  // Check if grade range is modified from default
-  const isGradeRangeModified = gradeMin !== '5a' || gradeMax !== '7a'
-
-  // Clear all filters
+  // Clear all filters (reset to defaults but keep global grade range)
   const clearFilters = () => {
-    setGradeMin('5a')
-    setGradeMax('7a')
+    setLocalGradeMin(gradeRange.min)
+    setLocalGradeMax(gradeRange.max)
     setSunPreference('any')
     setMinRoutes(0)
     setWithTopo(false)
@@ -63,19 +60,22 @@ export default function FiltersScreen() {
 
   // Apply filters and go back
   const applyFilters = () => {
+    // Update global grade range (syncs with Explorer)
+    setGradeRange({ min: localGradeMin, max: localGradeMax })
+    
     router.back()
     router.setParams({
-      appliedGradeMin: gradeMin,
-      appliedGradeMax: gradeMax,
+      appliedGradeMin: localGradeMin,
+      appliedGradeMax: localGradeMax,
       appliedSunPreference: sunPreference,
       appliedMinRoutes: minRoutes.toString(),
       appliedWithTopo: withTopo.toString(),
     })
   }
 
-  // Count active filters
+  // Count active filters (grade range always counts since it affects scoring)
   const activeFiltersCount =
-    (isGradeRangeModified ? 1 : 0) +
+    1 + // grade range always active
     (sunPreference !== 'any' ? 1 : 0) +
     (minRoutes > 0 ? 1 : 0) +
     (withTopo ? 1 : 0)
@@ -105,15 +105,20 @@ export default function FiltersScreen() {
       >
         {/* Grade Range Filter */}
         <View style={styles.filterSection}>
-          <GradeRangeSlider
-            label="Grade Range"
-            minValue={gradeMin}
-            maxValue={gradeMax}
-            onChange={(min, max) => {
-              setGradeMin(min)
-              setGradeMax(max)
-            }}
-          />
+          <View style={styles.gradeRangeHeader}>
+            <GradeRangeSlider
+              label="Grade Range"
+              minValue={localGradeMin}
+              maxValue={localGradeMax}
+              onChange={(min, max) => {
+                setLocalGradeMin(min)
+                setLocalGradeMax(max)
+              }}
+            />
+            <Text style={[styles.gradeRangeNote, { color: colors.textSecondary }]}>
+              Shared with Explorer - sectors are sorted by routes in this range
+            </Text>
+          </View>
         </View>
 
         {/* Sun Preference Filter */}
@@ -296,6 +301,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 16,
     marginLeft: 30,
+  },
+  gradeRangeHeader: {
+    gap: 8,
+  },
+  gradeRangeNote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
   },
   sunPreferenceRow: {
     flexDirection: 'row',
