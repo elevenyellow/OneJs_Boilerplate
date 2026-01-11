@@ -2,10 +2,11 @@ import { Colors } from '@/constants/Colors'
 import { useCragDetail } from '@/hooks/useCragDetail'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +31,92 @@ function formatInfoText(text: string): string {
     .trim()
 }
 
+interface ParkingLocation {
+  name: string
+  lat: number
+  lon: number
+}
+
+/**
+ * Extract all parking coordinates from text (approach + description)
+ * Strategy:
+ * 1. Find all coordinate pairs in the text
+ * 2. For each coordinate, check if "parking" is mentioned within ~150 chars
+ * 3. Try to extract a name from context near the parking keyword
+ */
+function extractParkingLocations(text: string): ParkingLocation[] {
+  if (!text) return []
+  
+  const parkings: ParkingLocation[] = []
+  
+  // Normalize text
+  const normalizedText = text.replace(/:parking:/g, '🅿️')
+  
+  // Find all coordinate pairs in text
+  // Matches: "39.123456, -0.123456" or "39,123456 -0,123456" etc.
+  const coordPattern = /([-]?\d{1,3}[.,]\d{3,8})\s*[,\s]\s*([-]?\d{1,3}[.,]\d{3,8})/g
+  
+  let coordMatch = coordPattern.exec(normalizedText)
+  while (coordMatch !== null) {
+    const lat = parseFloat(coordMatch[1].replace(',', '.'))
+    const lon = parseFloat(coordMatch[2].replace(',', '.'))
+    const matchIndex = coordMatch.index
+    const matchEnd = matchIndex + coordMatch[0].length
+    
+    // Validate coordinates are reasonable for lat/lon
+    if (isValidCoordinate(lat, lon)) {
+      // Check context around coordinates (150 chars before and after)
+      const contextStart = Math.max(0, matchIndex - 150)
+      const contextEnd = Math.min(normalizedText.length, matchEnd + 150)
+      const context = normalizedText.substring(contextStart, contextEnd)
+      
+      // Check if parking is mentioned in context
+      const parkingKeywords = /parking|aparcar|aparcamiento|🅿️/gi
+      if (parkingKeywords.test(context)) {
+        addParking(parkings, lat, lon)
+      }
+    }
+    
+    coordMatch = coordPattern.exec(normalizedText)
+  }
+  
+  return parkings
+}
+
+function isValidCoordinate(lat: number, lon: number): boolean {
+  return !isNaN(lat) && !isNaN(lon) && 
+         lat >= -90 && lat <= 90 && 
+         lon >= -180 && lon <= 180
+}
+
+function addParking(parkings: ParkingLocation[], lat: number, lon: number) {
+  // Check for duplicate coordinates
+  const isDuplicate = parkings.some(
+    p => Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lon - lon) < 0.0001
+  )
+  
+  if (isDuplicate) return
+  
+  // Name based on order: "Parking 1", "Parking 2", etc.
+  const parkingNumber = parkings.length + 1
+  const name = `Parking ${parkingNumber}`
+  
+  parkings.push({ name, lat, lon })
+}
+
+/**
+ * Open navigation app with coordinates
+ */
+function openNavigationToCoordinates(lat: number, lon: number) {
+  const url = Platform.select({
+    ios: `maps:?daddr=${lat},${lon}`,
+    android: `google.navigation:q=${lat},${lon}`,
+    default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`,
+  })
+  
+  Linking.openURL(url)
+}
+
 export default function InfoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
@@ -39,10 +126,15 @@ export default function InfoScreen() {
 
   const { data: crag, isLoading } = useCragDetail(id)
 
-  const handleOpenTheCrag = () => {
-    if (crag?.theCragUrl) {
-      Linking.openURL(crag.theCragUrl)
-    }
+  // Extract all parking locations from approach + description text
+  const parkingLocations = useMemo(() => {
+    const combinedText = [crag?.approach, crag?.description].filter(Boolean).join('\n\n')
+    if (!combinedText) return []
+    return extractParkingLocations(combinedText)
+  }, [crag?.approach, crag?.description])
+
+  const handleNavigateToParking = (parking: ParkingLocation) => {
+    openNavigationToCoordinates(parking.lat, parking.lon)
   }
 
   if (isLoading) {
@@ -109,6 +201,25 @@ export default function InfoScreen() {
                 {formatInfoText(crag.approach)}
               </Text>
             </View>
+            
+            {/* Parking buttons - shown for each parking detected in approach text */}
+            {parkingLocations.length > 0 && (
+              <View style={styles.parkingContainer}>
+                {parkingLocations.map((parking, index) => (
+                  <Pressable
+                    key={`parking-${index}-${parking.lat}`}
+                    onPress={() => handleNavigateToParking(parking)}
+                    style={[styles.parkingButton, { backgroundColor: '#3B82F6' }]}
+                  >
+                    <Ionicons name="car" size={20} color="#FFF" />
+                    <Text style={styles.parkingButtonText}>
+                      {parkingLocations.length > 1 ? parking.name : 'Navigate to Parking'}
+                    </Text>
+                    <Ionicons name="navigate" size={16} color="#FFF" />
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -167,18 +278,6 @@ export default function InfoScreen() {
           </View>
         )}
 
-        {/* TheCrag Link */}
-        {crag.theCragUrl && (
-          <Pressable
-            onPress={handleOpenTheCrag}
-            style={[styles.linkButton, { backgroundColor: colors.primary }]}
-          >
-            <Ionicons name="open-outline" size={20} color="#FFF" />
-            <Text style={styles.linkButtonText}>
-              View on TheCrag
-            </Text>
-          </Pressable>
-        )}
       </ScrollView>
     </View>
   )
@@ -261,19 +360,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4,
   },
-  linkButton: {
+  parkingContainer: {
+    marginTop: 12,
+    gap: 8,
+  },
+  parkingButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 10,
     gap: 8,
-    marginTop: 32,
-    marginBottom: 32,
   },
-  linkButtonText: {
+  parkingButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    flex: 1,
   },
 })
