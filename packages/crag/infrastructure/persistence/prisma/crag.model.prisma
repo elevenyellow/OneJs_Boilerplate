@@ -44,6 +44,13 @@ model Crag {
   headerImageWidth  Int?
   headerImageHeight Int?
 
+  // Imagen de overview (topo general mostrando sectores)
+  overviewTopoImageUrl    String? // URL de la imagen del topo general
+  overviewTopoThumbnailUrl String? // URL del thumbnail
+  overviewTopoWidth       Int?
+  overviewTopoHeight      Int?
+  overviewTopoExternalId  String? // ID externo del topo (para referencia a CragTopoImage)
+
   // PDF Info (MEDIA PRIORIDAD)
   lastPDFSize       String?
   lastPDFStaticDate String?

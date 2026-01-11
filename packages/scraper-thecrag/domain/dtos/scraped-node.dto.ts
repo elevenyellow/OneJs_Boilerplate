@@ -68,6 +68,12 @@ export interface ScrapedNodeInfo {
   unique?: boolean
   // Imagen de cabecera (solo URL)
   headerImageUrl?: string
+  // Overview topo (imagen general del crag mostrando sectores)
+  overviewTopoImageUrl?: string
+  overviewTopoThumbnailUrl?: string
+  overviewTopoWidth?: number
+  overviewTopoHeight?: number
+  overviewTopoExternalId?: string
 }
 
 /**

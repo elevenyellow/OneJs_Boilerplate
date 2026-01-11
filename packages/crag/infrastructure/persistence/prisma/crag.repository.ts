@@ -61,6 +61,12 @@ interface CragPrismaData {
   headerImageUrl: string | null
   headerImageWidth: number | null
   headerImageHeight: number | null
+  // Overview topo image
+  overviewTopoImageUrl: string | null
+  overviewTopoThumbnailUrl: string | null
+  overviewTopoWidth: number | null
+  overviewTopoHeight: number | null
+  overviewTopoExternalId: string | null
 }
 
 @Injectable()
@@ -323,6 +329,11 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       data.headerImageUrl,
       data.headerImageWidth,
       data.headerImageHeight,
+      data.overviewTopoImageUrl,
+      data.overviewTopoThumbnailUrl,
+      data.overviewTopoWidth,
+      data.overviewTopoHeight,
+      data.overviewTopoExternalId,
     )
   }
 
@@ -363,6 +374,11 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       headerImageUrl: entity.headerImageUrl,
       headerImageWidth: entity.headerImageWidth,
       headerImageHeight: entity.headerImageHeight,
+      overviewTopoImageUrl: entity.overviewTopoImageUrl,
+      overviewTopoThumbnailUrl: entity.overviewTopoThumbnailUrl,
+      overviewTopoWidth: entity.overviewTopoWidth,
+      overviewTopoHeight: entity.overviewTopoHeight,
+      overviewTopoExternalId: entity.overviewTopoExternalId,
     }
   }
 
@@ -381,6 +397,30 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
         headerImageUrl,
         headerImageWidth: headerImageWidth ?? null,
         headerImageHeight: headerImageHeight ?? null,
+        updatedAt: new Date(),
+      },
+    })
+  }
+
+  /**
+   * Update overview topo image for a crag
+   */
+  async updateOverviewTopo(
+    cragId: CragId,
+    overviewTopoImageUrl: string,
+    overviewTopoThumbnailUrl?: string,
+    overviewTopoWidth?: number,
+    overviewTopoHeight?: number,
+    overviewTopoExternalId?: string,
+  ): Promise<void> {
+    await this.prisma.crag.update({
+      where: { id: cragId.toString() },
+      data: {
+        overviewTopoImageUrl,
+        overviewTopoThumbnailUrl: overviewTopoThumbnailUrl ?? null,
+        overviewTopoWidth: overviewTopoWidth ?? null,
+        overviewTopoHeight: overviewTopoHeight ?? null,
+        overviewTopoExternalId: overviewTopoExternalId ?? null,
         updatedAt: new Date(),
       },
     })

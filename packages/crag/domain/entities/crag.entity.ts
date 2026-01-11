@@ -56,6 +56,12 @@ export class CragEntity {
     public readonly headerImageUrl: string | null = null,
     public readonly headerImageWidth: number | null = null,
     public readonly headerImageHeight: number | null = null,
+    // Overview topo image (general view showing sectors)
+    public readonly overviewTopoImageUrl: string | null = null,
+    public readonly overviewTopoThumbnailUrl: string | null = null,
+    public readonly overviewTopoWidth: number | null = null,
+    public readonly overviewTopoHeight: number | null = null,
+    public readonly overviewTopoExternalId: string | null = null,
   ) {}
 
   get latitude(): number | null {
@@ -148,10 +154,19 @@ export class CragEntity {
       headerImageUrl: this.headerImageUrl,
       headerImageWidth: this.headerImageWidth,
       headerImageHeight: this.headerImageHeight,
+      overviewTopoImageUrl: this.overviewTopoImageUrl,
+      overviewTopoThumbnailUrl: this.overviewTopoThumbnailUrl,
+      overviewTopoWidth: this.overviewTopoWidth,
+      overviewTopoHeight: this.overviewTopoHeight,
+      overviewTopoExternalId: this.overviewTopoExternalId,
     }
   }
 
   hasHeaderImage(): boolean {
     return this.headerImageUrl !== null
+  }
+
+  hasOverviewTopo(): boolean {
+    return this.overviewTopoImageUrl !== null
   }
 }

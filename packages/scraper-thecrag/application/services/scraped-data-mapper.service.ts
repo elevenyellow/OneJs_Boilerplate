@@ -87,6 +87,12 @@ export interface ValidatedCragData {
   apiResponseRaw: Record<string, unknown> | null
   // Header image (solo URL)
   headerImageUrl: string | null
+  // Overview topo image (general view showing sectors)
+  overviewTopoImageUrl: string | null
+  overviewTopoThumbnailUrl: string | null
+  overviewTopoWidth: number | null
+  overviewTopoHeight: number | null
+  overviewTopoExternalId: string | null
 }
 
 /**
@@ -243,6 +249,13 @@ export class ScrapedDataMapperService {
     // Header image (solo URL)
     const headerImageUrl = info?.headerImageUrl ?? null
 
+    // Overview topo (imagen general del crag mostrando sectores)
+    const overviewTopoImageUrl = info?.overviewTopoImageUrl ?? null
+    const overviewTopoThumbnailUrl = info?.overviewTopoThumbnailUrl ?? null
+    const overviewTopoWidth = info?.overviewTopoWidth ?? null
+    const overviewTopoHeight = info?.overviewTopoHeight ?? null
+    const overviewTopoExternalId = info?.overviewTopoExternalId ?? null
+
     return {
       id: CragId.generate(),
       externalId,
@@ -277,6 +290,11 @@ export class ScrapedDataMapperService {
       lastPDFStaticSize,
       apiResponseRaw: info?.apiResponseRaw ?? null,
       headerImageUrl,
+      overviewTopoImageUrl,
+      overviewTopoThumbnailUrl,
+      overviewTopoWidth,
+      overviewTopoHeight,
+      overviewTopoExternalId,
     }
   }
 
@@ -509,6 +527,11 @@ export class ScrapedDataMapperService {
       data.headerImageUrl,
       null, // headerImageWidth - no guardamos dimensiones
       null, // headerImageHeight - no guardamos dimensiones
+      data.overviewTopoImageUrl,
+      data.overviewTopoThumbnailUrl,
+      data.overviewTopoWidth,
+      data.overviewTopoHeight,
+      data.overviewTopoExternalId,
     )
   }
 

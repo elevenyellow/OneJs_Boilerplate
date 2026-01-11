@@ -31,6 +31,8 @@ import {
   TopoImageEntity,
   TopoImageId,
   TopoPrismaRepository,
+  CragTopoImageEntity,
+  type CragTopoSectorPositionData,
 } from '@climb-zone/topo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
 import type { ScrapedCragNode, ScrapedRouteData } from '@scraper-thecrag'
@@ -48,8 +50,11 @@ interface Stats {
   routes: number
   topos: number
   topoPositions: number
+  cragTopos: number
+  cragTopoPositions: number
   headerImages: number
   cragHeaderImageUrl: string | null
+  cragOverviewTopoUrl: string | null
   sectorImages: {
     name: string
     headerImageUrl: string | null
@@ -87,8 +92,11 @@ export async function testAltura(container: unknown, cookie: string) {
     routes: 0,
     topos: 0,
     topoPositions: 0,
+    cragTopos: 0,
+    cragTopoPositions: 0,
     headerImages: 0,
     cragHeaderImageUrl: null,
+    cragOverviewTopoUrl: null,
     sectorImages: [],
     errors: [],
   }
@@ -142,6 +150,9 @@ export async function testAltura(container: unknown, cookie: string) {
     console.log(`      - Hijos directos: ${scrapedData.children.length}`)
     console.log(
       `      - Header Image: ${scrapedData.info?.headerImageUrl ? '✅' : '❌'}`,
+    )
+    console.log(
+      `      - Overview Topo: ${scrapedData.cragTopos?.length ?? 0} (panorámica de sectores)`,
     )
     console.log(`      - Rutas directas: ${scrapedData.routes?.length ?? 0}`)
     console.log(`      - Topos directos: ${scrapedData.topos?.length ?? 0}`)
@@ -279,7 +290,65 @@ async function saveScrapedCrag(
   console.log(
     `      - Header Image: ${scrapedData.info?.headerImageUrl ? '✅' : '❌'}`,
   )
+  console.log(
+    `      - Overview Topo: ${scrapedData.cragTopos?.length ?? 0} (panorámica de sectores)`,
+  )
   console.log('')
+
+  // Save crag overview topos (panoramic view with sector positions)
+  if (scrapedData.cragTopos && scrapedData.cragTopos.length > 0) {
+    console.log(`   🗺️  Guardando topos panorámicos del crag...`)
+    for (const topoData of scrapedData.cragTopos) {
+      try {
+        const topoEntity = new CragTopoImageEntity(
+          TopoImageId.generate(),
+          topoData.topoId,
+          crag.id,
+          topoData.thumbnailUrl,
+          topoData.fullImageUrl,
+          topoData.width,
+          topoData.height,
+          topoData.originalWidth,
+          topoData.originalHeight,
+          topoData.viewScale,
+          null, // sourceUrl
+        )
+
+        // Build position data for each sector annotation
+        const positions: CragTopoSectorPositionData[] = []
+        for (const annotation of topoData.routes) {
+          if (annotation.type === 'area') {
+            positions.push({
+              sectorId: null, // Will be linked later
+              areaNumber: annotation.num,
+              areaName: annotation.name,
+              points: annotation.points,
+              zindex: parseInt(annotation.zindex) || 0,
+              order: annotation.order,
+              externalAreaId: annotation.id ? BigInt(annotation.id) : null,
+              areaUrl: annotation.url || null,
+            })
+          }
+        }
+
+        const { positionsCreated } =
+          await topoRepo.saveCragTopoImageWithPositions(topoEntity, positions)
+        stats.cragTopos++
+        stats.cragTopoPositions += positionsCreated
+        stats.cragOverviewTopoUrl = topoData.fullImageUrl
+
+        console.log(
+          `      ✅ Crag Topo ${topoData.topoId}: ${positionsCreated} sectores con SVG`,
+        )
+      } catch (error: unknown) {
+        const err = error as Error
+        console.warn(
+          `      ⚠️  Error guardando crag topo ${topoData.topoId}: ${err.message}`,
+        )
+      }
+    }
+    console.log('')
+  }
 
   // Process children (sectors/areas)
   for (const child of scrapedData.children) {
@@ -522,17 +591,24 @@ function printFinalReport(stats: Stats, duration: string) {
   console.log(`   Areas: ${stats.areas}`)
   console.log(`   Sectors: ${stats.sectors}`)
   console.log(`   Routes: ${stats.routes}`)
-  console.log(`   Topos: ${stats.topos}`)
+  console.log(`   Topos de sectores: ${stats.topos}`)
   console.log(`   Topo Positions (SVG data): ${stats.topoPositions}`)
+  console.log(`   Crag Topos (panorámicas): ${stats.cragTopos}`)
+  console.log(`   Crag Topo Positions (sectores SVG): ${stats.cragTopoPositions}`)
   console.log(`   Header Images: ${stats.headerImages}`)
   console.log(`   Tiempo: ${duration}s`)
   console.log('')
 
   console.log('🖼️  IMAGEN DEL CRAG:')
   if (stats.cragHeaderImageUrl) {
-    console.log(`   ✅ ${stats.cragHeaderImageUrl.substring(0, 70)}...`)
+    console.log(`   ✅ Header: ${stats.cragHeaderImageUrl.substring(0, 70)}...`)
   } else {
     console.log(`   ❌ No se encontró imagen de cabecera para el crag`)
+  }
+  if (stats.cragOverviewTopoUrl) {
+    console.log(`   ✅ Overview Topo (panorámica): ${stats.cragOverviewTopoUrl.substring(0, 70)}...`)
+  } else {
+    console.log(`   ❌ No se encontró topo panorámico para el crag`)
   }
   console.log('')
 

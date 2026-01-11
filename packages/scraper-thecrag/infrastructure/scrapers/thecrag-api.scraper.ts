@@ -175,7 +175,10 @@ export class TheCragApiScraper {
       // Priority: urlStub from info/parent > fallback using urlAncestorStub + area/{nodeId}
       let sectorPath: string
       if (urlStub) {
-        sectorPath = `/en/climbing/${urlAncestorStub || ''}${urlStub}`
+        // Ensure there's a / between ancestor and stub if both exist
+        const ancestorPart = urlAncestorStub ? `${urlAncestorStub}/` : ''
+        const stubPart = urlStub.startsWith('/') ? urlStub.slice(1) : urlStub
+        sectorPath = `/en/climbing/${ancestorPart}${stubPart}`
       } else if (urlAncestorStub) {
         // Use ancestor stub + area/{nodeId} format
         sectorPath = `/en/climbing/${urlAncestorStub}/area/${nodeId}`
@@ -270,6 +273,18 @@ export class TheCragApiScraper {
       // Asignar crag topos si los hay
       if (cragTopos.length > 0) {
         node.cragTopos = cragTopos
+        // Also store the first/main overview topo info in node.info for easy access
+        const mainTopo = cragTopos[0]
+        node.info = node.info || {}
+        node.info.overviewTopoImageUrl = mainTopo.fullImageUrl
+        node.info.overviewTopoThumbnailUrl = mainTopo.thumbnailUrl
+        node.info.overviewTopoWidth = mainTopo.originalWidth
+        node.info.overviewTopoHeight = mainTopo.originalHeight
+        node.info.overviewTopoExternalId = mainTopo.topoId
+        logger.info(
+          'scraper:thecrag',
+          `Set overview topo for ${name}: ${mainTopo.topoId}`,
+        )
       }
     }
 
@@ -505,13 +520,21 @@ export class TheCragApiScraper {
   /**
    * Parse crag overview topo images from HTML page
    * These topos have annotations of type 'area' instead of 'route'
+   * Specifically looks for topos inside .phototopo-fsc container (full-size crag overview)
    */
   private parseCragToposFromHtml(html: string): TopoImageData[] {
     const $ = cheerio.load(html)
     const topos: TopoImageData[] = []
 
-    // Find all phototopo elements with data-tid
-    $('div.phototopo[data-tid]').each((_, el) => {
+    // First, try to find topos specifically inside .phototopo-fsc container
+    // This is the main crag overview topo showing all sectors
+    const fscContainer = $('div.phototopo-fsc')
+
+    // If we have a .phototopo-fsc container, only look for topos there
+    // Otherwise, fall back to searching all phototopo elements with area annotations
+    const searchContext = fscContainer.length > 0 ? fscContainer : $('body')
+
+    searchContext.find('div.phototopo[data-tid]').each((_, el) => {
       const $el = $(el)
 
       const topoId = $el.attr('data-tid') || ''
@@ -539,7 +562,8 @@ export class TheCragApiScraper {
         const rawData = JSON.parse(topoDataStr)
         if (Array.isArray(rawData)) {
           routes = rawData.map((r: Record<string, unknown>) => {
-            const annotationType = ((r.type as string) || 'route') as TopoRouteAnnotation['type']
+            const annotationType = ((r.type as string) ||
+              'route') as TopoRouteAnnotation['type']
             if (annotationType === 'area') {
               hasAreaAnnotations = true
             }
@@ -566,8 +590,12 @@ export class TheCragApiScraper {
         )
       }
 
-      // Only include topos that have area annotations (crag overview topos)
-      if (topoId && (thumbnailUrl || fullImageUrl) && hasAreaAnnotations) {
+      // If inside .phototopo-fsc, include regardless of annotation type
+      // Otherwise, only include if it has area annotations
+      const isInsideFsc = fscContainer.length > 0
+      const shouldInclude = isInsideFsc || hasAreaAnnotations
+
+      if (topoId && (thumbnailUrl || fullImageUrl) && shouldInclude) {
         topos.push({
           topoId,
           width,
