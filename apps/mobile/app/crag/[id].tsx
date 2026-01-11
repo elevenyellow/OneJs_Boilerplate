@@ -876,7 +876,7 @@ export default function CragDetailScreen() {
                     ]}
                     onPress={() => handleSectorPress(sectorResult)}
                   >
-                    {/* Header row with name and score */}
+                    {/* Header row with name and badges */}
                     <View style={styles.sectorHeader}>
                       <View style={styles.sectorTitleArea}>
                         <Text
@@ -885,6 +885,8 @@ export default function CragDetailScreen() {
                         >
                           {sector.name}
                         </Text>
+                      </View>
+                      <View style={styles.sectorHeaderRight}>
                         {isGoodDay && (
                           <View style={styles.idealBadge}>
                             <Ionicons
@@ -895,8 +897,6 @@ export default function CragDetailScreen() {
                             <Text style={styles.idealBadgeText}>Ideal</Text>
                           </View>
                         )}
-                      </View>
-                      <View style={styles.sectorHeaderRight}>
                         {/* Show combined score badge */}
                         {sectorResult.calculatedScore > 0 && (
                           <View
@@ -920,134 +920,55 @@ export default function CragDetailScreen() {
                       </View>
                     </View>
 
-                    {/* Stats row */}
-                    <View style={styles.sectorStats}>
-                      {/* Total routes */}
-                      <View style={styles.statItem}>
-                        <Ionicons
-                          name="git-branch-outline"
-                          size={14}
-                          color={colors.primary}
-                        />
-                        <Text style={[styles.statText, { color: colors.text }]}>
-                          {totalRoutes}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.statLabel,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          routes
-                        </Text>
-                      </View>
-
-                      {/* Routes in grade range */}
+                    {/* Main stats - prominent display */}
+                    <View style={styles.sectorMainStats}>
+                      {/* Routes in range - most important */}
                       {(() => {
                         const inRangeColor = getRoutesInRangeColor(routesInRange, totalRoutes)
+                        const percentage = totalRoutes > 0 ? Math.round((routesInRange / totalRoutes) * 100) : 0
                         return (
-                          <View style={styles.statItem}>
-                            <Ionicons
-                              name={routesInRange > 0 ? 'checkmark-circle-outline' : 'close-circle-outline'}
-                              size={14}
-                              color={inRangeColor}
-                            />
-                            <Text style={[styles.statText, { color: inRangeColor }]}>
+                          <View style={[styles.mainStatBox, { backgroundColor: inRangeColor + '15', borderColor: inRangeColor + '30' }]}>
+                            <Text style={[styles.mainStatValue, { color: inRangeColor }]}>
                               {routesInRange}
                             </Text>
-                            <Text
-                              style={[
-                                styles.statLabel,
-                                { color: colors.textSecondary },
-                              ]}
-                            >
+                            <Text style={[styles.mainStatLabel, { color: inRangeColor }]}>
                               in range
+                            </Text>
+                            <Text style={[styles.mainStatSub, { color: colors.textSecondary }]}>
+                              of {totalRoutes} ({percentage}%)
                             </Text>
                           </View>
                         )
                       })()}
 
-                      {/* Average grade */}
-                      {avgGrade && (
-                        <View style={styles.statItem}>
-                          <Ionicons
-                            name="speedometer-outline"
-                            size={14}
-                            color="#F59E0B"
-                          />
-                          <Text
-                            style={[styles.statText, { color: colors.text }]}
-                          >
-                            {avgGrade}
+                      {/* Grade range */}
+                      <View style={[styles.mainStatBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                        <Text style={[styles.mainStatValue, { color: colors.text }]}>
+                          {sector.minGrade || '?'} - {sector.maxGrade || '?'}
+                        </Text>
+                        <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>
+                          grades
+                        </Text>
+                        {avgGrade && (
+                          <Text style={[styles.mainStatSub, { color: colors.textSecondary }]}>
+                            avg {avgGrade}
                           </Text>
-                          <Text
-                            style={[
-                              styles.statLabel,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            avg
-                          </Text>
-                        </View>
-                      )}
+                        )}
+                      </View>
 
-                      {/* Height info: avg / max */}
+                      {/* Height */}
                       {(avgHeight || maxHeight) && (
-                        <View style={styles.statItem}>
-                          <Ionicons
-                            name="resize-outline"
-                            size={14}
-                            color="#8B5CF6"
-                          />
-                          {avgHeight && (
-                            <>
-                              <Text
-                                style={[
-                                  styles.statText,
-                                  { color: colors.text },
-                                ]}
-                              >
-                                {Math.round(avgHeight)}m
-                              </Text>
-                              <Text
-                                style={[
-                                  styles.statLabel,
-                                  { color: colors.textSecondary },
-                                ]}
-                              >
-                                avg
-                              </Text>
-                            </>
-                          )}
+                        <View style={[styles.mainStatBox, { backgroundColor: '#8B5CF6' + '15', borderColor: '#8B5CF6' + '30' }]}>
+                          <Text style={[styles.mainStatValue, { color: '#8B5CF6' }]}>
+                            {maxHeight ? `${Math.round(maxHeight)}m` : `${Math.round(avgHeight!)}m`}
+                          </Text>
+                          <Text style={[styles.mainStatLabel, { color: '#8B5CF6' }]}>
+                            {maxHeight ? 'max height' : 'avg height'}
+                          </Text>
                           {avgHeight && maxHeight && (
-                            <Text
-                              style={[
-                                styles.statLabel,
-                                { color: colors.textSecondary },
-                              ]}
-                            >
-                              /
+                            <Text style={[styles.mainStatSub, { color: colors.textSecondary }]}>
+                              avg {Math.round(avgHeight)}m
                             </Text>
-                          )}
-                          {maxHeight && (
-                            <>
-                              <Text
-                                style={[
-                                  styles.statText,
-                                  { color: colors.text },
-                                ]}
-                              >
-                                {Math.round(maxHeight)}m
-                              </Text>
-                              <Text
-                                style={[
-                                  styles.statLabel,
-                                  { color: colors.textSecondary },
-                                ]}
-                              >
-                                max
-                              </Text>
-                            </>
                           )}
                         </View>
                       )}
@@ -1419,9 +1340,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   sectorName: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     flexShrink: 1,
+    letterSpacing: -0.3,
   },
   idealBadge: {
     flexDirection: 'row',
@@ -1462,6 +1384,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 12,
+  },
+  // Main stats - prominent boxes
+  sectorMainStats: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  mainStatBox: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  mainStatValue: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  mainStatLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  mainStatSub: {
+    fontSize: 10,
+    marginTop: 2,
   },
   statItem: {
     flexDirection: 'row',
