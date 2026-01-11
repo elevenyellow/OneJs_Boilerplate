@@ -260,37 +260,98 @@ export default function CragDetailScreen() {
     return sunnyOrientations[period].includes(orientation)
   }
 
-  // Calculate score for each sector based on routes in grade range
-  // Then filter and sort: show ALL sectors, ordered by score (routes in range)
+  /**
+   * Calculate comprehensive score for each sector based on:
+   * 1. Weather conditions (meteo) - 25% weight
+   * 2. Routes in user's grade range - 35% weight  
+   * 3. Applied filters match (orientation, topo) - 20% weight
+   * 4. Route quality (avg stars) - 20% weight
+   */
   const filteredAndSortedSectors = useMemo(() => {
-    // First, calculate score for each sector based on routes in user's grade range
+    // Calculate comprehensive score for each sector
     const sectorsWithScore = allSectors.map((sectorResult) => {
-      // Score is primarily based on number of routes in user's grade range
+      const sector = sectorResult.sector
       const routesInRange = sectorResult.routesInUserRange || 0
+      const totalRoutes = sector.routeCount || sector.routes?.length || 1
+      
+      // 1. WEATHER SCORE (0-100) - 25% weight
+      // Use conditions.weatherScore if available, otherwise estimate from isGoodDay
+      let weatherScore = 50 // Default neutral
+      if (sectorResult.conditions) {
+        weatherScore = sectorResult.conditions.weatherScore || 
+                       (sectorResult.conditions.isGoodDay ? 80 : 40)
+      }
+      
+      // 2. ROUTES IN RANGE SCORE (0-100) - 35% weight
+      // Normalize: more routes in range = higher score
+      // Use logarithmic scale to avoid extreme values
+      const routesScore = routesInRange > 0 
+        ? Math.min(100, Math.log10(routesInRange + 1) * 50 + (routesInRange / totalRoutes) * 50)
+        : 0
+      
+      // 3. FILTERS MATCH SCORE (0-100) - 20% weight
+      let filtersScore = 50 // Base score
+      
+      // Orientation match bonus
+      if (sunPreference !== 'any') {
+        const inSun = isSectorInSun(sector.orientation)
+        const matchesPreference = 
+          (sunPreference === 'sun' && inSun) || 
+          (sunPreference === 'shade' && !inSun)
+        filtersScore += matchesPreference ? 30 : -20
+      }
+      
+      // Topo availability bonus
+      if (withTopo && (sector.hasTopo || sector.headerImageUrl)) {
+        filtersScore += 20
+      } else if (!withTopo && (sector.hasTopo || sector.headerImageUrl)) {
+        filtersScore += 10 // Small bonus even if not required
+      }
+      
+      // Clamp to 0-100
+      filtersScore = Math.max(0, Math.min(100, filtersScore))
+      
+      // 4. QUALITY SCORE (0-100) - 20% weight
+      // Based on average stars (0-5 scale)
+      const avgStars = sector.avgStars || 0
+      const qualityScore = avgStars > 0 ? (avgStars / 5) * 100 : 50 // Default to neutral if no ratings
+      
+      // COMBINED WEIGHTED SCORE
+      const calculatedScore = 
+        (weatherScore * 0.25) +
+        (routesScore * 0.35) +
+        (filtersScore * 0.20) +
+        (qualityScore * 0.20)
+      
       return {
         ...sectorResult,
-        // Use routesInRange as the primary score for sorting
-        calculatedScore: routesInRange,
+        calculatedScore,
+        scoreBreakdown: {
+          weather: weatherScore,
+          routes: routesScore,
+          filters: filtersScore,
+          quality: qualityScore,
+        },
       }
     })
 
-    // Apply non-grade filters (sun preference, min routes, topo)
+    // Apply hard filters (these exclude sectors entirely)
     const filtered = sectorsWithScore.filter((sectorResult) => {
       const sector = sectorResult.sector
 
-      // Filter by sun preference
+      // Filter by sun preference (hard filter)
       if (sunPreference !== 'any') {
         const inSun = isSectorInSun(sector.orientation)
         if (sunPreference === 'sun' && !inSun) return false
         if (sunPreference === 'shade' && inSun) return false
       }
 
-      // Filter by minimum routes in range
+      // Filter by minimum routes in range (hard filter)
       if (minRoutes > 0 && sectorResult.routesInUserRange < minRoutes) {
         return false
       }
 
-      // Filter by with topo (check if sector has topo images)
+      // Filter by with topo (hard filter)
       if (withTopo) {
         if (!sector.hasTopo && !sector.headerImageUrl) {
           return false
@@ -300,7 +361,7 @@ export default function CragDetailScreen() {
       return true
     })
 
-    // Sort by score (routes in range) - highest first
+    // Sort by combined score - highest first
     return filtered.sort((a, b) => b.calculatedScore - a.calculatedScore)
   }, [
     allSectors,
@@ -713,7 +774,7 @@ export default function CragDetailScreen() {
           </ScrollView>
         )}
 
-        {/* Sectors (sorted by routes in grade range) */}
+        {/* Sectors (sorted by combined score) */}
         {filteredSectors.length > 0 ? (
           <View style={styles.sectorsContainer}>
             <View style={styles.sectionHeader}>
@@ -722,7 +783,7 @@ export default function CragDetailScreen() {
                   Sectors
                 </Text>
                 <Text style={[styles.sortIndicator, { color: colors.textSecondary }]}>
-                  sorted by routes in range
+                  sorted by relevance
                 </Text>
               </View>
               <Text
@@ -784,24 +845,18 @@ export default function CragDetailScreen() {
                         )}
                       </View>
                       <View style={styles.sectorHeaderRight}>
-                        {/* Show routes in range as the primary score badge */}
-                        {routesInRange > 0 && (
+                        {/* Show combined score badge */}
+                        {sectorResult.calculatedScore > 0 && (
                           <View
                             style={[
                               styles.scoreBadge,
                               {
-                                backgroundColor: '#10B981',
+                                backgroundColor: getScoreColor(sectorResult.calculatedScore),
                               },
                             ]}
                           >
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={10}
-                              color="#FFFFFF"
-                              style={{ marginRight: 2 }}
-                            />
                             <Text style={styles.scoreText}>
-                              {routesInRange}
+                              {Math.round(sectorResult.calculatedScore)}
                             </Text>
                           </View>
                         )}
