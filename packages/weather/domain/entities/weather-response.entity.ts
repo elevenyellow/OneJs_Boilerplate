@@ -44,7 +44,7 @@ export interface CurrentWeather {
  * Hourly forecast data point
  */
 export interface HourlyForecast {
-  timestamp: Date
+  timestamp: string // ISO string for JSON serialization
   temperature: number
   feelsLike: number
   windSpeed: number
@@ -71,7 +71,7 @@ export interface HourlyForecast {
  * Daily forecast summary
  */
 export interface DailyForecast {
-  date: Date
+  date: string // ISO string for JSON serialization
   temperature: {
     min: number
     max: number
@@ -168,7 +168,7 @@ export class WeatherDataParser {
     const length = hourlyData.time.length
 
     return Array.from({ length }, (_, i) => ({
-      timestamp: new Date(hourlyData.time[i] * 1000),
+      timestamp: new Date(hourlyData.time[i] * 1000).toISOString(),
       temperature: hourlyData.temperature[i],
       feelsLike: hourlyData.felttemperature[i],
       windSpeed: hourlyData.windspeed[i],
@@ -188,7 +188,7 @@ export class WeatherDataParser {
     const length = dailyData.time.length
 
     return Array.from({ length }, (_, i) => ({
-      date: new Date(dailyData.time[i] * 1000),
+      date: new Date(dailyData.time[i] * 1000).toISOString(),
       temperature: {
         min: dailyData.temperature_min[i],
         max: dailyData.temperature_max[i],

@@ -22,16 +22,18 @@ function formatForecastDate(dateStr: string | null | undefined): { day: string; 
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
+  const dayNumber = date.getDate().toString()
+
   if (date.toDateString() === today.toDateString()) {
-    return { day: 'Today', date: '' }
+    return { day: 'Today', date: dayNumber }
   }
   if (date.toDateString() === tomorrow.toDateString()) {
-    return { day: 'Tom', date: '' }
+    return { day: 'Tom', date: dayNumber }
   }
 
   return {
     day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-    date: date.getDate().toString(),
+    date: dayNumber,
   }
 }
 
@@ -70,16 +72,23 @@ function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
 function formatHour(timestamp: string | null | undefined): string {
   if (!timestamp) return '--:--'
   
-  const date = new Date(timestamp)
+  // Try parsing as ISO string first
+  let date = new Date(timestamp)
+  
+  // If that fails, try parsing as a number (unix timestamp)
+  if (isNaN(date.getTime()) && !isNaN(Number(timestamp))) {
+    // Check if it's seconds or milliseconds
+    const num = Number(timestamp)
+    date = new Date(num > 9999999999 ? num : num * 1000)
+  }
   
   // Check if date is valid
   if (isNaN(date.getTime())) return '--:--'
   
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  
+  return `${hours}:${minutes}`
 }
 
 export default function WeatherScreen() {
@@ -367,14 +376,12 @@ export default function WeatherScreen() {
                       ]}>
                         {dayName}
                       </Text>
-                      {dayDate && (
-                        <Text style={[
-                          styles.dayCardDate,
-                          { color: isToday ? 'rgba(255,255,255,0.7)' : colors.textSecondary }
-                        ]}>
-                          {dayDate}
-                        </Text>
-                      )}
+                      <Text style={[
+                        styles.dayCardDate,
+                        { color: isToday ? 'rgba(255,255,255,0.7)' : colors.textSecondary }
+                      ]}>
+                        {dayDate}
+                      </Text>
                     </View>
 
                     {/* Weather icon */}

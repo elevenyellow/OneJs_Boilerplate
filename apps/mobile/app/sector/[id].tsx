@@ -354,7 +354,7 @@ export default function SectorDetailScreen() {
 
             {routesInRange.map((route: RouteSearchInfo, index: number) => (
               <View
-                key={route.id}
+                key={route.id || `route-in-range-${index}`}
                 style={[
                   styles.routeItem,
                   index < routesInRange.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -428,7 +428,7 @@ export default function SectorDetailScreen() {
             const routeList = routesInRange.length > 0 ? routesOutOfRange : allRoutes;
             return (
               <View
-                key={route.id}
+                key={route.id || `route-${index}`}
                 style={[
                   styles.routeItem,
                   index < routeList.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
