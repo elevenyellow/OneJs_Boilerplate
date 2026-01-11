@@ -39,6 +39,9 @@ export default function RootLayout() {
             shouldDehydrateQuery,
           },
         }}
+        onSuccess={() => {
+          // Cache restored successfully - no action needed
+        }}
       >
         <FiltersProvider>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
