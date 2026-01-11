@@ -82,6 +82,8 @@ export interface ScrapedCragNode {
   routes?: ScrapedRouteData[]
   /** Photo topos with route annotations (for Sector/Cliff nodes) */
   topos?: TopoImageData[]
+  /** Crag overview topos with sector/area annotations (for Crag nodes) */
+  cragTopos?: TopoImageData[]
 }
 
 /**

@@ -157,8 +157,9 @@ export class TheCragApiScraper {
 
       // Paralelizar las llamadas principales
       const needsRoutes = ['Sector', 'Cliff', 'Crag'].includes(type)
-      const needsTopos =
+      const needsSectorTopos =
         this.options.includeTopos && ['Sector', 'Cliff'].includes(type)
+      const needsCragTopos = this.options.includeTopos && type === 'Crag'
 
       const [info, children, routes] = await Promise.all([
         this.getNodeInfo(nodeId),
@@ -185,12 +186,22 @@ export class TheCragApiScraper {
 
       // Fetch topos from sector page (not /topos endpoint)
       let topos: TopoImageData[] = []
-      if (needsTopos) {
+      if (needsSectorTopos) {
         logger.info(
           'scraper:thecrag',
           `Fetching topos for ${name} from: ${sectorPath}`,
         )
         topos = await this.getToposFromSectorPage(sectorPath)
+      }
+
+      // Fetch crag overview topos (showing sectors/areas)
+      let cragTopos: TopoImageData[] = []
+      if (needsCragTopos) {
+        logger.info(
+          'scraper:thecrag',
+          `Fetching crag overview topos for ${name} from: ${sectorPath}`,
+        )
+        cragTopos = await this.getCragToposFromPage(sectorPath)
       }
 
       // Fetch header image for Crag, Sector, Cliff nodes
@@ -254,6 +265,11 @@ export class TheCragApiScraper {
       // Asignar topos si los hay
       if (topos.length > 0) {
         node.topos = topos
+      }
+
+      // Asignar crag topos si los hay
+      if (cragTopos.length > 0) {
+        node.cragTopos = cragTopos
       }
     }
 
@@ -447,6 +463,121 @@ export class TheCragApiScraper {
           originalWidth,
           originalHeight,
           routes,
+        })
+      }
+    })
+
+    return topos
+  }
+
+  /**
+   * Get crag overview topos (topos that show sectors/areas instead of routes)
+   * @param cragPath - Full path like "/en/climbing/spain/castellon/chulilla"
+   */
+  async getCragToposFromPage(cragPath: string): Promise<TopoImageData[]> {
+    try {
+      const url = `${this.BASE_URL}${cragPath}`
+      logger.info(
+        'scraper:thecrag',
+        `Fetching crag overview topos from: ${url}`,
+      )
+
+      await this.delay()
+      const html = await this.curlRequestHtml(url)
+
+      const topos = this.parseCragToposFromHtml(html)
+      if (topos.length > 0) {
+        logger.info(
+          'scraper:thecrag',
+          `Found ${topos.length} crag overview topos in: ${cragPath}`,
+        )
+      }
+      return topos
+    } catch (err) {
+      logger.warn(
+        'scraper:thecrag',
+        `Failed to get crag topos from page: ${err}`,
+      )
+      return []
+    }
+  }
+
+  /**
+   * Parse crag overview topo images from HTML page
+   * These topos have annotations of type 'area' instead of 'route'
+   */
+  private parseCragToposFromHtml(html: string): TopoImageData[] {
+    const $ = cheerio.load(html)
+    const topos: TopoImageData[] = []
+
+    // Find all phototopo elements with data-tid
+    $('div.phototopo[data-tid]').each((_, el) => {
+      const $el = $(el)
+
+      const topoId = $el.attr('data-tid') || ''
+      const width = parseInt($el.attr('data-width') || '0', 10)
+      const height = parseInt($el.attr('data-height') || '0', 10)
+      const viewScale = parseFloat($el.attr('data-view-scale') || '1')
+      const topoDataStr = $el.attr('data-topodata') || '[]'
+
+      // Extract image URLs
+      const imgEl = $el.find('img').first()
+      const thumbnailUrl = this.normalizeImageUrl(imgEl.attr('src') || '')
+      const fullImageUrl =
+        this.normalizeImageUrl(imgEl.attr('data-big') || '') || thumbnailUrl
+
+      // Calculate original dimensions
+      const originalWidth =
+        viewScale > 0 ? Math.round(width / viewScale) : width
+      const originalHeight =
+        viewScale > 0 ? Math.round(height / viewScale) : height
+
+      // Parse annotations
+      let routes: TopoRouteAnnotation[] = []
+      let hasAreaAnnotations = false
+      try {
+        const rawData = JSON.parse(topoDataStr)
+        if (Array.isArray(rawData)) {
+          routes = rawData.map((r: Record<string, unknown>) => {
+            const annotationType = ((r.type as string) || 'route') as TopoRouteAnnotation['type']
+            if (annotationType === 'area') {
+              hasAreaAnnotations = true
+            }
+            return {
+              id: r.id as number,
+              type: annotationType,
+              num: (r.num as string) || '',
+              grade: (r.grade as string) || '',
+              gradeClass: (r.class as string) || '',
+              zindex: (r.zindex as string) || '1',
+              name: (r.name as string) || '',
+              stars: (r.stars as string) || '',
+              style: (r.style as string) || '',
+              order: (r.order as number) || 0,
+              url: (r.url as string) || '',
+              points: (r.points as string) || '',
+            }
+          })
+        }
+      } catch {
+        logger.warn(
+          'scraper:thecrag',
+          `Failed to parse crag topo annotations for ${topoId}`,
+        )
+      }
+
+      // Only include topos that have area annotations (crag overview topos)
+      if (topoId && (thumbnailUrl || fullImageUrl) && hasAreaAnnotations) {
+        topos.push({
+          topoId,
+          width,
+          height,
+          viewScale,
+          thumbnailUrl,
+          fullImageUrl,
+          originalWidth,
+          originalHeight,
+          routes, // Contains area annotations
         })
       }
     })

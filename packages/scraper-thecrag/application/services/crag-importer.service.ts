@@ -4,7 +4,13 @@ import { CragPrismaRepository, CragEntity } from '@climb-zone/crag'
 import { AreaPrismaRepository, AreaEntity } from '@climb-zone/area'
 import { SectorPrismaRepository, SectorEntity, SectorStatsService, SectorStats } from '@climb-zone/sector'
 import { RoutePrismaRepository, RouteEntity } from '@climb-zone/route'
-import { TopoPrismaRepository, TopoImageEntity, TopoImageId } from '@climb-zone/topo'
+import {
+  TopoPrismaRepository,
+  TopoImageEntity,
+  TopoImageId,
+  CragTopoImageEntity,
+  type CragTopoSectorPositionData,
+} from '@climb-zone/topo'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { AreaId } from '@area/domain/value-objects/area-id.vo'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
@@ -24,6 +30,8 @@ export interface ImportResult {
   routesCreated: number
   toposCreated: number
   topoPositionsCreated: number
+  cragToposCreated: number
+  cragTopoPositionsCreated: number
   duration: number
   errors: ImportError[]
 }
@@ -74,6 +82,8 @@ export class CragImporterService {
       routesCreated: 0,
       toposCreated: 0,
       topoPositionsCreated: 0,
+      cragToposCreated: 0,
+      cragTopoPositionsCreated: 0,
       duration: 0,
       errors: [],
     }
@@ -90,7 +100,12 @@ export class CragImporterService {
 
       console.log(`✅ Created crag: ${savedCrag.name} (${savedCrag.id.toString()})`)
 
-      // 2. Process children recursively
+      // 2. Save crag overview topos if available
+      if (data.cragTopos && data.cragTopos.length > 0) {
+        await this.saveCragToposWithPositions(data.cragTopos, savedCrag.id, result)
+      }
+
+      // 3. Process children recursively
       await this.processChildren(data.children, savedCrag.id, null, result)
 
     } catch (error) {
@@ -112,6 +127,8 @@ export class CragImporterService {
     console.log(`   - Routes: ${result.routesCreated}`)
     console.log(`   - Topos: ${result.toposCreated}`)
     console.log(`   - Topo positions: ${result.topoPositionsCreated}`)
+    console.log(`   - Crag topos: ${result.cragToposCreated}`)
+    console.log(`   - Crag topo positions: ${result.cragTopoPositionsCreated}`)
     if (result.errors.length > 0) {
       console.log(`   - Errors: ${result.errors.length}`)
     }
@@ -440,6 +457,69 @@ export class CragImporterService {
         result.topoPositionsCreated += positionsCreated
       } catch (error) {
         console.warn(`Failed to save topo ${topoData.topoId}:`, error)
+      }
+    }
+  }
+
+  /**
+   * Save crag overview topos with sector positions
+   */
+  private async saveCragToposWithPositions(
+    topos: TopoImageData[],
+    cragId: CragId,
+    result: ImportResult,
+  ): Promise<void> {
+    for (const topoData of topos) {
+      try {
+        // Create CragTopoImage entity
+        const topoEntity = new CragTopoImageEntity(
+          TopoImageId.generate(),
+          topoData.topoId,
+          cragId,
+          topoData.thumbnailUrl,
+          topoData.fullImageUrl,
+          topoData.width,
+          topoData.height,
+          topoData.originalWidth,
+          topoData.originalHeight,
+          topoData.viewScale,
+          null, // sourceUrl
+        )
+
+        // Build position data for each area/sector annotation
+        const positions: CragTopoSectorPositionData[] = []
+
+        for (const annotation of topoData.routes) {
+          // Only process area-type annotations
+          if (annotation.type === 'area') {
+            positions.push({
+              sectorId: null, // Will be linked later if we can match by externalId
+              areaNumber: annotation.num,
+              areaName: annotation.name,
+              points: annotation.points,
+              zindex: parseInt(annotation.zindex) || 0,
+              order: annotation.order,
+              externalAreaId: annotation.id ? BigInt(annotation.id) : null,
+              areaUrl: annotation.url || null,
+            })
+          }
+        }
+
+        // Save crag topo with positions
+        const { positionsCreated } =
+          await this.topoRepo.saveCragTopoImageWithPositions(
+            topoEntity,
+            positions,
+          )
+
+        result.cragToposCreated++
+        result.cragTopoPositionsCreated += positionsCreated
+
+        console.log(
+          `   📍 Saved crag topo ${topoData.topoId} with ${positionsCreated} sector positions`,
+        )
+      } catch (error) {
+        console.warn(`Failed to save crag topo ${topoData.topoId}:`, error)
       }
     }
   }

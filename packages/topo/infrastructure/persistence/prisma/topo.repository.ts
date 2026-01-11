@@ -2,8 +2,13 @@ import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
 import { TopoImageEntity } from '@topo/domain/entities/topo-image.entity'
 import { RouteTopoPositionEntity } from '@topo/domain/entities/route-topo-position.entity'
+import {
+  CragTopoImageEntity,
+  type CragTopoSectorPositionData,
+} from '@topo/domain/entities/crag-topo-image.entity'
 import { TopoImageId } from '@topo/domain/value-objects/topo-image-id.vo'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
+import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
 
 interface TopoImagePrismaData {
@@ -226,6 +231,118 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       data.order,
       data.gradeClass,
       data.createdAt,
+    )
+  }
+
+  // --- CragTopoImage methods ---
+
+  async findCragTopoById(id: TopoImageId): Promise<CragTopoImageEntity | null> {
+    const topo = await this.prisma.cragTopoImage.findUnique({
+      where: { id: id.toString() },
+    })
+    return topo ? this.toCragTopoEntity(topo) : null
+  }
+
+  async findCragTopoByExternalId(
+    externalId: string,
+  ): Promise<CragTopoImageEntity | null> {
+    const topo = await this.prisma.cragTopoImage.findUnique({
+      where: { externalId },
+    })
+    return topo ? this.toCragTopoEntity(topo) : null
+  }
+
+  async findCragToposByCragId(cragId: CragId): Promise<CragTopoImageEntity[]> {
+    const topos = await this.prisma.cragTopoImage.findMany({
+      where: { cragId: cragId.toString() },
+      orderBy: { createdAt: 'asc' },
+    })
+    return topos.map((t) => this.toCragTopoEntity(t))
+  }
+
+  async saveCragTopoImageWithPositions(
+    entity: CragTopoImageEntity,
+    positions: CragTopoSectorPositionData[],
+  ): Promise<{ topo: CragTopoImageEntity; positionsCreated: number }> {
+    const data = {
+      id: entity.id.toString(),
+      externalId: entity.externalId,
+      cragId: entity.cragId.toString(),
+      thumbnailUrl: entity.thumbnailUrl,
+      fullImageUrl: entity.fullImageUrl,
+      width: entity.width,
+      height: entity.height,
+      originalWidth: entity.originalWidth,
+      originalHeight: entity.originalHeight,
+      viewScale: entity.viewScale,
+      sourceUrl: entity.sourceUrl,
+    }
+
+    // Upsert crag topo image
+    const savedTopo = await this.prisma.cragTopoImage.upsert({
+      where: { externalId: entity.externalId },
+      create: data,
+      update: data,
+    })
+
+    // Delete existing positions for this topo
+    await this.prisma.cragTopoSectorPosition.deleteMany({
+      where: { cragTopoId: savedTopo.id },
+    })
+
+    // Create new positions
+    const positionData = positions.map((p, idx) => ({
+      sectorId: p.sectorId?.toString() ?? null,
+      cragTopoId: savedTopo.id,
+      areaNumber: p.areaNumber,
+      areaName: p.areaName,
+      points: p.points,
+      zindex: p.zindex ?? idx,
+      order: p.order ?? idx,
+      externalAreaId: p.externalAreaId,
+      areaUrl: p.areaUrl,
+    }))
+
+    const created = await this.prisma.cragTopoSectorPosition.createMany({
+      data: positionData,
+      skipDuplicates: true,
+    })
+
+    return {
+      topo: this.toCragTopoEntity(savedTopo),
+      positionsCreated: created.count,
+    }
+  }
+
+  private toCragTopoEntity(data: {
+    id: string
+    externalId: string
+    cragId: string
+    thumbnailUrl: string
+    fullImageUrl: string
+    width: number
+    height: number
+    originalWidth: number
+    originalHeight: number
+    viewScale: number
+    sourceUrl: string | null
+    createdAt: Date
+    updatedAt: Date
+  }): CragTopoImageEntity {
+    return new CragTopoImageEntity(
+      TopoImageId.fromString(data.id),
+      data.externalId,
+      CragId.fromString(data.cragId),
+      data.thumbnailUrl,
+      data.fullImageUrl,
+      data.width,
+      data.height,
+      data.originalWidth,
+      data.originalHeight,
+      data.viewScale,
+      data.sourceUrl,
+      data.createdAt,
+      data.updatedAt,
     )
   }
 }
