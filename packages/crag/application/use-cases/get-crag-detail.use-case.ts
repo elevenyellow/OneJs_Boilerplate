@@ -146,55 +146,50 @@ export class GetCragDetailUseCase {
     )
 
     // 6. Build sector summaries with routes in grade range
-    const sectorSummaries: SectorSummary[] = await Promise.all(
-      sectors.map(async (sector) => {
-        // Get actual route count from database
-        const actualRouteCount = routeCountMap.get(sector.id) || 0
-        
-        // Count routes in grade range
-        let routesInGradeRange = actualRouteCount
-        
-        if (minGradeIndex !== null && maxGradeIndex !== null) {
-          routesInGradeRange = await this.prisma.route.count({
-            where: {
-              sectorId: sector.id,
-              gradeIndex: {
-                gte: minGradeIndex,
-                lte: maxGradeIndex,
-              },
-            },
-          })
-        }
-
-        // Calculate a simple relevance score
-        const score = this.calculateSectorScore(
-          { ...sector, routeCount: actualRouteCount },
-          routesInGradeRange
+    // OPTIMIZATION: Use gradeDistribution from sector stats instead of querying routes
+    const sectorSummaries: SectorSummary[] = sectors.map((sector) => {
+      // Get actual route count from database or use stored routeCount
+      const actualRouteCount = routeCountMap.get(sector.id) || sector.routeCount || 0
+      
+      // Count routes in grade range using stored gradeDistribution
+      let routesInGradeRange = actualRouteCount
+      
+      if (minGradeIndex !== null && maxGradeIndex !== null) {
+        routesInGradeRange = this.countRoutesInRangeFromDistribution(
+          sector.gradeDistribution as Record<string, number> | null,
+          minGradeIndex,
+          maxGradeIndex
         )
+      }
 
-        return {
-          id: sector.id,
-          name: sector.name,
-          orientation: sector.orientation,
-          rockType: sector.rockType,
-          sunExposure: sector.sunExposure,
-          routeCount: actualRouteCount,
-          routesInGradeRange,
-          minGrade: sector.minGrade,
-          maxGrade: sector.maxGrade,
-          avgGrade: sector.avgGrade || null,
-          avgHeight: sector.averageHeight,
-          maxHeight: sector.maxHeight || null,
-          totalFavorites: sector.totalFavorites,
-          hasTopo: sector.hasTopo,
-          theCragUrl: sector.urlStub
-            ? `https://www.thecrag.com${sector.urlStub}`
-            : null,
-          headerImageUrl: sector.headerImageUrl,
-          score,
-        }
-      }),
-    )
+      // Calculate a simple relevance score
+      const score = this.calculateSectorScore(
+        { ...sector, routeCount: actualRouteCount },
+        routesInGradeRange
+      )
+
+      return {
+        id: sector.id,
+        name: sector.name,
+        orientation: sector.orientation,
+        rockType: sector.rockType,
+        sunExposure: sector.sunExposure,
+        routeCount: actualRouteCount,
+        routesInGradeRange,
+        minGrade: sector.minGrade,
+        maxGrade: sector.maxGrade,
+        avgGrade: sector.avgGrade || null,
+        avgHeight: sector.averageHeight,
+        maxHeight: sector.maxHeight || null,
+        totalFavorites: sector.totalFavorites,
+        hasTopo: sector.hasTopo,
+        theCragUrl: sector.urlStub
+          ? `https://www.thecrag.com${sector.urlStub}`
+          : null,
+        headerImageUrl: sector.headerImageUrl,
+        score,
+      }
+    })
 
     // Sort by score (descending)
     sectorSummaries.sort((a, b) => b.score - a.score)
@@ -328,5 +323,33 @@ export class GetCragDetailUseCase {
     }
 
     return Math.round(score)
+  }
+
+  /**
+   * Count routes in grade range using stored gradeDistribution
+   * This is O(n) where n is number of unique grades, much faster than DB query
+   */
+  private countRoutesInRangeFromDistribution(
+    gradeDistribution: Record<string, number> | null,
+    minGradeIndex: number,
+    maxGradeIndex: number,
+  ): number {
+    if (!gradeDistribution || typeof gradeDistribution !== 'object') {
+      return 0
+    }
+
+    let count = 0
+    for (const [gradeStr, routeCount] of Object.entries(gradeDistribution)) {
+      const gradeIndex = Grade.calculateIndexFromString(gradeStr)
+      if (
+        gradeIndex !== null &&
+        gradeIndex >= minGradeIndex &&
+        gradeIndex <= maxGradeIndex
+      ) {
+        count += routeCount as number
+      }
+    }
+
+    return count
   }
 }
