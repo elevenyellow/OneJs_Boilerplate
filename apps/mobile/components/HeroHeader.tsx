@@ -1,47 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import { Colors } from '@/constants/Colors'
+import { Ionicons } from '@expo/vector-icons'
+import { BlurView } from 'expo-blur'
+import * as Haptics from 'expo-haptics'
+import { LinearGradient } from 'expo-linear-gradient'
+import React, { useEffect, useState } from 'react'
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ImageBackground,
   Dimensions,
+  ImageBackground,
   Platform,
-} from 'react-native';
-import { useColorScheme } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/Colors';
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 interface HeroHeaderProps {
-  title: string;
-  subtitle?: string;
-  imageUrl?: string | null;
-  theCragUrl?: string | null;
-  rockType?: string | null;
-  climbingType?: string | null;
-  icon?: keyof typeof Ionicons.glyphMap;
-  onBack: () => void;
+  title: string
+  subtitle?: string
+  imageUrl?: string | null
+  theCragUrl?: string | null
+  rockType?: string | null
+  climbingType?: string | null
+  icon?: keyof typeof Ionicons.glyphMap
+  onBack: () => void
   stats?: {
-    label: string;
-    value: string | number;
-    icon?: keyof typeof Ionicons.glyphMap;
-  }[];
+    label: string
+    value: string | number
+    icon?: keyof typeof Ionicons.glyphMap
+  }[]
   badge?: {
-    label: string;
-    color?: string;
-    icon?: keyof typeof Ionicons.glyphMap;
-  };
+    label: string
+    color?: string
+    icon?: keyof typeof Ionicons.glyphMap
+  }
   actions?: {
-    icon: keyof typeof Ionicons.glyphMap;
-    onPress: () => void;
-    color?: string;
-  }[];
+    icon: keyof typeof Ionicons.glyphMap
+    onPress: () => void
+    color?: string
+  }[]
 }
 
 // Unsplash images for climbing - curated collection
@@ -71,40 +71,52 @@ const CLIMBING_IMAGES = {
     'https://images.unsplash.com/photo-1504699439244-a5c26a5e9933?w=800&q=80',
     'https://images.unsplash.com/photo-1564769662533-4f00a87b4056?w=800&q=80',
   ],
-};
+}
 
 function getImageUrl(
   imageUrl?: string | null,
   theCragUrl?: string | null,
   rockType?: string | null,
-  climbingType?: string | null
+  climbingType?: string | null,
 ): string {
   // 1. Use provided imageUrl if available
   if (imageUrl) {
-    return imageUrl;
+    return imageUrl
   }
 
   // 3. Select from curated Unsplash images based on rock type or climbing type
-  const rockTypeLower = rockType?.toLowerCase() || '';
-  const climbingTypeLower = climbingType?.toLowerCase() || '';
+  const rockTypeLower = rockType?.toLowerCase() || ''
+  const climbingTypeLower = climbingType?.toLowerCase() || ''
 
-  let images = CLIMBING_IMAGES.default;
+  let images = CLIMBING_IMAGES.default
 
   if (rockTypeLower.includes('limestone') || rockTypeLower.includes('caliza')) {
-    images = CLIMBING_IMAGES.limestone;
-  } else if (rockTypeLower.includes('granite') || rockTypeLower.includes('granito')) {
-    images = CLIMBING_IMAGES.granite;
-  } else if (rockTypeLower.includes('sandstone') || rockTypeLower.includes('arenisca')) {
-    images = CLIMBING_IMAGES.sandstone;
-  } else if (climbingTypeLower.includes('boulder') || climbingTypeLower.includes('bloque')) {
-    images = CLIMBING_IMAGES.boulder;
-  } else if (climbingTypeLower.includes('sport') || climbingTypeLower.includes('deportiva')) {
-    images = CLIMBING_IMAGES.sport;
+    images = CLIMBING_IMAGES.limestone
+  } else if (
+    rockTypeLower.includes('granite') ||
+    rockTypeLower.includes('granito')
+  ) {
+    images = CLIMBING_IMAGES.granite
+  } else if (
+    rockTypeLower.includes('sandstone') ||
+    rockTypeLower.includes('arenisca')
+  ) {
+    images = CLIMBING_IMAGES.sandstone
+  } else if (
+    climbingTypeLower.includes('boulder') ||
+    climbingTypeLower.includes('bloque')
+  ) {
+    images = CLIMBING_IMAGES.boulder
+  } else if (
+    climbingTypeLower.includes('sport') ||
+    climbingTypeLower.includes('deportiva')
+  ) {
+    images = CLIMBING_IMAGES.sport
   }
 
   // Return a random image from the selected category
-  const randomIndex = Math.floor(Math.random() * images.length);
-  return images[randomIndex];
+  const randomIndex = Math.floor(Math.random() * images.length)
+  return images[randomIndex]
 }
 
 export function HeroHeader({
@@ -120,30 +132,35 @@ export function HeroHeader({
   badge,
   actions,
 }: HeroHeaderProps) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
-  const insets = useSafeAreaInsets();
-  const [imageError, setImageError] = useState(false);
+  const colorScheme = useColorScheme() ?? 'light'
+  const colors = Colors[colorScheme]
+  const insets = useSafeAreaInsets()
+  const [imageError, setImageError] = useState(false)
 
-  const selectedImageUrl = getImageUrl(imageUrl, theCragUrl, rockType, climbingType);
+  const selectedImageUrl = getImageUrl(
+    imageUrl,
+    theCragUrl,
+    rockType,
+    climbingType,
+  )
 
   // Reset error state when imageUrl changes
   useEffect(() => {
-    setImageError(false);
-  }, [imageUrl]);
+    setImageError(false)
+  }, [imageUrl])
 
   const handleBackPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onBack();
-  };
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    onBack()
+  }
 
   const renderContent = () => (
     <>
       {/* Top bar with back button and actions */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         {/* Back button */}
-        <Pressable 
-          style={styles.backButton} 
+        <Pressable
+          style={styles.backButton}
           onPress={handleBackPress}
           hitSlop={8}
         >
@@ -162,22 +179,34 @@ export function HeroHeader({
         {actions && actions.length > 0 && (
           <View style={styles.actionsRow}>
             {actions.map((action, index) => (
-              <Pressable 
+              <Pressable
                 key={index}
-                style={styles.actionButton} 
+                style={styles.actionButton}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  action.onPress();
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  action.onPress()
                 }}
                 hitSlop={8}
               >
                 {Platform.OS === 'ios' ? (
-                  <BlurView intensity={80} tint="dark" style={styles.actionButtonBlur}>
-                    <Ionicons name={action.icon} size={20} color={action.color || '#FFF'} />
+                  <BlurView
+                    intensity={80}
+                    tint="dark"
+                    style={styles.actionButtonBlur}
+                  >
+                    <Ionicons
+                      name={action.icon}
+                      size={20}
+                      color={action.color || '#FFF'}
+                    />
                   </BlurView>
                 ) : (
                   <View style={styles.actionButtonAndroid}>
-                    <Ionicons name={action.icon} size={20} color={action.color || '#FFF'} />
+                    <Ionicons
+                      name={action.icon}
+                      size={20}
+                      color={action.color || '#FFF'}
+                    />
                   </View>
                 )}
               </Pressable>
@@ -215,7 +244,11 @@ export function HeroHeader({
           {/* Subtitle */}
           {subtitle && (
             <View style={styles.subtitleRow}>
-              <Ionicons name="location-outline" size={16} color="rgba(255,255,255,0.9)" />
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color="rgba(255,255,255,0.9)"
+              />
               <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
           )}
@@ -226,7 +259,11 @@ export function HeroHeader({
               {stats.map((stat, index) => (
                 <View key={index} style={styles.statItem}>
                   {stat.icon && (
-                    <Ionicons name={stat.icon} size={14} color="rgba(255,255,255,0.95)" />
+                    <Ionicons
+                      name={stat.icon}
+                      size={14}
+                      color="rgba(255,255,255,0.95)"
+                    />
                   )}
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
@@ -237,16 +274,16 @@ export function HeroHeader({
         </View>
       </LinearGradient>
     </>
-  );
+  )
 
   // Dynamic height based on safe area insets
-  const containerHeight = 220 + insets.top;
+  const containerHeight = 220 + insets.top
 
   if (imageError) {
     // Fallback to dark gradient (neutral, no blue)
     return (
-      <LinearGradient 
-        colors={['#1E293B', '#0F172A', '#020617']} 
+      <LinearGradient
+        colors={['#1E293B', '#0F172A', '#020617']}
         style={[styles.container, { height: containerHeight }]}
       >
         <View style={styles.iconContainer}>
@@ -254,7 +291,7 @@ export function HeroHeader({
         </View>
         {renderContent()}
       </LinearGradient>
-    );
+    )
   }
 
   return (
@@ -266,7 +303,7 @@ export function HeroHeader({
     >
       {renderContent()}
     </ImageBackground>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -414,4 +451,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-});
+})

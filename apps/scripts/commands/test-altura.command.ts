@@ -36,7 +36,6 @@ import { RouteId } from '@route/domain/value-objects/route-id.vo'
 import type { ScrapedCragNode, ScrapedRouteData } from '@scraper-thecrag'
 import { TheCragApiScraper } from '@scraper-thecrag'
 import { ScrapedDataMapperService } from '@scraper-thecrag/application/services/scraped-data-mapper.service'
-import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 
 // Altura IDs from TheCrag
 const ALTURA_ID = 782524281 // Altura crag
@@ -403,7 +402,9 @@ async function processScrapedNode(
     const sectorStats = calculateSectorStats(node.routes!, statsService)
     sector.updateStats(sectorStats)
     await sectorRepo.updateStats(sector)
-    console.log(`      📊 Stats calculados: ${sectorStats.routeCount} rutas, avg: ${sectorStats.avgGrade}, maxH: ${sectorStats.maxHeight}m`)
+    console.log(
+      `      📊 Stats calculados: ${sectorStats.routeCount} rutas, avg: ${sectorStats.avgGrade}, maxH: ${sectorStats.maxHeight}m`,
+    )
 
     // Save topos with positions (SVG data)
     let sectorTopoCount = 0
@@ -498,7 +499,10 @@ async function processScrapedNode(
 /**
  * Calculate sector statistics from scraped routes
  */
-function calculateSectorStats(routes: ScrapedRouteData[], statsService: SectorStatsService) {
+function calculateSectorStats(
+  routes: ScrapedRouteData[],
+  statsService: SectorStatsService,
+) {
   const routeData = routes.map((r) => ({
     grade: r.grade,
     height: r.height,

@@ -253,248 +253,106 @@ export default function WeatherScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Today's Complete Summary */}
+        {/* Today's Summary */}
         {todayForecast && (
           <View
             style={[
-              styles.todaySummaryCard,
+              styles.todaySummary,
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
-            {/* Main Temperature */}
+            {/* Header row: Icon + Temp + Label */}
             <View style={styles.todaySummaryHeader}>
               <View style={styles.todaySummaryMain}>
                 <Ionicons
-                  name={getWeatherIcon(todayForecast.weatherCode, todayForecast.precipitation?.amount)}
-                  size={64}
+                  name={getWeatherIcon(
+                    todayForecast.weatherCode,
+                    todayForecast.precipitation?.amount,
+                  )}
+                  size={52}
                   color={colors.primary}
                 />
-                <View style={styles.todaySummaryTemps}>
-                  <Text
-                    style={[
-                      styles.todaySummaryTempMain,
-                      { color: colors.text },
-                    ]}
-                  >
+                <View>
+                  <Text style={[styles.todaySummaryTemp, { color: colors.text }]}>
                     {Math.round(todayForecast.temperature?.mean || 0)}°C
                   </Text>
-                  <Text
-                    style={[
-                      styles.todaySummaryTempRange,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    Min {Math.round(todayForecast.temperature?.min || 0)}° / Max{' '}
-                    {Math.round(todayForecast.temperature?.max || 0)}°
+                  <Text style={[styles.todaySummaryRange, { color: colors.textSecondary }]}>
+                    {Math.round(todayForecast.temperature?.min || 0)}° / {Math.round(todayForecast.temperature?.max || 0)}°
                   </Text>
                 </View>
               </View>
-              <Text
-                style={[
-                  styles.todaySummaryLabel,
-                  { color: colors.textSecondary },
-                ]}
-              >
+              <Text style={[styles.todaySummaryLabel, { color: colors.textSecondary }]}>
                 Today
               </Text>
             </View>
 
-            {/* Detailed Conditions Grid */}
-            <View style={styles.todayDetailsGrid}>
-              {/* Temperature */}
-              <View
-                style={[
-                  styles.todayDetailBox,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <Ionicons
-                  name="thermometer-outline"
-                  size={22}
-                  color="#EF4444"
-                />
-                <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(todayForecast.temperature?.min || 0)}° -{' '}
-                  {Math.round(todayForecast.temperature?.max || 0)}°
-                </Text>
-                <Text
-                  style={[
-                    styles.todayDetailLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Temperature
-                </Text>
-              </View>
-
-              {/* Feels Like */}
-              <View
-                style={[
-                  styles.todayDetailBox,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <Ionicons name="body-outline" size={22} color="#F59E0B" />
-                <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(
-                    todayForecast.feelsLike?.min ||
-                      todayForecast.temperature?.min ||
-                      0,
-                  )}
-                  ° -{' '}
-                  {Math.round(
-                    todayForecast.feelsLike?.max ||
-                      todayForecast.temperature?.max ||
-                      0,
-                  )}
-                  °
-                </Text>
-                <Text
-                  style={[
-                    styles.todayDetailLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Feels Like
-                </Text>
-              </View>
-
-              {/* Rain Probability */}
-              <View
-                style={[
-                  styles.todayDetailBox,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <Ionicons name="rainy-outline" size={22} color="#3B82F6" />
-                <Text style={[styles.todayDetailValue, { color: colors.text }]}>
+            {/* Stats row */}
+            <View style={[styles.todaySummaryStats, { borderTopColor: colors.border }]}>
+              {/* Rain */}
+              <View style={styles.todaySummaryStat}>
+                <Ionicons name="rainy-outline" size={18} color="#3B82F6" />
+                <Text style={[styles.todaySummaryStatValue, { color: colors.text }]}>
                   {Math.round(todayForecast.precipitation?.probability || 0)}%
                 </Text>
-                <Text
-                  style={[
-                    styles.todayDetailLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Rain Chance
-                </Text>
-              </View>
-
-              {/* Precipitation */}
-              <View
-                style={[
-                  styles.todayDetailBox,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <Ionicons name="water" size={22} color="#0EA5E9" />
-                <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {(todayForecast.precipitation?.amount || 0).toFixed(1)} mm
-                </Text>
-                <Text
-                  style={[
-                    styles.todayDetailLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Precipitation
-                </Text>
-              </View>
-
-              {/* Humidity */}
-              <View
-                style={[
-                  styles.todayDetailBox,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <Ionicons name="water-outline" size={22} color="#6366F1" />
-                <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(todayForecast.humidity?.min || 0)}% -{' '}
-                  {Math.round(todayForecast.humidity?.max || 0)}%
-                </Text>
-                <Text
-                  style={[
-                    styles.todayDetailLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Humidity
+                <Text style={[styles.todaySummaryStatLabel, { color: colors.textSecondary }]}>
+                  Rain
                 </Text>
               </View>
 
               {/* Wind */}
-              <View
-                style={[
-                  styles.todayDetailBox,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <Ionicons name="leaf" size={22} color="#10B981" />
-                <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(todayForecast.wind?.mean || 0)} m/s{' '}
-                  {todayForecast.wind?.direction || ''}
+              <View style={styles.todaySummaryStat}>
+                <Ionicons name="leaf" size={18} color="#10B981" />
+                <Text style={[styles.todaySummaryStatValue, { color: colors.text }]}>
+                  {Math.round(todayForecast.wind?.mean || 0)}
                 </Text>
-                <Text
-                  style={[
-                    styles.todayDetailLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Wind
+                <Text style={[styles.todaySummaryStatLabel, { color: colors.textSecondary }]}>
+                  m/s
                 </Text>
               </View>
 
-              {/* UV Index */}
-              {todayForecast.uvIndex !== undefined && (
-                <View
-                  style={[
-                    styles.todayDetailBox,
-                    { backgroundColor: colors.muted },
-                  ]}
-                >
-                  <Ionicons name="sunny" size={22} color="#F59E0B" />
-                  <Text
-                    style={[styles.todayDetailValue, { color: colors.text }]}
-                  >
-                    {todayForecast.uvIndex}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.todayDetailLabel,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    UV Index
-                  </Text>
-                </View>
-              )}
+              {/* Humidity */}
+              <View style={styles.todaySummaryStat}>
+                <Ionicons name="water-outline" size={18} color="#6366F1" />
+                <Text style={[styles.todaySummaryStatValue, { color: colors.text }]}>
+                  {Math.round(todayForecast.humidity?.mean || 50)}%
+                </Text>
+                <Text style={[styles.todaySummaryStatLabel, { color: colors.textSecondary }]}>
+                  Humidity
+                </Text>
+              </View>
 
-              {/* Sunrise/Sunset */}
-              {(todayForecast.sunrise || todayForecast.sunset) && (
-                <View
-                  style={[
-                    styles.todayDetailBox,
-                    { backgroundColor: colors.muted },
-                  ]}
-                >
-                  <Ionicons name="sunny-outline" size={22} color="#FB923C" />
-                  <Text
-                    style={[styles.todayDetailValue, { color: colors.text }]}
-                  >
-                    {todayForecast.sunrise || '--'} /{' '}
-                    {todayForecast.sunset || '--'}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.todayDetailLabel,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    Sunrise / Sunset
-                  </Text>
-                </View>
-              )}
+              {/* UV */}
+              <View style={styles.todaySummaryStat}>
+                <Ionicons name="sunny" size={18} color="#F59E0B" />
+                <Text style={[styles.todaySummaryStatValue, { color: colors.text }]}>
+                  {todayForecast.uvIndex || 0}
+                </Text>
+                <Text style={[styles.todaySummaryStatLabel, { color: colors.textSecondary }]}>
+                  UV
+                </Text>
+              </View>
+
+              {/* Sunrise */}
+              <View style={styles.todaySummaryStat}>
+                <Ionicons name="sunny-outline" size={18} color="#FB923C" />
+                <Text style={[styles.todaySummaryStatValue, { color: colors.text }]}>
+                  {todayForecast.sunrise || '--'}
+                </Text>
+                <Text style={[styles.todaySummaryStatLabel, { color: colors.textSecondary }]}>
+                  Sunrise
+                </Text>
+              </View>
+
+              {/* Sunset */}
+              <View style={styles.todaySummaryStat}>
+                <Ionicons name="moon-outline" size={18} color="#6366F1" />
+                <Text style={[styles.todaySummaryStatValue, { color: colors.text }]}>
+                  {todayForecast.sunset || '--'}
+                </Text>
+                <Text style={[styles.todaySummaryStatLabel, { color: colors.textSecondary }]}>
+                  Sunset
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -560,7 +418,11 @@ export default function WeatherScreen() {
 
                     {/* Weather Icon */}
                     <Ionicons
-                      name={getWeatherIcon(hour.weatherCode, hour.precipitation, hour.isDaylight)}
+                      name={getWeatherIcon(
+                        hour.weatherCode,
+                        hour.precipitation,
+                        hour.isDaylight,
+                      )}
                       size={28}
                       color={colors.primary}
                     />
@@ -685,7 +547,10 @@ export default function WeatherScreen() {
 
                     {/* Weather icon */}
                     <Ionicons
-                      name={getWeatherIcon(day.weatherCode, day.precipitation?.amount)}
+                      name={getWeatherIcon(
+                        day.weatherCode,
+                        day.precipitation?.amount,
+                      )}
                       size={36}
                       color={isToday ? '#FFFFFF' : colors.primary}
                     />
@@ -819,60 +684,51 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  todaySummaryCard: {
-    marginTop: 20,
-    padding: 20,
-    borderRadius: 16,
+  // Today Summary
+  todaySummary: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 14,
     borderWidth: 1,
   },
   todaySummaryHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
   },
   todaySummaryMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 14,
   },
-  todaySummaryTemps: {
-    gap: 4,
-  },
-  todaySummaryTempMain: {
-    fontSize: 42,
+  todaySummaryTemp: {
+    fontSize: 36,
     fontWeight: '700',
   },
-  todaySummaryTempRange: {
+  todaySummaryRange: {
     fontSize: 14,
   },
   todaySummaryLabel: {
     fontSize: 14,
     fontWeight: '600',
   },
-  todayDetailsGrid: {
+  todaySummaryStats: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 20,
-    paddingTop: 20,
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
   },
-  todayDetailBox: {
-    width: '47%',
-    padding: 12,
-    borderRadius: 12,
+  todaySummaryStat: {
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
-  todayDetailValue: {
-    fontSize: 15,
+  todaySummaryStatValue: {
+    fontSize: 14,
     fontWeight: '600',
-    textAlign: 'center',
   },
-  todayDetailLabel: {
-    fontSize: 12,
-    textAlign: 'center',
+  todaySummaryStatLabel: {
+    fontSize: 10,
   },
   section: {
     marginTop: 24,
