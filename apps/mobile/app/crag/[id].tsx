@@ -197,6 +197,7 @@ export default function CragDetailScreen() {
       )
 
       // Enrich scored sectors with crag sector data
+      // IMPORTANT: Always use fresh routesInGradeRange from API (reflects current grade range)
       const enrichedScoredSectors = scoredSectors.map((sr) => {
         const cragSector = cragSectorsMap.get(sr.sector.id)
         if (cragSector) {
@@ -212,8 +213,8 @@ export default function CragDetailScreen() {
               maxHeight: cragSector.maxHeight || sr.sector.maxHeight,
               hasTopo: cragSector.hasTopo || sr.sector.hasTopo,
             },
-            routesInUserRange:
-              sr.routesInUserRange || cragSector.routesInGradeRange || 0,
+            // Prioritize fresh data from API (recalculated with current grade range)
+            routesInUserRange: cragSector.routesInGradeRange ?? sr.routesInUserRange ?? 0,
           }
         }
         return sr
