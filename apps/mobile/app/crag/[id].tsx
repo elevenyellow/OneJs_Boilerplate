@@ -737,8 +737,11 @@ export default function CragDetailScreen() {
           contentContainerStyle={styles.activeFiltersContent}
           style={styles.activeFiltersRow}
         >
-            {/* Grade range chip - always shown */}
-            <View
+            {/* Grade range chip - opens filter screen */}
+            <Pressable
+              onPress={() => {
+                router.push(`/crag/filters/${id}`)
+              }}
               style={[
                 styles.filterChip,
                 { backgroundColor: colors.primary + '20', borderColor: colors.primary },
@@ -752,10 +755,14 @@ export default function CragDetailScreen() {
               <Text style={[styles.filterChipText, { color: colors.primary }]}>
                 {globalGradeRange.min} - {globalGradeRange.max}
               </Text>
-            </View>
+            </Pressable>
 
-            {/* Sun preference chip - always shown */}
-            <View
+            {/* Sun preference chip - cycles: any → sun → shade → any */}
+            <Pressable
+              onPress={() => {
+                const nextValue = sunPreference === 'any' ? 'sun' : sunPreference === 'sun' ? 'shade' : 'any'
+                setSunPreference(nextValue)
+              }}
               style={[
                 styles.filterChip,
                 sunPreference !== 'any' 
@@ -771,10 +778,16 @@ export default function CragDetailScreen() {
               <Text style={[styles.filterChipText, { color: sunPreference !== 'any' ? colors.primary : colors.textSecondary }]}>
                 {sunPreference === 'sun' ? 'Sun' : sunPreference === 'shade' ? 'Shade' : 'Sun/Shade'}
               </Text>
-            </View>
+            </Pressable>
 
-            {/* Min routes chip - always shown */}
-            <View
+            {/* Min routes chip - cycles: 0 → 5 → 10 → 20 → 0 */}
+            <Pressable
+              onPress={() => {
+                const options = [0, 5, 10, 20]
+                const currentIndex = options.indexOf(minRoutes)
+                const nextIndex = (currentIndex + 1) % options.length
+                setMinRoutes(options[nextIndex])
+              }}
               style={[
                 styles.filterChip,
                 minRoutes > 0 
@@ -790,10 +803,11 @@ export default function CragDetailScreen() {
               <Text style={[styles.filterChipText, { color: minRoutes > 0 ? colors.primary : colors.textSecondary }]}>
                 {minRoutes > 0 ? `${minRoutes}+` : 'Any'} routes
               </Text>
-            </View>
+            </Pressable>
 
-            {/* Topo chip - always shown */}
-            <View
+            {/* Topo chip - toggle on/off */}
+            <Pressable
+              onPress={() => setWithTopo(!withTopo)}
               style={[
                 styles.filterChip,
                 withTopo 
@@ -809,7 +823,7 @@ export default function CragDetailScreen() {
               <Text style={[styles.filterChipText, { color: withTopo ? colors.primary : colors.textSecondary }]}>
                 {withTopo ? 'With Topo' : 'Topo'}
               </Text>
-            </View>
+            </Pressable>
           </ScrollView>
 
         {/* Sectors (sorted by combined score) */}
