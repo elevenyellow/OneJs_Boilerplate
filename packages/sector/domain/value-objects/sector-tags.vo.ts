@@ -46,13 +46,26 @@ export class SectorTags {
   /**
    * Create SectorTags from raw TheCrag tags object
    */
-  static create(tagsRaw: Record<string, unknown> | null): SectorTags {
+  static create(tagsRaw: Record<string, unknown> | string | null): SectorTags {
     if (!tagsRaw) {
       return SectorTags.empty()
     }
 
+    // Handle case where tagsRaw comes as a JSON string instead of object
+    let parsedTags: Record<string, unknown>
+    if (typeof tagsRaw === 'string') {
+      try {
+        parsedTags = JSON.parse(tagsRaw)
+      } catch {
+        // If it's not valid JSON, treat it as empty
+        return SectorTags.empty()
+      }
+    } else {
+      parsedTags = tagsRaw
+    }
+
     // Collect all tag strings for inspection
-    const rawTags = this.extractAllTagStrings(tagsRaw)
+    const rawTags = this.extractAllTagStrings(parsedTags)
     const allTagsLower = rawTags.map((t) => t.toLowerCase())
 
     // Kid friendly detection
@@ -305,12 +318,30 @@ export class SectorTags {
   }
 
   /**
+   * Normalize string by replacing special spaces and trimming
+   */
+  private static normalizeString(str: string): string {
+    // Replace non-breaking spaces and other special whitespace with regular space
+    return str.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ').trim()
+  }
+
+  /**
    * Detect if any of the keywords are present in the tags
+   * Only matches if:
+   * - The tag contains the keyword (e.g., tag "kid friendly area" contains keyword "kid friendly")
+   * - OR the tag exactly matches the keyword
+   * We don't do keyword.includes(tag) because it causes false positives
+   * (e.g., "no kids" includes "id", causing "id" field to match)
    */
   private static detectTag(allTags: string[], keywords: string[]): boolean {
     for (const tag of allTags) {
+      const normalizedTag = this.normalizeString(tag)
+      // Skip very short tags (like "id", "name") that could cause false positives
+      if (normalizedTag.length < 3) continue
+      
       for (const keyword of keywords) {
-        if (tag.includes(keyword) || keyword.includes(tag)) {
+        // Check if tag contains keyword OR tag exactly equals keyword
+        if (normalizedTag.includes(keyword) || normalizedTag === keyword) {
           return true
         }
       }

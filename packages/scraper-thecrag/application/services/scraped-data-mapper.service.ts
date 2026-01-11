@@ -11,6 +11,7 @@ import {
   RockType,
   ClimbingStyle,
   SunExposure,
+  SectorTags,
 } from '@climb-zone/sector'
 import type { GeometryData } from '@climb-zone/shared'
 import {
@@ -152,6 +153,20 @@ export interface ValidatedSectorData {
   permitNode: PermitInfo
   siblingLabel: string | null
   tagsRaw: Record<string, unknown> | null
+  // Tags procesados (extraídos de tagsRaw)
+  kidFriendly: boolean | null
+  beginner: boolean | null
+  dogFriendly: boolean | null
+  accessible: boolean | null
+  camping: boolean | null
+  swimming: boolean | null
+  scenic: boolean | null
+  popular: boolean | null
+  quiet: boolean | null
+  multipitch: boolean | null
+  trad: boolean | null
+  sport: boolean | null
+  bouldering: boolean | null
   urlStub: string | null
   urlAncestorStub: string | null
   lastPDFSize: string | null
@@ -389,6 +404,22 @@ export class ScrapedDataMapperService {
     const sheltered = info?.sheltered ?? null
     const tagsRaw = info?.tags ?? null
 
+    // Procesar tags estructurados desde tagsRaw
+    const parsedTags = SectorTags.create(tagsRaw)
+    const kidFriendly = parsedTags.kidFriendly
+    const beginner = parsedTags.beginner
+    const dogFriendly = parsedTags.dogFriendly
+    const accessible = parsedTags.accessible
+    const camping = parsedTags.camping
+    const swimming = parsedTags.swimming
+    const scenic = parsedTags.scenic
+    const popular = parsedTags.popular
+    const quiet = parsedTags.quiet
+    const multipitch = parsedTags.multipitch
+    const trad = parsedTags.trad
+    const sport = parsedTags.sport
+    const bouldering = parsedTags.bouldering
+
     // Alta prioridad (NUEVOS)
     const altNames = AltNames.create(info?.altNames)
     const locatedness = Locatedness.create(info?.locatedness)
@@ -444,6 +475,20 @@ export class ScrapedDataMapperService {
       permitNode,
       siblingLabel,
       tagsRaw,
+      // Tags procesados
+      kidFriendly,
+      beginner,
+      dogFriendly,
+      accessible,
+      camping,
+      swimming,
+      scenic,
+      popular,
+      quiet,
+      multipitch,
+      trad,
+      sport,
+      bouldering,
       urlStub,
       urlAncestorStub,
       lastPDFSize,
@@ -586,6 +631,20 @@ export class ScrapedDataMapperService {
       data.permitNode,
       data.siblingLabel,
       data.tagsRaw,
+      // Tags procesados
+      data.kidFriendly,
+      data.beginner,
+      data.dogFriendly,
+      data.accessible,
+      data.camping,
+      data.swimming,
+      data.scenic,
+      data.popular,
+      data.quiet,
+      data.multipitch,
+      data.trad,
+      data.sport,
+      data.bouldering,
       data.urlStub,
       data.urlAncestorStub,
       data.lastPDFSize,

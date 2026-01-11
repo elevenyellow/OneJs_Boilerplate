@@ -94,6 +94,20 @@ interface SectorPrismaData {
   permitNode: unknown
   siblingLabel: string | null
   tagsRaw: unknown
+  // Tags procesados
+  kidFriendly: boolean | null
+  beginner: boolean | null
+  dogFriendly: boolean | null
+  accessible: boolean | null
+  camping: boolean | null
+  swimming: boolean | null
+  scenic: boolean | null
+  popular: boolean | null
+  quiet: boolean | null
+  multipitch: boolean | null
+  trad: boolean | null
+  sport: boolean | null
+  bouldering: boolean | null
   urlStub: string | null
   urlAncestorStub: string | null
   lastPDFSize: string | null
@@ -682,6 +696,20 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       PermitInfo.create(data.permitNode),
       data.siblingLabel,
       data.tagsRaw as Record<string, unknown> | null,
+      // Tags procesados
+      data.kidFriendly,
+      data.beginner,
+      data.dogFriendly,
+      data.accessible,
+      data.camping,
+      data.swimming,
+      data.scenic,
+      data.popular,
+      data.quiet,
+      data.multipitch,
+      data.trad,
+      data.sport,
+      data.bouldering,
       data.urlStub,
       data.urlAncestorStub,
       data.lastPDFSize,
@@ -783,6 +811,20 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       permitNode: entity.permitNode.toJSON(),
       siblingLabel: entity.siblingLabel,
       tagsRaw: entity.tagsRaw,
+      // Tags procesados
+      kidFriendly: entity.kidFriendly,
+      beginner: entity.beginner,
+      dogFriendly: entity.dogFriendly,
+      accessible: entity.accessible,
+      camping: entity.camping,
+      swimming: entity.swimming,
+      scenic: entity.scenic,
+      popular: entity.popular,
+      quiet: entity.quiet,
+      multipitch: entity.multipitch,
+      trad: entity.trad,
+      sport: entity.sport,
+      bouldering: entity.bouldering,
       urlStub: entity.urlStub,
       urlAncestorStub: entity.urlAncestorStub,
       lastPDFSize: entity.lastPDFSize,

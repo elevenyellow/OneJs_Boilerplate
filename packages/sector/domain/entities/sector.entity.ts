@@ -56,6 +56,20 @@ export class SectorEntity {
     public readonly permitNode: PermitInfo,
     public readonly siblingLabel: string | null,
     public readonly tagsRaw: Record<string, unknown> | null,
+    // Tags procesados (extraídos de tagsRaw para búsquedas eficientes)
+    public readonly kidFriendly: boolean | null,
+    public readonly beginner: boolean | null,
+    public readonly dogFriendly: boolean | null,
+    public readonly accessible: boolean | null,
+    public readonly camping: boolean | null,
+    public readonly swimming: boolean | null,
+    public readonly scenic: boolean | null,
+    public readonly popular: boolean | null,
+    public readonly quiet: boolean | null,
+    public readonly multipitch: boolean | null,
+    public readonly trad: boolean | null,
+    public readonly sport: boolean | null,
+    public readonly bouldering: boolean | null,
     public readonly urlStub: string | null,
     public readonly urlAncestorStub: string | null,
     public readonly lastPDFSize: string | null,
@@ -145,31 +159,38 @@ export class SectorEntity {
 
   /**
    * Get processed tags from raw tags
-   * Lazily computed from tagsRaw
+   * Lazily computed from tagsRaw (for backward compatibility)
    */
   getTags(): SectorTags {
     return SectorTags.create(this.tagsRaw)
   }
 
   /**
-   * Check if sector is kid friendly
+   * Check if sector is kid friendly (uses stored field, not lazy computed)
    */
   isKidFriendly(): boolean {
-    return this.getTags().isKidFriendly()
+    return this.kidFriendly === true
   }
 
   /**
    * Check if sector is explicitly NOT kid friendly
    */
   isNotKidFriendly(): boolean {
-    return this.getTags().isNotKidFriendly()
+    return this.kidFriendly === false
   }
 
   /**
-   * Check if sector is good for families
+   * Check if sector is good for beginners
+   */
+  isBeginner(): boolean {
+    return this.beginner === true
+  }
+
+  /**
+   * Check if sector is good for families (kid friendly, accessible, or beginner)
    */
   isGoodForFamilies(): boolean {
-    return this.getTags().isGoodForFamilies()
+    return this.kidFriendly === true || this.beginner === true || this.accessible === true
   }
 
   getTheCragUrl(): string | null {
@@ -209,7 +230,20 @@ export class SectorEntity {
       permitNode: this.permitNode.toJSON(),
       siblingLabel: this.siblingLabel,
       tagsRaw: this.tagsRaw,
-      tags: this.getTags().toJSON(),
+      // Tags procesados (campos directos)
+      kidFriendly: this.kidFriendly,
+      beginner: this.beginner,
+      dogFriendly: this.dogFriendly,
+      accessible: this.accessible,
+      camping: this.camping,
+      swimming: this.swimming,
+      scenic: this.scenic,
+      popular: this.popular,
+      quiet: this.quiet,
+      multipitch: this.multipitch,
+      trad: this.trad,
+      sport: this.sport,
+      bouldering: this.bouldering,
       urlStub: this.urlStub,
       urlAncestorStub: this.urlAncestorStub,
       lastPDFSize: this.lastPDFSize,
@@ -269,6 +303,19 @@ export class SectorEntity {
       this.permitNode,
       this.siblingLabel,
       this.tagsRaw,
+      this.kidFriendly,
+      this.beginner,
+      this.dogFriendly,
+      this.accessible,
+      this.camping,
+      this.swimming,
+      this.scenic,
+      this.popular,
+      this.quiet,
+      this.multipitch,
+      this.trad,
+      this.sport,
+      this.bouldering,
       this.urlStub,
       this.urlAncestorStub,
       this.lastPDFSize,

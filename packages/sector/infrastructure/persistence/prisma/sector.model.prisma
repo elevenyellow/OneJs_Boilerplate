@@ -55,6 +55,21 @@ model Sector {
   siblingLabel  String? // Etiqueta del hermano (organización)
   tagsRaw       Json? // Tags originales de TheCrag sin procesar
 
+  // Tags procesados (extraídos de tagsRaw para búsquedas eficientes)
+  kidFriendly Boolean? // Apto para niños
+  beginner    Boolean? // Apto para principiantes
+  dogFriendly Boolean? // Permite perros
+  accessible  Boolean? // Accesible (silla de ruedas, fácil acceso)
+  camping     Boolean? // Camping disponible cerca
+  swimming    Boolean? // Natación disponible cerca
+  scenic      Boolean? // Vistas panorámicas
+  popular     Boolean? // Popular/concurrido
+  quiet       Boolean? // Tranquilo/poco concurrido
+  multipitch  Boolean? // Rutas multilargo
+  trad        Boolean? // Escalada tradicional
+  sport       Boolean? // Escalada deportiva
+  bouldering  Boolean? // Bloque
+
   // URLs de TheCrag (ALTA PRIORIDAD)
   urlStub         String? // URL del sector en TheCrag
   urlAncestorStub String?
@@ -93,5 +108,7 @@ model Sector {
   @@index([totalFavorites])
   @@index([numberPhotos])
   @@index([isTLC])
+  @@index([kidFriendly])
+  @@index([beginner])
   @@map("sectors")
 }

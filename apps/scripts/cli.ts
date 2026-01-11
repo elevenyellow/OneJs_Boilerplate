@@ -18,6 +18,7 @@ type Command =
   | 'seed-countries'
   | 'verify-data'
   | 'fix-crag-coordinates'
+  | 'migrate-sector-tags'
   | 'help'
 
 interface CommandDefinition {
@@ -104,6 +105,15 @@ const COMMANDS: Record<string, CommandDefinition> = {
     execute: async (container) => {
       const { fixCragCoordinates } = await import('./commands/fix-crag-coordinates.command')
       await fixCragCoordinates(container)
+    },
+  },
+  'migrate-sector-tags': {
+    name: 'migrate-sector-tags',
+    description: 'Migrar tags de sectores existentes (procesar tagsRaw -> campos booleanos)',
+    execute: async (container) => {
+      const MigrateSectorTagsCommand = (await import('./commands/migrate-sector-tags.command')).default
+      const command = container.get(MigrateSectorTagsCommand)
+      await command.execute()
     },
   },
   help: {
