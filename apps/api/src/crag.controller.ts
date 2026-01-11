@@ -197,21 +197,19 @@ export class CragController {
    * Get detailed crag information including:
    * - Basic crag info (name, description, coordinates)
    * - 7-day weather forecast
-   * - Recommended sectors (sorted by conditions/popularity)
-   * - Top routes (sorted by ascents/quality)
+   * - All sectors with gradeDistribution for client-side filtering
+   * - Top routes (sorted by stars/ascents)
+   * 
+   * Note: Grade filtering and scoring are done client-side using
+   * the gradeDistribution returned for each sector. This allows
+   * instant updates when the user changes their grade range.
    */
   @Get('/:id')
   async getCragDetail(context: Context) {
     const { id } = context.params as { id: string }
-    const query = context.query as Record<string, string | undefined>
-
-    // Optional: user grade range for route filtering
-    const gradeRange = query.minGrade && query.maxGrade
-      ? { min: query.minGrade, max: query.maxGrade }
-      : undefined
 
     try {
-      const detail = await this.getCragDetailUseCase.execute(id, gradeRange)
+      const detail = await this.getCragDetailUseCase.execute(id)
       
       // 🚀 HTTP Cache headers - detalle de crag, caché por 15 minutos
       context.set.headers = {

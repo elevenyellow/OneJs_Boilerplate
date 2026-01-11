@@ -399,6 +399,7 @@ export interface NearbyCragsFilters {
 }
 
 // Crag detail types
+// Note: Grade filtering and scoring are done client-side using gradeDistribution
 export interface SectorSummary {
   id: string
   name: string
@@ -406,7 +407,6 @@ export interface SectorSummary {
   rockType: string | null
   sunExposure: string | null
   routeCount: number
-  routesInGradeRange: number
   minGrade: string | null
   maxGrade: string | null
   avgGrade: string | null // Average grade of routes
@@ -416,8 +416,7 @@ export interface SectorSummary {
   hasTopo: boolean
   theCragUrl: string | null
   headerImageUrl: string | null
-  score: number
-  // Stats for client-side calculations
+  // Stats for client-side grade filtering and scoring
   gradeDistribution: Record<string, number> // {"6a": 5, "6b": 12, ...}
   avgStars: number | null // Average star rating (0-5)
 }
@@ -496,7 +495,6 @@ export interface CragDetail {
   altitude: number | null
   totalSectors: number
   totalRoutes: number
-  totalRoutesInRange: number
   totalFavorites: number | null
   numberPhotos: number | null
   numberTopos: number | null

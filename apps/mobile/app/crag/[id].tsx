@@ -157,7 +157,7 @@ export default function CragDetailScreen() {
   // scoredSectors come from search navigation, crag.sectors come from API
   const allSectors = useMemo((): SearchSectorResult[] => {
     // Helper to convert SectorSummary to SearchSectorResult
-    // Now calculates routesInUserRange locally using gradeDistribution
+    // Calculates routesInUserRange locally using gradeDistribution
     const convertToSearchResult = (s: {
       id: string
       name: string
@@ -165,7 +165,6 @@ export default function CragDetailScreen() {
       rockType: string | null
       sunExposure: string | null
       routeCount?: number
-      routesInGradeRange?: number
       minGrade?: string | null
       maxGrade?: string | null
       avgGrade?: string | null
@@ -173,14 +172,15 @@ export default function CragDetailScreen() {
       maxHeight?: number | null
       hasTopo?: boolean
       headerImageUrl?: string | null
-      score?: number
       gradeDistribution?: Record<string, number>
       avgStars?: number | null
     }): SearchSectorResult => {
       // Calculate routes in range locally using gradeDistribution
-      const routesInRange = s.gradeDistribution 
-        ? countRoutesInGradeRange(s.gradeDistribution, globalGradeRange.min, globalGradeRange.max)
-        : s.routesInGradeRange || 0
+      const routesInRange = countRoutesInGradeRange(
+        s.gradeDistribution || {},
+        globalGradeRange.min,
+        globalGradeRange.max
+      )
       
       return {
         sector: {
@@ -203,7 +203,7 @@ export default function CragDetailScreen() {
           headerImageUrl: s.headerImageUrl || null,
           gradeDistribution: s.gradeDistribution || {},
         },
-        relevanceScore: s.score || 0,
+        relevanceScore: 0, // Calculated client-side in filteredAndSortedSectors
         distance: 0,
         routesInUserRange: routesInRange,
         matchReasons: [],
@@ -232,9 +232,12 @@ export default function CragDetailScreen() {
         const cragSector = cragSectorsMap.get(sr.sector.id)
         if (cragSector) {
           // Calculate routes in range locally using gradeDistribution
-          const routesInRange = cragSector.gradeDistribution
-            ? countRoutesInGradeRange(cragSector.gradeDistribution, globalGradeRange.min, globalGradeRange.max)
-            : cragSector.routesInGradeRange ?? sr.routesInUserRange ?? 0
+          const gradeDistribution = cragSector.gradeDistribution || sr.sector.gradeDistribution || {}
+          const routesInRange = countRoutesInGradeRange(
+            gradeDistribution,
+            globalGradeRange.min,
+            globalGradeRange.max
+          )
           
           return {
             ...sr,
@@ -248,7 +251,7 @@ export default function CragDetailScreen() {
               maxHeight: cragSector.maxHeight || sr.sector.maxHeight,
               hasTopo: cragSector.hasTopo || sr.sector.hasTopo,
               avgStars: cragSector.avgStars || sr.sector.avgStars,
-              gradeDistribution: cragSector.gradeDistribution || sr.sector.gradeDistribution || {},
+              gradeDistribution,
             },
             routesInUserRange: routesInRange,
           }
@@ -410,6 +413,11 @@ export default function CragDetailScreen() {
   // Alias for backwards compatibility with template
   const filteredSectors = filteredAndSortedSectors
 
+  // Calculate total routes in range across all sectors (client-side)
+  const totalRoutesInRange = useMemo(() => {
+    return allSectors.reduce((sum, sr) => sum + (sr.routesInUserRange || 0), 0)
+  }, [allSectors])
+
   // Count active filters (grade range always counts since it's used for scoring)
   const activeFiltersCount = useMemo(() => {
     let count = 1 // Grade range is always active (used for scoring)
@@ -554,12 +562,12 @@ export default function CragDetailScreen() {
         stats={[
           { label: 'sectors', value: crag.totalSectors, icon: 'grid' },
           { label: 'routes', value: crag.totalRoutes, icon: 'git-branch' },
-          ...(crag.totalRoutesInRange > 0 &&
-          crag.totalRoutesInRange !== crag.totalRoutes
+          ...(totalRoutesInRange > 0 &&
+          totalRoutesInRange !== crag.totalRoutes
             ? [
                 {
                   label: 'in range',
-                  value: crag.totalRoutesInRange,
+                  value: totalRoutesInRange,
                   icon: 'checkmark-circle' as const,
                 },
               ]
