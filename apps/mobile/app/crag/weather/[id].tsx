@@ -15,79 +15,146 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-function formatForecastDate(dateStr: string | null | undefined): { day: string; date: string } {
+function formatForecastDate(dateStr: string | null | undefined): {
+  day: string
+  date: string
+} {
   if (!dateStr) return { day: '', date: '' }
   const date = new Date(dateStr)
+
+  // Use UTC date to avoid timezone offset issues
+  // The API returns dates at midnight UTC, so we use UTC methods
+  const utcDay = date.getUTCDate()
+  const utcMonth = date.getUTCMonth()
+  const utcYear = date.getUTCFullYear()
+
   const today = new Date()
+  const todayUtcDay = today.getUTCDate()
+  const todayUtcMonth = today.getUTCMonth()
+  const todayUtcYear = today.getUTCFullYear()
+
   const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+  const tomorrowUtcDay = tomorrow.getUTCDate()
+  const tomorrowUtcMonth = tomorrow.getUTCMonth()
+  const tomorrowUtcYear = tomorrow.getUTCFullYear()
 
-  const dayNumber = date.getDate().toString()
+  const dayNumber = utcDay.toString()
 
-  if (date.toDateString() === today.toDateString()) {
+  // Check if it's today
+  if (
+    utcDay === todayUtcDay &&
+    utcMonth === todayUtcMonth &&
+    utcYear === todayUtcYear
+  ) {
     return { day: 'Today', date: dayNumber }
   }
-  if (date.toDateString() === tomorrow.toDateString()) {
+
+  // Check if it's tomorrow
+  if (
+    utcDay === tomorrowUtcDay &&
+    utcMonth === tomorrowUtcMonth &&
+    utcYear === tomorrowUtcYear
+  ) {
     return { day: 'Tom', date: dayNumber }
   }
 
+  // Get weekday name using UTC
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const weekday = weekdays[date.getUTCDay()]
+
   return {
-    day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    day: weekday,
     date: dayNumber,
   }
 }
 
-function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
+/**
+ * Map Meteoblue pictocode to Ionicons weather icon
+ * Meteoblue pictocodes (day): https://content.meteoblue.com/en/research-education/specifications/standards/symbols-and-pictograms
+ * 1: Sunny, cloudless sky
+ * 2: Sunny and few clouds
+ * 3: Partly cloudy
+ * 4: Overcast
+ * 5: Fog
+ * 6: Overcast with rain
+ * 7: Mixed with showers
+ * 8: Showers, thunderstorms likely
+ * 9: Overcast with snow
+ * 10: Mixed with snow showers
+ * 11: Mostly cloudy with mixture of snow and rain
+ * 12: Overcast with light rain
+ * 13: Overcast with light snow
+ * 14: Mostly cloudy with rain
+ * 15: Mostly cloudy with snow
+ * 16: Mostly cloudy with light rain
+ * 17: Mostly cloudy with light snow
+ *
+ * @param code - Meteoblue pictocode
+ * @param precipitation - Optional precipitation amount to refine icon selection
+ * @param isDaylight - Optional flag to show moon icons at night
+ */
+function getWeatherIcon(
+  code: number,
+  precipitation?: number,
+  isDaylight?: boolean,
+): keyof typeof Ionicons.glyphMap {
+  // If code suggests rain/snow but precipitation is 0, show cloudy instead
+  const hasActualPrecipitation =
+    precipitation !== undefined && precipitation > 0
+
+  // Default to daylight if not specified (for daily forecasts)
+  const isDay = isDaylight !== false
+
   switch (code) {
     case 1:
-      return 'sunny'
+      return isDay ? 'sunny' : 'moon'
     case 2:
     case 3:
-      return 'partly-sunny'
+      return isDay ? 'partly-sunny' : 'cloudy-night'
     case 4:
+      return 'cloudy'
     case 5:
-      return 'cloudy'
-    case 6:
-    case 9:
-    case 11:
-      return 'rainy'
-    case 7:
-    case 10:
-    case 12:
-      return 'snow'
-    case 8:
-    case 13:
-      return 'rainy'
-    case 14:
-    case 15:
-      return 'thunderstorm'
-    case 16:
-    case 17:
-      return 'cloudy'
+      return 'cloudy' // Fog
+    case 6: // Overcast with rain
+    case 7: // Mixed with showers
+    case 12: // Overcast with light rain
+    case 14: // Mostly cloudy with rain
+    case 16: // Mostly cloudy with light rain
+      return hasActualPrecipitation ? 'rainy' : 'cloudy'
+    case 8: // Showers, thunderstorms likely
+      return hasActualPrecipitation ? 'thunderstorm' : 'cloudy'
+    case 9: // Overcast with snow
+    case 10: // Mixed with snow showers
+    case 11: // Mixture of snow and rain
+    case 13: // Overcast with light snow
+    case 15: // Mostly cloudy with snow
+    case 17: // Mostly cloudy with light snow
+      return hasActualPrecipitation ? 'snow' : 'cloudy'
     default:
-      return 'partly-sunny'
+      return isDay ? 'partly-sunny' : 'cloudy-night'
   }
 }
 
 function formatHour(timestamp: string | null | undefined): string {
   if (!timestamp) return '--:--'
-  
+
   // Try parsing as ISO string first
   let date = new Date(timestamp)
-  
+
   // If that fails, try parsing as a number (unix timestamp)
   if (isNaN(date.getTime()) && !isNaN(Number(timestamp))) {
     // Check if it's seconds or milliseconds
     const num = Number(timestamp)
     date = new Date(num > 9999999999 ? num : num * 1000)
   }
-  
+
   // Check if date is valid
   if (isNaN(date.getTime())) return '--:--'
-  
+
   const hours = date.getHours().toString().padStart(2, '0')
   const minutes = date.getMinutes().toString().padStart(2, '0')
-  
+
   return `${hours}:${minutes}`
 }
 
@@ -100,21 +167,52 @@ export default function WeatherScreen() {
 
   const { data: crag, isLoading } = useCragDetail(id)
 
-  const todayForecast = crag?.forecast?.[0] || null
+  // Filter forecast to only include today and future days
+  const filteredForecast = useMemo(() => {
+    if (!crag?.forecast) return []
 
-  // Use all hourly data available (backend should filter by relevant dates)
+    const now = new Date()
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    )
+
+    return crag.forecast.filter((day) => {
+      if (!day.date) return false
+      const forecastDate = new Date(day.date)
+      // Include if forecast date is today or in the future
+      return forecastDate >= todayStart
+    })
+  }, [crag?.forecast])
+
+  const todayForecast = filteredForecast[0] || null
+
+  // Use all hourly data available, filtered to current time and future
   const todayHourlyForecast = useMemo(() => {
     if (!crag?.hourlyForecast) return []
-    // Return all hourly forecasts, sorted by timestamp
-    return [...crag.hourlyForecast].sort((a, b) => {
-      if (!a.timestamp || !b.timestamp) return 0
-      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    })
+
+    const now = new Date()
+    // Filter to only show current hour and future
+    return [...crag.hourlyForecast]
+      .filter((hour) => {
+        if (!hour.timestamp) return false
+        const hourTime = new Date(hour.timestamp)
+        // Include if within 1 hour of now or in the future
+        return hourTime.getTime() >= now.getTime() - 60 * 60 * 1000
+      })
+      .sort((a, b) => {
+        if (!a.timestamp || !b.timestamp) return 0
+        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      })
   }, [crag?.hourlyForecast])
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     )
@@ -122,44 +220,81 @@ export default function WeatherScreen() {
 
   if (!crag) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <Text style={{ color: colors.text }}>Weather data not available</Text>
       </View>
     )
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingTop: insets.top },
+      ]}
+    >
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Weather Forecast</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Weather Forecast
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Today's Complete Summary */}
         {todayForecast && (
-          <View style={[styles.todaySummaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.todaySummaryCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
             {/* Main Temperature */}
             <View style={styles.todaySummaryHeader}>
               <View style={styles.todaySummaryMain}>
                 <Ionicons
-                  name={getWeatherIcon(todayForecast.weatherCode)}
+                  name={getWeatherIcon(todayForecast.weatherCode, todayForecast.precipitation?.amount)}
                   size={64}
                   color={colors.primary}
                 />
                 <View style={styles.todaySummaryTemps}>
-                  <Text style={[styles.todaySummaryTempMain, { color: colors.text }]}>
+                  <Text
+                    style={[
+                      styles.todaySummaryTempMain,
+                      { color: colors.text },
+                    ]}
+                  >
                     {Math.round(todayForecast.temperature?.mean || 0)}°C
                   </Text>
-                  <Text style={[styles.todaySummaryTempRange, { color: colors.textSecondary }]}>
-                    Min {Math.round(todayForecast.temperature?.min || 0)}° / Max {Math.round(todayForecast.temperature?.max || 0)}°
+                  <Text
+                    style={[
+                      styles.todaySummaryTempRange,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Min {Math.round(todayForecast.temperature?.min || 0)}° / Max{' '}
+                    {Math.round(todayForecast.temperature?.max || 0)}°
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.todaySummaryLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.todaySummaryLabel,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 Today
               </Text>
             </View>
@@ -167,79 +302,169 @@ export default function WeatherScreen() {
             {/* Detailed Conditions Grid */}
             <View style={styles.todayDetailsGrid}>
               {/* Temperature */}
-              <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
-                <Ionicons name="thermometer-outline" size={22} color="#EF4444" />
+              <View
+                style={[
+                  styles.todayDetailBox,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
+                <Ionicons
+                  name="thermometer-outline"
+                  size={22}
+                  color="#EF4444"
+                />
                 <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(todayForecast.temperature?.min || 0)}° - {Math.round(todayForecast.temperature?.max || 0)}°
+                  {Math.round(todayForecast.temperature?.min || 0)}° -{' '}
+                  {Math.round(todayForecast.temperature?.max || 0)}°
                 </Text>
-                <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.todayDetailLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Temperature
                 </Text>
               </View>
 
               {/* Feels Like */}
-              <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
+              <View
+                style={[
+                  styles.todayDetailBox,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
                 <Ionicons name="body-outline" size={22} color="#F59E0B" />
                 <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(todayForecast.feelsLike?.min || todayForecast.temperature?.min || 0)}° - {Math.round(todayForecast.feelsLike?.max || todayForecast.temperature?.max || 0)}°
+                  {Math.round(
+                    todayForecast.feelsLike?.min ||
+                      todayForecast.temperature?.min ||
+                      0,
+                  )}
+                  ° -{' '}
+                  {Math.round(
+                    todayForecast.feelsLike?.max ||
+                      todayForecast.temperature?.max ||
+                      0,
+                  )}
+                  °
                 </Text>
-                <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.todayDetailLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Feels Like
                 </Text>
               </View>
 
               {/* Rain Probability */}
-              <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
+              <View
+                style={[
+                  styles.todayDetailBox,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
                 <Ionicons name="rainy-outline" size={22} color="#3B82F6" />
                 <Text style={[styles.todayDetailValue, { color: colors.text }]}>
                   {Math.round(todayForecast.precipitation?.probability || 0)}%
                 </Text>
-                <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.todayDetailLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Rain Chance
                 </Text>
               </View>
 
               {/* Precipitation */}
-              <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
+              <View
+                style={[
+                  styles.todayDetailBox,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
                 <Ionicons name="water" size={22} color="#0EA5E9" />
                 <Text style={[styles.todayDetailValue, { color: colors.text }]}>
                   {(todayForecast.precipitation?.amount || 0).toFixed(1)} mm
                 </Text>
-                <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.todayDetailLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Precipitation
                 </Text>
               </View>
 
               {/* Humidity */}
-              <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
+              <View
+                style={[
+                  styles.todayDetailBox,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
                 <Ionicons name="water-outline" size={22} color="#6366F1" />
                 <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(todayForecast.humidity?.min || 0)}% - {Math.round(todayForecast.humidity?.max || 0)}%
+                  {Math.round(todayForecast.humidity?.min || 0)}% -{' '}
+                  {Math.round(todayForecast.humidity?.max || 0)}%
                 </Text>
-                <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.todayDetailLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Humidity
                 </Text>
               </View>
 
               {/* Wind */}
-              <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
+              <View
+                style={[
+                  styles.todayDetailBox,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
                 <Ionicons name="leaf" size={22} color="#10B981" />
                 <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                  {Math.round(todayForecast.wind?.mean || 0)} m/s {todayForecast.wind?.direction || ''}
+                  {Math.round(todayForecast.wind?.mean || 0)} m/s{' '}
+                  {todayForecast.wind?.direction || ''}
                 </Text>
-                <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.todayDetailLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Wind
                 </Text>
               </View>
 
               {/* UV Index */}
               {todayForecast.uvIndex !== undefined && (
-                <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
+                <View
+                  style={[
+                    styles.todayDetailBox,
+                    { backgroundColor: colors.muted },
+                  ]}
+                >
                   <Ionicons name="sunny" size={22} color="#F59E0B" />
-                  <Text style={[styles.todayDetailValue, { color: colors.text }]}>
+                  <Text
+                    style={[styles.todayDetailValue, { color: colors.text }]}
+                  >
                     {todayForecast.uvIndex}
                   </Text>
-                  <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.todayDetailLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     UV Index
                   </Text>
                 </View>
@@ -247,12 +472,25 @@ export default function WeatherScreen() {
 
               {/* Sunrise/Sunset */}
               {(todayForecast.sunrise || todayForecast.sunset) && (
-                <View style={[styles.todayDetailBox, { backgroundColor: colors.muted }]}>
+                <View
+                  style={[
+                    styles.todayDetailBox,
+                    { backgroundColor: colors.muted },
+                  ]}
+                >
                   <Ionicons name="sunny-outline" size={22} color="#FB923C" />
-                  <Text style={[styles.todayDetailValue, { color: colors.text }]}>
-                    {todayForecast.sunrise || '--'} / {todayForecast.sunset || '--'}
+                  <Text
+                    style={[styles.todayDetailValue, { color: colors.text }]}
+                  >
+                    {todayForecast.sunrise || '--'} /{' '}
+                    {todayForecast.sunset || '--'}
                   </Text>
-                  <Text style={[styles.todayDetailLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.todayDetailLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     Sunrise / Sunset
                   </Text>
                 </View>
@@ -267,9 +505,20 @@ export default function WeatherScreen() {
             Hourly Forecast
           </Text>
           {todayHourlyForecast.length === 0 ? (
-            <View style={[styles.noDataContainer, { backgroundColor: colors.muted }]}>
-              <Ionicons name="time-outline" size={32} color={colors.textSecondary} />
-              <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+            <View
+              style={[
+                styles.noDataContainer,
+                { backgroundColor: colors.muted },
+              ]}
+            >
+              <Ionicons
+                name="time-outline"
+                size={32}
+                color={colors.textSecondary}
+              />
+              <Text
+                style={[styles.noDataText, { color: colors.textSecondary }]}
+              >
                 Hourly data not available for this location
               </Text>
             </View>
@@ -279,70 +528,110 @@ export default function WeatherScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.hourlyScrollContent}
             >
-              {todayHourlyForecast.slice(0, 24).map((hour: CragDetailHourlyForecast, index: number) => (
-                <View
-                  key={hour.timestamp || `hour-${index}`}
-                  style={[
-                    styles.hourlyCard,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                  ]}
-                >
-                  {/* Time */}
-                  <View style={styles.hourlyCardTime}>
-                    <Text style={[styles.hourlyCardTimeText, { color: colors.text }]}>
-                      {formatHour(hour.timestamp || '')}
-                    </Text>
-                    {hour.isDaylight ? (
-                      <Ionicons name="sunny" size={10} color="#F59E0B" />
-                    ) : (
-                      <Ionicons name="moon" size={10} color="#6366F1" />
-                    )}
-                  </View>
-
-                  {/* Weather Icon */}
-                  <Ionicons
-                    name={getWeatherIcon(hour.weatherCode)}
-                    size={28}
-                    color={colors.primary}
-                  />
-
-                  {/* Temperature */}
-                  <Text style={[styles.hourlyCardTemp, { color: colors.text }]}>
-                    {Math.round(hour.temperature)}°
-                  </Text>
-
-                  {/* Conditions */}
-                  <View style={[styles.hourlyCardConditions, { backgroundColor: colors.muted }]}>
-                    {hour.precipitation > 0 ? (
-                      <View style={styles.hourlyCardConditionRow}>
-                        <Ionicons name="water" size={10} color="#3B82F6" />
-                        <Text style={[styles.hourlyCardConditionText, { color: colors.textSecondary }]}>
-                          {hour.precipitation.toFixed(1)}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View style={styles.hourlyCardConditionRow}>
-                        <Ionicons name="water-outline" size={10} color={colors.textSecondary} />
-                        <Text style={[styles.hourlyCardConditionText, { color: colors.textSecondary }]}>
-                          0
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.hourlyCardConditionRow}>
-                      <Ionicons name="leaf" size={10} color={colors.textSecondary} />
-                      <Text style={[styles.hourlyCardConditionText, { color: colors.textSecondary }]}>
-                        {Math.round(hour.windSpeed)}
+              {todayHourlyForecast
+                .slice(0, 24)
+                .map((hour: CragDetailHourlyForecast, index: number) => (
+                  <View
+                    key={hour.timestamp || `hour-${index}`}
+                    style={[
+                      styles.hourlyCard,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    {/* Time */}
+                    <View style={styles.hourlyCardTime}>
+                      <Text
+                        style={[
+                          styles.hourlyCardTimeText,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {formatHour(hour.timestamp || '')}
                       </Text>
+                      {hour.isDaylight ? (
+                        <Ionicons name="sunny" size={10} color="#F59E0B" />
+                      ) : (
+                        <Ionicons name="moon" size={10} color="#6366F1" />
+                      )}
+                    </View>
+
+                    {/* Weather Icon */}
+                    <Ionicons
+                      name={getWeatherIcon(hour.weatherCode, hour.precipitation, hour.isDaylight)}
+                      size={28}
+                      color={colors.primary}
+                    />
+
+                    {/* Temperature */}
+                    <Text
+                      style={[styles.hourlyCardTemp, { color: colors.text }]}
+                    >
+                      {Math.round(hour.temperature)}°
+                    </Text>
+
+                    {/* Conditions */}
+                    <View
+                      style={[
+                        styles.hourlyCardConditions,
+                        { backgroundColor: colors.muted },
+                      ]}
+                    >
+                      {hour.precipitation > 0 ? (
+                        <View style={styles.hourlyCardConditionRow}>
+                          <Ionicons name="water" size={10} color="#3B82F6" />
+                          <Text
+                            style={[
+                              styles.hourlyCardConditionText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
+                            {hour.precipitation.toFixed(1)}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.hourlyCardConditionRow}>
+                          <Ionicons
+                            name="water-outline"
+                            size={10}
+                            color={colors.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.hourlyCardConditionText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
+                            0
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.hourlyCardConditionRow}>
+                        <Ionicons
+                          name="leaf"
+                          size={10}
+                          color={colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.hourlyCardConditionText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {Math.round(hour.windSpeed)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              ))}
+                ))}
             </ScrollView>
           )}
         </View>
 
         {/* Weekly Forecast */}
-        {crag.forecast && crag.forecast.length > 0 && (
+        {filteredForecast.length > 0 && (
           <View style={[styles.section, { marginBottom: 40 }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               7-Day Forecast
@@ -352,17 +641,19 @@ export default function WeatherScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.weeklyScrollContent}
             >
-              {crag.forecast.slice(0, 7).map((day, index) => {
-                const isToday = index === 0
+              {filteredForecast.slice(0, 7).map((day, index) => {
+                const { day: dayName, date: dayDate } = formatForecastDate(
+                  day.date,
+                )
+                const isToday = dayName === 'Today'
                 const rainChance = day.precipitation?.probability || 0
-                const { day: dayName, date: dayDate } = formatForecastDate(day.date)
-                
+
                 return (
                   <View
                     key={day.date || `day-${index}`}
                     style={[
                       styles.dayCard,
-                      { 
+                      {
                         backgroundColor: isToday ? colors.primary : colors.card,
                         borderColor: colors.border,
                       },
@@ -370,74 +661,118 @@ export default function WeatherScreen() {
                   >
                     {/* Day label */}
                     <View style={styles.dayCardLabelContainer}>
-                      <Text style={[
-                        styles.dayCardLabel,
-                        { color: isToday ? '#FFFFFF' : colors.text }
-                      ]}>
+                      <Text
+                        style={[
+                          styles.dayCardLabel,
+                          { color: isToday ? '#FFFFFF' : colors.text },
+                        ]}
+                      >
                         {dayName}
                       </Text>
-                      <Text style={[
-                        styles.dayCardDate,
-                        { color: isToday ? 'rgba(255,255,255,0.7)' : colors.textSecondary }
-                      ]}>
+                      <Text
+                        style={[
+                          styles.dayCardDate,
+                          {
+                            color: isToday
+                              ? 'rgba(255,255,255,0.7)'
+                              : colors.textSecondary,
+                          },
+                        ]}
+                      >
                         {dayDate}
                       </Text>
                     </View>
 
                     {/* Weather icon */}
                     <Ionicons
-                      name={getWeatherIcon(day.weatherCode)}
+                      name={getWeatherIcon(day.weatherCode, day.precipitation?.amount)}
                       size={36}
                       color={isToday ? '#FFFFFF' : colors.primary}
                     />
 
                     {/* Temperature */}
                     <View style={styles.dayCardTemps}>
-                      <Text style={[
-                        styles.dayCardTempHigh,
-                        { color: isToday ? '#FFFFFF' : colors.text }
-                      ]}>
+                      <Text
+                        style={[
+                          styles.dayCardTempHigh,
+                          { color: isToday ? '#FFFFFF' : colors.text },
+                        ]}
+                      >
                         {Math.round(day.temperature?.max || 0)}°
                       </Text>
-                      <Text style={[
-                        styles.dayCardTempLow,
-                        { color: isToday ? 'rgba(255,255,255,0.7)' : colors.textSecondary }
-                      ]}>
+                      <Text
+                        style={[
+                          styles.dayCardTempLow,
+                          {
+                            color: isToday
+                              ? 'rgba(255,255,255,0.7)'
+                              : colors.textSecondary,
+                          },
+                        ]}
+                      >
                         {Math.round(day.temperature?.min || 0)}°
                       </Text>
                     </View>
 
                     {/* Conditions */}
-                    <View style={[
-                      styles.dayCardConditions,
-                      { backgroundColor: isToday ? 'rgba(255,255,255,0.15)' : colors.muted }
-                    ]}>
+                    <View
+                      style={[
+                        styles.dayCardConditions,
+                        {
+                          backgroundColor: isToday
+                            ? 'rgba(255,255,255,0.15)'
+                            : colors.muted,
+                        },
+                      ]}
+                    >
                       {/* Rain */}
                       <View style={styles.dayCardConditionRow}>
-                        <Ionicons 
-                          name="water" 
-                          size={12} 
-                          color={rainChance > 50 ? '#3B82F6' : (isToday ? 'rgba(255,255,255,0.6)' : colors.textSecondary)} 
+                        <Ionicons
+                          name="water"
+                          size={12}
+                          color={
+                            rainChance > 50
+                              ? '#3B82F6'
+                              : isToday
+                                ? 'rgba(255,255,255,0.6)'
+                                : colors.textSecondary
+                          }
                         />
-                        <Text style={[
-                          styles.dayCardConditionText,
-                          { color: isToday ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
-                        ]}>
+                        <Text
+                          style={[
+                            styles.dayCardConditionText,
+                            {
+                              color: isToday
+                                ? 'rgba(255,255,255,0.8)'
+                                : colors.textSecondary,
+                            },
+                          ]}
+                        >
                           {Math.round(rainChance)}%
                         </Text>
                       </View>
-                      
+
                       {/* Wind */}
                       <View style={styles.dayCardConditionRow}>
-                        <Ionicons 
-                          name="leaf" 
-                          size={12} 
-                          color={isToday ? 'rgba(255,255,255,0.6)' : colors.textSecondary} 
+                        <Ionicons
+                          name="leaf"
+                          size={12}
+                          color={
+                            isToday
+                              ? 'rgba(255,255,255,0.6)'
+                              : colors.textSecondary
+                          }
                         />
-                        <Text style={[
-                          styles.dayCardConditionText,
-                          { color: isToday ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
-                        ]}>
+                        <Text
+                          style={[
+                            styles.dayCardConditionText,
+                            {
+                              color: isToday
+                                ? 'rgba(255,255,255,0.8)'
+                                : colors.textSecondary,
+                            },
+                          ]}
+                        >
                           {Math.round(day.wind?.mean || 0)}m/s
                         </Text>
                       </View>
