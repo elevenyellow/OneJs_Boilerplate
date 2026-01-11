@@ -43,6 +43,10 @@ export class SectorController {
    *   "minRoutes": 10,
    *   "rockTypes": ["Limestone"],
    *   "hasTopo": true,
+   *   "kidFriendly": true,          // optional: filter for kid-friendly sectors
+   *   "dogFriendly": true,          // optional: filter for dog-friendly sectors
+   *   "beginner": true,             // optional: filter for beginner-friendly sectors
+   *   "accessible": true,           // optional: filter for accessible sectors
    *   "limit": 20
    * }
    *
@@ -51,6 +55,7 @@ export class SectorController {
    * - Weather conditions (temperature, wind, rain)
    * - Orientation bonus (+10 points for perfect orientation)
    * - Match reasons explaining why each sector is relevant
+   * - Sector tags (kidFriendly, dogFriendly, accessible, scenic, etc.)
    */
   @Post('/search')
   async search(context: Context) {

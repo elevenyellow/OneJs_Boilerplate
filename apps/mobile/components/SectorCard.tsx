@@ -88,6 +88,11 @@ export const SectorCard = memo(function SectorCard({ result, compact = false }: 
     if (sector.coordinates?.lon) {
       params.set('longitude', sector.coordinates.lon.toString());
     }
+
+    // Add tags if available
+    if (sector.tags) {
+      params.set('tags', JSON.stringify(sector.tags));
+    }
     
     return `/sector/${sector.id}?${params.toString()}`;
   };

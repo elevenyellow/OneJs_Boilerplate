@@ -40,6 +40,11 @@ export interface SearchSectorsDto {
   climbingStyles?: string[]
   hasTopo?: boolean
   requiresNoPermit?: boolean
+  // Tag-based filters
+  kidFriendly?: boolean
+  dogFriendly?: boolean
+  beginner?: boolean
+  accessible?: boolean
   limit?: number
   offset?: number
 }
@@ -59,6 +64,24 @@ export interface RouteSearchInfo {
   subType: string | null
   firstAscent: string | null
   topoNumber: string | null
+}
+
+// Sector tags - processed from TheCrag raw tags
+export interface SectorTags {
+  kidFriendly: boolean | null
+  dogFriendly: boolean | null
+  accessible: boolean | null
+  camping: boolean | null
+  swimming: boolean | null
+  scenic: boolean | null
+  popular: boolean | null
+  quiet: boolean | null
+  multipitch: boolean | null
+  trad: boolean | null
+  sport: boolean | null
+  bouldering: boolean | null
+  beginner: boolean | null
+  rawTags: string[]
 }
 
 // Full route detail from /routes/:id endpoint
@@ -441,6 +464,9 @@ export interface SectorSummary {
   // Stats for client-side grade filtering and scoring
   gradeDistribution: Record<string, number> // {"6a": 5, "6b": 12, ...}
   avgStars: number | null // Average star rating (0-5)
+  // Tags for filtering and display
+  kidFriendly: boolean | null // Suitable for children
+  beginner: boolean | null // Good for beginners
 }
 
 export interface RouteHighlight {

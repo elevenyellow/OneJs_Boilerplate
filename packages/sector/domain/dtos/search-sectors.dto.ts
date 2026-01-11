@@ -60,6 +60,12 @@ export interface SearchSectorsDto {
   hasTopo?: boolean // require sectors with topos/croquis
   requiresNoPermit?: boolean // exclude sectors requiring permits
 
+  // Tag-based filters
+  kidFriendly?: boolean // true = require kid friendly, false = exclude not kid friendly
+  dogFriendly?: boolean // require dog friendly sectors
+  beginner?: boolean // require beginner-friendly sectors
+  accessible?: boolean // require accessible sectors
+
   // Pagination
   limit?: number // default: 20
   offset?: number // default: 0
@@ -151,6 +157,12 @@ export interface AdvancedSearchFilters {
   climbingStyles?: string[]
   hasTopo?: boolean
   requiresNoPermit?: boolean
+
+  // Tag-based filters
+  kidFriendly?: boolean
+  dogFriendly?: boolean
+  beginner?: boolean
+  accessible?: boolean
 
   // Pagination
   limit: number

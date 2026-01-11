@@ -90,6 +90,11 @@ export class SearchSectorsUseCase {
       climbingStyles: dto.climbingStyles,
       hasTopo: dto.hasTopo,
       requiresNoPermit: dto.requiresNoPermit,
+      // Tag-based filters
+      kidFriendly: dto.kidFriendly,
+      dogFriendly: dto.dogFriendly,
+      beginner: dto.beginner,
+      accessible: dto.accessible,
       limit: 500, // Fetch a large number of candidates to ensure comprehensive results
       offset: 0, // We handle pagination after scoring and grouping
     }

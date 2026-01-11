@@ -27,6 +27,7 @@ import {
   SectorStats,
   type GradeDistribution,
 } from '@sector/domain/value-objects/sector-stats.vo'
+import { SectorTags } from '@sector/domain/value-objects/sector-tags.vo'
 import { SunExposure } from '@sector/domain/value-objects/sun-exposure.vo'
 
 export interface CragInfo {
@@ -137,6 +138,12 @@ export interface AdvancedSearchFilters {
   climbingStyles?: string[]
   hasTopo?: boolean
   requiresNoPermit?: boolean
+
+  // Tag-based filters (processed in memory after DB query)
+  kidFriendly?: boolean
+  dogFriendly?: boolean
+  beginner?: boolean
+  accessible?: boolean
 
   // Pagination
   limit: number
@@ -501,7 +508,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
     })
 
     // Map to entities with routes and crag info
-    return sectors.map((s: any) => {
+    const mappedResults = sectors.map((s: any) => {
       const entity = this.toEntity(s)
 
       // Map routes to RouteSearchInfo
@@ -586,6 +593,49 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         }
       }
       return { entity, routes, crag: cragInfo }
+    })
+
+    // Apply tag-based filters in memory (tags are stored as JSON and processed dynamically)
+    const hasTagFilters =
+      filters.kidFriendly !== undefined ||
+      filters.dogFriendly !== undefined ||
+      filters.beginner !== undefined ||
+      filters.accessible !== undefined
+
+    if (!hasTagFilters) {
+      return mappedResults
+    }
+
+    return mappedResults.filter((result) => {
+      const tags = SectorTags.create(result.entity.tagsRaw)
+
+      // Kid friendly filter
+      if (filters.kidFriendly !== undefined) {
+        if (filters.kidFriendly === true) {
+          // Require kid friendly OR not explicitly marked as not kid friendly
+          if (tags.kidFriendly === false) return false
+        } else {
+          // Exclude sectors marked as kid friendly (user wants challenging areas?)
+          if (tags.kidFriendly === true) return false
+        }
+      }
+
+      // Dog friendly filter
+      if (filters.dogFriendly === true && tags.dogFriendly !== true) {
+        return false
+      }
+
+      // Beginner filter
+      if (filters.beginner === true && tags.beginner !== true) {
+        return false
+      }
+
+      // Accessible filter
+      if (filters.accessible === true && tags.accessible !== true) {
+        return false
+      }
+
+      return true
     })
   }
 

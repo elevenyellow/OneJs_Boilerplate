@@ -17,6 +17,7 @@ import { PriceCategory } from '../value-objects/price-category.vo'
 import { RockType } from '../value-objects/rock-type.vo'
 import { SectorId } from '../value-objects/sector-id.vo'
 import { SectorStats } from '../value-objects/sector-stats.vo'
+import { SectorTags } from '../value-objects/sector-tags.vo'
 import { SunExposure } from '../value-objects/sun-exposure.vo'
 
 export type SectorType = 'Sector' | 'Cliff'
@@ -142,6 +143,35 @@ export class SectorEntity {
     return this.permitNode.hasPermitRequired()
   }
 
+  /**
+   * Get processed tags from raw tags
+   * Lazily computed from tagsRaw
+   */
+  getTags(): SectorTags {
+    return SectorTags.create(this.tagsRaw)
+  }
+
+  /**
+   * Check if sector is kid friendly
+   */
+  isKidFriendly(): boolean {
+    return this.getTags().isKidFriendly()
+  }
+
+  /**
+   * Check if sector is explicitly NOT kid friendly
+   */
+  isNotKidFriendly(): boolean {
+    return this.getTags().isNotKidFriendly()
+  }
+
+  /**
+   * Check if sector is good for families
+   */
+  isGoodForFamilies(): boolean {
+    return this.getTags().isGoodForFamilies()
+  }
+
   getTheCragUrl(): string | null {
     if (!this.urlStub) return null
     return `https://www.thecrag.com${this.urlStub}`
@@ -179,6 +209,7 @@ export class SectorEntity {
       permitNode: this.permitNode.toJSON(),
       siblingLabel: this.siblingLabel,
       tagsRaw: this.tagsRaw,
+      tags: this.getTags().toJSON(),
       urlStub: this.urlStub,
       urlAncestorStub: this.urlAncestorStub,
       lastPDFSize: this.lastPDFSize,

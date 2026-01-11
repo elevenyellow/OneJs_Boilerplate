@@ -7,7 +7,7 @@ import { Colors } from '@/constants/Colors'
 import { useFilters } from '@/contexts/FiltersContext'
 import { useSectorRoutes } from '@/hooks/useSectorRoutes'
 import { useSectorTopos } from '@/hooks/useTopos'
-import type { RouteSearchInfo } from '@/lib/api'
+import type { RouteSearchInfo, SectorTags } from '@/lib/api'
 import { gradeToIndex, indexToGrade } from '@/utils/gradeConverter'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -134,6 +134,7 @@ export default function SectorDetailScreen() {
     latitude?: string
     longitude?: string
     headerImageUrl?: string
+    tags?: string // JSON stringified SectorTags
   }>()
   const router = useRouter()
   const colorScheme = useColorScheme() ?? 'light'
@@ -149,6 +150,16 @@ export default function SectorDetailScreen() {
   // Parse coordinates
   const latitude = params.latitude ? parseFloat(params.latitude) : null
   const longitude = params.longitude ? parseFloat(params.longitude) : null
+
+  // Parse tags from JSON string
+  const sectorTags: SectorTags | null = useMemo(() => {
+    if (!params.tags) return null
+    try {
+      return JSON.parse(params.tags) as SectorTags
+    } catch {
+      return null
+    }
+  }, [params.tags])
 
   // Fetch topos for this sector
   const { data: toposData, isLoading: isLoadingTopos } = useSectorTopos(
@@ -590,6 +601,143 @@ export default function SectorDetailScreen() {
               </View>
             )}
           </View>
+
+          {/* Sector Tags */}
+          {sectorTags && (
+            <View style={styles.tagsContainer}>
+              {/* Kid Friendly */}
+              {sectorTags.kidFriendly === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="happy-outline" size={14} color="#16A34A" />
+                  <Text style={[styles.tagBadgeText, { color: '#16A34A' }]}>
+                    Kid Friendly
+                  </Text>
+                </View>
+              )}
+              {sectorTags.kidFriendly === false && (
+                <View style={[styles.tagBadge, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="warning-outline" size={14} color="#DC2626" />
+                  <Text style={[styles.tagBadgeText, { color: '#DC2626' }]}>
+                    Not Kid Friendly
+                  </Text>
+                </View>
+              )}
+
+              {/* Dog Friendly */}
+              {sectorTags.dogFriendly === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="paw-outline" size={14} color="#D97706" />
+                  <Text style={[styles.tagBadgeText, { color: '#D97706' }]}>
+                    Dog Friendly
+                  </Text>
+                </View>
+              )}
+
+              {/* Beginner Friendly */}
+              {sectorTags.beginner === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#DBEAFE' }]}>
+                  <Ionicons name="school-outline" size={14} color="#2563EB" />
+                  <Text style={[styles.tagBadgeText, { color: '#2563EB' }]}>
+                    Beginner Friendly
+                  </Text>
+                </View>
+              )}
+
+              {/* Accessible */}
+              {sectorTags.accessible === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#E0E7FF' }]}>
+                  <Ionicons name="accessibility-outline" size={14} color="#4F46E5" />
+                  <Text style={[styles.tagBadgeText, { color: '#4F46E5' }]}>
+                    Accessible
+                  </Text>
+                </View>
+              )}
+
+              {/* Scenic */}
+              {sectorTags.scenic === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="eye-outline" size={14} color="#059669" />
+                  <Text style={[styles.tagBadgeText, { color: '#059669' }]}>
+                    Scenic Views
+                  </Text>
+                </View>
+              )}
+
+              {/* Camping */}
+              {sectorTags.camping === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#FEF9C3' }]}>
+                  <Ionicons name="bonfire-outline" size={14} color="#CA8A04" />
+                  <Text style={[styles.tagBadgeText, { color: '#CA8A04' }]}>
+                    Camping
+                  </Text>
+                </View>
+              )}
+
+              {/* Swimming */}
+              {sectorTags.swimming === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#CFFAFE' }]}>
+                  <Ionicons name="water-outline" size={14} color="#0891B2" />
+                  <Text style={[styles.tagBadgeText, { color: '#0891B2' }]}>
+                    Swimming
+                  </Text>
+                </View>
+              )}
+
+              {/* Quiet */}
+              {sectorTags.quiet === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#F3E8FF' }]}>
+                  <Ionicons name="leaf-outline" size={14} color="#7C3AED" />
+                  <Text style={[styles.tagBadgeText, { color: '#7C3AED' }]}>
+                    Quiet
+                  </Text>
+                </View>
+              )}
+
+              {/* Popular (warning) */}
+              {sectorTags.popular === true && (
+                <View style={[styles.tagBadge, { backgroundColor: '#FFEDD5' }]}>
+                  <Ionicons name="people-outline" size={14} color="#EA580C" />
+                  <Text style={[styles.tagBadgeText, { color: '#EA580C' }]}>
+                    Can be Crowded
+                  </Text>
+                </View>
+              )}
+
+              {/* Climbing Types */}
+              {sectorTags.sport === true && (
+                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
+                  <Ionicons name="flash-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
+                    Sport
+                  </Text>
+                </View>
+              )}
+              {sectorTags.trad === true && (
+                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
+                  <Ionicons name="shield-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
+                    Trad
+                  </Text>
+                </View>
+              )}
+              {sectorTags.bouldering === true && (
+                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
+                  <Ionicons name="fitness-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
+                    Bouldering
+                  </Text>
+                </View>
+              )}
+              {sectorTags.multipitch === true && (
+                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
+                  <Ionicons name="trending-up-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
+                    Multipitch
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Weather Card */}
@@ -1214,6 +1362,24 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 11,
     marginLeft: 4,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
+  },
+  tagBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  tagBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',

@@ -13,6 +13,10 @@ export {
   type GradeDistribution,
   type SectorStatsData,
 } from './domain/value-objects/sector-stats.vo'
+export {
+  SectorTags,
+  type SectorTagsData,
+} from './domain/value-objects/sector-tags.vo'
 export { SunExposure } from './domain/value-objects/sun-exposure.vo'
 
 // Domain - DTOs
