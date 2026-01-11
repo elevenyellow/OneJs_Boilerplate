@@ -45,6 +45,34 @@ export interface RouteHighlight {
 }
 
 /**
+ * Sector position on a crag topo image
+ */
+export interface CragTopoSectorPosition {
+  sectorId: string | null
+  areaNumber: string
+  areaName: string
+  points: string
+  externalAreaId: number | null
+  areaUrl: string | null
+}
+
+/**
+ * Crag overview topo image with sector positions
+ */
+export interface CragTopoImage {
+  id: string
+  externalId: string
+  thumbnailUrl: string
+  fullImageUrl: string
+  width: number
+  height: number
+  originalWidth: number
+  originalHeight: number
+  viewScale: number
+  sectorPositions: CragTopoSectorPosition[]
+}
+
+/**
  * Complete crag detail response
  */
 export interface CragDetailResponse {
@@ -58,7 +86,7 @@ export interface CragDetailResponse {
   latitude: number | null
   longitude: number | null
   altitude: number | null
-  
+
   // Stats
   totalSectors: number
   totalRoutes: number
@@ -68,17 +96,20 @@ export interface CragDetailResponse {
   hasTopo: boolean
   theCragUrl: string | null
   headerImageUrl: string | null
-  
+
   // Weather forecast (7 days daily + hourly for first 2 days)
   forecast: DailyForecast[] | null
   hourlyForecast: HourlyForecast[] | null
-  
+
+  // Crag overview topos (showing sectors)
+  topoImages: CragTopoImage[]
+
   // Sectors with stats for client-side filtering
   sectors: SectorSummary[]
-  
+
   // Top routes (by stars/ascents)
   topRoutes: RouteHighlight[]
-  
+
   // Best seasons
   bestSeasons: number[]
 }
@@ -220,9 +251,43 @@ export class GetCragDetailUseCase {
     }
 
     // 8. Calculate total routes
-    const totalRoutes = sectorSummaries.reduce((sum, s) => sum + s.routeCount, 0)
+    const totalRoutes = sectorSummaries.reduce(
+      (sum, s) => sum + s.routeCount,
+      0,
+    )
 
-    // 9. Build response
+    // 9. Get crag topo images (overview topos showing sectors)
+    const cragTopos = await this.prisma.cragTopoImage.findMany({
+      where: { cragId },
+      include: {
+        sectorPositions: {
+          orderBy: { order: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    const topoImages: CragTopoImage[] = cragTopos.map((topo) => ({
+      id: topo.id,
+      externalId: topo.externalId,
+      thumbnailUrl: topo.thumbnailUrl,
+      fullImageUrl: topo.fullImageUrl,
+      width: topo.width,
+      height: topo.height,
+      originalWidth: topo.originalWidth,
+      originalHeight: topo.originalHeight,
+      viewScale: topo.viewScale,
+      sectorPositions: topo.sectorPositions.map((pos) => ({
+        sectorId: pos.sectorId,
+        areaNumber: pos.areaNumber,
+        areaName: pos.areaName,
+        points: pos.points,
+        externalAreaId: pos.externalAreaId ? Number(pos.externalAreaId) : null,
+        areaUrl: pos.areaUrl,
+      })),
+    }))
+
+    // 10. Build response
     return {
       id: crag.id,
       name: crag.name,
@@ -245,6 +310,7 @@ export class GetCragDetailUseCase {
       headerImageUrl: crag.headerImageUrl,
       forecast,
       hourlyForecast,
+      topoImages,
       sectors: sectorSummaries,
       topRoutes: routeHighlights,
       bestSeasons: crag.seasonality || [],

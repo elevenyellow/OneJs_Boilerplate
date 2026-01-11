@@ -62,6 +62,7 @@ model Crag {
   country   Country        @relation(fields: [countryId], references: [id])
   region    Region?        @relation(fields: [regionId], references: [id])
   areas     Area[]
+  topoImages CragTopoImage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -78,6 +78,7 @@ model Sector {
   area       Area        @relation(fields: [areaId], references: [id], onDelete: Cascade)
   routes     Route[]
   topoImages TopoImage[]
+  cragTopoPositions CragTopoSectorPosition[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -375,6 +375,101 @@ export class TheCragWebScraper {
   }
 
   /**
+   * Scrape crag overview topos (topos that show sectors/areas instead of routes)
+   * @param path - Path to the crag page
+   */
+  async scrapeCragTopoImages(path: string): Promise<TopoImageData[]> {
+    const cragPath = path.replace(/\/topos$/, '')
+    const html = await this.fetchPage(cragPath)
+
+    return this.parseCragTopoImagesFromHtml(html)
+  }
+
+  /**
+   * Parse crag overview topo images from HTML content
+   * These topos have annotations of type 'area' instead of 'route'
+   */
+  parseCragTopoImagesFromHtml(html: string): TopoImageData[] {
+    const $ = cheerio.load(html)
+    const topos: TopoImageData[] = []
+
+    // Find all phototopo elements (same structure as sector topos)
+    $('div.phototopo[data-tid]').each((_, el) => {
+      const $el = $(el)
+
+      const topoId = $el.attr('data-tid') || ''
+      const width = parseInt($el.attr('data-width') || '0', 10)
+      const height = parseInt($el.attr('data-height') || '0', 10)
+      const viewScale = parseFloat($el.attr('data-view-scale') || '1')
+      const topoDataStr = $el.attr('data-topodata') || '[]'
+
+      // Extract image URLs and normalize them
+      const imgEl = $el.find('img').first()
+      const rawThumbnailUrl = imgEl.attr('src') || ''
+      const rawFullImageUrl = imgEl.attr('data-big') || rawThumbnailUrl
+
+      const normalizeImageUrl = (url: string): string => {
+        if (!url) return ''
+        if (url.startsWith('//')) return `https:${url}`
+        if (url.startsWith('/')) return `https://www.thecrag.com${url}`
+        return url
+      }
+
+      const thumbnailUrl = normalizeImageUrl(rawThumbnailUrl)
+      const fullImageUrl = normalizeImageUrl(rawFullImageUrl)
+
+      const originalWidth =
+        viewScale > 0 ? Math.round(width / viewScale) : width
+      const originalHeight =
+        viewScale > 0 ? Math.round(height / viewScale) : height
+
+      // Parse annotations (can be areas or routes)
+      let routes: TopoRouteAnnotation[] = []
+      try {
+        const rawData = JSON.parse(topoDataStr)
+        routes = rawData.map((r: Record<string, unknown>) => ({
+          id: r.id as number,
+          type: (r.type as string) || 'area', // Default to 'area' for crag topos
+          num: (r.num as string) || '',
+          grade: (r.grade as string) || '',
+          gradeClass: (r.class as string) || '',
+          zindex: (r.zindex as string) || '1',
+          name: (r.name as string) || '',
+          stars: (r.stars as string) || '',
+          style: (r.style as string) || '',
+          order: (r.order as number) || 0,
+          url: (r.url as string) || '',
+          points: (r.points as string) || '',
+        }))
+      } catch {
+        logger.warn(
+          'scraper:thecrag-web',
+          `Failed to parse crag topo data for ${topoId}`,
+        )
+      }
+
+      // Only include topos that have area annotations (crag overview topos)
+      const hasAreaAnnotations = routes.some((r) => r.type === 'area')
+      
+      if (topoId && thumbnailUrl && hasAreaAnnotations) {
+        topos.push({
+          topoId,
+          width,
+          height,
+          viewScale,
+          thumbnailUrl,
+          fullImageUrl,
+          originalWidth,
+          originalHeight,
+          routes,
+        })
+      }
+    })
+
+    return topos
+  }
+
+  /**
    * Scrape header/cover images from a crag/sector page
    * @param path - Path to the page
    */

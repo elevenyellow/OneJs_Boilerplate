@@ -505,6 +505,30 @@ export interface CragDetailForecast {
   predictability: number
 }
 
+// Crag topo sector position
+export interface CragTopoSectorPosition {
+  sectorId: string | null
+  areaNumber: string
+  areaName: string
+  points: string
+  externalAreaId: number | null
+  areaUrl: string | null
+}
+
+// Crag overview topo image
+export interface CragTopoImage {
+  id: string
+  externalId: string
+  thumbnailUrl: string
+  fullImageUrl: string
+  width: number
+  height: number
+  originalWidth: number
+  originalHeight: number
+  viewScale: number
+  sectorPositions: CragTopoSectorPosition[]
+}
+
 export interface CragDetail {
   id: string
   name: string
@@ -525,6 +549,7 @@ export interface CragDetail {
   headerImageUrl: string | null
   forecast: CragDetailForecast[] | null
   hourlyForecast: CragDetailHourlyForecast[] | null
+  topoImages: CragTopoImage[]
   sectors: SectorSummary[]
   topRoutes: RouteHighlight[]
   bestSeasons: number[]
