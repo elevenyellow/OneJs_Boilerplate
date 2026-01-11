@@ -1,4 +1,7 @@
+import { FilterChip } from '@/components/FilterChip'
+import { FilterChipsRow } from '@/components/FilterChipsRow'
 import { HeroHeader } from '@/components/HeroHeader'
+import { WeatherCard } from '@/components/WeatherCard'
 import { Colors } from '@/constants/Colors'
 import { useGradeRange } from '@/contexts/FiltersContext'
 import { useCragDetail } from '@/hooks/useCragDetail'
@@ -18,38 +21,6 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-
-function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
-  switch (code) {
-    case 1:
-      return 'sunny'
-    case 2:
-    case 3:
-      return 'partly-sunny'
-    case 4:
-    case 5:
-      return 'cloudy'
-    case 6:
-    case 9:
-    case 11:
-      return 'rainy'
-    case 7:
-    case 10:
-    case 12:
-      return 'snow'
-    case 8:
-    case 13:
-      return 'rainy'
-    case 14:
-    case 15:
-      return 'thunderstorm'
-    case 16:
-    case 17:
-      return 'cloudy'
-    default:
-      return 'partly-sunny'
-  }
-}
 
 function getScoreColor(score: number): string {
   if (score >= 75) return '#10B981'
@@ -143,15 +114,6 @@ export default function CragDetailScreen() {
     appliedMinRoutes,
     appliedWithTopo,
   ])
-
-  // Get today's forecast
-  const todayForecast = useMemo(() => {
-    if (!crag?.forecast?.length) return null
-    const today = new Date().toISOString().split('T')[0]
-    return (
-      crag.forecast.find((f) => f.date?.startsWith(today)) || crag.forecast[0]
-    )
-  }, [crag?.forecast])
 
   // Combine scored sectors with crag sectors to show all
   // scoredSectors come from search navigation, crag.sectors come from API
@@ -597,65 +559,14 @@ export default function CragDetailScreen() {
 
       <View style={styles.content}>
         {/* Weather Card - Full Width */}
-        {todayForecast && (
-          <Pressable
+        {crag.latitude && crag.longitude && (
+          <WeatherCard
+            latitude={crag.latitude}
+            longitude={crag.longitude}
             onPress={() => router.push(`/crag/weather/${id}`)}
-            style={[
-              styles.weatherCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.weatherCardLeft}>
-              <Ionicons
-                name={getWeatherIcon(todayForecast.weatherCode)}
-                size={48}
-                color={colors.primary}
-              />
-              <View style={styles.weatherCardInfo}>
-                <Text style={[styles.weatherCardTemp, { color: colors.text }]}>
-                  {Math.round(todayForecast.temperature?.mean || 0)}°C
-                </Text>
-                <Text
-                  style={[
-                    styles.weatherCardRange,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {Math.round(todayForecast.temperature?.min || 0)}° /{' '}
-                  {Math.round(todayForecast.temperature?.max || 0)}°
-                </Text>
-              </View>
-            </View>
-            <View style={styles.weatherCardRight}>
-              <View style={styles.weatherCardDetail}>
-                <Ionicons name="water" size={16} color="#3B82F6" />
-                <Text
-                  style={[
-                    styles.weatherCardDetailText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {Math.round(todayForecast.precipitation?.probability || 0)}%
-                </Text>
-              </View>
-              <View style={styles.weatherCardDetail}>
-                <Ionicons name="leaf" size={16} color="#10B981" />
-                <Text
-                  style={[
-                    styles.weatherCardDetailText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {Math.round(todayForecast.wind?.mean || 0)} m/s
-                </Text>
-              </View>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </Pressable>
+            showChevron
+            style={{ marginBottom: 12 }}
+          />
         )}
 
         {/* Action Buttons Row - Full Width */}
@@ -731,100 +642,43 @@ export default function CragDetailScreen() {
         </View>
 
         {/* Active Filters Chips - Always shown with default values */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.activeFiltersContent}
-          style={styles.activeFiltersRow}
-        >
-            {/* Grade range chip - opens filter screen */}
-            <Pressable
-              onPress={() => {
-                router.push(`/crag/filters/${id}`)
-              }}
-              style={[
-                styles.filterChip,
-                { backgroundColor: colors.primary + '20', borderColor: colors.primary },
-              ]}
-            >
-              <Ionicons
-                name="trending-up-outline"
-                size={12}
-                color={colors.primary}
-              />
-              <Text style={[styles.filterChipText, { color: colors.primary }]}>
-                {globalGradeRange.min} - {globalGradeRange.max}
-              </Text>
-            </Pressable>
+        <FilterChipsRow>
+          <FilterChip
+            label={`${globalGradeRange.min} - ${globalGradeRange.max}`}
+            icon="trending-up-outline"
+            isActive
+            onPress={() => router.push(`/crag/filters/${id}`)}
+          />
 
-            {/* Sun preference chip - cycles: any → sun → shade → any */}
-            <Pressable
-              onPress={() => {
-                const nextValue = sunPreference === 'any' ? 'sun' : sunPreference === 'sun' ? 'shade' : 'any'
-                setSunPreference(nextValue)
-              }}
-              style={[
-                styles.filterChip,
-                sunPreference !== 'any' 
-                  ? { backgroundColor: colors.primary + '20', borderColor: colors.primary }
-                  : { backgroundColor: colors.muted, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons
-                name={sunPreference === 'sun' ? 'sunny' : sunPreference === 'shade' ? 'moon' : 'contrast-outline'}
-                size={12}
-                color={sunPreference !== 'any' ? colors.primary : colors.textSecondary}
-              />
-              <Text style={[styles.filterChipText, { color: sunPreference !== 'any' ? colors.primary : colors.textSecondary }]}>
-                {sunPreference === 'sun' ? 'Sun' : sunPreference === 'shade' ? 'Shade' : 'Sun/Shade'}
-              </Text>
-            </Pressable>
+          <FilterChip
+            label={sunPreference === 'sun' ? 'Sun' : sunPreference === 'shade' ? 'Shade' : 'Sun/Shade'}
+            icon={sunPreference === 'sun' ? 'sunny' : sunPreference === 'shade' ? 'moon' : 'contrast-outline'}
+            isActive={sunPreference !== 'any'}
+            onPress={() => {
+              const nextValue = sunPreference === 'any' ? 'sun' : sunPreference === 'sun' ? 'shade' : 'any'
+              setSunPreference(nextValue)
+            }}
+          />
 
-            {/* Min routes chip - cycles: 0 → 5 → 10 → 20 → 0 */}
-            <Pressable
-              onPress={() => {
-                const options = [0, 5, 10, 20]
-                const currentIndex = options.indexOf(minRoutes)
-                const nextIndex = (currentIndex + 1) % options.length
-                setMinRoutes(options[nextIndex])
-              }}
-              style={[
-                styles.filterChip,
-                minRoutes > 0 
-                  ? { backgroundColor: colors.primary + '20', borderColor: colors.primary }
-                  : { backgroundColor: colors.muted, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons
-                name="git-branch-outline"
-                size={12}
-                color={minRoutes > 0 ? colors.primary : colors.textSecondary}
-              />
-              <Text style={[styles.filterChipText, { color: minRoutes > 0 ? colors.primary : colors.textSecondary }]}>
-                {minRoutes > 0 ? `${minRoutes}+` : 'Any'} routes
-              </Text>
-            </Pressable>
+          <FilterChip
+            label={minRoutes > 0 ? `${minRoutes}+ routes` : 'Any routes'}
+            icon="git-branch-outline"
+            isActive={minRoutes > 0}
+            onPress={() => {
+              const options = [0, 5, 10, 20]
+              const currentIndex = options.indexOf(minRoutes)
+              const nextIndex = (currentIndex + 1) % options.length
+              setMinRoutes(options[nextIndex])
+            }}
+          />
 
-            {/* Topo chip - toggle on/off */}
-            <Pressable
-              onPress={() => setWithTopo(!withTopo)}
-              style={[
-                styles.filterChip,
-                withTopo 
-                  ? { backgroundColor: colors.primary + '20', borderColor: colors.primary }
-                  : { backgroundColor: colors.muted, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons 
-                name="map-outline" 
-                size={12} 
-                color={withTopo ? colors.primary : colors.textSecondary} 
-              />
-              <Text style={[styles.filterChipText, { color: withTopo ? colors.primary : colors.textSecondary }]}>
-                {withTopo ? 'With Topo' : 'Topo'}
-              </Text>
-            </Pressable>
-          </ScrollView>
+          <FilterChip
+            label={withTopo ? 'With Topo' : 'Topo'}
+            icon="map-outline"
+            isActive={withTopo}
+            onPress={() => setWithTopo(!withTopo)}
+          />
+        </FilterChipsRow>
 
         {/* Sectors (sorted by combined score) */}
         {filteredSectors.length > 0 ? (
@@ -1140,44 +994,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Weather Card
-  weatherCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  weatherCardLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  weatherCardInfo: {
-    gap: 2,
-  },
-  weatherCardTemp: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  weatherCardRange: {
-    fontSize: 14,
-  },
-  weatherCardRight: {
-    flexDirection: 'row',
-    gap: 16,
-    marginRight: 12,
-  },
-  weatherCardDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  weatherCardDetailText: {
-    fontSize: 14,
-  },
   // Action Buttons Row
   actionButtonsRow: {
     flexDirection: 'row',
@@ -1211,40 +1027,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  // Active Filters Row
-  activeFiltersRow: {
-    marginBottom: 12,
-  },
-  activeFiltersContent: {
-    gap: 8,
-    paddingRight: 8,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 4,
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  clearFiltersChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 4,
-  },
-  clearFiltersText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   // Empty State
   emptyState: {

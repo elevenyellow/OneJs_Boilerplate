@@ -1,12 +1,14 @@
+import { FilterChip } from '@/components/FilterChip'
+import { FilterChipsRow } from '@/components/FilterChipsRow'
 import { HeroHeader } from '@/components/HeroHeader'
+import { WeatherCard } from '@/components/WeatherCard'
 import { TopoViewer } from '@/components/TopoViewer'
-import { WeatherIcon } from '@/components/WeatherIcon'
 import { Colors } from '@/constants/Colors'
+import { useFilters } from '@/contexts/FiltersContext'
 import { useSectorRoutes } from '@/hooks/useSectorRoutes'
 import { useSectorTopos } from '@/hooks/useTopos'
-import { useWeatherByCoordinates } from '@/hooks/useWeatherByCoordinates'
 import type { RouteSearchInfo } from '@/lib/api'
-import { gradeToIndex } from '@/utils/gradeConverter'
+import { gradeToIndex, indexToGrade } from '@/utils/gradeConverter'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useMemo, useState } from 'react'
@@ -21,30 +23,6 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-
-// Map weather codes to condition strings for WeatherIcon
-const getWeatherCondition = (code: number): string => {
-  if (code === 1) return 'sunny'
-  if (code === 2) return 'partly-cloudy'
-  if (code === 3) return 'cloudy'
-  if (code === 4 || code === 5) return 'overcast'
-  if (code === 6 || code === 7) return 'foggy'
-  if (code === 8 || code === 9) return 'rainy'
-  if (code === 10 || code === 11 || code === 12) return 'rainy'
-  if (code === 13 || code === 14 || code === 15) return 'snowy'
-  if (code === 16 || code === 17) return 'stormy'
-  return 'sunny'
-}
-
-// Format date to display day name
-const formatDayName = (dateStr: string, index: number): string => {
-  if (index === 0) return 'Today'
-  if (index === 1) return 'Tomorrow'
-
-  const date = new Date(dateStr)
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return days[date.getDay()]
-}
 
 // Format info text (clean markdown)
 function formatInfoText(text: string): string {
@@ -172,14 +150,6 @@ export default function SectorDetailScreen() {
   const latitude = params.latitude ? parseFloat(params.latitude) : null
   const longitude = params.longitude ? parseFloat(params.longitude) : null
 
-  // Fetch weather data by coordinates
-  const { data: weatherData, isLoading: isLoadingWeather } =
-    useWeatherByCoordinates(
-      latitude,
-      longitude,
-      latitude !== null && longitude !== null,
-    )
-
   // Fetch topos for this sector
   const { data: toposData, isLoading: isLoadingTopos } = useSectorTopos(
     params.id || '',
@@ -224,17 +194,23 @@ export default function SectorDetailScreen() {
     openNavigationToCoordinates(parking.lat, parking.lon)
   }
 
+  // Get global grade range and picker
+  const { gradeRange: globalGradeRange, showGradePicker, isGradeInRange } = useFilters()
+
   // Filter states
   const [sortBy, setSortBy] = useState<'number' | 'grade' | 'stars' | 'height'>(
     'number',
   )
   const [minStars, setMinStars] = useState<number>(0)
-  const [showOnlyInRange, setShowOnlyInRange] = useState<boolean>(false)
+  const [gradeFilter, setGradeFilter] = useState<'all' | 'inRange'>('all')
 
   // Route selection state
   const [highlightedRouteId, setHighlightedRouteId] = useState<string | null>(
     null,
   )
+
+  // Info toggle state
+  const [showInfo, setShowInfo] = useState(false)
 
   const handleRoutePress = (route: RouteSearchInfo) => {
     if (route.id) {
@@ -273,6 +249,11 @@ export default function SectorDetailScreen() {
     )
   }
 
+  // Use global grade range for filtering
+  const globalMinGradeIndex = gradeToIndex(globalGradeRange.min)
+  const globalMaxGradeIndex = gradeToIndex(globalGradeRange.max)
+
+  // Also keep sector-specific range for display
   const userMinGradeIndex = sector.gradeRange.min
     ? gradeToIndex(sector.gradeRange.min)
     : null
@@ -280,31 +261,26 @@ export default function SectorDetailScreen() {
     ? gradeToIndex(sector.gradeRange.max)
     : null
 
-  const isRouteInRange = (route: RouteSearchInfo): boolean => {
-    if (userMinGradeIndex === null || userMaxGradeIndex === null) return false
+  // Use context's isGradeInRange for filtering
+  const isRouteInGlobalRange = (route: RouteSearchInfo): boolean => {
     const routeGradeIndex =
       route.gradeIndex ?? (route.grade ? gradeToIndex(route.grade) : null)
-    return (
-      routeGradeIndex !== null &&
-      routeGradeIndex >= userMinGradeIndex &&
-      routeGradeIndex <= userMaxGradeIndex
-    )
+    return isGradeInRange(routeGradeIndex)
   }
 
   const filteredAndSortedRoutes = useMemo(() => {
     let routes = [...allRoutes]
 
+    // Filter by global grade range
+    if (gradeFilter === 'inRange') {
+      routes = routes.filter(isRouteInGlobalRange)
+    }
+
+    // Filter by minimum stars
     if (minStars > 0) {
       routes = routes.filter((r) => (r.stars ?? 0) >= minStars)
     }
 
-    if (
-      showOnlyInRange &&
-      userMinGradeIndex !== null &&
-      userMaxGradeIndex !== null
-    ) {
-      routes = routes.filter(isRouteInRange)
-    }
 
     routes.sort((a, b) => {
       switch (sortBy) {
@@ -332,20 +308,45 @@ export default function SectorDetailScreen() {
     allRoutes,
     sortBy,
     minStars,
-    showOnlyInRange,
-    userMinGradeIndex,
-    userMaxGradeIndex,
+    gradeFilter,
+    globalMinGradeIndex,
+    globalMaxGradeIndex,
   ])
 
-  const routesInRangeCount = useMemo(() => {
-    if (userMinGradeIndex === null || userMaxGradeIndex === null) return 0
-    return allRoutes.filter(isRouteInRange).length
-  }, [allRoutes, userMinGradeIndex, userMaxGradeIndex])
+  const routesInGlobalRangeCount = useMemo(() => {
+    if (globalMinGradeIndex === null || globalMaxGradeIndex === null) return 0
+    return allRoutes.filter(isRouteInGlobalRange).length
+  }, [allRoutes, globalMinGradeIndex, globalMaxGradeIndex])
 
-  const handleGetDirections = () => {
-    if (sector.latitude === null || sector.longitude === null) return
-    openNavigationToCoordinates(sector.latitude, sector.longitude)
-  }
+  // Computed stats from routes
+  const routeStats = useMemo(() => {
+    if (allRoutes.length === 0) return null
+
+    const heights = allRoutes.map((r) => r.height).filter((h): h is number => h !== null && h > 0)
+    const grades = allRoutes.map((r) => r.gradeIndex ?? (r.grade ? gradeToIndex(r.grade) : null)).filter((g): g is number => g !== null)
+    const stars = allRoutes.map((r) => r.stars).filter((s): s is number => s !== null && s > 0)
+
+    const maxHeight = heights.length > 0 ? Math.max(...heights) : null
+    const avgHeight = heights.length > 0 ? Math.round(heights.reduce((a, b) => a + b, 0) / heights.length) : null
+    
+    const minGradeIndex = grades.length > 0 ? Math.min(...grades) : null
+    const maxGradeIndex = grades.length > 0 ? Math.max(...grades) : null
+    const avgGradeIndex = grades.length > 0 ? Math.round(grades.reduce((a, b) => a + b, 0) / grades.length) : null
+    
+    const avgStars = stars.length > 0 ? stars.reduce((a, b) => a + b, 0) / stars.length : null
+
+    return {
+      maxHeight,
+      avgHeight,
+      minGradeIndex,
+      maxGradeIndex,
+      avgGradeIndex,
+      avgStars,
+      totalWithHeight: heights.length,
+      totalWithGrade: grades.length,
+      totalWithStars: stars.length,
+    }
+  }, [allRoutes])
 
   const getGradeColor = (grade: string | null): string => {
     if (!grade) return colors.textSecondary
@@ -415,6 +416,73 @@ export default function SectorDetailScreen() {
       />
 
       <View style={styles.content}>
+        {/* Action Buttons Row */}
+        <View style={styles.actionButtonsRow}>
+          {/* Info Button */}
+          {(sector.description || sector.approach) && (
+            <Pressable
+              onPress={() => setShowInfo(!showInfo)}
+              style={[
+                styles.actionButton,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="information-circle" size={22} color="#3B82F6" />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                Info
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Parking Button */}
+          {parkingLocations.length > 0 && (
+            <Pressable
+              onPress={() => handleNavigateToParking(parkingLocations[0])}
+              style={[
+                styles.actionButton,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="car" size={22} color="#F59E0B" />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                Parking
+              </Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Collapsible Info Section */}
+        {showInfo && (sector.description || sector.approach) && (
+          <View style={[styles.infoSection, { backgroundColor: colors.muted }]}>
+            {sector.description && (
+              <View style={styles.infoBlock}>
+                <View style={styles.infoBlockHeader}>
+                  <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.infoBlockTitle, { color: colors.text }]}>
+                    Description
+                  </Text>
+                </View>
+                <Text style={[styles.infoBlockText, { color: colors.textSecondary }]}>
+                  {formatInfoText(sector.description)}
+                </Text>
+              </View>
+            )}
+            {sector.approach && (
+              <View style={styles.infoBlock}>
+                <View style={styles.infoBlockHeader}>
+                  <Ionicons name="walk-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.infoBlockTitle, { color: colors.text }]}>
+                    Approach
+                  </Text>
+                </View>
+                <Text style={[styles.infoBlockText, { color: colors.textSecondary }]}>
+                  {formatInfoText(sector.approach)}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Stats */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -428,6 +496,7 @@ export default function SectorDetailScreen() {
             </Text>
           </View>
           <View style={styles.statsGrid}>
+            {/* Total Routes */}
             <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
               <Text style={[styles.statValue, { color: colors.text }]}>
                 {sector.totalRoutes}
@@ -436,50 +505,106 @@ export default function SectorDetailScreen() {
                 Routes
               </Text>
             </View>
-            {sector.routesInRange !== null && (
-              <View
-                style={[styles.statItem, { backgroundColor: colors.muted }]}
-              >
+
+            {/* Routes in Global Range */}
+            {routesInGlobalRangeCount > 0 && (
+              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
                 <Text style={[styles.statValue, { color: '#22C55E' }]}>
-                  {sector.routesInRange}
+                  {routesInGlobalRangeCount}
                 </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   In Range
                 </Text>
               </View>
             )}
-            {sector.gradeRange.min && sector.gradeRange.max && (
-              <View
-                style={[styles.statItem, { backgroundColor: colors.muted }]}
-              >
-                <Text style={[styles.statValue, { color: colors.text }]}>
-                  {sector.gradeRange.min}-{sector.gradeRange.max}
+
+            {/* Easiest Grade */}
+            {routeStats && routeStats.minGradeIndex !== null && (
+              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.statValue, { color: '#22C55E' }]}>
+                  {indexToGrade(routeStats.minGradeIndex)}
                 </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
-                  Grades
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Easiest
                 </Text>
               </View>
             )}
-            {sector.avgStars !== null && sector.avgStars > 0 && (
-              <View
-                style={[styles.statItem, { backgroundColor: colors.muted }]}
-              >
-                <Text style={[styles.statValue, { color: '#F59E0B' }]}>
-                  {sector.avgStars.toFixed(1)} ★
+
+            {/* Hardest Grade */}
+            {routeStats && routeStats.maxGradeIndex !== null && (
+              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.statValue, { color: '#EF4444' }]}>
+                  {indexToGrade(routeStats.maxGradeIndex)}
                 </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Hardest
+                </Text>
+              </View>
+            )}
+
+            {/* Average Grade */}
+            {routeStats && routeStats.avgGradeIndex !== null && (
+              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>
+                  {indexToGrade(routeStats.avgGradeIndex)}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Avg Grade
+                </Text>
+              </View>
+            )}
+
+            {/* Max Height */}
+            {routeStats && routeStats.maxHeight !== null && (
+              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.statValue, { color: '#3B82F6' }]}>
+                  {routeStats.maxHeight}m
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Max Height
+                </Text>
+              </View>
+            )}
+
+            {/* Average Height */}
+            {routeStats && routeStats.avgHeight !== null && (
+              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.statValue, { color: '#3B82F6' }]}>
+                  {routeStats.avgHeight}m
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Avg Height
+                </Text>
+              </View>
+            )}
+
+            {/* Quality (Stars) */}
+            {routeStats && routeStats.avgStars !== null && routeStats.avgStars > 0 && (
+              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+                  {routeStats.avgStars.toFixed(1)} ★
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   Quality
                 </Text>
               </View>
             )}
           </View>
         </View>
+
+        {/* Weather Card */}
+        {latitude !== null && longitude !== null && (
+          <WeatherCard
+            latitude={latitude}
+            longitude={longitude}
+            onPress={() => router.push({
+              pathname: '/sector/weather/[id]',
+              params: { id: params.id, lat: latitude.toString(), lon: longitude.toString(), name: sector.name },
+            })}
+            showChevron
+            style={{ marginTop: 16 }}
+          />
+        )}
 
         {/* Information */}
         {(sector.rockType ||
@@ -572,81 +697,6 @@ export default function SectorDetailScreen() {
           </View>
         )}
 
-        {/* Weather */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons
-              name="partly-sunny-outline"
-              size={20}
-              color={colors.primary}
-            />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Weather
-            </Text>
-            {isLoadingWeather && (
-              <ActivityIndicator
-                size="small"
-                color={colors.primary}
-                style={{ marginLeft: 8 }}
-              />
-            )}
-          </View>
-          {weatherData?.daily && weatherData.daily.length > 0 ? (
-            <View
-              style={[
-                styles.weatherContainer,
-                { backgroundColor: colors.muted },
-              ]}
-            >
-              {weatherData.daily.slice(0, 5).map((day, index) => (
-                <View key={day.date} style={styles.weatherDay}>
-                  <Text style={[styles.weatherDayName, { color: colors.text }]}>
-                    {formatDayName(day.date, index)}
-                  </Text>
-                  <WeatherIcon
-                    condition={getWeatherCondition(day.weatherCode)}
-                    size={28}
-                  />
-                  <Text style={[styles.weatherTemp, { color: colors.text }]}>
-                    {Math.round(day.temperature.max)}°
-                  </Text>
-                  <Text
-                    style={[
-                      styles.weatherTempMin,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {Math.round(day.temperature.min)}°
-                  </Text>
-                  {day.precipitation.probability > 20 && (
-                    <View style={styles.precipBadge}>
-                      <Ionicons name="water" size={10} color="#3B82F6" />
-                      <Text style={styles.precipText}>
-                        {day.precipitation.probability}%
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              ))}
-            </View>
-          ) : (
-            !isLoadingWeather && (
-              <View
-                style={[
-                  styles.textContainer,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <Text style={[styles.text, { color: colors.textSecondary }]}>
-                  {latitude === null || longitude === null
-                    ? 'Location data not available'
-                    : 'Weather data not available'}
-                </Text>
-              </View>
-            )
-          )}
-        </View>
-
         {/* Topos / Photos */}
         {(topos.length > 0 || isLoadingTopos) && (
           <View style={styles.section}>
@@ -724,13 +774,28 @@ export default function SectorDetailScreen() {
           </View>
 
           {/* Filter Chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersContent}
-            style={styles.filtersRow}
-          >
-            <Pressable
+          <FilterChipsRow>
+            {/* Sort Filter */}
+            <FilterChip
+              label={
+                sortBy === 'number'
+                  ? 'By #'
+                  : sortBy === 'grade'
+                    ? 'By Grade'
+                    : sortBy === 'stars'
+                      ? 'By Stars'
+                      : 'By Height'
+              }
+              icon={
+                sortBy === 'number'
+                  ? 'list-outline'
+                  : sortBy === 'grade'
+                    ? 'trending-up'
+                    : sortBy === 'stars'
+                      ? 'star'
+                      : 'resize-outline'
+              }
+              isActive
               onPress={() => {
                 const options: Array<'number' | 'grade' | 'stars' | 'height'> =
                   ['number', 'grade', 'stars', 'height']
@@ -738,103 +803,57 @@ export default function SectorDetailScreen() {
                 const nextIndex = (currentIndex + 1) % options.length
                 setSortBy(options[nextIndex])
               }}
-              style={[
-                styles.filterChip,
-                {
-                  backgroundColor: colors.primary + '20',
-                  borderColor: colors.primary,
-                },
-              ]}
-            >
-              <Ionicons
-                name={
-                  sortBy === 'number'
-                    ? 'list-outline'
-                    : sortBy === 'grade'
-                      ? 'trending-up'
-                      : sortBy === 'stars'
-                        ? 'star'
-                        : 'resize-outline'
-                }
-                size={12}
-                color={colors.primary}
-              />
-              <Text style={[styles.filterChipText, { color: colors.primary }]}>
-                {sortBy === 'number'
-                  ? 'By #'
-                  : sortBy === 'grade'
-                    ? 'By Grade'
-                    : sortBy === 'stars'
-                      ? 'By Stars'
-                      : 'By Height'}
-              </Text>
-            </Pressable>
+            />
 
-            {userMinGradeIndex !== null && userMaxGradeIndex !== null && (
-              <Pressable
-                onPress={() => setShowOnlyInRange(!showOnlyInRange)}
-                style={[
-                  styles.filterChip,
-                  showOnlyInRange
-                    ? { backgroundColor: '#22C55E20', borderColor: '#22C55E' }
-                    : {
-                        backgroundColor: colors.muted,
-                        borderColor: colors.border,
-                      },
-                ]}
-              >
-                <Ionicons
-                  name="checkmark-circle"
-                  size={12}
-                  color={showOnlyInRange ? '#22C55E' : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    {
-                      color: showOnlyInRange ? '#22C55E' : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {showOnlyInRange
-                    ? `In Range (${routesInRangeCount})`
-                    : 'In Range'}
-                </Text>
-              </Pressable>
+            {/* Grade Range Selector (opens global picker) */}
+            <FilterChip
+              label={`${globalGradeRange.min} - ${globalGradeRange.max}`}
+              icon="options-outline"
+              isActive
+              onPress={showGradePicker}
+            />
+
+            {/* Filter by Grade Range Toggle */}
+            <FilterChip
+              label={gradeFilter === 'inRange' 
+                ? `In Range (${routesInGlobalRangeCount})`
+                : 'All Grades'
+              }
+              icon={gradeFilter === 'inRange' ? 'checkmark-circle' : 'ellipse-outline'}
+              isActive={gradeFilter === 'inRange'}
+              activeColor="#22C55E"
+              onPress={() => setGradeFilter(gradeFilter === 'all' ? 'inRange' : 'all')}
+            />
+
+            {/* Sun/Shade Info Badge */}
+            {sector.sunExposure && (
+              <FilterChip
+                label={sector.sunExposure}
+                icon={sector.sunExposure.toLowerCase().includes('sun') || sector.sunExposure.toLowerCase().includes('sol')
+                  ? 'sunny'
+                  : sector.sunExposure.toLowerCase().includes('shade') || sector.sunExposure.toLowerCase().includes('sombra')
+                    ? 'moon'
+                    : 'contrast-outline'
+                }
+                isActive={false}
+                onPress={() => { /* Info badge - no action */ }}
+              />
             )}
 
-            <Pressable
+            {/* Stars Filter */}
+            <FilterChip
+              label={minStars > 0 ? `${minStars}+ Stars` : 'Any Stars'}
+              icon="star"
+              isActive={minStars > 0}
+              activeColor="#F59E0B"
               onPress={() => {
                 const options = [0, 2, 3, 4]
                 const currentIndex = options.indexOf(minStars)
                 const nextIndex = (currentIndex + 1) % options.length
                 setMinStars(options[nextIndex])
               }}
-              style={[
-                styles.filterChip,
-                minStars > 0
-                  ? { backgroundColor: '#F59E0B20', borderColor: '#F59E0B' }
-                  : {
-                      backgroundColor: colors.muted,
-                      borderColor: colors.border,
-                    },
-              ]}
-            >
-              <Ionicons
-                name="star"
-                size={12}
-                color={minStars > 0 ? '#F59E0B' : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.filterChipText,
-                  { color: minStars > 0 ? '#F59E0B' : colors.textSecondary },
-                ]}
-              >
-                {minStars > 0 ? `${minStars}+ Stars` : 'Any Stars'}
-              </Text>
-            </Pressable>
-          </ScrollView>
+            />
+          </FilterChipsRow>
 
           {/* Routes List */}
           {filteredAndSortedRoutes.length === 0 && !isLoadingRoutes && (
@@ -851,7 +870,7 @@ export default function SectorDetailScreen() {
 
           {filteredAndSortedRoutes.map(
             (route: RouteSearchInfo, index: number) => {
-              const inRange = isRouteInRange(route)
+              const inRange = isRouteInGlobalRange(route)
               const gradeColor = getGradeColor(route.grade)
               const isHighlighted = route.id === highlightedRouteId
 
@@ -1093,39 +1112,6 @@ export default function SectorDetailScreen() {
           </View>
         )}
 
-        {/* Location */}
-        {sector.latitude !== null && sector.longitude !== null && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons
-                name="location-outline"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Location
-              </Text>
-            </View>
-            <View
-              style={[styles.textContainer, { backgroundColor: colors.muted }]}
-            >
-              <Text style={[styles.text, { color: colors.text }]}>
-                {sector.latitude.toFixed(6)}, {sector.longitude.toFixed(6)}
-              </Text>
-            </View>
-            <Pressable
-              onPress={handleGetDirections}
-              style={[
-                styles.parkingButton,
-                { backgroundColor: '#10B981', marginTop: 12 },
-              ]}
-            >
-              <Ionicons name="navigate" size={20} color="#FFF" />
-              <Text style={styles.parkingButtonText}>Get Directions</Text>
-              <Ionicons name="open-outline" size={16} color="#FFF" />
-            </Pressable>
-          </View>
-        )}
       </View>
     </ScrollView>
   )
@@ -1166,25 +1152,68 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
   },
+  // Action Buttons
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Collapsible Info Section
+  infoSection: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    gap: 16,
+  },
+  infoBlock: {
+    gap: 8,
+  },
+  infoBlockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoBlockTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  infoBlockText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   statsGrid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     flexWrap: 'wrap',
   },
   statItem: {
-    flex: 1,
-    minWidth: 80,
-    padding: 16,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '700',
   },
   statLabel: {
-    fontSize: 13,
-    marginTop: 4,
+    fontSize: 11,
+    marginLeft: 4,
   },
   infoRow: {
     flexDirection: 'row',
@@ -1201,58 +1230,8 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  weatherContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-    borderRadius: 12,
-  },
-  weatherDay: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  weatherDayName: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  weatherTemp: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  weatherTempMin: {
-    fontSize: 12,
-  },
-  precipBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  precipText: {
-    fontSize: 10,
-    color: '#3B82F6',
-    fontWeight: '500',
-  },
   toposContainer: {
     gap: 16,
-  },
-  filtersRow: {
-    marginBottom: 12,
-  },
-  filtersContent: {
-    gap: 8,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 4,
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',

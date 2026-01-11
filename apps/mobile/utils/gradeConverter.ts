@@ -130,13 +130,70 @@ export function gradeToIndex(grade: string): number | null {
 }
 
 /**
+ * Index to grade mapping (reverse of GRADE_TO_INDEX)
+ * Maps numeric indices back to grade strings
+ */
+const INDEX_TO_GRADE: Record<number, FrenchGrade> = {
+  10: '3a',
+  13: '3b',
+  16: '3c',
+  20: '4a',
+  23: '4b',
+  26: '4c',
+  30: '5a',
+  32: '5a+',
+  35: '5b',
+  37: '5b+',
+  40: '5c',
+  42: '5c+',
+  50: '6a',
+  52: '6a+',
+  55: '6b',
+  57: '6b+',
+  60: '6c',
+  62: '6c+',
+  70: '7a',
+  72: '7a+',
+  75: '7b',
+  77: '7b+',
+  80: '7c',
+  82: '7c+',
+  90: '8a',
+  92: '8a+',
+  95: '8b',
+  97: '8b+',
+  100: '8c',
+  102: '8c+',
+  110: '9a',
+  112: '9a+',
+  115: '9b',
+  117: '9b+',
+  120: '9c',
+  122: '9c+',
+}
+
+/**
  * Convert index back to grade
+ * Handles both exact matches and approximate indices
  */
 export function indexToGrade(index: number): FrenchGrade {
-  if (index < 0 || index >= FRENCH_GRADES.length) {
-    return '5a'
+  // Direct lookup
+  if (INDEX_TO_GRADE[index]) {
+    return INDEX_TO_GRADE[index]
   }
-  return FRENCH_GRADES[index]
+
+  // Find closest grade for approximate indices
+  const indices = Object.keys(INDEX_TO_GRADE).map(Number).sort((a, b) => a - b)
+  
+  // Find the closest index
+  let closest = indices[0]
+  for (const idx of indices) {
+    if (Math.abs(idx - index) < Math.abs(closest - index)) {
+      closest = idx
+    }
+  }
+
+  return INDEX_TO_GRADE[closest] || '5a'
 }
 
 /**

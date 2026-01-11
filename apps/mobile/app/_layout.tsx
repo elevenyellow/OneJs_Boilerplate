@@ -60,17 +60,22 @@ export default function RootLayout() {
             <Stack.Screen
               name="zone/[id]"
               options={{
-                title: '',
-                headerTransparent: true,
-                headerTintColor: '#FFFFFF',
+                headerShown: false,
               }}
             />
             <Stack.Screen
               name="sector/[id]"
               options={{
-                title: '',
-                headerTransparent: true,
-                headerTintColor: '#FFFFFF',
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="sector/weather/[id]"
+              options={{
+                title: 'Weather',
+                headerShown: false,
+                presentation: 'card',
+                animation: 'slide_from_right',
               }}
             />
             <Stack.Screen
