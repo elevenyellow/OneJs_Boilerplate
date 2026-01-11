@@ -89,9 +89,47 @@ export const SectorCard = memo(function SectorCard({ result, compact = false }: 
       params.set('longitude', sector.coordinates.lon.toString());
     }
 
-    // Add tags if available
+    // Add tags as individual params (simpler than JSON encoding)
     if (sector.tags) {
-      params.set('tags', JSON.stringify(sector.tags));
+      if (sector.tags.kidFriendly !== null && sector.tags.kidFriendly !== undefined) {
+        params.set('kidFriendly', sector.tags.kidFriendly.toString());
+      }
+      if (sector.tags.dogFriendly === true) {
+        params.set('dogFriendly', 'true');
+      }
+      if (sector.tags.beginner === true) {
+        params.set('beginner', 'true');
+      }
+      if (sector.tags.accessible === true) {
+        params.set('accessible', 'true');
+      }
+      if (sector.tags.scenic === true) {
+        params.set('scenic', 'true');
+      }
+      if (sector.tags.camping === true) {
+        params.set('camping', 'true');
+      }
+      if (sector.tags.swimming === true) {
+        params.set('swimming', 'true');
+      }
+      if (sector.tags.quiet === true) {
+        params.set('quiet', 'true');
+      }
+      if (sector.tags.popular === true) {
+        params.set('popular', 'true');
+      }
+      if (sector.tags.sport === true) {
+        params.set('sport', 'true');
+      }
+      if (sector.tags.trad === true) {
+        params.set('trad', 'true');
+      }
+      if (sector.tags.bouldering === true) {
+        params.set('bouldering', 'true');
+      }
+      if (sector.tags.multipitch === true) {
+        params.set('multipitch', 'true');
+      }
     }
     
     return `/sector/${sector.id}?${params.toString()}`;

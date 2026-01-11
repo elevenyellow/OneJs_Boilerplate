@@ -7,7 +7,25 @@ import { Colors } from '@/constants/Colors'
 import { useFilters } from '@/contexts/FiltersContext'
 import { useSectorRoutes } from '@/hooks/useSectorRoutes'
 import { useSectorTopos } from '@/hooks/useTopos'
-import type { RouteSearchInfo, SectorTags } from '@/lib/api'
+import type { RouteSearchInfo } from '@/lib/api'
+
+// Local type for parsed tags
+interface SectorTagsLocal {
+  kidFriendly: boolean | null
+  dogFriendly: boolean | null
+  accessible: boolean | null
+  camping: boolean | null
+  swimming: boolean | null
+  scenic: boolean | null
+  popular: boolean | null
+  quiet: boolean | null
+  multipitch: boolean | null
+  trad: boolean | null
+  sport: boolean | null
+  bouldering: boolean | null
+  beginner: boolean | null
+  rawTags: string[]
+}
 import { gradeToIndex, indexToGrade } from '@/utils/gradeConverter'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -134,7 +152,20 @@ export default function SectorDetailScreen() {
     latitude?: string
     longitude?: string
     headerImageUrl?: string
-    tags?: string // JSON stringified SectorTags
+    // Individual tag params
+    kidFriendly?: string
+    dogFriendly?: string
+    beginner?: string
+    accessible?: string
+    scenic?: string
+    camping?: string
+    swimming?: string
+    quiet?: string
+    popular?: string
+    sport?: string
+    trad?: string
+    bouldering?: string
+    multipitch?: string
   }>()
   const router = useRouter()
   const colorScheme = useColorScheme() ?? 'light'
@@ -151,15 +182,44 @@ export default function SectorDetailScreen() {
   const latitude = params.latitude ? parseFloat(params.latitude) : null
   const longitude = params.longitude ? parseFloat(params.longitude) : null
 
-  // Parse tags from JSON string
-  const sectorTags: SectorTags | null = useMemo(() => {
-    if (!params.tags) return null
-    try {
-      return JSON.parse(params.tags) as SectorTags
-    } catch {
-      return null
+  // Parse tags from individual params
+  const sectorTags: SectorTagsLocal | null = useMemo(() => {
+    // Check if any tag param is present
+    const hasAnyTag = params.kidFriendly !== undefined || 
+      params.dogFriendly !== undefined ||
+      params.beginner !== undefined ||
+      params.accessible !== undefined ||
+      params.scenic !== undefined ||
+      params.camping !== undefined ||
+      params.swimming !== undefined ||
+      params.quiet !== undefined ||
+      params.popular !== undefined ||
+      params.sport !== undefined ||
+      params.trad !== undefined ||
+      params.bouldering !== undefined ||
+      params.multipitch !== undefined
+
+    if (!hasAnyTag) return null
+
+    return {
+      kidFriendly: params.kidFriendly === 'true' ? true : params.kidFriendly === 'false' ? false : null,
+      dogFriendly: params.dogFriendly === 'true' ? true : null,
+      accessible: params.accessible === 'true' ? true : null,
+      camping: params.camping === 'true' ? true : null,
+      swimming: params.swimming === 'true' ? true : null,
+      scenic: params.scenic === 'true' ? true : null,
+      popular: params.popular === 'true' ? true : null,
+      quiet: params.quiet === 'true' ? true : null,
+      multipitch: params.multipitch === 'true' ? true : null,
+      trad: params.trad === 'true' ? true : null,
+      sport: params.sport === 'true' ? true : null,
+      bouldering: params.bouldering === 'true' ? true : null,
+      beginner: params.beginner === 'true' ? true : null,
+      rawTags: [],
     }
-  }, [params.tags])
+  }, [params.kidFriendly, params.dogFriendly, params.beginner, params.accessible, 
+      params.scenic, params.camping, params.swimming, params.quiet, params.popular,
+      params.sport, params.trad, params.bouldering, params.multipitch])
 
   // Fetch topos for this sector
   const { data: toposData, isLoading: isLoadingTopos } = useSectorTopos(
