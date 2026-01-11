@@ -1,14 +1,11 @@
 import { HeroHeader } from '@/components/HeroHeader'
-import { LanguageApproachSection } from '@/components/LanguageApproachSection'
-import { LanguageTextSection } from '@/components/LanguageTextSection'
 import { Colors } from '@/constants/Colors'
 import { useGradeRange } from '@/contexts/FiltersContext'
 import { useCragDetail } from '@/hooks/useCragDetail'
-import type { CragDetailHourlyForecast, SearchSectorResult } from '@/lib/api'
-import { t } from '@/lib/i18n'
+import type { SearchSectorResult } from '@/lib/api'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import {
   ActivityIndicator,
   Linking,
@@ -20,52 +17,34 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-function formatForecastDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
-  if (date.toDateString() === today.toDateString()) return 'Today'
-  if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
-
-  return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
-}
 
 function getWeatherIcon(code: number): keyof typeof Ionicons.glyphMap {
-  // Meteoblue daily pictocodes (1-17)
-  // https://content.meteoblue.com/en/help/standards/symbols-and-pictograms
   switch (code) {
-    case 1: // Sunny, cloudless sky
+    case 1:
       return 'sunny'
-    case 2: // Mostly sunny, few clouds
+    case 2:
+    case 3:
       return 'partly-sunny'
-    case 3: // Partly cloudy
-      return 'partly-sunny'
-    case 4: // Mostly cloudy
+    case 4:
+    case 5:
       return 'cloudy'
-    case 5: // Overcast
-      return 'cloudy'
-    case 6: // Overcast with light rain
-    case 9: // Overcast with rain showers
-    case 11: // Mostly cloudy with rain
+    case 6:
+    case 9:
+    case 11:
       return 'rainy'
-    case 7: // Overcast with light snow
-    case 10: // Overcast with snow showers
-    case 12: // Mostly cloudy with snow
+    case 7:
+    case 10:
+    case 12:
       return 'snow'
-    case 8: // Overcast with rain and snow mixed
-    case 13: // Mostly cloudy with rain and snow
+    case 8:
+    case 13:
       return 'rainy'
-    case 14: // Mostly cloudy with rain, thunderstorm
-    case 15: // Mostly cloudy with snow, thunderstorm
+    case 14:
+    case 15:
       return 'thunderstorm'
-    case 16: // Fog
-    case 17: // Light fog / Mist
-      return 'cloudy' // No specific fog icon in Ionicons
+    case 16:
+    case 17:
+      return 'cloudy'
     default:
       return 'partly-sunny'
   }
@@ -78,253 +57,8 @@ function getScoreColor(score: number): string {
   return '#64748B'
 }
 
-function formatHour(timestamp: string): string {
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-}
-
-function getHoursForDate(
-  hourlyForecast: CragDetailHourlyForecast[] | null,
-  dateStr: string | null,
-): CragDetailHourlyForecast[] {
-  if (!hourlyForecast || !dateStr) return []
-  const targetDate = dateStr.split('T')[0]
-  return hourlyForecast.filter((h) => {
-    if (!h.timestamp) return false
-    const hourDate = new Date(h.timestamp).toISOString().split('T')[0]
-    return hourDate === targetDate
-  })
-}
-
-interface ForecastSectionProps {
-  forecast: Array<{
-    date: string
-    temperature: { min: number; max: number; mean: number }
-    precipitation: { amount: number; probability: number }
-    wind: { min: number; max: number; mean: number; direction: string }
-    weatherCode: number
-  }> | null
-  hourlyForecast: CragDetailHourlyForecast[] | null
-  colors: typeof Colors.light
-  colorScheme: 'light' | 'dark'
-}
-
-function ForecastSection({
-  forecast,
-  hourlyForecast,
-  colors,
-  colorScheme,
-}: ForecastSectionProps) {
-  const [expandedDay, setExpandedDay] = useState<string | null>(null)
-
-  if (!forecast || forecast.length === 0) {
-    return null
-  }
-
-  const toggleDay = (date: string) => {
-    setExpandedDay(expandedDay === date ? null : date)
-  }
-
-  return (
-    <View
-      style={[
-        styles.section,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
-      <View style={styles.forecastHeader}>
-        <Text style={[styles.sectionTitleInCard, { color: colors.text }]}>
-          7-Day Forecast
-        </Text>
-        <Text
-          style={[styles.forecastSubtitle, { color: colors.textSecondary }]}
-        >
-          Tap for hourly
-        </Text>
-      </View>
-
-      {forecast.slice(0, 7).map((day, index) => {
-        const isExpanded = expandedDay === day.date
-        const hoursForDay = getHoursForDate(hourlyForecast, day.date)
-        const hasHourlyData = hoursForDay.length > 0
-
-        return (
-          <View key={day.date || `forecast-${index}`}>
-            <Pressable
-              onPress={() => hasHourlyData && day.date && toggleDay(day.date)}
-              style={[
-                styles.forecastDayRow,
-                {
-                  backgroundColor: isExpanded ? colors.muted : 'transparent',
-                  borderBottomColor: colors.border,
-                },
-              ]}
-            >
-              <View style={styles.forecastDayLeft}>
-                <Ionicons
-                  name={getWeatherIcon(day.weatherCode)}
-                  size={28}
-                  color={colors.primary}
-                />
-                <View>
-                  <Text
-                    style={[styles.forecastDayName, { color: colors.text }]}
-                  >
-                    {formatForecastDate(day.date)}
-                  </Text>
-                  <View style={styles.forecastDayStats}>
-                    {day.precipitation?.probability > 0 && (
-                      <View style={styles.forecastExtraItem}>
-                        <Ionicons name="water" size={12} color="#3B82F6" />
-                        <Text
-                          style={[
-                            styles.forecastExtraText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {Math.round(day.precipitation.probability)}%
-                        </Text>
-                      </View>
-                    )}
-                    {day.wind?.mean > 0 && (
-                      <View
-                        style={[styles.forecastExtraItem, { marginLeft: 8 }]}
-                      >
-                        <Ionicons
-                          name="leaf"
-                          size={12}
-                          color={colors.textSecondary}
-                        />
-                        <Text
-                          style={[
-                            styles.forecastExtraText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {Math.round(day.wind.mean)} m/s
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.forecastDayRight}>
-                <Text style={[styles.forecastTempMax, { color: colors.text }]}>
-                  {Math.round(day.temperature?.max || 0)}°
-                </Text>
-                <Text
-                  style={[
-                    styles.forecastTempMin,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {Math.round(day.temperature?.min || 0)}°
-                </Text>
-                {hasHourlyData && (
-                  <Ionicons
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={colors.textSecondary}
-                    style={{ marginLeft: 8 }}
-                  />
-                )}
-              </View>
-            </Pressable>
-
-            {/* Hourly Breakdown */}
-            {isExpanded && hoursForDay.length > 0 && (
-              <View
-                style={[
-                  styles.hourlyContainer,
-                  { backgroundColor: colors.muted },
-                ]}
-              >
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.hourlyScroll}
-                >
-                  {hoursForDay.map((hour, hIndex) => (
-                    <View
-                      key={`${hour.timestamp}-${hIndex}`}
-                      style={[
-                        styles.hourlyItem,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.hourlyTime, { color: colors.text }]}>
-                        {formatHour(hour.timestamp)}
-                      </Text>
-                      <Ionicons
-                        name={getWeatherIcon(hour.weatherCode)}
-                        size={20}
-                        color={colors.primary}
-                      />
-                      <Text style={[styles.hourlyTemp, { color: colors.text }]}>
-                        {Math.round(hour.temperature)}°
-                      </Text>
-                      <View style={styles.hourlyDetails}>
-                        <View style={styles.hourlyDetailRow}>
-                          <Ionicons name="water" size={10} color="#3B82F6" />
-                          <Text
-                            style={[
-                              styles.hourlyDetailText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {hour.precipitation.toFixed(1)}mm
-                          </Text>
-                        </View>
-                        <View style={styles.hourlyDetailRow}>
-                          <Ionicons
-                            name="leaf"
-                            size={10}
-                            color={colors.textSecondary}
-                          />
-                          <Text
-                            style={[
-                              styles.hourlyDetailText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {Math.round(hour.windSpeed)}m/s
-                          </Text>
-                        </View>
-                        <View style={styles.hourlyDetailRow}>
-                          <Ionicons
-                            name="water-outline"
-                            size={10}
-                            color={colors.textSecondary}
-                          />
-                          <Text
-                            style={[
-                              styles.hourlyDetailText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            {Math.round(hour.humidity)}%
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-        )
-      })}
-    </View>
-  )
-}
+// Sun preference type
+type SunPreference = 'any' | 'sun' | 'shade'
 
 export default function CragDetailScreen() {
   const {
@@ -332,11 +66,21 @@ export default function CragDetailScreen() {
     sectorsData,
     avgScore,
     distance: distanceParam,
+    appliedGradeMin,
+    appliedGradeMax,
+    appliedSunPreference,
+    appliedMinRoutes,
+    appliedWithTopo,
   } = useLocalSearchParams<{
     id: string
     sectorsData?: string
     avgScore?: string
     distance?: string
+    appliedGradeMin?: string
+    appliedGradeMax?: string
+    appliedSunPreference?: string
+    appliedMinRoutes?: string
+    appliedWithTopo?: string
   }>()
   const router = useRouter()
   const colorScheme = useColorScheme() ?? 'light'
@@ -363,8 +107,34 @@ export default function CragDetailScreen() {
     isRefetching,
   } = useCragDetail(id || '', { gradeRange: globalGradeRange })
 
-  const insets = useSafeAreaInsets()
-  const [showHourlyModal, setShowHourlyModal] = useState(false)
+  // Filter state
+  const [gradeMin, setGradeMin] = useState('5a')
+  const [gradeMax, setGradeMax] = useState('7a')
+  const [sunPreference, setSunPreference] = useState<SunPreference>('any')
+  const [minRoutes, setMinRoutes] = useState(0)
+  const [withTopo, setWithTopo] = useState(false)
+
+  // Check if grade range is modified from default
+  const isGradeRangeModified = gradeMin !== '5a' || gradeMax !== '7a'
+
+  // Update filters when returning from filter screen
+  useEffect(() => {
+    if (appliedGradeMin) {
+      setGradeMin(appliedGradeMin)
+    }
+    if (appliedGradeMax) {
+      setGradeMax(appliedGradeMax)
+    }
+    if (appliedSunPreference) {
+      setSunPreference(appliedSunPreference as SunPreference)
+    }
+    if (appliedMinRoutes) {
+      setMinRoutes(parseInt(appliedMinRoutes, 10) || 0)
+    }
+    if (appliedWithTopo !== undefined) {
+      setWithTopo(appliedWithTopo === 'true')
+    }
+  }, [appliedGradeMin, appliedGradeMax, appliedSunPreference, appliedMinRoutes, appliedWithTopo])
 
   // Get today's forecast
   const todayForecast = useMemo(() => {
@@ -374,17 +144,6 @@ export default function CragDetailScreen() {
       crag.forecast.find((f) => f.date?.startsWith(today)) || crag.forecast[0]
     )
   }, [crag?.forecast])
-
-  // Get hourly forecast for today
-  const todayHourlyForecast = useMemo(() => {
-    if (!crag?.hourlyForecast?.length || !todayForecast?.date) return []
-    const targetDate = todayForecast.date.split('T')[0]
-    return crag.hourlyForecast.filter((h) => {
-      if (!h.timestamp) return false
-      const hourDate = new Date(h.timestamp).toISOString().split('T')[0]
-      return hourDate === targetDate
-    })
-  }, [crag?.hourlyForecast, todayForecast?.date])
 
   // Combine scored sectors with crag sectors to show all
   // scoredSectors come from search navigation, crag.sectors come from API
@@ -450,9 +209,80 @@ export default function CragDetailScreen() {
   // Get rock type from first sector if available
   const primaryRockType = allSectors[0]?.sector?.rockType || null
 
-  const handleOpenTheCrag = () => {
-    if (crag?.theCragUrl) {
-      Linking.openURL(crag.theCragUrl)
+  // Helper to check if sector is in sun or shade based on orientation and time
+  const isSectorInSun = (orientation: string | null): boolean => {
+    if (!orientation) return true // Unknown = treat as sun
+    const hour = new Date().getHours()
+    // Simplified sun logic: 
+    // Morning (6-12): E, SE, S facing walls get sun
+    // Afternoon (12-18): S, SW, W facing walls get sun
+    // Evening (18-20): W, NW facing walls get sun
+    const sunnyOrientations: Record<string, string[]> = {
+      morning: ['E', 'SE', 'S', 'NE'],
+      afternoon: ['S', 'SW', 'W', 'SE'],
+      evening: ['W', 'NW', 'SW'],
+    }
+    let period = 'morning'
+    if (hour >= 12 && hour < 18) period = 'afternoon'
+    else if (hour >= 18) period = 'evening'
+    
+    return sunnyOrientations[period].includes(orientation)
+  }
+
+  // Filter sectors based on user selections
+  const filteredSectors = useMemo(() => {
+    return allSectors.filter((sectorResult) => {
+      const sector = sectorResult.sector
+      
+      // Filter by sun preference
+      if (sunPreference !== 'any') {
+        const inSun = isSectorInSun(sector.orientation)
+        if (sunPreference === 'sun' && !inSun) return false
+        if (sunPreference === 'shade' && inSun) return false
+      }
+      
+      // Filter by minimum routes
+      if (minRoutes > 0 && sectorResult.routesInUserRange < minRoutes) {
+        return false
+      }
+
+      // Filter by with topo (check if sector has topo images)
+      // For now, we assume sectors have a hasTopo property or we check headerImageUrl
+      if (withTopo) {
+        // Check if sector has topo - using headerImageUrl as proxy for now
+        // In the future, this should check actual topo data
+        if (!sector.headerImageUrl) {
+          return false
+        }
+      }
+      
+      return true
+    })
+  }, [allSectors, sunPreference, minRoutes, withTopo])
+
+  // Count active filters
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (isGradeRangeModified) count++
+    if (sunPreference !== 'any') count++
+    if (minRoutes > 0) count++
+    if (withTopo) count++
+    return count
+  }, [isGradeRangeModified, sunPreference, minRoutes, withTopo])
+
+  // Clear all filters
+  const clearFilters = () => {
+    setGradeMin('5a')
+    setGradeMax('7a')
+    setSunPreference('any')
+    setMinRoutes(0)
+    setWithTopo(false)
+  }
+
+  const handleGetDirections = () => {
+    if (crag?.latitude && crag?.longitude) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${crag.latitude},${crag.longitude}`
+      Linking.openURL(url)
     }
   }
 
@@ -577,6 +407,15 @@ export default function CragDetailScreen() {
         stats={[
           { label: 'sectors', value: crag.totalSectors, icon: 'grid' },
           { label: 'routes', value: crag.totalRoutes, icon: 'git-branch' },
+          ...(crag.totalRoutesInRange > 0 && crag.totalRoutesInRange !== crag.totalRoutes
+            ? [
+                {
+                  label: 'in range',
+                  value: crag.totalRoutesInRange,
+                  icon: 'checkmark-circle' as const,
+                },
+              ]
+            : []),
           ...(distanceParam
             ? [
                 {
@@ -601,106 +440,170 @@ export default function CragDetailScreen() {
       />
 
       <View style={styles.content}>
-        {/* Current Weather */}
+        {/* Weather Card - Full Width */}
         {todayForecast && (
-          <View
+          <Pressable
+            onPress={() => router.push(`/crag/weather/${id}`)}
             style={[
-              styles.weatherBanner,
+              styles.weatherCard,
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
-            <View style={styles.weatherBannerLeft}>
+            <View style={styles.weatherCardLeft}>
               <Ionicons
                 name={getWeatherIcon(todayForecast.weatherCode)}
-                size={32}
+                size={48}
                 color={colors.primary}
               />
-              <View>
-                <Text style={[styles.weatherTemp, { color: colors.text }]}>
+              <View style={styles.weatherCardInfo}>
+                <Text style={[styles.weatherCardTemp, { color: colors.text }]}>
                   {Math.round(todayForecast.temperature?.mean || 0)}°C
                 </Text>
-                <Text
-                  style={[styles.weatherRange, { color: colors.textSecondary }]}
-                >
-                  {Math.round(todayForecast.temperature?.min || 0)}° -{' '}
-                  {Math.round(todayForecast.temperature?.max || 0)}°
+                <Text style={[styles.weatherCardRange, { color: colors.textSecondary }]}>
+                  {Math.round(todayForecast.temperature?.min || 0)}° / {Math.round(todayForecast.temperature?.max || 0)}°
                 </Text>
               </View>
             </View>
-            {avgScore && (
-              <View style={styles.weatherBannerRight}>
-                <View
-                  style={[
-                    styles.scoreBadge,
-                    { backgroundColor: getScoreColor(Number(avgScore)) },
-                  ]}
-                >
-                  <Text style={styles.scoreText}>
-                    {Math.round(Number(avgScore))}
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.scoreLabel, { color: colors.textSecondary }]}
-                >
-                  match
+            <View style={styles.weatherCardRight}>
+              <View style={styles.weatherCardDetail}>
+                <Ionicons name="water" size={16} color="#3B82F6" />
+                <Text style={[styles.weatherCardDetailText, { color: colors.textSecondary }]}>
+                  {Math.round(todayForecast.precipitation?.probability || 0)}%
                 </Text>
               </View>
-            )}
-          </View>
+              <View style={styles.weatherCardDetail}>
+                <Ionicons name="leaf" size={16} color="#10B981" />
+                <Text style={[styles.weatherCardDetailText, { color: colors.textSecondary }]}>
+                  {Math.round(todayForecast.wind?.mean || 0)} m/s
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </Pressable>
         )}
 
-        {/* Stats */}
-        <View style={styles.statsGrid}>
-          <View
-            style={[
-              styles.statCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="grid" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {crag.totalSectors}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Sectors
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.statCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="git-branch" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {crag.totalRoutes}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Routes
-            </Text>
-          </View>
-          {distanceParam && (
-            <View
+        {/* Action Buttons Row - Full Width */}
+        <View style={styles.actionButtonsRow}>
+          {/* Directions Button */}
+          {crag.latitude && crag.longitude && (
+            <Pressable
+              onPress={handleGetDirections}
               style={[
-                styles.statCard,
+                styles.actionButton,
                 { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
-              <Ionicons name="location" size={24} color={colors.primary} />
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {Number(distanceParam) < 1
-                  ? `${Math.round(Number(distanceParam) * 1000)}m`
-                  : `${Number(distanceParam).toFixed(1)}km`}
+              <Ionicons name="navigate" size={22} color="#10B981" />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                Directions
               </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                Distance
-              </Text>
-            </View>
+            </Pressable>
           )}
+
+          {/* Info Button */}
+          {(crag.description || crag.approach) && (
+            <Pressable
+              onPress={() => router.push(`/crag/info/${id}`)}
+              style={[
+                styles.actionButton,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="information-circle" size={22} color="#3B82F6" />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                Info
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Filters Button */}
+          <Pressable
+            onPress={() => {
+              const params = new URLSearchParams()
+              params.set('gradeMin', gradeMin)
+              params.set('gradeMax', gradeMax)
+              if (sunPreference !== 'any') {
+                params.set('sunPreference', sunPreference)
+              }
+              if (minRoutes > 0) {
+                params.set('minRoutes', minRoutes.toString())
+              }
+              if (withTopo) {
+                params.set('withTopo', 'true')
+              }
+              router.push(`/crag/filters/${id}?${params.toString()}`)
+            }}
+            style={[
+              styles.actionButton,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Ionicons name="options" size={22} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>
+              Filters
+            </Text>
+            {activeFiltersCount > 0 && (
+              <View style={[styles.filterBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
 
-        {/* Sectors (sorted by score from backend) */}
-        {allSectors.length > 0 && (
+        {/* Active Filters Chips */}
+        {activeFiltersCount > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.activeFiltersContent}
+            style={styles.activeFiltersRow}
+          >
+            {isGradeRangeModified && (
+              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Ionicons name="trending-up-outline" size={12} color={colors.primary} />
+                <Text style={[styles.filterChipText, { color: colors.text }]}>
+                  {gradeMin} - {gradeMax}
+                </Text>
+              </View>
+            )}
+            {sunPreference !== 'any' && (
+              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Ionicons name={sunPreference === 'sun' ? 'sunny' : 'moon'} size={12} color={colors.primary} />
+                <Text style={[styles.filterChipText, { color: colors.text }]}>
+                  {sunPreference === 'sun' ? 'Sun' : 'Shade'}
+                </Text>
+              </View>
+            )}
+            {minRoutes > 0 && (
+              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Ionicons name="git-branch-outline" size={12} color={colors.primary} />
+                <Text style={[styles.filterChipText, { color: colors.text }]}>
+                  {minRoutes}+ routes
+                </Text>
+              </View>
+            )}
+            {withTopo && (
+              <View style={[styles.filterChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Ionicons name="map-outline" size={12} color={colors.primary} />
+                <Text style={[styles.filterChipText, { color: colors.text }]}>
+                  With Topo
+                </Text>
+              </View>
+            )}
+            <Pressable
+              onPress={clearFilters}
+              style={[styles.clearFiltersChip, { borderColor: colors.border }]}
+            >
+              <Ionicons name="close-circle" size={12} color={colors.destructive} />
+              <Text style={[styles.clearFiltersText, { color: colors.destructive }]}>
+                Clear
+              </Text>
+            </Pressable>
+          </ScrollView>
+        )}
+
+        {/* Sectors (filtered) */}
+        {filteredSectors.length > 0 ? (
           <View
             style={[
               styles.section,
@@ -714,11 +617,11 @@ export default function CragDetailScreen() {
               <Text
                 style={[styles.sectorCount, { color: colors.textSecondary }]}
               >
-                {allSectors.length}
+                {filteredSectors.length}{activeFiltersCount > 0 ? ` of ${allSectors.length}` : ''}
               </Text>
             </View>
             <View style={styles.sectorsList}>
-              {allSectors.map((sectorResult) => {
+              {filteredSectors.map((sectorResult) => {
                 const isGoodDay = sectorResult.conditions?.isGoodDay
                 const isHighScore = sectorResult.relevanceScore >= 70
                 const isRecommended = isGoodDay || isHighScore
@@ -830,57 +733,24 @@ export default function CragDetailScreen() {
               })}
             </View>
           </View>
-        )}
-
-        {/* Forecast with Hourly Detail */}
-        <ForecastSection
-          forecast={crag.forecast}
-          hourlyForecast={crag.hourlyForecast}
-          colors={colors}
-          colorScheme={colorScheme}
-        />
-
-        {/* Description */}
-        {crag.description && (
-          <LanguageTextSection
-            text={crag.description}
-            title={t('description')}
-          />
-        )}
-
-        {/* Approach */}
-        {crag.approach && (
-          <LanguageApproachSection
-            approach={crag.approach}
-            latitude={crag.latitude}
-            longitude={crag.longitude}
-            cragName={crag.name}
-          />
-        )}
-
-        {/* Actions */}
-        <View style={styles.actionsContainer}>
-          {crag.theCragUrl && (
+        ) : (
+          <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+              No sectors match filters
+            </Text>
+            <Text style={[styles.emptyStateMessage, { color: colors.textSecondary }]}>
+              Try adjusting your filters to see more results
+            </Text>
             <Pressable
-              style={[styles.actionButton, { backgroundColor: colors.primary }]}
-              onPress={handleOpenTheCrag}
+              onPress={clearFilters}
+              style={[styles.emptyStateButton, { backgroundColor: colors.primary }]}
             >
-              <Ionicons
-                name="open-outline"
-                size={20}
-                color={colors.primaryForeground}
-              />
-              <Text
-                style={[
-                  styles.actionButtonText,
-                  { color: colors.primaryForeground },
-                ]}
-              >
-                View on TheCrag
-              </Text>
+              <Text style={styles.emptyStateButtonText}>Clear Filters</Text>
             </Pressable>
-          )}
-        </View>
+          </View>
+        )}
+
       </View>
     </ScrollView>
   )
@@ -889,6 +759,139 @@ export default function CragDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  // Weather Card
+  weatherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  weatherCardLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  weatherCardInfo: {
+    gap: 2,
+  },
+  weatherCardTemp: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  weatherCardRange: {
+    fontSize: 14,
+  },
+  weatherCardRight: {
+    flexDirection: 'row',
+    gap: 16,
+    marginRight: 12,
+  },
+  weatherCardDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  weatherCardDetailText: {
+    fontSize: 14,
+  },
+  // Action Buttons Row
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Filter Badge
+  filterBadge: {
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  filterBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  // Active Filters Row
+  activeFiltersRow: {
+    marginBottom: 12,
+  },
+  activeFiltersContent: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  clearFiltersChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+  },
+  clearFiltersText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    padding: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  emptyStateMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyStateButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  emptyStateButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
@@ -930,102 +933,8 @@ const styles = StyleSheet.create({
   backLinkText: {
     fontSize: 16,
   },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 48,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  headerContent: {
-    alignItems: 'center',
-    marginTop: 24,
-    gap: 8,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFF',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-  },
   content: {
     padding: 16,
-  },
-  weatherBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  weatherBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  weatherTemp: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  weatherRange: {
-    fontSize: 13,
-  },
-  weatherBannerRight: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  scoreBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    minWidth: 42,
-    alignItems: 'center',
-  },
-  scoreText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  scoreLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  statLabel: {
-    fontSize: 12,
   },
   section: {
     marginBottom: 16,
@@ -1131,152 +1040,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
-  },
-  forecastHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  forecastSubtitle: {
-    fontSize: 12,
-  },
-  forecastScroll: {
-    marginHorizontal: -4,
-  },
-  forecastDay: {
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    minWidth: 80,
-    gap: 6,
-  },
-  forecastDayName: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  forecastTemps: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  forecastTempMax: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  forecastTempMin: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  forecastExtra: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 2,
-  },
-  forecastExtraItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  forecastExtraText: {
-    fontSize: 11,
-  },
-  forecastDayRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-  },
-  forecastDayLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  forecastDayRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  forecastDayStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  hourlyContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-  },
-  hourlyScroll: {
-    flexDirection: 'row',
-  },
-  hourlyItem: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginRight: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    minWidth: 70,
-    gap: 4,
-  },
-  hourlyTime: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  hourlyTemp: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  hourlyDetails: {
-    marginTop: 4,
-    gap: 2,
-  },
-  hourlyDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  hourlyDetailText: {
-    fontSize: 10,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  mapButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 12,
-  },
-  mapButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  actionsContainer: {
-    gap: 12,
-    marginBottom: 32,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
   },
 })

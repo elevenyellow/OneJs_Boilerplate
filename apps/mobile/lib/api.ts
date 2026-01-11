@@ -490,6 +490,7 @@ export interface CragDetail {
   altitude: number | null
   totalSectors: number
   totalRoutes: number
+  totalRoutesInRange: number
   totalFavorites: number | null
   numberPhotos: number | null
   numberTopos: number | null

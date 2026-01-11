@@ -69,6 +69,33 @@ export default function RootLayout() {
               headerTintColor: '#FFFFFF',
             }}
           />
+          <Stack.Screen
+            name="crag/weather/[id]"
+            options={{
+              title: 'Weather',
+              headerShown: false,
+              presentation: 'card',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="crag/info/[id]"
+            options={{
+              title: 'Info',
+              headerShown: false,
+              presentation: 'card',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="crag/filters/[id]"
+            options={{
+              title: 'Filters',
+              headerShown: false,
+              presentation: 'card',
+              animation: 'slide_from_right',
+            }}
+          />
           </Stack>
           <GlobalGradePickerModal />
         </FiltersProvider>

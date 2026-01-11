@@ -139,27 +139,10 @@ export function HeroHeader({
 
   const renderContent = () => (
     <>
-      {/* Top navigation bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        {/* Back button */}
-        <Pressable 
-          style={styles.backButton} 
-          onPress={handleBackPress}
-          hitSlop={8}
-        >
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={80} tint={colorScheme} style={styles.backButtonBlur}>
-              <Ionicons name="arrow-back" size={22} color="#FFF" />
-            </BlurView>
-          ) : (
-            <View style={styles.backButtonAndroid}>
-              <Ionicons name="arrow-back" size={22} color="#FFF" />
-            </View>
-          )}
-        </Pressable>
-
-        {/* Action buttons */}
-        {actions && actions.length > 0 && (
+      {/* Top bar for action buttons only */}
+      {actions && actions.length > 0 && (
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+          <View style={{ flex: 1 }} />
           <View style={styles.actionsRow}>
             {actions.map((action, index) => (
               <Pressable 
@@ -183,8 +166,8 @@ export function HeroHeader({
               </Pressable>
             ))}
           </View>
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Bottom overlay with content */}
       <LinearGradient
@@ -192,25 +175,33 @@ export function HeroHeader({
         style={styles.overlay}
       >
         <View style={styles.headerContent}>
-          {/* Badge */}
-          {badge && (
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: badge.color || colors.primary },
-              ]}
+          {/* Title row with back button */}
+          <View style={styles.titleRow}>
+            <Pressable 
+              style={styles.backButtonInline} 
+              onPress={handleBackPress}
+              hitSlop={8}
             >
-              {badge.icon && (
-                <Ionicons name={badge.icon} size={12} color="#FFF" />
-              )}
-              <Text style={styles.badgeText}>{badge.label}</Text>
-            </View>
-          )}
-
-          {/* Title */}
-          <Text style={styles.title} numberOfLines={2}>
-            {title}
-          </Text>
+              <Ionicons name="arrow-back" size={22} color="#FFF" />
+            </Pressable>
+            <Text style={styles.title} numberOfLines={2}>
+              {title}
+            </Text>
+            {/* Badge next to title */}
+            {badge && (
+              <View
+                style={[
+                  styles.badgeInline,
+                  { backgroundColor: badge.color || colors.primary },
+                ]}
+              >
+                {badge.icon && (
+                  <Ionicons name={badge.icon} size={12} color="#FFF" />
+                )}
+                <Text style={styles.badgeText}>{badge.label}</Text>
+              </View>
+            )}
+          </View>
 
           {/* Subtitle */}
           {subtitle && (
@@ -240,9 +231,9 @@ export function HeroHeader({
   );
 
   if (imageError) {
-    // Fallback to gradient
+    // Fallback to dark gradient (neutral, no blue)
     return (
-      <LinearGradient colors={[...colors.gradientPrimary]} style={styles.container}>
+      <LinearGradient colors={['#1E293B', '#0F172A', '#020617']} style={styles.container}>
         <View style={styles.iconContainer}>
           <Ionicons name={icon} size={56} color="rgba(255,255,255,0.2)" />
         </View>
@@ -265,7 +256,7 @@ export function HeroHeader({
 
 const styles = StyleSheet.create({
   container: {
-    height: 300,
+    height: 220,
     width: SCREEN_WIDTH,
     position: 'relative',
     justifyContent: 'space-between',
@@ -279,30 +270,10 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 16,
     zIndex: 10,
-  },
-  backButton: {
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  backButtonBlur: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
-  },
-  backButtonAndroid: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   actionsRow: {
     flexDirection: 'row',
@@ -333,21 +304,28 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingTop: 100,
-    paddingBottom: 24,
+    paddingTop: 60,
+    paddingBottom: 16,
     paddingHorizontal: 20,
   },
   headerContent: {
-    gap: 10,
+    gap: 6,
   },
-  badge: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 5,
+    gap: 10,
+  },
+  backButtonInline: {
+    padding: 4,
+  },
+  badgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    gap: 4,
   },
   badgeText: {
     color: '#FFF',
@@ -355,7 +333,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
-    fontSize: 30,
+    flex: 1,
+    fontSize: 24,
     fontWeight: '800',
     color: '#FFF',
     letterSpacing: -0.5,
@@ -375,27 +354,27 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 6,
     flexWrap: 'wrap',
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   statValue: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   statLabel: {
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
   },
 });

@@ -58,6 +58,7 @@ export interface CragDetailResponse {
   // Stats
   totalSectors: number
   totalRoutes: number
+  totalRoutesInRange: number
   totalFavorites: number | null
   numberPhotos: number | null
   numberTopos: number | null
@@ -129,11 +130,26 @@ export class GetCragDetailUseCase {
     // 4. Get sector IDs for route query
     const sectorIds = sectors.map(s => s.id)
 
-    // 5. Build sector summaries with routes in grade range
+    // 5. Count actual routes per sector (in case routeCount is not updated)
+    const routeCountsBySector = await this.prisma.route.groupBy({
+      by: ['sectorId'],
+      where: {
+        sectorId: { in: sectorIds },
+      },
+      _count: { id: true },
+    })
+    const routeCountMap = new Map(
+      routeCountsBySector.map(r => [r.sectorId, r._count.id])
+    )
+
+    // 6. Build sector summaries with routes in grade range
     const sectorSummaries: SectorSummary[] = await Promise.all(
       sectors.map(async (sector) => {
+        // Get actual route count from database
+        const actualRouteCount = routeCountMap.get(sector.id) || 0
+        
         // Count routes in grade range
-        let routesInGradeRange = sector.routeCount || 0
+        let routesInGradeRange = actualRouteCount
         
         if (minGradeIndex !== null && maxGradeIndex !== null) {
           routesInGradeRange = await this.prisma.route.count({
@@ -148,7 +164,10 @@ export class GetCragDetailUseCase {
         }
 
         // Calculate a simple relevance score
-        const score = this.calculateSectorScore(sector, routesInGradeRange)
+        const score = this.calculateSectorScore(
+          { ...sector, routeCount: actualRouteCount },
+          routesInGradeRange
+        )
 
         return {
           id: sector.id,
@@ -156,7 +175,7 @@ export class GetCragDetailUseCase {
           orientation: sector.orientation,
           rockType: sector.rockType,
           sunExposure: sector.sunExposure,
-          routeCount: sector.routeCount || 0,
+          routeCount: actualRouteCount,
           routesInGradeRange,
           minGrade: sector.minGrade,
           maxGrade: sector.maxGrade,
@@ -236,8 +255,11 @@ export class GetCragDetailUseCase {
       }
     }
 
-    // 8. Calculate total routes
-    const totalRoutes = sectors.reduce((sum, s) => sum + (s.routeCount || 0), 0)
+    // 9. Calculate total routes from actual counts
+    const totalRoutes = sectorSummaries.reduce((sum, s) => sum + s.routeCount, 0)
+    
+    // 10. Calculate total routes in grade range
+    const totalRoutesInRange = sectorSummaries.reduce((sum, s) => sum + s.routesInGradeRange, 0)
 
     // 9. Build response
     return {
@@ -252,6 +274,7 @@ export class GetCragDetailUseCase {
       altitude: crag.averageHeight,
       totalSectors: sectors.length,
       totalRoutes,
+      totalRoutesInRange,
       totalFavorites: crag.totalFavorites,
       numberPhotos: crag.numberPhotos,
       numberTopos: crag.numberTopos,
