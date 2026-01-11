@@ -29,18 +29,27 @@ interface SectorTagsLocal {
 import { gradeToIndex, indexToGrade } from '@/utils/gradeConverter'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import {
   ActivityIndicator,
   Linking,
   Platform,
   Pressable,
-  ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   useColorScheme,
   View,
 } from 'react-native'
+import type { TopoImage, RouteSearchInfo as RouteInfo } from '@/lib/api'
+
+// Section type for SectionList with sticky topo headers
+interface TopoSection {
+  topo: TopoImage | null
+  topoIndex: number
+  title: string
+  data: RouteInfo[]
+}
 
 // Format info text (clean markdown)
 function formatInfoText(text: string): string {
@@ -389,11 +398,17 @@ export default function SectorDetailScreen() {
     return allRoutes.filter(isRouteInGlobalRange).length
   }, [allRoutes, globalMinGradeIndex, globalMaxGradeIndex])
 
-  // Group routes by topo image
-  // Returns an array of { topo, routes } for topos with routes, plus a "noTopo" array for routes not in any topo
-  const routesByTopo = useMemo(() => {
+  // Group routes by topo image for SectionList
+  const sections: TopoSection[] = useMemo(() => {
     if (topos.length === 0) {
-      return { topoGroups: [], routesWithoutTopo: filteredAndSortedRoutes }
+      // No topos - single section with all routes
+      if (filteredAndSortedRoutes.length === 0) return []
+      return [{
+        topo: null,
+        topoIndex: 0,
+        title: `All Routes (${filteredAndSortedRoutes.length})`,
+        data: filteredAndSortedRoutes,
+      }]
     }
 
     // Build a set of all route IDs that appear in any topo
@@ -404,18 +419,33 @@ export default function SectorDetailScreen() {
       }
     }
 
-    // Create groups for each topo
-    const topoGroups = topos.map((topo) => {
+    // Create sections for each topo
+    const topoSections: TopoSection[] = topos.map((topo, index) => {
       const topoRouteIds = new Set((topo.routes || []).map(r => r.routeId))
-      // Filter the sorted routes to only include those in this topo, maintaining the sort order
       const routesInTopo = filteredAndSortedRoutes.filter(route => topoRouteIds.has(route.id))
-      return { topo, routes: routesInTopo }
-    }).filter(group => group.routes.length > 0)
+      return {
+        topo,
+        topoIndex: index + 1,
+        title: `Topo ${index + 1} (${routesInTopo.length} routes)`,
+        data: routesInTopo,
+      }
+    }).filter(section => section.data.length > 0)
 
     // Routes that are not in any topo
     const routesWithoutTopo = filteredAndSortedRoutes.filter(route => !routeIdsInTopos.has(route.id))
+    
+    if (routesWithoutTopo.length > 0) {
+      topoSections.push({
+        topo: null,
+        topoIndex: 0,
+        title: topoSections.length > 0 
+          ? `Other Routes (${routesWithoutTopo.length})`
+          : `All Routes (${routesWithoutTopo.length})`,
+        data: routesWithoutTopo,
+      })
+    }
 
-    return { topoGroups, routesWithoutTopo }
+    return topoSections
   }, [topos, filteredAndSortedRoutes])
 
   // Computed stats from routes
@@ -634,6 +664,61 @@ export default function SectorDetailScreen() {
     )
   }
 
+  // Render item for SectionList
+  const renderItem = useCallback(({ item, index }: { item: RouteSearchInfo; index: number }) => {
+    return (
+      <View style={styles.routeItemContainer}>
+        {renderRouteRow(item, index)}
+      </View>
+    )
+  }, [highlightedRouteId, colors, isRouteInGlobalRange])
+
+  // Render section header with sticky topo image
+  const renderSectionHeader = useCallback(({ section }: { section: TopoSection }) => {
+    return (
+      <View style={[styles.stickyTopoHeader, { backgroundColor: colors.background }]}>
+        {section.topo ? (
+          <>
+            <View style={styles.topoHeader}>
+              <Ionicons name="image-outline" size={16} color={colors.primary} />
+              <Text style={[styles.topoTitle, { color: colors.text }]}>
+                {section.title}
+              </Text>
+            </View>
+            <TopoViewer
+              topo={section.topo}
+              highlightedRouteId={highlightedRouteId || undefined}
+              gradeRange={
+                userMinGradeIndex !== null && userMaxGradeIndex !== null
+                  ? { min: userMinGradeIndex, max: userMaxGradeIndex }
+                  : undefined
+              }
+              routeDetails={allRoutes}
+              showRouteList={false}
+              onRoutePress={(routePos) => {
+                setHighlightedRouteId((prev) =>
+                  prev === routePos.routeId ? null : routePos.routeId,
+                )
+              }}
+            />
+          </>
+        ) : (
+          <View style={styles.topoHeader}>
+            <Ionicons name="list-outline" size={16} color={colors.textSecondary} />
+            <Text style={[styles.topoTitle, { color: colors.text }]}>
+              {section.title}
+            </Text>
+          </View>
+        )}
+      </View>
+    )
+  }, [highlightedRouteId, colors, userMinGradeIndex, userMaxGradeIndex, allRoutes])
+
+  // Key extractor
+  const keyExtractor = useCallback((item: RouteSearchInfo, index: number) => {
+    return item.id || `route-${index}`
+  }, [])
+
   if (isLoadingRoutes && !routesData) {
     return (
       <View
@@ -647,11 +732,9 @@ export default function SectorDetailScreen() {
     )
   }
 
-  return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      showsVerticalScrollIndicator={true}
-    >
+  // List header component (content before routes)
+  const ListHeaderComponent = useCallback(() => (
+    <>
       {/* Hero Header */}
       <HeroHeader
         title={sector.name}
@@ -1226,128 +1309,93 @@ export default function SectorDetailScreen() {
             </View>
           )}
         </View>
-
-        {/* Topos with their routes grouped */}
-        {routesByTopo.topoGroups.map((group, topoIndex) => (
-          <View key={group.topo.id} style={styles.topoSection}>
-            {/* Topo Image */}
-            <View style={styles.topoImageContainer}>
-              <View style={styles.topoHeader}>
-                <Ionicons name="image-outline" size={16} color={colors.primary} />
-                <Text style={[styles.topoTitle, { color: colors.text }]}>
-                  Topo {topoIndex + 1} ({group.routes.length} routes)
-                </Text>
-              </View>
-              <TopoViewer
-                topo={group.topo}
-                highlightedRouteId={highlightedRouteId || undefined}
-                gradeRange={
-                  userMinGradeIndex !== null && userMaxGradeIndex !== null
-                    ? { min: userMinGradeIndex, max: userMaxGradeIndex }
-                    : undefined
-                }
-                routeDetails={allRoutes}
-                showRouteList={false}
-                onRoutePress={(routePos) => {
-                  setHighlightedRouteId((prev) =>
-                    prev === routePos.routeId ? null : routePos.routeId,
-                  )
-                }}
-              />
-            </View>
-
-            {/* Routes for this topo */}
-            <View style={styles.topoRoutesList}>
-              {group.routes.map((route, index) => renderRouteRow(route, index))}
-            </View>
-          </View>
-        ))}
-
-        {/* Routes without topo */}
-        {routesByTopo.routesWithoutTopo.length > 0 && (
-          <View style={styles.topoSection}>
-            <View style={styles.topoHeader}>
-              <Ionicons name="list-outline" size={16} color={colors.textSecondary} />
-              <Text style={[styles.topoTitle, { color: colors.text }]}>
-                {routesByTopo.topoGroups.length > 0 
-                  ? `Other Routes (${routesByTopo.routesWithoutTopo.length})`
-                  : `All Routes (${routesByTopo.routesWithoutTopo.length})`
-                }
-              </Text>
-            </View>
-            <View style={styles.topoRoutesList}>
-              {routesByTopo.routesWithoutTopo.map((route, index) => renderRouteRow(route, index))}
-            </View>
-          </View>
-        )}
-
-        {/* Description */}
-        {sector.description && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons
-                name="document-text-outline"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Description
-              </Text>
-            </View>
-            <View
-              style={[styles.textContainer, { backgroundColor: colors.muted }]}
-            >
-              <Text style={[styles.text, { color: colors.text }]}>
-                {formatInfoText(sector.description)}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Approach */}
-        {sector.approach && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="walk-outline" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Approach
-              </Text>
-            </View>
-            <View
-              style={[styles.textContainer, { backgroundColor: colors.muted }]}
-            >
-              <Text style={[styles.text, { color: colors.text }]}>
-                {formatInfoText(sector.approach)}
-              </Text>
-            </View>
-
-            {parkingLocations.length > 0 && (
-              <View style={styles.parkingContainer}>
-                {parkingLocations.map((parking, index) => (
-                  <Pressable
-                    key={`parking-${index}-${parking.lat}`}
-                    onPress={() => handleNavigateToParking(parking)}
-                    style={[
-                      styles.parkingButton,
-                      { backgroundColor: '#3B82F6' },
-                    ]}
-                  >
-                    <Ionicons name="car" size={20} color="#FFF" />
-                    <Text style={styles.parkingButtonText}>
-                      {parkingLocations.length > 1
-                        ? parking.name
-                        : 'Navigate to Parking'}
-                    </Text>
-                    <Ionicons name="navigate" size={16} color="#FFF" />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
       </View>
-    </ScrollView>
+    </>
+  ), [sector, params, router, colors, showInfo, parkingLocations, sectorTags, latitude, longitude, routeStats, routesInGlobalRangeCount, globalGradeRange, showGradePicker, gradeFilter, sortBy, minStars, filteredAndSortedRoutes, allRoutes, isLoadingRoutes, isLoadingTopos, userMinGradeIndex, userMaxGradeIndex])
+
+  // List footer component (content after routes)
+  const ListFooterComponent = useCallback(() => (
+    <View style={styles.content}>
+      {/* Description */}
+      {sector.description && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons
+              name="document-text-outline"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Description
+            </Text>
+          </View>
+          <View
+            style={[styles.textContainer, { backgroundColor: colors.muted }]}
+          >
+            <Text style={[styles.text, { color: colors.text }]}>
+              {formatInfoText(sector.description)}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Approach */}
+      {sector.approach && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="walk-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Approach
+            </Text>
+          </View>
+          <View
+            style={[styles.textContainer, { backgroundColor: colors.muted }]}
+          >
+            <Text style={[styles.text, { color: colors.text }]}>
+              {formatInfoText(sector.approach)}
+            </Text>
+          </View>
+
+          {parkingLocations.length > 0 && (
+            <View style={styles.parkingContainer}>
+              {parkingLocations.map((parking, index) => (
+                <Pressable
+                  key={`parking-${index}-${parking.lat}`}
+                  onPress={() => handleNavigateToParking(parking)}
+                  style={[
+                    styles.parkingButton,
+                    { backgroundColor: '#3B82F6' },
+                  ]}
+                >
+                  <Ionicons name="car" size={20} color="#FFF" />
+                  <Text style={styles.parkingButtonText}>
+                    {parkingLocations.length > 1
+                      ? parking.name
+                      : 'Navigate to Parking'}
+                  </Text>
+                  <Ionicons name="navigate" size={16} color="#FFF" />
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  ), [sector, colors, parkingLocations])
+
+  return (
+    <SectionList
+      sections={sections}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      renderSectionHeader={renderSectionHeader}
+      ListHeaderComponent={ListHeaderComponent}
+      ListFooterComponent={ListFooterComponent}
+      stickySectionHeadersEnabled={true}
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.sectionListContent}
+      showsVerticalScrollIndicator={true}
+    />
   )
 }
 
@@ -1605,5 +1653,17 @@ const styles = StyleSheet.create({
   },
   topoRoutesList: {
     gap: 0,
+  },
+  // SectionList styles
+  sectionListContent: {
+    paddingBottom: 40,
+  },
+  stickyTopoHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  routeItemContainer: {
+    paddingHorizontal: 20,
   },
 })
