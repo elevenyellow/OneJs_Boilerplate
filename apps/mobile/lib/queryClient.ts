@@ -36,12 +36,36 @@ export const queryClient = new QueryClient({
 /**
  * Persister para guardar datos de React Query en AsyncStorage
  * Esto permite que los datos sobrevivan entre sesiones de la app
+ * 
+ * NOTA: Excluimos ciertas queries grandes para evitar el error
+ * "Row too big to fit into CursorWindow" en Android
  */
 export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
-  key: 'climb-zone-cache-v1',
+  key: 'climb-zone-cache-v2', // Bumped version to clear old cache
   throttleTime: 1000, // Guardar cambios cada 1 segundo
 })
+
+/**
+ * Filtro para determinar qué queries se persisten en AsyncStorage
+ * Excluimos queries grandes que pueden causar errores en Android SQLite
+ */
+export const shouldDehydrateQuery = (query: { queryKey: readonly unknown[] }) => {
+  const key = query.queryKey
+  
+  // Don't persist crag detail queries (too large with routes, topos, weather)
+  if (key[0] === 'crag' && typeof key[1] === 'string') {
+    return false
+  }
+  
+  // Don't persist sector search results (can be large)
+  if (key[0] === 'sectors' && key[1] === 'search') {
+    return false
+  }
+  
+  // Persist everything else
+  return true
+}
 
 /**
  * Invalida selectivamente queries específicas
@@ -60,5 +84,19 @@ export const invalidateLocationQueries = () => {
 export const clearCache = async () => {
   await queryClient.clear()
   await AsyncStorage.removeItem('climb-zone-cache-v1')
+  await AsyncStorage.removeItem('climb-zone-cache-v2')
   console.log('[QueryClient] Cache cleared')
+}
+
+/**
+ * Limpia caches antiguos para evitar errores de migración
+ */
+export const cleanupOldCache = async () => {
+  try {
+    // Remove old cache version that might have large data
+    await AsyncStorage.removeItem('climb-zone-cache-v1')
+    console.log('[QueryClient] Old cache cleaned up')
+  } catch (error) {
+    console.warn('[QueryClient] Failed to cleanup old cache:', error)
+  }
 }

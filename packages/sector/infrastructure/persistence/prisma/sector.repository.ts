@@ -72,10 +72,13 @@ interface SectorPrismaData {
   routeCount: number
   minGrade: string | null
   maxGrade: string | null
+  avgGrade: string | null
   minGradeIndex: number | null
   maxGradeIndex: number | null
+  avgGradeIndex: number | null
   gradeDistribution: unknown
   averageHeight: number | null
+  maxHeight: number | null
   totalAscents: number | null
   numberPhotos: number | null
   numberTopos: number | null
@@ -318,10 +321,13 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         routeCount: stats.routeCount,
         minGrade: stats.minGrade,
         maxGrade: stats.maxGrade,
+        avgGrade: stats.avgGrade,
         minGradeIndex: stats.minGradeIndex,
         maxGradeIndex: stats.maxGradeIndex,
+        avgGradeIndex: stats.avgGradeIndex,
         gradeDistribution: stats.gradeDistribution,
         averageHeight: stats.averageHeight,
+        maxHeight: stats.maxHeight,
         totalAscents: stats.totalAscents,
         updatedAt: new Date(),
       },
@@ -602,10 +608,13 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         data.routeCount,
         data.minGrade,
         data.maxGrade,
+        data.avgGrade,
         data.minGradeIndex,
         data.maxGradeIndex,
+        data.avgGradeIndex,
         (data.gradeDistribution as GradeDistribution) ?? {},
         data.averageHeight,
+        data.maxHeight,
         data.totalAscents,
       ),
       data.numberPhotos,
@@ -700,10 +709,13 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       routeCount: entity.stats.routeCount,
       minGrade: entity.stats.minGrade,
       maxGrade: entity.stats.maxGrade,
+      avgGrade: entity.stats.avgGrade,
       minGradeIndex: entity.stats.minGradeIndex,
       maxGradeIndex: entity.stats.maxGradeIndex,
+      avgGradeIndex: entity.stats.avgGradeIndex,
       gradeDistribution: entity.stats.gradeDistribution,
       averageHeight: entity.stats.averageHeight,
+      maxHeight: entity.stats.maxHeight,
       totalAscents: entity.stats.totalAscents,
       numberPhotos: entity.numberPhotos,
       numberTopos: entity.numberTopos,

@@ -62,17 +62,33 @@ type SunPreference = 'any' | 'sun' | 'shade'
 
 // Grade options for comparison (same order as GradeRangeSlider)
 const GRADE_OPTIONS = [
-  '4a', '4c', '5a', '5b', '5c',
-  '6a', '6a+', '6b', '6b+', '6c', '6c+',
-  '7a', '7a+', '7b', '7b+', '7c', '7c+',
-  '8a', '8a+', '8b',
+  '4a',
+  '4c',
+  '5a',
+  '5b',
+  '5c',
+  '6a',
+  '6a+',
+  '6b',
+  '6b+',
+  '6c',
+  '6c+',
+  '7a',
+  '7a+',
+  '7b',
+  '7b+',
+  '7c',
+  '7c+',
+  '8a',
+  '8a+',
+  '8b',
 ]
 
 // Get grade index for comparison
 function getGradeIndex(grade: string | null): number {
   if (!grade) return -1
   const normalized = grade.toLowerCase().trim()
-  return GRADE_OPTIONS.findIndex(g => g.toLowerCase() === normalized)
+  return GRADE_OPTIONS.findIndex((g) => g.toLowerCase() === normalized)
 }
 
 // Check if sector grade range overlaps with filter range
@@ -80,25 +96,27 @@ function sectorOverlapsGradeRange(
   sectorMinGrade: string | null,
   sectorMaxGrade: string | null,
   filterMinGrade: string,
-  filterMaxGrade: string
+  filterMaxGrade: string,
 ): boolean {
   const sectorMinIdx = getGradeIndex(sectorMinGrade)
   const sectorMaxIdx = getGradeIndex(sectorMaxGrade)
   const filterMinIdx = getGradeIndex(filterMinGrade)
   const filterMaxIdx = getGradeIndex(filterMaxGrade)
-  
+
   // If sector has no grade info, include it
   if (sectorMinIdx === -1 && sectorMaxIdx === -1) return true
-  
+
   // If filter range is invalid, include all
   if (filterMinIdx === -1 || filterMaxIdx === -1) return true
-  
+
   // Use available sector grade if only one is present
   const effectiveSectorMin = sectorMinIdx !== -1 ? sectorMinIdx : sectorMaxIdx
   const effectiveSectorMax = sectorMaxIdx !== -1 ? sectorMaxIdx : sectorMinIdx
-  
+
   // Check overlap: sector range overlaps with filter range
-  return effectiveSectorMax >= filterMinIdx && effectiveSectorMin <= filterMaxIdx
+  return (
+    effectiveSectorMax >= filterMinIdx && effectiveSectorMin <= filterMaxIdx
+  )
 }
 
 export default function CragDetailScreen() {
@@ -206,11 +224,12 @@ export default function CragDetailScreen() {
       routesInGradeRange?: number
       minGrade?: string | null
       maxGrade?: string | null
+      avgGrade?: string | null
+      avgHeight?: number | null
+      maxHeight?: number | null
       hasTopo?: boolean
       headerImageUrl?: string | null
       score?: number
-      maxHeight?: number | null
-      avgHeight?: number | null
     }): SearchSectorResult => ({
       sector: {
         id: s.id,
@@ -221,9 +240,10 @@ export default function CragDetailScreen() {
         routeCount: s.routeCount || 0,
         minGrade: s.minGrade || null,
         maxGrade: s.maxGrade || null,
-        hasTopo: s.hasTopo || false,
-        maxHeight: s.maxHeight || null,
+        avgGrade: s.avgGrade || null,
         avgHeight: s.avgHeight || null,
+        maxHeight: s.maxHeight || null,
+        hasTopo: s.hasTopo || false,
         routes: [],
         coordinates: null,
         avgStars: null,
@@ -246,7 +266,35 @@ export default function CragDetailScreen() {
     })
 
     // If we have scored sectors from search, use them as base
+    // but enrich them with data from crag.sectors
     if (scoredSectors.length > 0) {
+      const cragSectorsMap = new Map(
+        (crag?.sectors || []).map((s) => [s.id, s]),
+      )
+
+      // Enrich scored sectors with crag sector data
+      const enrichedScoredSectors = scoredSectors.map((sr) => {
+        const cragSector = cragSectorsMap.get(sr.sector.id)
+        if (cragSector) {
+          return {
+            ...sr,
+            sector: {
+              ...sr.sector,
+              routeCount: cragSector.routeCount || sr.sector.routeCount || 0,
+              minGrade: cragSector.minGrade || sr.sector.minGrade,
+              maxGrade: cragSector.maxGrade || sr.sector.maxGrade,
+              avgGrade: cragSector.avgGrade || sr.sector.avgGrade,
+              avgHeight: cragSector.avgHeight || sr.sector.avgHeight,
+              maxHeight: cragSector.maxHeight || sr.sector.maxHeight,
+              hasTopo: cragSector.hasTopo || sr.sector.hasTopo,
+            },
+            routesInUserRange:
+              sr.routesInUserRange || cragSector.routesInGradeRange || 0,
+          }
+        }
+        return sr
+      })
+
       const scoredIds = new Set(scoredSectors.map((s) => s.sector.id))
 
       // Add any crag sectors that aren't in scoredSectors
@@ -254,7 +302,7 @@ export default function CragDetailScreen() {
         .filter((s) => !scoredIds.has(s.id))
         .map(convertToSearchResult)
 
-      return [...scoredSectors, ...additionalSectors].sort(
+      return [...enrichedScoredSectors, ...additionalSectors].sort(
         (a, b) => b.relevanceScore - a.relevanceScore,
       )
     }
@@ -299,7 +347,7 @@ export default function CragDetailScreen() {
           sector.minGrade,
           sector.maxGrade,
           gradeMin,
-          gradeMax
+          gradeMax,
         )
         if (!overlaps) return false
       }
@@ -326,7 +374,15 @@ export default function CragDetailScreen() {
 
       return true
     })
-  }, [allSectors, isGradeRangeModified, gradeMin, gradeMax, sunPreference, minRoutes, withTopo])
+  }, [
+    allSectors,
+    isGradeRangeModified,
+    gradeMin,
+    gradeMax,
+    sunPreference,
+    minRoutes,
+    withTopo,
+  ])
 
   // Count active filters
   const activeFiltersCount = useMemo(() => {
@@ -752,18 +808,18 @@ export default function CragDetailScreen() {
               {filteredSectors.map((sectorResult) => {
                 const sector = sectorResult.sector
                 const isGoodDay = sectorResult.conditions?.isGoodDay
-                const isHighScore = sectorResult.relevanceScore >= 70
-                const isRecommended = isGoodDay || isHighScore
-                
+
                 // Get sector stats
-                const totalRoutes = sector.routeCount || sector.routes?.length || 0
+                const totalRoutes =
+                  sector.routeCount || sector.routes?.length || 0
                 const routesInRange = sectorResult.routesInUserRange
-                const minGrade = sector.minGrade
-                const maxGrade = sector.maxGrade
+                const avgGrade = sector.avgGrade
+                const avgHeight = sector.avgHeight
+                const maxHeight = sector.maxHeight
                 const hasTopo = sector.hasTopo || sector.headerImageUrl
                 const orientation = sector.orientation
                 const rockType = sector.rockType
-                
+
                 // Determine current sun status
                 const inSun = isSectorInSun(orientation)
 
@@ -772,8 +828,10 @@ export default function CragDetailScreen() {
                     key={sector.id}
                     style={[
                       styles.sectorCard,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                      isRecommended && styles.sectorCardRecommended,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
                     ]}
                     onPress={() => handleSectorPress(sectorResult)}
                   >
@@ -788,7 +846,11 @@ export default function CragDetailScreen() {
                         </Text>
                         {isGoodDay && (
                           <View style={styles.idealBadge}>
-                            <Ionicons name="sparkles" size={10} color="#FFFFFF" />
+                            <Ionicons
+                              name="sparkles"
+                              size={10}
+                              color="#FFFFFF"
+                            />
                             <Text style={styles.idealBadgeText}>Ideal</Text>
                           </View>
                         )}
@@ -798,7 +860,11 @@ export default function CragDetailScreen() {
                           <View
                             style={[
                               styles.scoreBadge,
-                              { backgroundColor: getScoreColor(sectorResult.relevanceScore) },
+                              {
+                                backgroundColor: getScoreColor(
+                                  sectorResult.relevanceScore,
+                                ),
+                              },
                             ]}
                           >
                             <Text style={styles.scoreText}>
@@ -818,44 +884,126 @@ export default function CragDetailScreen() {
                     <View style={styles.sectorStats}>
                       {/* Total routes */}
                       <View style={styles.statItem}>
-                        <Ionicons name="git-branch-outline" size={14} color={colors.primary} />
+                        <Ionicons
+                          name="git-branch-outline"
+                          size={14}
+                          color={colors.primary}
+                        />
                         <Text style={[styles.statText, { color: colors.text }]}>
                           {totalRoutes}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.statLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          routes
                         </Text>
                       </View>
 
                       {/* Routes in grade range */}
-                      {routesInRange > 0 && (
+                      <View style={styles.statItem}>
+                        <Ionicons
+                          name="checkmark-circle-outline"
+                          size={14}
+                          color="#10B981"
+                        />
+                        <Text style={[styles.statText, { color: '#10B981' }]}>
+                          {routesInRange}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.statLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          in range
+                        </Text>
+                      </View>
+
+                      {/* Average grade */}
+                      {avgGrade && (
                         <View style={styles.statItem}>
-                          <Ionicons name="checkmark-circle-outline" size={14} color="#10B981" />
-                          <Text style={[styles.statText, { color: colors.text }]}>
-                            {routesInRange}
+                          <Ionicons
+                            name="speedometer-outline"
+                            size={14}
+                            color="#F59E0B"
+                          />
+                          <Text
+                            style={[styles.statText, { color: colors.text }]}
+                          >
+                            {avgGrade}
                           </Text>
-                          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                            in range
+                          <Text
+                            style={[
+                              styles.statLabel,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
+                            avg
                           </Text>
                         </View>
                       )}
 
-                      {/* Grade range */}
-                      {minGrade && maxGrade && (
+                      {/* Height info: avg / max */}
+                      {(avgHeight || maxHeight) && (
                         <View style={styles.statItem}>
-                          <Ionicons name="trending-up-outline" size={14} color="#F59E0B" />
-                          <Text style={[styles.statText, { color: colors.text }]}>
-                            {minGrade === maxGrade ? minGrade : `${minGrade}-${maxGrade}`}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Height info */}
-                      {(sector.maxHeight || sector.avgHeight) && (
-                        <View style={styles.statItem}>
-                          <Ionicons name="resize-outline" size={14} color="#8B5CF6" />
-                          <Text style={[styles.statText, { color: colors.text }]}>
-                            {sector.avgHeight ? `${Math.round(sector.avgHeight)}m` : ''}
-                            {sector.avgHeight && sector.maxHeight ? ' / ' : ''}
-                            {sector.maxHeight ? `${sector.maxHeight}m` : ''}
-                          </Text>
+                          <Ionicons
+                            name="resize-outline"
+                            size={14}
+                            color="#8B5CF6"
+                          />
+                          {avgHeight && (
+                            <>
+                              <Text
+                                style={[
+                                  styles.statText,
+                                  { color: colors.text },
+                                ]}
+                              >
+                                {Math.round(avgHeight)}m
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.statLabel,
+                                  { color: colors.textSecondary },
+                                ]}
+                              >
+                                avg
+                              </Text>
+                            </>
+                          )}
+                          {avgHeight && maxHeight && (
+                            <Text
+                              style={[
+                                styles.statLabel,
+                                { color: colors.textSecondary },
+                              ]}
+                            >
+                              /
+                            </Text>
+                          )}
+                          {maxHeight && (
+                            <>
+                              <Text
+                                style={[
+                                  styles.statText,
+                                  { color: colors.text },
+                                ]}
+                              >
+                                {Math.round(maxHeight)}m
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.statLabel,
+                                  { color: colors.textSecondary },
+                                ]}
+                              >
+                                max
+                              </Text>
+                            </>
+                          )}
                         </View>
                       )}
                     </View>
@@ -864,13 +1012,23 @@ export default function CragDetailScreen() {
                     <View style={styles.sectorSecondaryStats}>
                       {/* Orientation with sun/shade indicator */}
                       {orientation && (
-                        <View style={[styles.secondaryStatChip, { backgroundColor: colors.muted }]}>
+                        <View
+                          style={[
+                            styles.secondaryStatChip,
+                            { backgroundColor: colors.muted },
+                          ]}
+                        >
                           <Ionicons
                             name={inSun ? 'sunny-outline' : 'moon-outline'}
                             size={12}
                             color={inSun ? '#F59E0B' : '#6366F1'}
                           />
-                          <Text style={[styles.secondaryStatText, { color: colors.textSecondary }]}>
+                          <Text
+                            style={[
+                              styles.secondaryStatText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
                             {orientation}
                           </Text>
                         </View>
@@ -878,8 +1036,18 @@ export default function CragDetailScreen() {
 
                       {/* Rock type */}
                       {rockType && (
-                        <View style={[styles.secondaryStatChip, { backgroundColor: colors.muted }]}>
-                          <Text style={[styles.secondaryStatText, { color: colors.textSecondary }]}>
+                        <View
+                          style={[
+                            styles.secondaryStatChip,
+                            { backgroundColor: colors.muted },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.secondaryStatText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
                             {rockType}
                           </Text>
                         </View>
@@ -887,15 +1055,25 @@ export default function CragDetailScreen() {
 
                       {/* Topo indicator */}
                       {hasTopo && (
-                        <View style={[styles.secondaryStatChip, styles.topoChip]}>
-                          <Ionicons name="map-outline" size={12} color="#10B981" />
-                          <Text style={[styles.secondaryStatText, { color: '#10B981' }]}>
+                        <View
+                          style={[styles.secondaryStatChip, styles.topoChip]}
+                        >
+                          <Ionicons
+                            name="map-outline"
+                            size={12}
+                            color="#10B981"
+                          />
+                          <Text
+                            style={[
+                              styles.secondaryStatText,
+                              { color: '#10B981' },
+                            ]}
+                          >
                             Topo
                           </Text>
                         </View>
                       )}
                     </View>
-
                   </Pressable>
                 )
               })}
@@ -1146,10 +1324,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 14,
     gap: 10,
-  },
-  sectorCardRecommended: {
-    borderColor: '#10B981',
-    borderWidth: 2,
   },
   sectorHeader: {
     flexDirection: 'row',

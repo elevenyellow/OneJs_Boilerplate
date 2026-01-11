@@ -409,6 +409,9 @@ export interface SectorSummary {
   routesInGradeRange: number
   minGrade: string | null
   maxGrade: string | null
+  avgGrade: string | null // Average grade of routes
+  avgHeight: number | null // Average height of routes in meters
+  maxHeight: number | null // Maximum height of routes in meters
   totalFavorites: number | null
   hasTopo: boolean
   theCragUrl: string | null

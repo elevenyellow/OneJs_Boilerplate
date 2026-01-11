@@ -17,6 +17,9 @@ export interface SectorSummary {
   routesInGradeRange: number
   minGrade: string | null
   maxGrade: string | null
+  avgGrade: string | null // Average grade
+  avgHeight: number | null // Average height of routes
+  maxHeight: number | null // Maximum height of routes
   totalFavorites: number | null
   hasTopo: boolean
   theCragUrl: string | null
@@ -179,6 +182,9 @@ export class GetCragDetailUseCase {
           routesInGradeRange,
           minGrade: sector.minGrade,
           maxGrade: sector.maxGrade,
+          avgGrade: sector.avgGrade || null,
+          avgHeight: sector.averageHeight,
+          maxHeight: sector.maxHeight || null,
           totalFavorites: sector.totalFavorites,
           hasTopo: sector.hasTopo,
           theCragUrl: sector.urlStub

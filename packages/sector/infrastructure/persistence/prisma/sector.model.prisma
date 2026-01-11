@@ -27,10 +27,13 @@ model Sector {
   routeCount        Int     @default(0)
   minGrade          String?
   maxGrade          String?
+  avgGrade          String? // Grado promedio
   minGradeIndex     Int? // Para ordenación
   maxGradeIndex     Int?
+  avgGradeIndex     Int? // Índice del grado promedio
   gradeDistribution Json? // {"6a": 5, "6b": 12, ...}
-  averageHeight     Float?
+  averageHeight     Float? // Altura media de las rutas
+  maxHeight         Float? // Altura máxima de las rutas
   totalAscents      Int?
 
   // Estadísticas de TheCrag (ALTA PRIORIDAD)

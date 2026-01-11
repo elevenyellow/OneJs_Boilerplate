@@ -8,10 +8,13 @@ export interface SectorStatsData {
   routeCount: number
   minGrade: string | null
   maxGrade: string | null
+  avgGrade: string | null
   minGradeIndex: number | null
   maxGradeIndex: number | null
+  avgGradeIndex: number | null
   gradeDistribution: GradeDistribution
   averageHeight: number | null
+  maxHeight: number | null
   totalAscents: number | null
 }
 
@@ -24,10 +27,13 @@ export class SectorStats {
     public readonly routeCount: number,
     public readonly minGrade: string | null,
     public readonly maxGrade: string | null,
+    public readonly avgGrade: string | null,
     public readonly minGradeIndex: number | null,
     public readonly maxGradeIndex: number | null,
+    public readonly avgGradeIndex: number | null,
     public readonly gradeDistribution: GradeDistribution,
     public readonly averageHeight: number | null,
+    public readonly maxHeight: number | null,
     public readonly totalAscents: number | null,
   ) {}
 
@@ -67,10 +73,13 @@ export class SectorStats {
       routeCount: this.routeCount,
       minGrade: this.minGrade,
       maxGrade: this.maxGrade,
+      avgGrade: this.avgGrade,
       minGradeIndex: this.minGradeIndex,
       maxGradeIndex: this.maxGradeIndex,
+      avgGradeIndex: this.avgGradeIndex,
       gradeDistribution: this.gradeDistribution,
       averageHeight: this.averageHeight,
+      maxHeight: this.maxHeight,
       totalAscents: this.totalAscents,
     }
   }
@@ -82,15 +91,18 @@ export class SectorStats {
       data.routeCount,
       data.minGrade,
       data.maxGrade,
+      data.avgGrade ?? null,
       data.minGradeIndex,
       data.maxGradeIndex,
+      data.avgGradeIndex ?? null,
       data.gradeDistribution,
       data.averageHeight,
+      data.maxHeight ?? null,
       data.totalAscents,
     )
   }
 
   static empty(): SectorStats {
-    return new SectorStats(0, null, null, null, null, {}, null, null)
+    return new SectorStats(0, null, null, null, null, null, null, {}, null, null, null)
   }
 }

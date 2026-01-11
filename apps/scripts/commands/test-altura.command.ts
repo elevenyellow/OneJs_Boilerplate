@@ -25,7 +25,7 @@ import {
   RegionPrismaRepository,
 } from '@climb-zone/region'
 import { RoutePrismaRepository } from '@climb-zone/route'
-import { SectorPrismaRepository } from '@climb-zone/sector'
+import { SectorPrismaRepository, SectorStatsService } from '@climb-zone/sector'
 import { ExternalId, Geometry, Name } from '@climb-zone/shared'
 import {
   TopoImageEntity,
@@ -33,9 +33,10 @@ import {
   TopoPrismaRepository,
 } from '@climb-zone/topo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
-import type { ScrapedCragNode } from '@scraper-thecrag'
+import type { ScrapedCragNode, ScrapedRouteData } from '@scraper-thecrag'
 import { TheCragApiScraper } from '@scraper-thecrag'
 import { ScrapedDataMapperService } from '@scraper-thecrag/application/services/scraped-data-mapper.service'
+import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 
 // Altura IDs from TheCrag
 const ALTURA_ID = 782524281 // Altura crag
@@ -73,6 +74,7 @@ export async function testAltura(container: unknown, cookie: string) {
   const sectorRepo = dic.get<SectorPrismaRepository>(SectorPrismaRepository)
   const routeRepo = dic.get<RoutePrismaRepository>(RoutePrismaRepository)
   const topoRepo = dic.get<TopoPrismaRepository>(TopoPrismaRepository)
+  const statsService = dic.get<SectorStatsService>(SectorStatsService)
 
   // Configure scraper with topos enabled
   scraper.setCookie(cookie)
@@ -160,6 +162,7 @@ export async function testAltura(container: unknown, cookie: string) {
       sectorRepo,
       routeRepo,
       topoRepo,
+      statsService,
       stats,
     )
 
@@ -252,6 +255,7 @@ async function saveScrapedCrag(
   sectorRepo: SectorPrismaRepository,
   routeRepo: RoutePrismaRepository,
   topoRepo: TopoPrismaRepository,
+  statsService: SectorStatsService,
   stats: Stats,
 ): Promise<void> {
   // Save the crag
@@ -290,6 +294,7 @@ async function saveScrapedCrag(
         sectorRepo,
         routeRepo,
         topoRepo,
+        statsService,
         stats,
       )
     } catch (error: unknown) {
@@ -313,6 +318,7 @@ async function processScrapedNode(
   sectorRepo: SectorPrismaRepository,
   routeRepo: RoutePrismaRepository,
   topoRepo: TopoPrismaRepository,
+  statsService: SectorStatsService,
   stats: Stats,
 ): Promise<void> {
   console.log(`   🔍 Procesando: ${node.name} (${node.type})`)
@@ -392,6 +398,12 @@ async function processScrapedNode(
       savedRouteIds.set(route.id, savedRoute.id)
       stats.routes++
     }
+
+    // Calculate and update sector stats (avgGrade, avgHeight, maxHeight, etc.)
+    const sectorStats = calculateSectorStats(node.routes!, statsService)
+    sector.updateStats(sectorStats)
+    await sectorRepo.updateStats(sector)
+    console.log(`      📊 Stats calculados: ${sectorStats.routeCount} rutas, avg: ${sectorStats.avgGrade}, maxH: ${sectorStats.maxHeight}m`)
 
     // Save topos with positions (SVG data)
     let sectorTopoCount = 0
@@ -477,9 +489,22 @@ async function processScrapedNode(
       sectorRepo,
       routeRepo,
       topoRepo,
+      statsService,
       stats,
     )
   }
+}
+
+/**
+ * Calculate sector statistics from scraped routes
+ */
+function calculateSectorStats(routes: ScrapedRouteData[], statsService: SectorStatsService) {
+  const routeData = routes.map((r) => ({
+    grade: r.grade,
+    height: r.height,
+    ascents: r.ascents,
+  }))
+  return statsService.calculateStats(routeData)
 }
 
 function printFinalReport(stats: Stats, duration: string) {

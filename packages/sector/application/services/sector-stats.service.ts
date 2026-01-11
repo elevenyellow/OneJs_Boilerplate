@@ -26,7 +26,10 @@ export class SectorStatsService {
     let maxGrade: string | null = null
     let minGradeIndex: number | null = null
     let maxGradeIndex: number | null = null
+    let totalGradeIndex = 0
+    let gradeCount = 0
     let totalHeight = 0
+    let maxHeight: number | null = null
     let heightCount = 0
     let totalAscents = 0
 
@@ -38,6 +41,10 @@ export class SectorStatsService {
 
         const gradeIndex = Grade.calculateIndexFromString(route.grade)
         if (gradeIndex) {
+          // Track for average
+          totalGradeIndex += gradeIndex
+          gradeCount++
+          
           if (minGradeIndex === null || gradeIndex < minGradeIndex) {
             minGradeIndex = gradeIndex
             minGrade = route.grade
@@ -53,6 +60,11 @@ export class SectorStatsService {
       if (route.height !== null && route.height > 0) {
         totalHeight += route.height
         heightCount++
+        
+        // Track max height
+        if (maxHeight === null || route.height > maxHeight) {
+          maxHeight = route.height
+        }
       }
 
       // Ascents
@@ -62,15 +74,26 @@ export class SectorStatsService {
     }
 
     const averageHeight = heightCount > 0 ? Math.round(totalHeight / heightCount * 10) / 10 : null
+    
+    // Calculate average grade
+    let avgGrade: string | null = null
+    let avgGradeIndex: number | null = null
+    if (gradeCount > 0) {
+      avgGradeIndex = Math.round(totalGradeIndex / gradeCount)
+      avgGrade = Grade.getGradeFromIndex(avgGradeIndex)
+    }
 
     return new SectorStats(
       routes.length,
       minGrade,
       maxGrade,
+      avgGrade,
       minGradeIndex,
       maxGradeIndex,
+      avgGradeIndex,
       gradeDistribution,
       averageHeight,
+      maxHeight,
       totalAscents > 0 ? totalAscents : null,
     )
   }

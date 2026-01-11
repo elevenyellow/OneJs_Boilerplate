@@ -139,4 +139,32 @@ export class Grade {
     if (!grade) return null
     return new Grade(grade).index || null
   }
+
+  /**
+   * Get grade string from index (finds closest match)
+   */
+  static getGradeFromIndex(index: number | null): string | null {
+    if (index === null) return null
+    
+    // Find exact match first
+    for (const [grade, idx] of Object.entries(FRENCH_GRADE_ORDER)) {
+      if (idx === index) {
+        return grade
+      }
+    }
+    
+    // Find closest match
+    let closestGrade: string | null = null
+    let closestDiff = Infinity
+    
+    for (const [grade, idx] of Object.entries(FRENCH_GRADE_ORDER)) {
+      const diff = Math.abs(idx - index)
+      if (diff < closestDiff) {
+        closestDiff = diff
+        closestGrade = grade
+      }
+    }
+    
+    return closestGrade
+  }
 }

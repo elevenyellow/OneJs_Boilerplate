@@ -195,4 +195,58 @@ export class SectorEntity {
   hasHeaderImage(): boolean {
     return this.headerImageUrl !== null
   }
+
+  /**
+   * Update sector stats (returns a new instance since entity is immutable)
+   * Note: This mutates the internal stats for compatibility with existing code
+   */
+  updateStats(newStats: SectorStats): void {
+    // @ts-ignore - Mutating readonly for compatibility
+    (this as any).stats = newStats
+  }
+
+  /**
+   * Create a new sector instance with updated stats
+   */
+  withStats(newStats: SectorStats): SectorEntity {
+    return new SectorEntity(
+      this.id,
+      this.externalId,
+      this.areaId,
+      this.name,
+      this.altNames,
+      this.type,
+      this.geometry,
+      this.locatedness,
+      this.orientation,
+      this.rockType,
+      this.climbingStyle,
+      this.sunExposure,
+      this.sheltered,
+      this.seasonality,
+      this.beta,
+      newStats,
+      this.numberPhotos,
+      this.numberTopos,
+      this.totalFavorites,
+      this.isTLC,
+      this.ascentCount,
+      this.maxPop,
+      this.priceCategory,
+      this.hasTopo,
+      this.kudos,
+      this.permitNode,
+      this.siblingLabel,
+      this.tagsRaw,
+      this.urlStub,
+      this.urlAncestorStub,
+      this.lastPDFSize,
+      this.lastPDFStaticDate,
+      this.createdAt,
+      this.updatedAt,
+      this.headerImageUrl,
+      this.headerImageWidth,
+      this.headerImageHeight,
+    )
+  }
 }

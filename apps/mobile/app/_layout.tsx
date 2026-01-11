@@ -1,7 +1,12 @@
 import { GlobalGradePickerModal } from '@/components/GlobalGradePickerModal'
 import { Colors } from '@/constants/Colors'
 import { FiltersProvider } from '@/contexts/FiltersContext'
-import { asyncStoragePersister, queryClient } from '@/lib/queryClient'
+import {
+  asyncStoragePersister,
+  cleanupOldCache,
+  queryClient,
+  shouldDehydrateQuery,
+} from '@/lib/queryClient'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
@@ -18,82 +23,89 @@ export default function RootLayout() {
   const colors = Colors[colorScheme]
 
   useEffect(() => {
-    // Hide splash screen after fonts/resources loaded
-    SplashScreen.hideAsync()
+    // Cleanup old cache and hide splash screen
+    cleanupOldCache().finally(() => {
+      SplashScreen.hideAsync()
+    })
   }, [])
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PersistQueryClientProvider
         client={queryClient}
-        persistOptions={{ persister: asyncStoragePersister }}
+        persistOptions={{
+          persister: asyncStoragePersister,
+          dehydrateOptions: {
+            shouldDehydrateQuery,
+          },
+        }}
       >
         <FiltersProvider>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
           <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: colors.background,
-            },
-            headerTintColor: colors.text,
-            headerTitleStyle: {
-              fontWeight: '700',
-            },
-            contentStyle: {
-              backgroundColor: colors.background,
-            },
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="zone/[id]"
-            options={{
-              title: '',
-              headerTransparent: true,
-              headerTintColor: '#FFFFFF',
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: colors.background,
+              },
+              headerTintColor: colors.text,
+              headerTitleStyle: {
+                fontWeight: '700',
+              },
+              contentStyle: {
+                backgroundColor: colors.background,
+              },
             }}
-          />
-          <Stack.Screen
-            name="sector/[id]"
-            options={{
-              title: '',
-              headerTransparent: true,
-              headerTintColor: '#FFFFFF',
-            }}
-          />
-          <Stack.Screen
-            name="crag/[id]"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="crag/weather/[id]"
-            options={{
-              title: 'Weather',
-              headerShown: false,
-              presentation: 'card',
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="crag/info/[id]"
-            options={{
-              title: 'Info',
-              headerShown: false,
-              presentation: 'card',
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="crag/filters/[id]"
-            options={{
-              title: 'Filters',
-              headerShown: false,
-              presentation: 'card',
-              animation: 'slide_from_right',
-            }}
-          />
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="zone/[id]"
+              options={{
+                title: '',
+                headerTransparent: true,
+                headerTintColor: '#FFFFFF',
+              }}
+            />
+            <Stack.Screen
+              name="sector/[id]"
+              options={{
+                title: '',
+                headerTransparent: true,
+                headerTintColor: '#FFFFFF',
+              }}
+            />
+            <Stack.Screen
+              name="crag/[id]"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="crag/weather/[id]"
+              options={{
+                title: 'Weather',
+                headerShown: false,
+                presentation: 'card',
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="crag/info/[id]"
+              options={{
+                title: 'Info',
+                headerShown: false,
+                presentation: 'card',
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="crag/filters/[id]"
+              options={{
+                title: 'Filters',
+                headerShown: false,
+                presentation: 'card',
+                animation: 'slide_from_right',
+              }}
+            />
           </Stack>
           <GlobalGradePickerModal />
         </FiltersProvider>
