@@ -756,12 +756,12 @@ export default function CragDetailScreen() {
               ]}
             >
               <Ionicons
-                name={sunPreference === 'sun' ? 'sunny' : sunPreference === 'shade' ? 'moon' : 'ellipse-outline'}
+                name={sunPreference === 'sun' ? 'sunny' : sunPreference === 'shade' ? 'moon' : 'contrast-outline'}
                 size={12}
                 color={sunPreference !== 'any' ? colors.primary : colors.textSecondary}
               />
               <Text style={[styles.filterChipText, { color: sunPreference !== 'any' ? colors.primary : colors.textSecondary }]}>
-                {sunPreference === 'sun' ? 'Sun' : sunPreference === 'shade' ? 'Shade' : 'Any'}
+                {sunPreference === 'sun' ? 'Sun' : sunPreference === 'shade' ? 'Shade' : 'Sun/Shade'}
               </Text>
             </View>
 

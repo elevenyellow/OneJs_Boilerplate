@@ -134,7 +134,7 @@ export default function FiltersScreen() {
           </Text>
           <View style={styles.sunPreferenceRow}>
             {[
-              { value: 'any' as SunPreference, label: 'Any', icon: 'ellipse-outline' as const },
+              { value: 'any' as SunPreference, label: 'Any', icon: 'contrast-outline' as const },
               { value: 'sun' as SunPreference, label: 'Sun', icon: 'sunny' as const },
               { value: 'shade' as SunPreference, label: 'Shade', icon: 'moon' as const },
             ].map((option) => {
