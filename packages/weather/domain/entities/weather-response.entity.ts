@@ -165,30 +165,76 @@ export class WeatherDataParser {
 
   private static parseHourly(raw: MeteoblueAPIResponse): HourlyForecast[] {
     const hourlyData = raw.data_1h
+    if (!hourlyData?.time?.length) {
+      return []
+    }
     const length = hourlyData.time.length
 
-    return Array.from({ length }, (_, i) => ({
-      timestamp: new Date(hourlyData.time[i] * 1000).toISOString(),
-      temperature: hourlyData.temperature[i],
-      feelsLike: hourlyData.felttemperature[i],
-      windSpeed: hourlyData.windspeed[i],
-      windDirection: hourlyData.winddirection[i],
-      windGust: hourlyData.gust?.[i] ?? 0,
-      precipitation: hourlyData.precipitation[i],
-      humidity: hourlyData.relativehumidity[i],
-      weatherCode: hourlyData.pictocode[i],
-      uvIndex: hourlyData.uvindex[i],
-      isDaylight: hourlyData.isdaylight[i] === 1,
-      airQuality: this.parseAirQuality(hourlyData, i),
-    }))
+    return Array.from({ length }, (_, i) => {
+      const timeValue = hourlyData.time[i]
+      const timestamp = this.parseTimestamp(timeValue)
+      
+      return {
+        timestamp,
+        temperature: hourlyData.temperature[i],
+        feelsLike: hourlyData.felttemperature[i],
+        windSpeed: hourlyData.windspeed[i],
+        windDirection: hourlyData.winddirection[i],
+        windGust: hourlyData.gust?.[i] ?? 0,
+        precipitation: hourlyData.precipitation[i],
+        humidity: hourlyData.relativehumidity[i],
+        weatherCode: hourlyData.pictocode[i],
+        uvIndex: hourlyData.uvindex[i],
+        isDaylight: hourlyData.isdaylight[i] === 1,
+        airQuality: this.parseAirQuality(hourlyData, i),
+      }
+    })
+  }
+
+  /**
+   * Parse a timestamp value that could be:
+   * - Unix timestamp in seconds
+   * - Unix timestamp in milliseconds  
+   * - ISO string
+   * - Invalid/null
+   */
+  private static parseTimestamp(value: unknown): string {
+    if (!value) {
+      return new Date().toISOString()
+    }
+    
+    // If it's already a string (ISO format), validate and return
+    if (typeof value === 'string') {
+      const date = new Date(value)
+      if (!isNaN(date.getTime())) {
+        return date.toISOString()
+      }
+      return new Date().toISOString()
+    }
+    
+    // If it's a number, determine if it's seconds or milliseconds
+    if (typeof value === 'number') {
+      // If the number is less than ~10 billion, it's likely seconds (timestamps before year 2286)
+      // If greater, it's likely milliseconds
+      const timestamp = value < 10000000000 ? value * 1000 : value
+      const date = new Date(timestamp)
+      if (!isNaN(date.getTime())) {
+        return date.toISOString()
+      }
+    }
+    
+    return new Date().toISOString()
   }
 
   private static parseDaily(raw: MeteoblueAPIResponse): DailyForecast[] {
     const dailyData = raw.data_day
+    if (!dailyData?.time?.length) {
+      return []
+    }
     const length = dailyData.time.length
 
     return Array.from({ length }, (_, i) => ({
-      date: new Date(dailyData.time[i] * 1000).toISOString(),
+      date: this.parseTimestamp(dailyData.time[i]),
       temperature: {
         min: dailyData.temperature_min[i],
         max: dailyData.temperature_max[i],
