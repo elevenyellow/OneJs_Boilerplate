@@ -1,8 +1,7 @@
 import { Colors } from '@/constants/Colors'
-import type { RouteSearchInfo, TopoImage, TopoRoutePosition } from '@/lib/api'
-import { gradeToIndex } from '@/utils/gradeConverter'
+import type { TopoImage, TopoRoutePosition } from '@/lib/api'
 import { Ionicons } from '@expo/vector-icons'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Dimensions,
@@ -106,15 +105,6 @@ function pointsToBezierPath(points: Array<{ x: number; y: number }>): string {
   }
 
   return path
-}
-
-/**
- * Get grade index from grade string for filtering
- * Uses gradeToIndex from gradeConverter for consistency with backend
- */
-function getGradeIndex(grade: string | null): number {
-  if (!grade) return 0
-  return gradeToIndex(grade) ?? 0
 }
 
 // Normalize image URLs
@@ -417,33 +407,6 @@ export function TopoViewer({
 
   const routes = Array.isArray(topo.routes) ? topo.routes : []
 
-  const selectedRouteInfo = useMemo(() => {
-    return routes.find((r) => r.routeId === selectedRoute) || null
-  }, [routes, selectedRoute])
-
-  const selectedRouteDetails = useMemo(() => {
-    if (!routeDetails || !selectedRoute) return null
-    return routeDetails.find((r) => r.id === selectedRoute) || null
-  }, [routeDetails, selectedRoute])
-
-  const routesInRange = useMemo(() => {
-    if (!gradeRange) return new Set<string>()
-
-    return new Set(
-      routes
-        .filter((r) => {
-          const idx = getGradeIndex(r.grade)
-          return idx >= gradeRange.min && idx <= gradeRange.max
-        })
-        .map((r) => r.routeId),
-    )
-  }, [routes, gradeRange])
-
-  const handleRoutePress = (route: TopoRoutePosition) => {
-    setSelectedRoute(route.routeId)
-    onRoutePress?.(route)
-  }
-
   if (imageError) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: colors.muted }]}>
@@ -457,27 +420,6 @@ export function TopoViewer({
 
   return (
     <View style={styles.container}>
-      {/* Header - Selected Route */}
-      {selectedRouteInfo && (
-        <View
-          style={[styles.headerContainer, { backgroundColor: HIGHLIGHT_COLOR }]}
-        >
-          <View style={styles.headerRow}>
-            <View style={styles.headerNumber}>
-              <Text style={styles.headerNumberText}>
-                {selectedRouteInfo.topoNumber}
-              </Text>
-            </View>
-            <View style={styles.headerInfo}>
-              <Text style={styles.headerName} numberOfLines={1}>
-                {selectedRouteInfo.name}
-              </Text>
-              <Text style={styles.headerGrade}>{selectedRouteInfo.grade}</Text>
-            </View>
-          </View>
-        </View>
-      )}
-
       {/* Topo Image - Tap to zoom */}
       <Pressable onPress={() => setZoomModalVisible(true)}>
         <View
@@ -667,44 +609,6 @@ export function TopoViewer({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-  },
-  headerContainer: {
-    marginBottom: 8,
-    padding: 14,
-    borderRadius: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerNumber: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerNumberText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  headerName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerGrade: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#000',
-    opacity: 0.8,
-    marginTop: 2,
   },
   topoContainer: {
     alignSelf: 'center',

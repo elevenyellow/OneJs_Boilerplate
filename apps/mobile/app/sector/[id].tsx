@@ -911,33 +911,83 @@ export default function SectorDetailScreen() {
                       </Text>
                     </View>
                     <View style={styles.routeMeta}>
-                      {route.height && (
-                        <Text
-                          style={[
-                            styles.routeMetaText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {route.height}m
-                        </Text>
-                      )}
-                      {route.stars !== null && route.stars > 0 && (
-                        <>
+                      {route.height !== null && route.height > 0 && (
+                        <View style={styles.routeMetaItem}>
+                          <Ionicons
+                            name="resize-outline"
+                            size={11}
+                            color={colors.textSecondary}
+                          />
                           <Text
                             style={[
                               styles.routeMetaText,
                               { color: colors.textSecondary },
                             ]}
                           >
-                            •
+                            {route.height}m
                           </Text>
+                        </View>
+                      )}
+                      {route.pitches !== null && route.pitches > 1 && (
+                        <View style={styles.routeMetaItem}>
+                          <Ionicons
+                            name="layers-outline"
+                            size={11}
+                            color={colors.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.routeMetaText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
+                            {route.pitches}L
+                          </Text>
+                        </View>
+                      )}
+                      {route.bolts !== null && route.bolts > 0 && (
+                        <View style={styles.routeMetaItem}>
+                          <Ionicons
+                            name="link-outline"
+                            size={11}
+                            color={colors.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.routeMetaText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
+                            {route.bolts}
+                          </Text>
+                        </View>
+                      )}
+                      {route.stars !== null && route.stars > 0 && (
+                        <View style={styles.routeMetaItem}>
                           <Ionicons name="star" size={11} color="#F59E0B" />
                           <Text
                             style={[styles.routeMetaText, { color: '#F59E0B' }]}
                           >
                             {route.stars.toFixed(1)}
                           </Text>
-                        </>
+                        </View>
+                      )}
+                      {route.ascents !== null && route.ascents > 0 && (
+                        <View style={styles.routeMetaItem}>
+                          <Ionicons
+                            name="people-outline"
+                            size={11}
+                            color={colors.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.routeMetaText,
+                              { color: colors.textSecondary },
+                            ]}
+                          >
+                            {route.ascents}
+                          </Text>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -1248,8 +1298,14 @@ const styles = StyleSheet.create({
   routeMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
-    gap: 4,
+    flexWrap: 'wrap',
+    marginTop: 4,
+    gap: 8,
+  },
+  routeMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   routeMetaText: {
     fontSize: 12,
