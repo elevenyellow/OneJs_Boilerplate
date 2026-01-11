@@ -59,9 +59,9 @@ model Crag {
   // API Response Raw (para análisis futuro)
   apiResponseRaw Json? // Respuesta completa de la API
 
-  country   Country        @relation(fields: [countryId], references: [id])
-  region    Region?        @relation(fields: [regionId], references: [id])
-  areas     Area[]
+  country    Country         @relation(fields: [countryId], references: [id])
+  region     Region?         @relation(fields: [regionId], references: [id])
+  areas      Area[]
   topoImages CragTopoImage[]
 
   createdAt DateTime @default(now())

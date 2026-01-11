@@ -75,9 +75,9 @@ model Sector {
   // API Response Raw (para análisis futuro)
   apiResponseRaw Json? // Respuesta completa de la API para análisis
 
-  area       Area        @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  routes     Route[]
-  topoImages TopoImage[]
+  area              Area                     @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  routes            Route[]
+  topoImages        TopoImage[]
   cragTopoPositions CragTopoSectorPosition[]
 
   createdAt DateTime @default(now())
