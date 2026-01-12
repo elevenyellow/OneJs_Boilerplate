@@ -9,5 +9,12 @@ export {
 // Domain - Value Objects
 export { TopoImageId } from './domain/value-objects/topo-image-id.vo'
 
+// Application - Use Cases
+export {
+  GetToposWithRoutesUseCase,
+  type TopoRouteData,
+  type TopoWithRoutes,
+} from './application/use-cases/get-topos-with-routes.use-case'
+
 // Infrastructure - Repositories
 export { TopoPrismaRepository } from './infrastructure/persistence/prisma/topo.repository'
