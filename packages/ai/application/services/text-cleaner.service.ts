@@ -8,8 +8,39 @@ export interface BetaItem {
   inheritedFrom?: { id: string; urlStub: string }
 }
 
+// Regex to extract language markers like :es:, :gb:, :fr:, etc.
+const LANGUAGE_MARKER_REGEX = /:([a-z]{2}):/gi
+
+/**
+ * Extract all language markers from text
+ */
+function extractLanguageMarkers(text: string): string[] {
+  const matches = [...text.matchAll(LANGUAGE_MARKER_REGEX)]
+  return matches.map((m) => m[1].toLowerCase())
+}
+
+/**
+ * Validate that all language markers from original text are preserved in cleaned text
+ */
+function validateLanguagesPreserved(
+  original: string,
+  cleaned: string,
+): boolean {
+  const originalLangs = extractLanguageMarkers(original)
+  const cleanedLangs = extractLanguageMarkers(cleaned)
+
+  // If original has no language markers, no validation needed
+  if (originalLangs.length === 0) return true
+
+  // Check that all original languages are present in cleaned text
+  return originalLangs.every((lang) => cleanedLangs.includes(lang))
+}
+
 @Injectable()
 export class TextCleanerService {
+  // Use lower temperature for more consistent multilingual output
+  private static readonly TEMPERATURE = 0.3
+
   constructor(
     @Inject(CleanTextPreserveCoordsPrompt)
     private readonly prompt: CleanTextPreserveCoordsPrompt,
@@ -25,14 +56,32 @@ export class TextCleanerService {
 
     try {
       const messages = this.prompt.build(text)
-      const response = await this.openai.chat(messages, { jsonResponse: true })
+      const response = await this.openai.chat(messages, {
+        jsonResponse: true,
+        temperature: TextCleanerService.TEMPERATURE,
+      })
       const parsed = this.prompt.parseResponse(response)
-      return parsed.result || text
+      const result = parsed.result || text
+
+      // Validate that all languages were preserved
+      if (!validateLanguagesPreserved(text, result)) {
+        logger.warn(
+          'ai:text-cleaner',
+          'Language markers not preserved in AI response, returning original text',
+          {
+            originalLangs: extractLanguageMarkers(text),
+            resultLangs: extractLanguageMarkers(result),
+          },
+        )
+        return text
+      }
+
+      return result
     } catch (error) {
       logger.warn(
         'ai:text-cleaner',
         'Error cleaning text, returning original',
-        error,
+        error as Record<string, unknown>,
       )
       return text
     }
