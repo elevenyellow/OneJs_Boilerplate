@@ -1,6 +1,7 @@
 import { FilterChip } from '@/components/FilterChip'
 import { FilterChipsRow } from '@/components/FilterChipsRow'
 import { HeroHeader } from '@/components/HeroHeader'
+import { LanguageTextSection } from '@/components/LanguageTextSection'
 import { WeatherCard } from '@/components/WeatherCard'
 import { TopoViewer } from '@/components/TopoViewer'
 import { Colors } from '@/constants/Colors'
@@ -8,6 +9,7 @@ import { useFilters } from '@/contexts/FiltersContext'
 import { useSectorRoutes } from '@/hooks/useSectorRoutes'
 import { useSectorTopos } from '@/hooks/useTopos'
 import type { RouteSearchInfo } from '@/lib/api'
+import { t } from '@/lib/i18n'
 
 // Local type for parsed tags
 interface SectorTagsLocal {
@@ -49,22 +51,6 @@ interface TopoSection {
   topoIndex: number
   title: string
   data: RouteInfo[]
-}
-
-// Format info text (clean markdown)
-function formatInfoText(text: string): string {
-  return text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/^#+\s*/gm, '')
-    .replace(/^-\s+/gm, '• ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/:parking:/g, '🅿️')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
 }
 
 interface ParkingLocation {
@@ -719,20 +705,7 @@ export default function SectorDetailScreen() {
     return item.id || `route-${index}`
   }, [])
 
-  if (isLoadingRoutes && !routesData) {
-    return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: colors.background },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    )
-  }
-
-  // List header component (content before routes)
+  // List header component (content before routes) - must be before early return
   const ListHeaderComponent = useCallback(() => (
     <>
       {/* Hero Header */}
@@ -813,32 +786,22 @@ export default function SectorDetailScreen() {
 
         {/* Collapsible Info Section */}
         {showInfo && (sector.description || sector.approach) && (
-          <View style={[styles.infoSection, { backgroundColor: colors.muted }]}>
+          <View style={styles.infoSection}>
             {sector.description && (
-              <View style={styles.infoBlock}>
-                <View style={styles.infoBlockHeader}>
-                  <Ionicons name="document-text-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.infoBlockTitle, { color: colors.text }]}>
-                    Description
-                  </Text>
-                </View>
-                <Text style={[styles.infoBlockText, { color: colors.textSecondary }]}>
-                  {formatInfoText(sector.description)}
-                </Text>
-              </View>
+              <LanguageTextSection
+                text={sector.description}
+                title={t('description')}
+              />
             )}
             {sector.approach && (
-              <View style={styles.infoBlock}>
-                <View style={styles.infoBlockHeader}>
-                  <Ionicons name="walk-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.infoBlockTitle, { color: colors.text }]}>
-                    Approach
-                  </Text>
-                </View>
-                <Text style={[styles.infoBlockText, { color: colors.textSecondary }]}>
-                  {formatInfoText(sector.approach)}
-                </Text>
-              </View>
+              <LanguageTextSection
+                text={sector.approach}
+                title={t('approach')}
+                showMapButton={!!latitude && !!longitude}
+                latitude={latitude}
+                longitude={longitude}
+                locationName={sector.name}
+              />
             )}
           </View>
         )}
@@ -1318,70 +1281,63 @@ export default function SectorDetailScreen() {
     <View style={styles.content}>
       {/* Description */}
       {sector.description && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons
-              name="document-text-outline"
-              size={20}
-              color={colors.primary}
-            />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Description
-            </Text>
-          </View>
-          <View
-            style={[styles.textContainer, { backgroundColor: colors.muted }]}
-          >
-            <Text style={[styles.text, { color: colors.text }]}>
-              {formatInfoText(sector.description)}
-            </Text>
-          </View>
-        </View>
+        <LanguageTextSection
+          text={sector.description}
+          title={t('description')}
+        />
       )}
 
       {/* Approach */}
       {sector.approach && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="walk-outline" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Approach
-            </Text>
-          </View>
-          <View
-            style={[styles.textContainer, { backgroundColor: colors.muted }]}
-          >
-            <Text style={[styles.text, { color: colors.text }]}>
-              {formatInfoText(sector.approach)}
-            </Text>
-          </View>
+        <LanguageTextSection
+          text={sector.approach}
+          title={t('approach')}
+          showMapButton={!!latitude && !!longitude}
+          latitude={latitude}
+          longitude={longitude}
+          locationName={sector.name}
+        />
+      )}
 
-          {parkingLocations.length > 0 && (
-            <View style={styles.parkingContainer}>
-              {parkingLocations.map((parking, index) => (
-                <Pressable
-                  key={`parking-${index}-${parking.lat}`}
-                  onPress={() => handleNavigateToParking(parking)}
-                  style={[
-                    styles.parkingButton,
-                    { backgroundColor: '#3B82F6' },
-                  ]}
-                >
-                  <Ionicons name="car" size={20} color="#FFF" />
-                  <Text style={styles.parkingButtonText}>
-                    {parkingLocations.length > 1
-                      ? parking.name
-                      : 'Navigate to Parking'}
-                  </Text>
-                  <Ionicons name="navigate" size={16} color="#FFF" />
-                </Pressable>
-              ))}
-            </View>
-          )}
+      {/* Parking buttons */}
+      {parkingLocations.length > 0 && (
+        <View style={styles.parkingContainer}>
+          {parkingLocations.map((parking, index) => (
+            <Pressable
+              key={`parking-${index}-${parking.lat}`}
+              onPress={() => handleNavigateToParking(parking)}
+              style={[
+                styles.parkingButton,
+                { backgroundColor: '#3B82F6' },
+              ]}
+            >
+              <Ionicons name="car" size={20} color="#FFF" />
+              <Text style={styles.parkingButtonText}>
+                {parkingLocations.length > 1
+                  ? parking.name
+                  : 'Navigate to Parking'}
+              </Text>
+              <Ionicons name="navigate" size={16} color="#FFF" />
+            </Pressable>
+          ))}
         </View>
       )}
     </View>
-  ), [sector, colors, parkingLocations])
+  ), [sector, latitude, longitude, parkingLocations])
+
+  // Early return for loading state - MUST be after all hooks
+  if (isLoadingRoutes && !routesData) {
+    return (
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    )
+  }
 
   return (
     <SectionList

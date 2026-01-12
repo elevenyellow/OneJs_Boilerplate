@@ -1,5 +1,7 @@
+import { LanguageTextSection } from '@/components/LanguageTextSection'
 import { Colors } from '@/constants/Colors'
 import { useCragDetail } from '@/hooks/useCragDetail'
+import { t } from '@/lib/i18n'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useMemo } from 'react'
@@ -15,21 +17,6 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-function formatInfoText(text: string): string {
-  return text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold** -> bold
-    .replace(/__([^_]+)__/g, '$1') // __bold__ -> bold
-    .replace(/\*([^*]+)\*/g, '$1') // *italic* -> italic
-    .replace(/_([^_]+)_/g, '$1') // _italic_ -> italic
-    .replace(/^#+\s*/gm, '') // # headers -> text
-    .replace(/^-\s+/gm, '• ') // - list items -> bullet points
-    .replace(/&nbsp;/g, ' ') // &nbsp; -> space
-    .replace(/:parking:/g, '🅿️') // :parking: -> emoji
-    .replace(/\n{3,}/g, '\n\n') // Multiple newlines -> double newline
-    .trim()
-}
 
 interface ParkingLocation {
   name: string
@@ -172,54 +159,40 @@ export default function InfoScreen() {
       >
         {/* Description */}
         {crag.description && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="document-text-outline" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Description
-              </Text>
-            </View>
-            <View style={[styles.textContainer, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.text, { color: colors.text }]}>
-                {formatInfoText(crag.description)}
-              </Text>
-            </View>
-          </View>
+          <LanguageTextSection
+            text={crag.description}
+            title={t('description')}
+          />
         )}
 
         {/* Approach */}
         {crag.approach && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="walk-outline" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Approach
-              </Text>
-            </View>
-            <View style={[styles.textContainer, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.text, { color: colors.text }]}>
-                {formatInfoText(crag.approach)}
-              </Text>
-            </View>
-            
-            {/* Parking buttons - shown for each parking detected in approach text */}
-            {parkingLocations.length > 0 && (
-              <View style={styles.parkingContainer}>
-                {parkingLocations.map((parking, index) => (
-                  <Pressable
-                    key={`parking-${index}-${parking.lat}`}
-                    onPress={() => handleNavigateToParking(parking)}
-                    style={[styles.parkingButton, { backgroundColor: '#3B82F6' }]}
-                  >
-                    <Ionicons name="car" size={20} color="#FFF" />
-                    <Text style={styles.parkingButtonText}>
-                      {parkingLocations.length > 1 ? parking.name : 'Navigate to Parking'}
-                    </Text>
-                    <Ionicons name="navigate" size={16} color="#FFF" />
-                  </Pressable>
-                ))}
-              </View>
-            )}
+          <LanguageTextSection
+            text={crag.approach}
+            title={t('approach')}
+            showMapButton={!!crag.latitude && !!crag.longitude}
+            latitude={crag.latitude}
+            longitude={crag.longitude}
+            locationName={crag.name}
+          />
+        )}
+        
+        {/* Parking buttons - shown for each parking detected in approach text */}
+        {parkingLocations.length > 0 && (
+          <View style={styles.parkingContainer}>
+            {parkingLocations.map((parking, index) => (
+              <Pressable
+                key={`parking-${index}-${parking.lat}`}
+                onPress={() => handleNavigateToParking(parking)}
+                style={[styles.parkingButton, { backgroundColor: '#3B82F6' }]}
+              >
+                <Ionicons name="car" size={20} color="#FFF" />
+                <Text style={styles.parkingButtonText}>
+                  {parkingLocations.length > 1 ? parking.name : 'Navigate to Parking'}
+                </Text>
+                <Ionicons name="navigate" size={16} color="#FFF" />
+              </Pressable>
+            ))}
           </View>
         )}
 

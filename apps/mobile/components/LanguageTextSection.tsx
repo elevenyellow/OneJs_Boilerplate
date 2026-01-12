@@ -199,6 +199,7 @@ export function LanguageTextSection({
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 16,
     marginBottom: 16,
     borderRadius: 16,
     borderWidth: 1,
@@ -207,13 +208,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   languageSelector: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   languageButton: {
     flexDirection: 'row',
