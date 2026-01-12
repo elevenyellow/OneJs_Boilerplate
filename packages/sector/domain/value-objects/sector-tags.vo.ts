@@ -130,8 +130,16 @@ export class SectorTags {
       'barrierefreiheit',
     ])
 
-    // Camping
-    const camping = this.detectTag(allTagsLower, [
+    // Camping - check for negative first
+    const noCamping = this.detectTag(allTagsLower, [
+      'no camping',
+      'no campsite',
+      'no camp',
+      'camping prohibited',
+      'acampada prohibida',
+      'no acampada',
+    ])
+    const camping = !noCamping && this.detectTag(allTagsLower, [
       'camping',
       'campsite',
       'camp',
