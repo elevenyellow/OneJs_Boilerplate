@@ -13,7 +13,19 @@ import {
   type BetaItemData,
 } from '@climb-zone/shared'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
-import type { RouteSearchInfo } from '@sector/domain/dtos/search-sectors.dto'
+import type {
+  AdvancedSearchFilters,
+  CragInfo,
+  GradeRangeQueryDto,
+  NearbySectorsQueryDto,
+  RouteSearchInfo,
+  SectorFilterDto,
+  SectorWithRoutesDto,
+} from '@sector/domain/dtos/search-sectors.dto'
+import type {
+  HeaderImageDto,
+  HeaderImageS3Dto,
+} from '@sector/domain/dtos/sector-image.dto'
 import {
   SectorEntity,
   type SectorType,
@@ -31,28 +43,10 @@ import {
 import { SectorTags } from '@sector/domain/value-objects/sector-tags.vo'
 import { SunExposure } from '@sector/domain/value-objects/sun-exposure.vo'
 
-export interface CragInfo {
-  id: string
-  name: string
-  altNames: string[]
-  latitude: number | null
-  longitude: number | null
-  description: string | null
-  approach: string | null
-  numberPhotos: number | null
-  numberTopos: number | null
-  hasTopo: boolean
-  totalFavorites: number | null
-  urlStub: string | null
-  priceCategory: string | null
-}
-
-export interface SectorWithRoutes {
-  entity: SectorEntity
-  routes: RouteSearchInfo[]
-  crag: CragInfo | null
-}
-
+/**
+ * Internal Prisma data structure for sector records
+ * This maps directly to the Prisma model and is used for conversion to/from entities
+ */
 interface SectorPrismaData {
   id: string
   externalId: bigint
@@ -127,48 +121,6 @@ interface SectorPrismaData {
   updatedAt: Date
 }
 
-export interface SectorFilter {
-  areaId?: AreaId
-  minGradeIndex?: number
-  maxGradeIndex?: number
-  minRoutes?: number
-  hasTopo?: boolean
-  orientation?: string
-  rockType?: string
-  hasOverhangs?: boolean
-  limit?: number
-  offset?: number
-}
-
-export interface AdvancedSearchFilters {
-  // Geographic bounds
-  latitudeMin: number
-  latitudeMax: number
-  longitudeMin: number
-  longitudeMax: number
-
-  // Grade range
-  minGradeIndex: number
-  maxGradeIndex: number
-
-  // Optional filters
-  minRoutes?: number
-  rockTypes?: string[]
-  climbingStyles?: string[]
-  hasTopo?: boolean
-  requiresNoPermit?: boolean
-
-  // Tag-based filters (processed in memory after DB query)
-  kidFriendly?: boolean
-  dogFriendly?: boolean
-  beginner?: boolean
-  accessible?: boolean
-
-  // Pagination
-  limit: number
-  offset: number
-}
-
 @Injectable()
 export class SectorPrismaRepository extends PrismaRepository<'sector'> {
   constructor(
@@ -232,30 +184,26 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
     return new Map(counts.map((r) => [r.sectorId, r._count.id]))
   }
 
-  async findByGradeRange(
-    minGradeIndex: number,
-    maxGradeIndex: number,
-    limit = 50,
-  ): Promise<SectorEntity[]> {
+  async findByGradeRange(query: GradeRangeQueryDto): Promise<SectorEntity[]> {
     const sectors = await this.prisma.sector.findMany({
       where: {
         AND: [
-          { minGradeIndex: { lte: maxGradeIndex } },
-          { maxGradeIndex: { gte: minGradeIndex } },
+          { minGradeIndex: { lte: query.maxGradeIndex } },
+          { maxGradeIndex: { gte: query.minGradeIndex } },
         ],
       },
       orderBy: { routeCount: 'desc' },
-      take: limit,
+      take: query.limit ?? 50,
     })
 
     return sectors.map((s: SectorPrismaData) => this.toEntity(s))
   }
 
-  async findWithFilters(filters: SectorFilter): Promise<SectorEntity[]> {
+  async findWithFilters(filters: SectorFilterDto): Promise<SectorEntity[]> {
     const where: Record<string, unknown> = {}
 
     if (filters.areaId) {
-      where.areaId = filters.areaId.toString()
+      where.areaId = filters.areaId
     }
 
     if (filters.minGradeIndex !== undefined) {
@@ -296,24 +244,22 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
     return sectors.map((s: SectorPrismaData) => this.toEntity(s))
   }
 
-  async findNearby(
-    latitude: number,
-    longitude: number,
-    radiusKm: number = 50,
-    limit: number = 20,
-  ): Promise<SectorEntity[]> {
+  async findNearby(query: NearbySectorsQueryDto): Promise<SectorEntity[]> {
+    const radiusKm = query.radiusKm ?? 50
+    const limit = query.limit ?? 20
     const latDelta = radiusKm / 111
-    const lonDelta = radiusKm / (111 * Math.cos((latitude * Math.PI) / 180))
+    const lonDelta =
+      radiusKm / (111 * Math.cos((query.latitude * Math.PI) / 180))
 
     const sectors = await this.prisma.sector.findMany({
       where: {
         latitude: {
-          gte: latitude - latDelta,
-          lte: latitude + latDelta,
+          gte: query.latitude - latDelta,
+          lte: query.latitude + latDelta,
         },
         longitude: {
-          gte: longitude - lonDelta,
-          lte: longitude + lonDelta,
+          gte: query.longitude - lonDelta,
+          lte: query.longitude + lonDelta,
         },
       },
       orderBy: { routeCount: 'desc' },
@@ -342,21 +288,28 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
     entity: SectorEntity,
     apiResponseRaw?: Record<string, unknown>,
   ): Promise<SectorEntity> {
-    const data = this.toPrismaData(entity)
+    const data = this.toPrismaData(entity) as ReturnType<
+      typeof this.toPrismaData
+    > & {
+      apiResponseRaw?: Record<string, unknown>
+      redirectStubs?: string[]
+      tlc?: unknown
+    }
 
     // Agregar apiResponseRaw si está disponible
     if (apiResponseRaw) {
-      ;(data as any).apiResponseRaw = apiResponseRaw
+      data.apiResponseRaw = apiResponseRaw
 
       // Extraer campos adicionales desde apiResponseRaw
-      const raw = apiResponseRaw as any
-
       // redirectStubs y tlc
-      if (Array.isArray(raw.redirectStubs)) {
-        ;(data as any).redirectStubs = raw.redirectStubs
+      if (
+        'redirectStubs' in apiResponseRaw &&
+        Array.isArray(apiResponseRaw.redirectStubs)
+      ) {
+        data.redirectStubs = apiResponseRaw.redirectStubs as string[]
       }
-      if (raw.tlc) {
-        ;(data as any).tlc = raw.tlc
+      if ('tlc' in apiResponseRaw && apiResponseRaw.tlc) {
+        data.tlc = apiResponseRaw.tlc
       }
     }
 
@@ -423,7 +376,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
    */
   async searchWithAdvancedFilters(
     filters: AdvancedSearchFilters,
-  ): Promise<SectorWithRoutes[]> {
+  ): Promise<SectorWithRoutesDto[]> {
     // PHASE 1: Find crags within geographic bounds
     const nearbyCrags = await this.prisma.crag.findMany({
       where: {
@@ -559,12 +512,13 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       skip: filters.offset,
     })
 
-    // Map to entities with routes and crag info
-    const mappedResults = sectors.map((s: any) => {
-      const entity = this.toEntity(s)
+    // Map to DTOs with routes and crag info
+    const mappedResults: SectorWithRoutesDto[] = sectors.map((s) => {
+      const sectorData = s as SectorPrismaData
+      let entity = this.toEntity(sectorData)
 
       // Map routes to RouteSearchInfo
-      const routes: RouteSearchInfo[] = (s.routes || []).map((r: any) => ({
+      const routes: RouteSearchInfo[] = (s.routes || []).map((r) => ({
         id: r.id,
         externalId: Number(r.externalId),
         name: r.name,
@@ -583,8 +537,8 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
 
       // Extract crag info
       let cragInfo: CragInfo | null = null
-      if (s.area?.crag) {
-        const crag = s.area.crag
+      const crag = s.area?.crag
+      if (crag) {
         cragInfo = {
           id: crag.id,
           name: crag.name,
@@ -601,69 +555,19 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
           priceCategory: crag.priceCategory,
         }
 
-        // If sector doesn't have coordinates, use crag's coordinates
-        if (!entity.latitude && crag.latitude) {
-          const updatedEntity = new SectorEntity(
-            entity.id,
-            entity.externalId,
-            entity.areaId,
-            entity.name,
-            entity.altNames,
-            entity.type,
-            crag.geometry
-              ? Geometry.fromJSON(crag.geometry as any)
-              : entity.geometry,
-            entity.locatedness,
-            entity.orientation,
-            entity.rockType,
-            entity.climbingStyle,
-            entity.sunExposure,
-            entity.sheltered,
-            entity.seasonality,
-            entity.beta,
-            entity.stats,
-            entity.numberPhotos,
-            entity.numberTopos,
-            entity.totalFavorites,
-            entity.isTLC,
-            entity.ascentCount,
-            entity.maxPop,
-            entity.priceCategory,
-            entity.hasTopo,
-            entity.kudos,
-            entity.permitNode,
-            entity.siblingLabel,
-            entity.tagsRaw,
-            // Tags procesados
-            entity.kidFriendly,
-            entity.beginner,
-            entity.dogFriendly,
-            entity.accessible,
-            entity.camping,
-            entity.swimming,
-            entity.scenic,
-            entity.popular,
-            entity.quiet,
-            entity.multipitch,
-            entity.trad,
-            entity.sport,
-            entity.bouldering,
-            entity.urlStub,
-            entity.urlAncestorStub,
-            entity.lastPDFSize,
-            entity.lastPDFStaticDate,
-            entity.createdAt,
-            entity.updatedAt,
-            entity.headerImageUrl,
-            entity.headerImageWidth,
-            entity.headerImageHeight,
-            entity.headerImageS3Url,
-            entity.headerImageS3UrlFull,
-            entity.headerImageOriginalUrl,
+        // If sector doesn't have coordinates, inherit from crag geometry
+        if (!entity.latitude && crag.geometry) {
+          const cragGeometry = Geometry.fromJSON(
+            crag.geometry as Record<string, unknown>,
           )
-          return { entity: updatedEntity, routes, crag: cragInfo }
+          const coords = cragGeometry?.getCoordinates()
+          if (coords) {
+            // Create new entity with inherited coordinates
+            entity = entity.withCoordinates(coords.latitude, coords.longitude)
+          }
         }
       }
+
       return { entity, routes, crag: cragInfo }
     })
 
@@ -907,16 +811,14 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
    */
   async updateHeaderImage(
     sectorId: SectorId,
-    headerImageUrl: string,
-    headerImageWidth?: number,
-    headerImageHeight?: number,
+    headerImage: HeaderImageDto,
   ): Promise<void> {
     await this.prisma.sector.update({
       where: { id: sectorId.toString() },
       data: {
-        headerImageUrl,
-        headerImageWidth: headerImageWidth ?? null,
-        headerImageHeight: headerImageHeight ?? null,
+        headerImageUrl: headerImage.headerImageUrl,
+        headerImageWidth: headerImage.headerImageWidth ?? null,
+        headerImageHeight: headerImage.headerImageHeight ?? null,
         updatedAt: new Date(),
       },
     })
@@ -927,16 +829,14 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
    */
   async updateHeaderImageS3(
     sectorId: SectorId,
-    s3Url: string,
-    s3UrlFull: string,
-    originalUrl: string,
+    s3Urls: HeaderImageS3Dto,
   ): Promise<void> {
     await this.prisma.sector.update({
       where: { id: sectorId.toString() },
       data: {
-        headerImageS3Url: s3Url,
-        headerImageS3UrlFull: s3UrlFull,
-        headerImageOriginalUrl: originalUrl,
+        headerImageS3Url: s3Urls.s3Url,
+        headerImageS3UrlFull: s3Urls.s3UrlFull,
+        headerImageOriginalUrl: s3Urls.originalUrl,
         updatedAt: new Date(),
       },
     })

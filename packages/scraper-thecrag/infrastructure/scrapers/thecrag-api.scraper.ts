@@ -1250,10 +1250,12 @@ export class TheCragApiScraper {
     return null
   }
 
+  private static readonly MAX_API_RETRIES = 3
+
   /**
    * Make HTTP request using curl for API endpoints
    */
-  private async curlRequest(url: string): Promise<string> {
+  private async curlRequest(url: string, retryCount = 0): Promise<string> {
     const proxy = this.options.useProxies ? this.proxyManager.getNext() : null
 
     const args = [
@@ -1311,10 +1313,15 @@ export class TheCragApiScraper {
           this.proxyManager.reportFailure(proxy)
           logger.warn(
             'scraper:thecrag',
-            `Request blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked}`,
+            `Request blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked} | Attempt: ${retryCount + 1}/${TheCragApiScraper.MAX_API_RETRIES}`,
           )
-          // Retry with next proxy
-          return this.curlRequest(url)
+          // Retry with next proxy if we haven't exceeded max retries
+          if (retryCount + 1 < TheCragApiScraper.MAX_API_RETRIES) {
+            return this.curlRequest(url, retryCount + 1)
+          }
+          throw new Error(
+            `Request blocked after ${TheCragApiScraper.MAX_API_RETRIES} attempts: ${isBlocked}`,
+          )
         }
         throw new Error(`Request blocked: ${isBlocked}`)
       }
@@ -1399,10 +1406,15 @@ export class TheCragApiScraper {
     return false
   }
 
+  private static readonly MAX_HTML_RETRIES = 3
+
   /**
    * Make HTTP request using curl for HTML pages
    */
-  private async curlRequestHtml(url: string): Promise<string> {
+  private async curlRequestHtml(
+    url: string,
+    retryCount = 0,
+  ): Promise<string> {
     const proxy = this.options.useProxies ? this.proxyManager.getNext() : null
 
     const args = [
@@ -1459,10 +1471,15 @@ export class TheCragApiScraper {
           this.proxyManager.reportFailure(proxy)
           logger.warn(
             'scraper:thecrag',
-            `HTML blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked}`,
+            `HTML blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked} | Attempt: ${retryCount + 1}/${TheCragApiScraper.MAX_HTML_RETRIES}`,
           )
-          // Retry with next proxy
-          return this.curlRequestHtml(url)
+          // Retry with next proxy if we haven't exceeded max retries
+          if (retryCount + 1 < TheCragApiScraper.MAX_HTML_RETRIES) {
+            return this.curlRequestHtml(url, retryCount + 1)
+          }
+          throw new Error(
+            `Request blocked after ${TheCragApiScraper.MAX_HTML_RETRIES} attempts: ${isBlocked}`,
+          )
         }
         throw new Error(`Request blocked: ${isBlocked}`)
       }

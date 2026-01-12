@@ -1,9 +1,14 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
-import { ZoneEntity, type ClimbingType, type GradeRange, type ZoneStats } from '@zone/domain/entities/zone.entity'
-import { ZoneId } from '@zone/domain/value-objects/id'
-import { Coordinates } from '@zone/domain/value-objects/coordinates'
 import type { ZoneFilterDto } from '@zone/domain/dtos/zone-filter.dto'
+import {
+  ZoneEntity,
+  type ClimbingType,
+  type GradeRange,
+  type ZoneStats,
+} from '@zone/domain/entities/zone.entity'
+import { Coordinates } from '@zone/domain/value-objects/coordinates'
+import { ZoneId } from '@zone/domain/value-objects/id'
 
 @Injectable()
 export class ZonePrismaRepository extends PrismaRepository<'zone'> {
@@ -212,5 +217,3 @@ interface ZonePrismaData {
   createdAt: Date
   updatedAt: Date
 }
-
-

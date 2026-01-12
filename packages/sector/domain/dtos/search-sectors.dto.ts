@@ -168,3 +168,49 @@ export interface AdvancedSearchFilters {
   limit: number
   offset: number
 }
+
+/**
+ * DTO for sector filter query parameters
+ */
+export interface SectorFilterDto {
+  areaId?: string
+  minGradeIndex?: number
+  maxGradeIndex?: number
+  minRoutes?: number
+  hasTopo?: boolean
+  orientation?: string
+  rockType?: string
+  hasOverhangs?: boolean
+  limit?: number
+  offset?: number
+}
+
+/**
+ * DTO for grade range query parameters
+ */
+export interface GradeRangeQueryDto {
+  minGradeIndex: number
+  maxGradeIndex: number
+  limit?: number
+}
+
+/**
+ * DTO for nearby sectors query parameters
+ */
+export interface NearbySectorsQueryDto {
+  latitude: number
+  longitude: number
+  radiusKm?: number
+  limit?: number
+}
+
+/**
+ * DTO for sector with routes result from advanced search
+ * Note: entity is the actual SectorEntity for internal use (scoring, distance calculation)
+ * The use case converts to JSON when building the response
+ */
+export interface SectorWithRoutesDto {
+  entity: import('../entities/sector.entity').SectorEntity
+  routes: RouteSearchInfo[]
+  crag: CragInfo | null
+}

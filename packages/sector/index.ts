@@ -33,10 +33,14 @@ export type {
   AdvancedSearchFilters,
   CragInfo,
   CragWithSectors,
+  GradeRangeQueryDto,
+  NearbySectorsQueryDto,
   RouteSearchInfo,
   SearchSectorResult,
   SearchSectorsDto,
   SearchSectorsResponse,
+  SectorFilterDto,
+  SectorWithRoutesDto,
 } from './domain/dtos/search-sectors.dto'
 
 // Application
@@ -55,8 +59,4 @@ export { SearchCragsUseCase } from './application/use-cases/search-crags.use-cas
 export { SearchSectorsUseCase } from './application/use-cases/search-sectors.use-case'
 
 // Infrastructure
-export {
-  SectorPrismaRepository,
-  type SectorFilter,
-  type SectorWithRoutes,
-} from './infrastructure/persistence/prisma/sector.repository'
+export { SectorPrismaRepository } from './infrastructure/persistence/prisma/sector.repository'

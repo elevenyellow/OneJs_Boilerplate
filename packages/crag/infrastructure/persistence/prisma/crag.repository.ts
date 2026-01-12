@@ -15,6 +15,14 @@ import {
   Seasonality,
   Url,
 } from '@climb-zone/shared'
+import type {
+  CragWithLocationDto,
+  FindNearbyCragsDto,
+  HeaderImageDto,
+  HeaderImageS3Dto,
+  NearbyCragsResultDto,
+  OverviewTopoDto,
+} from '@crag/domain/dtos/crag.dto'
 import { CragEntity } from '@crag/domain/entities/crag.entity'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 
@@ -90,14 +98,9 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
 
   /**
    * Find crag by ID with country and region names
-   * Returns raw data for use in detail views
+   * Returns DTO for use in detail views
    */
-  async findByIdWithLocation(id: CragId): Promise<{
-    crag: CragEntity
-    countryName: string
-    regionName: string | null
-    averageHeight: number | null
-  } | null> {
+  async findByIdWithLocation(id: CragId): Promise<CragWithLocationDto | null> {
     const data = await this.prisma.crag.findUnique({
       where: { id: id.toString() },
       include: {
@@ -142,14 +145,9 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
    * Find crags within a distance range with optional name search
    * Returns crags sorted by distance from the given coordinates
    */
-  async findNearbyWithSearch(params: {
-    latitude: number
-    longitude: number
-    maxDistanceKm: number
-    search?: string
-    limit?: number
-    offset?: number
-  }): Promise<{ crags: CragEntity[]; total: number }> {
+  async findNearbyWithSearch(
+    params: FindNearbyCragsDto,
+  ): Promise<NearbyCragsResultDto> {
     const {
       latitude,
       longitude,
@@ -448,16 +446,14 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
    */
   async updateHeaderImage(
     cragId: CragId,
-    headerImageUrl: string,
-    headerImageWidth?: number,
-    headerImageHeight?: number,
+    headerImage: HeaderImageDto,
   ): Promise<void> {
     await this.prisma.crag.update({
       where: { id: cragId.toString() },
       data: {
-        headerImageUrl,
-        headerImageWidth: headerImageWidth ?? null,
-        headerImageHeight: headerImageHeight ?? null,
+        headerImageUrl: headerImage.headerImageUrl,
+        headerImageWidth: headerImage.headerImageWidth ?? null,
+        headerImageHeight: headerImage.headerImageHeight ?? null,
         updatedAt: new Date(),
       },
     })
@@ -468,16 +464,14 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
    */
   async updateHeaderImageS3(
     cragId: CragId,
-    s3Url: string,
-    s3UrlFull: string,
-    originalUrl: string,
+    s3Urls: HeaderImageS3Dto,
   ): Promise<void> {
     await this.prisma.crag.update({
       where: { id: cragId.toString() },
       data: {
-        headerImageS3Url: s3Url,
-        headerImageS3UrlFull: s3UrlFull,
-        headerImageOriginalUrl: originalUrl,
+        headerImageS3Url: s3Urls.s3Url,
+        headerImageS3UrlFull: s3Urls.s3UrlFull,
+        headerImageOriginalUrl: s3Urls.originalUrl,
         updatedAt: new Date(),
       },
     })
@@ -488,20 +482,16 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
    */
   async updateOverviewTopo(
     cragId: CragId,
-    overviewTopoImageUrl: string,
-    overviewTopoThumbnailUrl?: string,
-    overviewTopoWidth?: number,
-    overviewTopoHeight?: number,
-    overviewTopoExternalId?: string,
+    overviewTopo: OverviewTopoDto,
   ): Promise<void> {
     await this.prisma.crag.update({
       where: { id: cragId.toString() },
       data: {
-        overviewTopoImageUrl,
-        overviewTopoThumbnailUrl: overviewTopoThumbnailUrl ?? null,
-        overviewTopoWidth: overviewTopoWidth ?? null,
-        overviewTopoHeight: overviewTopoHeight ?? null,
-        overviewTopoExternalId: overviewTopoExternalId ?? null,
+        overviewTopoImageUrl: overviewTopo.overviewTopoImageUrl,
+        overviewTopoThumbnailUrl: overviewTopo.overviewTopoThumbnailUrl ?? null,
+        overviewTopoWidth: overviewTopo.overviewTopoWidth ?? null,
+        overviewTopoHeight: overviewTopo.overviewTopoHeight ?? null,
+        overviewTopoExternalId: overviewTopo.overviewTopoExternalId ?? null,
         updatedAt: new Date(),
       },
     })

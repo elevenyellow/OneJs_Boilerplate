@@ -1,9 +1,14 @@
 import { Inject, Injectable } from '@OneJs/core'
-import { ExternalId, Coordinates } from '@climb-zone/shared'
-import { SectorPrismaRepository, type SectorFilter } from '@sector/infrastructure/persistence/prisma/sector.repository'
-import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
+import { Coordinates, ExternalId } from '@climb-zone/shared'
 import { AreaId } from '@area/domain/value-objects/area-id.vo'
+import type {
+  GradeRangeQueryDto,
+  NearbySectorsQueryDto,
+  SectorFilterDto,
+} from '@sector/domain/dtos/search-sectors.dto'
 import type { SectorEntity } from '@sector/domain/entities/sector.entity'
+import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
+import { SectorPrismaRepository } from '@sector/infrastructure/persistence/prisma/sector.repository'
 
 @Injectable()
 export class GetSectorsUseCase {
@@ -24,15 +29,21 @@ export class GetSectorsUseCase {
     return this.sectorRepository.findByAreaId(areaId)
   }
 
-  async byGradeRange(minGradeIndex: number, maxGradeIndex: number, limit?: number): Promise<SectorEntity[]> {
-    return this.sectorRepository.findByGradeRange(minGradeIndex, maxGradeIndex, limit)
+  async byGradeRange(query: GradeRangeQueryDto): Promise<SectorEntity[]> {
+    return this.sectorRepository.findByGradeRange(query)
   }
 
-  async withFilters(filters: SectorFilter): Promise<SectorEntity[]> {
+  async withFilters(filters: SectorFilterDto): Promise<SectorEntity[]> {
     return this.sectorRepository.findWithFilters(filters)
   }
 
   async nearby(coords: Coordinates, radiusKm?: number, limit?: number): Promise<SectorEntity[]> {
-    return this.sectorRepository.findNearby(coords.latitude, coords.longitude, radiusKm, limit)
+    const query: NearbySectorsQueryDto = {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      radiusKm,
+      limit,
+    }
+    return this.sectorRepository.findNearby(query)
   }
 }

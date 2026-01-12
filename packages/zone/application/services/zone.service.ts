@@ -55,5 +55,3 @@ export class ZoneService {
     return this.zoneRepository.getRegions(country)
   }
 }
-
-

@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@OneJs/core'
-import { ExternalId } from '@climb-zone/shared'
-import { AreaPrismaRepository } from '@area/infrastructure/persistence/prisma/area.repository'
-import { AreaId } from '@area/domain/value-objects/area-id.vo'
-import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import type { AreaEntity } from '@area/domain/entities/area.entity'
+import { AreaId } from '@area/domain/value-objects/area-id.vo'
+import { AreaPrismaRepository } from '@area/infrastructure/persistence/prisma/area.repository'
+import { ExternalId } from '@climb-zone/shared'
+import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 
 @Injectable()
 export class GetAreasUseCase {

@@ -49,12 +49,11 @@ export class ImageUploadService {
         cragId.toString(),
       )
 
-      await this.cragRepo.updateHeaderImageS3(
-        cragId,
-        result.mobile.url,
-        result.full.url,
-        result.originalUrl,
-      )
+      await this.cragRepo.updateHeaderImageS3(cragId, {
+        s3Url: result.mobile.url,
+        s3UrlFull: result.full.url,
+        originalUrl: result.originalUrl,
+      })
 
       return result
     } catch (error) {
@@ -80,12 +79,11 @@ export class ImageUploadService {
         sectorId.toString(),
       )
 
-      await this.sectorRepo.updateHeaderImageS3(
-        sectorId,
-        result.mobile.url,
-        result.full.url,
-        result.originalUrl,
-      )
+      await this.sectorRepo.updateHeaderImageS3(sectorId, {
+        s3Url: result.mobile.url,
+        s3UrlFull: result.full.url,
+        originalUrl: result.originalUrl,
+      })
 
       return result
     } catch (error) {
@@ -111,12 +109,11 @@ export class ImageUploadService {
         topoId.toString(),
       )
 
-      await this.topoRepo.updateTopoS3Urls(
-        topoId,
-        result.mobile.url,
-        result.full.url,
-        result.originalUrl,
-      )
+      await this.topoRepo.updateTopoS3Urls(topoId, {
+        thumbnailS3Url: result.mobile.url,
+        fullImageS3Url: result.full.url,
+        originalSourceUrl: result.originalUrl,
+      })
 
       return result
     } catch (error) {
@@ -142,12 +139,11 @@ export class ImageUploadService {
         topoId.toString(),
       )
 
-      await this.topoRepo.updateCragTopoS3Urls(
-        topoId,
-        result.mobile.url,
-        result.full.url,
-        result.originalUrl,
-      )
+      await this.topoRepo.updateCragTopoS3Urls(topoId, {
+        thumbnailS3Url: result.mobile.url,
+        fullImageS3Url: result.full.url,
+        originalSourceUrl: result.originalUrl,
+      })
 
       return result
     } catch (error) {

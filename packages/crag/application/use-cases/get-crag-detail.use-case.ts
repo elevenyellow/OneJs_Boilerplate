@@ -1,9 +1,9 @@
+import { TopoPrismaRepository } from '@climb-zone/topo'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { CragPrismaRepository } from '@crag/infrastructure/persistence/prisma/crag.repository'
 import { Inject, Injectable, OneJsError } from '@OneJs/core'
-import { SectorPrismaRepository } from '@sector/infrastructure/persistence/prisma/sector.repository'
 import { RoutePrismaRepository } from '@route/infrastructure/persistence/prisma/route.repository'
-import { TopoPrismaRepository } from '@climb-zone/topo'
+import { SectorPrismaRepository } from '@sector/infrastructure/persistence/prisma/sector.repository'
 import { WeatherService } from '@weather'
 import type {
   DailyForecast,
@@ -172,9 +172,8 @@ export class GetCragDetailUseCase {
     const sectorIds = sectors.map((s) => s.id)
 
     // 4. Count actual routes per sector (in case routeCount is not updated)
-    const routeCountMap = await this.sectorRepo.getRouteCountsBySectorIds(
-      sectorIds,
-    )
+    const routeCountMap =
+      await this.sectorRepo.getRouteCountsBySectorIds(sectorIds)
 
     // 5. Build sector summaries
     // Client will calculate routesInRange and scoring using gradeDistribution

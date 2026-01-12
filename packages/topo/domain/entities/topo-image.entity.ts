@@ -1,5 +1,10 @@
-import { TopoImageId } from '../value-objects/topo-image-id.vo'
+import { ExternalId, Url } from '@climb-zone/shared'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
+import { ImageDimensions } from '../value-objects/image-dimensions.vo'
+import { S3ImageUrls } from '../value-objects/s3-image-urls.vo'
+import { TopoImageId } from '../value-objects/topo-image-id.vo'
+import { TopoImageUrls } from '../value-objects/topo-image-urls.vo'
+import { ViewScale } from '../value-objects/view-scale.vo'
 
 /**
  * TopoImage Entity - Represents a photo topo with route lines
@@ -7,60 +12,51 @@ import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 export class TopoImageEntity {
   constructor(
     public readonly id: TopoImageId,
-    public readonly externalId: string,
+    public readonly externalId: ExternalId,
     public readonly sectorId: SectorId,
     // TheCrag original URLs
-    public readonly thumbnailUrl: string,
-    public readonly fullImageUrl: string,
-    public readonly width: number,
-    public readonly height: number,
-    public readonly originalWidth: number,
-    public readonly originalHeight: number,
-    public readonly viewScale: number = 1.0,
-    public readonly sourceUrl: string | null = null,
+    public readonly imageUrls: TopoImageUrls,
+    public readonly dimensions: ImageDimensions,
+    public readonly viewScale: ViewScale,
+    public readonly sourceUrl: Url | null = null,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
-    // S3 optimized URLs
-    public readonly thumbnailS3Url: string | null = null,
-    public readonly fullImageS3Url: string | null = null,
-    public readonly originalSourceUrl: string | null = null,
+    // S3 optimized URLs (optional)
+    public readonly s3ImageUrls: S3ImageUrls | null = null,
   ) {}
 
   /**
    * Get the high-resolution image URL
    */
   getHighResUrl(): string {
-    // TheCrag image URLs can be modified to get different sizes
-    // Format: /file/{hash}/{size}/{filename}
-    // We want max size, which is usually available by removing size restrictions
-    return this.fullImageUrl.replace(/\/\d+x\d+\//, '/1920x1920/')
+    return this.imageUrls.getHighResUrl()
   }
 
   /**
    * Calculate aspect ratio
    */
   getAspectRatio(): number {
-    return this.originalWidth / this.originalHeight
+    return this.dimensions.getAspectRatio()
   }
 
   toJSON(): Record<string, unknown> {
     return {
       id: this.id.toString(),
-      externalId: this.externalId,
+      externalId: this.externalId.toString(),
       sectorId: this.sectorId.toString(),
-      thumbnailUrl: this.thumbnailUrl,
-      fullImageUrl: this.fullImageUrl,
-      width: this.width,
-      height: this.height,
-      originalWidth: this.originalWidth,
-      originalHeight: this.originalHeight,
-      viewScale: this.viewScale,
-      sourceUrl: this.sourceUrl,
+      thumbnailUrl: this.imageUrls.getThumbnailUrl(),
+      fullImageUrl: this.imageUrls.getFullImageUrl(),
+      width: this.dimensions.width,
+      height: this.dimensions.height,
+      originalWidth: this.dimensions.originalWidth,
+      originalHeight: this.dimensions.originalHeight,
+      viewScale: this.viewScale.toNumber(),
+      sourceUrl: this.sourceUrl?.toString() ?? null,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      thumbnailS3Url: this.thumbnailS3Url,
-      fullImageS3Url: this.fullImageS3Url,
-      originalSourceUrl: this.originalSourceUrl,
+      thumbnailS3Url: this.s3ImageUrls?.getThumbnailUrl() ?? null,
+      fullImageS3Url: this.s3ImageUrls?.getFullImageUrl() ?? null,
+      originalSourceUrl: this.s3ImageUrls?.getOriginalSourceUrl() ?? null,
     }
   }
 
@@ -68,20 +64,20 @@ export class TopoImageEntity {
    * Get the best available thumbnail URL (prefer S3, fallback to TheCrag)
    */
   getThumbnailUrl(): string {
-    return this.thumbnailS3Url ?? this.thumbnailUrl
+    return this.s3ImageUrls?.getThumbnailUrl() ?? this.imageUrls.getThumbnailUrl()
   }
 
   /**
    * Get the best available full image URL (prefer S3, fallback to TheCrag)
    */
   getFullImageUrl(): string {
-    return this.fullImageS3Url ?? this.fullImageUrl
+    return this.s3ImageUrls?.getFullImageUrl() ?? this.imageUrls.getFullImageUrl()
   }
 
   /**
    * Check if S3 images are available
    */
   hasS3Images(): boolean {
-    return this.thumbnailS3Url !== null && this.fullImageS3Url !== null
+    return this.s3ImageUrls !== null
   }
 }

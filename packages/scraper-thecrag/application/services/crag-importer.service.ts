@@ -10,11 +10,15 @@ import type { BetaItemData } from '@climb-zone/shared'
 import { ImageProcessorService } from '@climb-zone/storage'
 import {
   CragTopoImageEntity,
+  ImageDimensions,
   TopoImageEntity,
   TopoImageId,
+  TopoImageUrls,
   TopoPrismaRepository,
+  ViewScale,
   type CragTopoSectorPositionData,
 } from '@climb-zone/topo'
+import { ExternalId } from '@climb-zone/shared'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
 import type {
@@ -386,15 +390,16 @@ export class CragImporterService {
           try {
             const topoEntity = new TopoImageEntity(
               TopoImageId.generate(),
-              topoData.topoId,
+              ExternalId.create(topoData.topoId),
               sector.id,
-              topoData.thumbnailUrl,
-              topoData.fullImageUrl,
-              topoData.width,
-              topoData.height,
-              topoData.originalWidth,
-              topoData.originalHeight,
-              topoData.viewScale,
+              TopoImageUrls.create(topoData.thumbnailUrl, topoData.fullImageUrl),
+              ImageDimensions.create(
+                topoData.width,
+                topoData.height,
+                topoData.originalWidth,
+                topoData.originalHeight,
+              ),
+              ViewScale.create(topoData.viewScale),
               null,
             )
 
@@ -780,15 +785,16 @@ export class CragImporterService {
         try {
           const topoEntity = new TopoImageEntity(
             TopoImageId.generate(),
-            topoData.topoId,
+            ExternalId.create(topoData.topoId),
             sectorId,
-            topoData.thumbnailUrl,
-            topoData.fullImageUrl,
-            topoData.width,
-            topoData.height,
-            topoData.originalWidth,
-            topoData.originalHeight,
-            topoData.viewScale,
+            TopoImageUrls.create(topoData.thumbnailUrl, topoData.fullImageUrl),
+            ImageDimensions.create(
+              topoData.width,
+              topoData.height,
+              topoData.originalWidth,
+              topoData.originalHeight,
+            ),
+            ViewScale.create(topoData.viewScale),
             null,
           )
 
@@ -948,15 +954,16 @@ export class CragImporterService {
         try {
           const topoEntity = new TopoImageEntity(
             TopoImageId.generate(),
-            topoData.topoId,
+            ExternalId.create(topoData.topoId),
             sector.id,
-            topoData.thumbnailUrl,
-            topoData.fullImageUrl,
-            topoData.width,
-            topoData.height,
-            topoData.originalWidth,
-            topoData.originalHeight,
-            topoData.viewScale,
+            TopoImageUrls.create(topoData.thumbnailUrl, topoData.fullImageUrl),
+            ImageDimensions.create(
+              topoData.width,
+              topoData.height,
+              topoData.originalWidth,
+              topoData.originalHeight,
+            ),
+            ViewScale.create(topoData.viewScale),
             null,
           )
 
@@ -1060,15 +1067,16 @@ export class CragImporterService {
       try {
         const topoEntity = new CragTopoImageEntity(
           TopoImageId.generate(),
-          topoData.topoId,
+          ExternalId.create(topoData.topoId),
           cragId,
-          topoData.thumbnailUrl,
-          topoData.fullImageUrl,
-          topoData.width,
-          topoData.height,
-          topoData.originalWidth,
-          topoData.originalHeight,
-          topoData.viewScale,
+          TopoImageUrls.create(topoData.thumbnailUrl, topoData.fullImageUrl),
+          ImageDimensions.create(
+            topoData.width,
+            topoData.height,
+            topoData.originalWidth,
+            topoData.originalHeight,
+          ),
+          ViewScale.create(topoData.viewScale),
           null, // sourceUrl
         )
 
@@ -1138,12 +1146,11 @@ export class CragImporterService {
         'crag-header',
         cragId.toString(),
       )
-      await this.cragRepo.updateHeaderImageS3(
-        cragId,
-        processed.mobile.url,
-        processed.full.url,
-        processed.originalUrl,
-      )
+      await this.cragRepo.updateHeaderImageS3(cragId, {
+        s3Url: processed.mobile.url,
+        s3UrlFull: processed.full.url,
+        originalUrl: processed.originalUrl,
+      })
       this.initS3Stats(result)
       result.s3Uploads!.cragsProcessed++
       console.log(`      ✅ S3: ${processed.mobile.url}`)
@@ -1174,12 +1181,11 @@ export class CragImporterService {
         'sector-header',
         sectorId.toString(),
       )
-      await this.sectorRepo.updateHeaderImageS3(
-        sectorId,
-        processed.mobile.url,
-        processed.full.url,
-        processed.originalUrl,
-      )
+      await this.sectorRepo.updateHeaderImageS3(sectorId, {
+        s3Url: processed.mobile.url,
+        s3UrlFull: processed.full.url,
+        originalUrl: processed.originalUrl,
+      })
       this.initS3Stats(result)
       result.s3Uploads!.sectorsProcessed++
       console.log(`      ✅ S3: ${processed.mobile.url}`)
@@ -1209,12 +1215,11 @@ export class CragImporterService {
         'topo',
         topoId.toString(),
       )
-      await this.topoRepo.updateTopoS3Urls(
-        topoId,
-        processed.mobile.url,
-        processed.full.url,
-        processed.originalUrl,
-      )
+      await this.topoRepo.updateTopoS3Urls(topoId, {
+        thumbnailS3Url: processed.mobile.url,
+        fullImageS3Url: processed.full.url,
+        originalSourceUrl: processed.originalUrl,
+      })
       this.initS3Stats(result)
       result.s3Uploads!.toposProcessed++
     } catch {
@@ -1239,12 +1244,11 @@ export class CragImporterService {
         'crag-topo',
         topoId.toString(),
       )
-      await this.topoRepo.updateCragTopoS3Urls(
-        topoId,
-        processed.mobile.url,
-        processed.full.url,
-        processed.originalUrl,
-      )
+      await this.topoRepo.updateCragTopoS3Urls(topoId, {
+        thumbnailS3Url: processed.mobile.url,
+        fullImageS3Url: processed.full.url,
+        originalSourceUrl: processed.originalUrl,
+      })
       this.initS3Stats(result)
       result.s3Uploads!.cragToposProcessed++
     } catch {

@@ -1,8 +1,9 @@
-import { Inject, Injectable } from '@OneJs/core'
+import { CountryId } from '@climb-zone/country'
 import { ExternalId } from '@climb-zone/shared'
-import { CragPrismaRepository } from '@crag/infrastructure/persistence/prisma/crag.repository'
-import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import type { CragEntity } from '@crag/domain/entities/crag.entity'
+import { CragId } from '@crag/domain/value-objects/crag-id.vo'
+import { CragPrismaRepository } from '@crag/infrastructure/persistence/prisma/crag.repository'
+import { Inject, Injectable } from '@OneJs/core'
 
 @Injectable()
 export class GetCragUseCase {
@@ -19,15 +20,11 @@ export class GetCragUseCase {
     return this.cragRepository.findByExternalId(externalId)
   }
 
-  async byCountry(country: string): Promise<CragEntity[]> {
-    return this.cragRepository.findByCountry(country)
+  async byCountryId(countryId: CountryId): Promise<CragEntity[]> {
+    return this.cragRepository.findByCountryId(countryId)
   }
 
   async all(): Promise<CragEntity[]> {
     return this.cragRepository.findAll()
-  }
-
-  async getCountries(): Promise<string[]> {
-    return this.cragRepository.getCountries()
   }
 }

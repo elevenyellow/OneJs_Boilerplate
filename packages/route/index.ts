@@ -1,6 +1,9 @@
 // Domain - Entities
 export { RouteEntity } from './domain/entities/route.entity'
 
+// Domain - DTOs
+export type { TopRouteDto } from './domain/dtos/route.dto'
+
 // Domain - Value Objects
 export { RouteId } from './domain/value-objects/route-id.vo'
 export { Height } from './domain/value-objects/height.vo'

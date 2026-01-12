@@ -1,16 +1,27 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
-import { ExternalId } from '@climb-zone/shared'
-import { TopoImageEntity } from '@topo/domain/entities/topo-image.entity'
-import { RouteTopoPositionEntity } from '@topo/domain/entities/route-topo-position.entity'
+import { ExternalId, Url } from '@climb-zone/shared'
+import { CragId } from '@crag/domain/value-objects/crag-id.vo'
+import { RouteId } from '@route/domain/value-objects/route-id.vo'
+import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
+import type {
+  CragTopoSaveResultDto,
+  CragTopoWithPositionsDto,
+  RouteOnTopoDto,
+  S3ImageUrlsDto,
+  TopoSaveResultDto,
+} from '@topo/domain/dtos/topo.dto'
 import {
   CragTopoImageEntity,
   type CragTopoSectorPositionData,
 } from '@topo/domain/entities/crag-topo-image.entity'
+import { RouteTopoPositionEntity } from '@topo/domain/entities/route-topo-position.entity'
+import { TopoImageEntity } from '@topo/domain/entities/topo-image.entity'
+import { ImageDimensions } from '@topo/domain/value-objects/image-dimensions.vo'
+import { S3ImageUrls } from '@topo/domain/value-objects/s3-image-urls.vo'
 import { TopoImageId } from '@topo/domain/value-objects/topo-image-id.vo'
-import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
-import { CragId } from '@crag/domain/value-objects/crag-id.vo'
-import { RouteId } from '@route/domain/value-objects/route-id.vo'
+import { TopoImageUrls } from '@topo/domain/value-objects/topo-image-urls.vo'
+import { ViewScale } from '@topo/domain/value-objects/view-scale.vo'
 
 interface TopoImagePrismaData {
   id: string
@@ -61,7 +72,9 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
     return topo ? this.toEntity(topo) : null
   }
 
-  async findByExternalId(externalId: ExternalId): Promise<TopoImageEntity | null> {
+  async findByExternalId(
+    externalId: ExternalId,
+  ): Promise<TopoImageEntity | null> {
     const topo = await this.prisma.topoImage.findUnique({
       where: { externalId: externalId.toString() },
     })
@@ -80,7 +93,7 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
     const data = this.toPrismaData(entity)
 
     const saved = await this.prisma.topoImage.upsert({
-      where: { externalId: entity.externalId },
+      where: { externalId: entity.externalId.toString() },
       create: data,
       update: data,
     })
@@ -98,12 +111,12 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       order?: number
       gradeClass?: string | null
     }>,
-  ): Promise<{ topo: TopoImageEntity; positionsCreated: number }> {
+  ): Promise<TopoSaveResultDto> {
     const data = this.toPrismaData(entity)
 
     // Upsert topo image
     const savedTopo = await this.prisma.topoImage.upsert({
-      where: { externalId: entity.externalId },
+      where: { externalId: entity.externalId.toString() },
       create: data,
       update: data,
     })
@@ -137,20 +150,28 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
 
   // --- RouteTopoPosition methods ---
 
-  async findPositionsByRouteId(routeId: RouteId): Promise<RouteTopoPositionEntity[]> {
+  async findPositionsByRouteId(
+    routeId: RouteId,
+  ): Promise<RouteTopoPositionEntity[]> {
     const positions = await this.prisma.routeTopoPosition.findMany({
       where: { routeId: routeId.toString() },
       orderBy: { order: 'asc' },
     })
-    return positions.map((p: RouteTopoPositionPrismaData) => this.positionToEntity(p))
+    return positions.map((p: RouteTopoPositionPrismaData) =>
+      this.positionToEntity(p),
+    )
   }
 
-  async findPositionsByTopoId(topoImageId: TopoImageId): Promise<RouteTopoPositionEntity[]> {
+  async findPositionsByTopoId(
+    topoImageId: TopoImageId,
+  ): Promise<RouteTopoPositionEntity[]> {
     const positions = await this.prisma.routeTopoPosition.findMany({
       where: { topoImageId: topoImageId.toString() },
       orderBy: { order: 'asc' },
     })
-    return positions.map((p: RouteTopoPositionPrismaData) => this.positionToEntity(p))
+    return positions.map((p: RouteTopoPositionPrismaData) =>
+      this.positionToEntity(p),
+    )
   }
 
   /**
@@ -161,21 +182,17 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       where: { routeId: routeId.toString() },
       include: { topoImage: true },
     })
-    
-    return positions.map((p: RouteTopoPositionPrismaData & { topoImage: TopoImagePrismaData }) => 
-      this.toEntity(p.topoImage)
+
+    return positions.map(
+      (p: RouteTopoPositionPrismaData & { topoImage: TopoImagePrismaData }) =>
+        this.toEntity(p.topoImage),
     )
   }
 
   /**
    * Get all routes on a topo with their position data
    */
-  async findRoutesOnTopo(topoImageId: TopoImageId): Promise<Array<{
-    routeId: string
-    topoNumber: string
-    points: string
-    gradeClass: string | null
-  }>> {
+  async findRoutesOnTopo(topoImageId: TopoImageId): Promise<RouteOnTopoDto[]> {
     const positions = await this.prisma.routeTopoPosition.findMany({
       where: { topoImageId: topoImageId.toString() },
       orderBy: { order: 'asc' },
@@ -194,40 +211,43 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
   private toEntity(data: TopoImagePrismaData): TopoImageEntity {
     return new TopoImageEntity(
       TopoImageId.fromString(data.id),
-      data.externalId,
+      ExternalId.create(data.externalId),
       SectorId.fromString(data.sectorId),
-      data.thumbnailUrl,
-      data.fullImageUrl,
-      data.width,
-      data.height,
-      data.originalWidth,
-      data.originalHeight,
-      data.viewScale,
-      data.sourceUrl,
+      TopoImageUrls.create(data.thumbnailUrl, data.fullImageUrl),
+      ImageDimensions.create(
+        data.width,
+        data.height,
+        data.originalWidth,
+        data.originalHeight,
+      ),
+      ViewScale.create(data.viewScale),
+      data.sourceUrl ? Url.create(data.sourceUrl) : null,
       data.createdAt,
       data.updatedAt,
-      data.thumbnailS3Url,
-      data.fullImageS3Url,
-      data.originalSourceUrl,
+      S3ImageUrls.fromNullable(
+        data.thumbnailS3Url,
+        data.fullImageS3Url,
+        data.originalSourceUrl,
+      ),
     )
   }
 
   private toPrismaData(entity: TopoImageEntity) {
     return {
       id: entity.id.toString(),
-      externalId: entity.externalId,
+      externalId: entity.externalId.toString(),
       sectorId: entity.sectorId.toString(),
-      thumbnailUrl: entity.thumbnailUrl,
-      fullImageUrl: entity.fullImageUrl,
-      width: entity.width,
-      height: entity.height,
-      originalWidth: entity.originalWidth,
-      originalHeight: entity.originalHeight,
-      viewScale: entity.viewScale,
-      sourceUrl: entity.sourceUrl,
-      thumbnailS3Url: entity.thumbnailS3Url,
-      fullImageS3Url: entity.fullImageS3Url,
-      originalSourceUrl: entity.originalSourceUrl,
+      thumbnailUrl: entity.imageUrls.getThumbnailUrl(),
+      fullImageUrl: entity.imageUrls.getFullImageUrl(),
+      width: entity.dimensions.width,
+      height: entity.dimensions.height,
+      originalWidth: entity.dimensions.originalWidth,
+      originalHeight: entity.dimensions.originalHeight,
+      viewScale: entity.viewScale.toNumber(),
+      sourceUrl: entity.sourceUrl?.toString() ?? null,
+      thumbnailS3Url: entity.s3ImageUrls?.getThumbnailUrl() ?? null,
+      fullImageS3Url: entity.s3ImageUrls?.getFullImageUrl() ?? null,
+      originalSourceUrl: entity.s3ImageUrls?.getOriginalSourceUrl() ?? null,
     }
   }
 
@@ -236,22 +256,22 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
    */
   async updateTopoS3Urls(
     topoId: TopoImageId,
-    thumbnailS3Url: string,
-    fullImageS3Url: string,
-    originalSourceUrl: string,
+    s3Urls: S3ImageUrlsDto,
   ): Promise<void> {
     await this.prisma.topoImage.update({
       where: { id: topoId.toString() },
       data: {
-        thumbnailS3Url,
-        fullImageS3Url,
-        originalSourceUrl,
+        thumbnailS3Url: s3Urls.thumbnailS3Url,
+        fullImageS3Url: s3Urls.fullImageS3Url,
+        originalSourceUrl: s3Urls.originalSourceUrl,
         updatedAt: new Date(),
       },
     })
   }
 
-  private positionToEntity(data: RouteTopoPositionPrismaData): RouteTopoPositionEntity {
+  private positionToEntity(
+    data: RouteTopoPositionPrismaData,
+  ): RouteTopoPositionEntity {
     return new RouteTopoPositionEntity(
       data.id,
       RouteId.fromString(data.routeId),
@@ -295,27 +315,9 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
    * Find crag topos with sector positions for crag detail view
    * Returns the data structure expected by GetCragDetailUseCase
    */
-  async findCragToposWithPositions(cragId: CragId): Promise<
-    Array<{
-      id: string
-      externalId: string
-      thumbnailUrl: string
-      fullImageUrl: string
-      width: number
-      height: number
-      originalWidth: number
-      originalHeight: number
-      viewScale: number
-      sectorPositions: Array<{
-        sectorId: string | null
-        areaNumber: string
-        areaName: string
-        points: string
-        externalAreaId: number | null
-        areaUrl: string | null
-      }>
-    }>
-  > {
+  async findCragToposWithPositions(
+    cragId: CragId,
+  ): Promise<CragTopoWithPositionsDto[]> {
     const cragTopos = await this.prisma.cragTopoImage.findMany({
       where: { cragId: cragId.toString() },
       include: {
@@ -350,24 +352,24 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
   async saveCragTopoImageWithPositions(
     entity: CragTopoImageEntity,
     positions: CragTopoSectorPositionData[],
-  ): Promise<{ topo: CragTopoImageEntity; positionsCreated: number }> {
+  ): Promise<CragTopoSaveResultDto> {
     const data = {
       id: entity.id.toString(),
-      externalId: entity.externalId,
+      externalId: entity.externalId.toString(),
       cragId: entity.cragId.toString(),
-      thumbnailUrl: entity.thumbnailUrl,
-      fullImageUrl: entity.fullImageUrl,
-      width: entity.width,
-      height: entity.height,
-      originalWidth: entity.originalWidth,
-      originalHeight: entity.originalHeight,
-      viewScale: entity.viewScale,
-      sourceUrl: entity.sourceUrl,
+      thumbnailUrl: entity.imageUrls.getThumbnailUrl(),
+      fullImageUrl: entity.imageUrls.getFullImageUrl(),
+      width: entity.dimensions.width,
+      height: entity.dimensions.height,
+      originalWidth: entity.dimensions.originalWidth,
+      originalHeight: entity.dimensions.originalHeight,
+      viewScale: entity.viewScale.toNumber(),
+      sourceUrl: entity.sourceUrl?.toString() ?? null,
     }
 
     // Upsert crag topo image
     const savedTopo = await this.prisma.cragTopoImage.upsert({
-      where: { externalId: entity.externalId },
+      where: { externalId: entity.externalId.toString() },
       create: data,
       update: data,
     })
@@ -421,21 +423,24 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
   }): CragTopoImageEntity {
     return new CragTopoImageEntity(
       TopoImageId.fromString(data.id),
-      data.externalId,
+      ExternalId.create(data.externalId),
       CragId.fromString(data.cragId),
-      data.thumbnailUrl,
-      data.fullImageUrl,
-      data.width,
-      data.height,
-      data.originalWidth,
-      data.originalHeight,
-      data.viewScale,
-      data.sourceUrl,
+      TopoImageUrls.create(data.thumbnailUrl, data.fullImageUrl),
+      ImageDimensions.create(
+        data.width,
+        data.height,
+        data.originalWidth,
+        data.originalHeight,
+      ),
+      ViewScale.create(data.viewScale),
+      data.sourceUrl ? Url.create(data.sourceUrl) : null,
       data.createdAt,
       data.updatedAt,
-      data.thumbnailS3Url ?? null,
-      data.fullImageS3Url ?? null,
-      data.originalSourceUrl ?? null,
+      S3ImageUrls.fromNullable(
+        data.thumbnailS3Url ?? null,
+        data.fullImageS3Url ?? null,
+        data.originalSourceUrl ?? null,
+      ),
     )
   }
 
@@ -444,16 +449,14 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
    */
   async updateCragTopoS3Urls(
     topoId: TopoImageId,
-    thumbnailS3Url: string,
-    fullImageS3Url: string,
-    originalSourceUrl: string,
+    s3Urls: S3ImageUrlsDto,
   ): Promise<void> {
     await this.prisma.cragTopoImage.update({
       where: { id: topoId.toString() },
       data: {
-        thumbnailS3Url,
-        fullImageS3Url,
-        originalSourceUrl,
+        thumbnailS3Url: s3Urls.thumbnailS3Url,
+        fullImageS3Url: s3Urls.fullImageS3Url,
+        originalSourceUrl: s3Urls.originalSourceUrl,
         updatedAt: new Date(),
       },
     })

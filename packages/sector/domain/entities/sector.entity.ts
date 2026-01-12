@@ -354,4 +354,77 @@ export class SectorEntity {
       this.headerImageOriginalUrl,
     )
   }
+
+  /**
+   * Create a new sector instance with inherited coordinates from parent crag
+   * Used when sector doesn't have its own coordinates
+   */
+  withCoordinates(latitude: number, longitude: number): SectorEntity {
+    // Create a new geometry with the provided coordinates
+    const newGeometry = new Geometry(
+      latitude,
+      longitude,
+      this.geometry?.center ?? null,
+      this.geometry?.bbox ?? null,
+      this.geometry?.boundary ?? null,
+      this.geometry?.areasize ?? null,
+      this.geometry?.point ?? null,
+    )
+
+    return new SectorEntity(
+      this.id,
+      this.externalId,
+      this.areaId,
+      this.name,
+      this.altNames,
+      this.type,
+      newGeometry,
+      this.locatedness,
+      this.orientation,
+      this.rockType,
+      this.climbingStyle,
+      this.sunExposure,
+      this.sheltered,
+      this.seasonality,
+      this.beta,
+      this.stats,
+      this.numberPhotos,
+      this.numberTopos,
+      this.totalFavorites,
+      this.isTLC,
+      this.ascentCount,
+      this.maxPop,
+      this.priceCategory,
+      this.hasTopo,
+      this.kudos,
+      this.permitNode,
+      this.siblingLabel,
+      this.tagsRaw,
+      this.kidFriendly,
+      this.beginner,
+      this.dogFriendly,
+      this.accessible,
+      this.camping,
+      this.swimming,
+      this.scenic,
+      this.popular,
+      this.quiet,
+      this.multipitch,
+      this.trad,
+      this.sport,
+      this.bouldering,
+      this.urlStub,
+      this.urlAncestorStub,
+      this.lastPDFSize,
+      this.lastPDFStaticDate,
+      this.createdAt,
+      this.updatedAt,
+      this.headerImageUrl,
+      this.headerImageWidth,
+      this.headerImageHeight,
+      this.headerImageS3Url,
+      this.headerImageS3UrlFull,
+      this.headerImageOriginalUrl,
+    )
+  }
 }

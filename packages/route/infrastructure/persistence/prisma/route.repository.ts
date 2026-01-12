@@ -1,19 +1,20 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
 import { ExternalId, Grade, Name } from '@climb-zone/shared'
+import type { TopRouteDto } from '@route/domain/dtos/route.dto'
 import { RouteEntity } from '@route/domain/entities/route.entity'
-import { RouteId } from '@route/domain/value-objects/route-id.vo'
-import { Height } from '@route/domain/value-objects/height.vo'
-import { Rating } from '@route/domain/value-objects/rating.vo'
-import { Pitches } from '@route/domain/value-objects/pitches.vo'
-import { Bolts } from '@route/domain/value-objects/bolts.vo'
-import { Quality } from '@route/domain/value-objects/quality.vo'
 import { Ascents } from '@route/domain/value-objects/ascents.vo'
+import { Bolts } from '@route/domain/value-objects/bolts.vo'
 import { FirstAscent } from '@route/domain/value-objects/first-ascent.vo'
+import { Height } from '@route/domain/value-objects/height.vo'
+import { Pitches } from '@route/domain/value-objects/pitches.vo'
+import { Quality } from '@route/domain/value-objects/quality.vo'
+import { Rating } from '@route/domain/value-objects/rating.vo'
+import { RouteId } from '@route/domain/value-objects/route-id.vo'
 import { RouteType } from '@route/domain/value-objects/route-type.vo'
 import { Tags } from '@route/domain/value-objects/tags.vo'
-import { Warnings } from '@route/domain/value-objects/warnings.vo'
 import { TopoNumber } from '@route/domain/value-objects/topo-number.vo'
+import { Warnings } from '@route/domain/value-objects/warnings.vo'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 
 interface RoutePrismaData {
@@ -216,20 +217,7 @@ export class RoutePrismaRepository extends PrismaRepository<'route'> {
   async findTopRoutesBySectorIds(
     sectorIds: SectorId[],
     limit = 15,
-  ): Promise<
-    Array<{
-      id: string
-      name: string
-      grade: string | null
-      gradeIndex: number | null
-      stars: number | null
-      ascents: number | null
-      height: number | null
-      routeType: string | null
-      sectorId: string
-      sectorName: string
-    }>
-  > {
+  ): Promise<TopRouteDto[]> {
     const sectorIdStrings = sectorIds.map((id) => id.toString())
     const routes = await this.prisma.route.findMany({
       where: {

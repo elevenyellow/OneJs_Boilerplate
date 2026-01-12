@@ -76,15 +76,17 @@ export class GetToposWithRoutesUseCase {
   private async enrichToposWithRoutes(
     topoImages: Array<{
       id: { toString(): string }
-      externalId: string
+      externalId: { toString(): string }
       sectorId: { toString(): string }
       getThumbnailUrl(): string
       getFullImageUrl(): string
-      width: number
-      height: number
-      originalWidth: number
-      originalHeight: number
-      viewScale: number
+      dimensions: {
+        width: number
+        height: number
+        originalWidth: number
+        originalHeight: number
+      }
+      viewScale: { toNumber(): number }
     }>,
     highlightRouteId?: RouteId,
   ): Promise<TopoWithRoutes[]> {
@@ -123,15 +125,15 @@ export class GetToposWithRoutesUseCase {
 
         return {
           id: topo.id.toString(),
-          externalId: topo.externalId,
+          externalId: topo.externalId.toString(),
           sectorId: topo.sectorId.toString(),
           thumbnailUrl: topo.getThumbnailUrl(),
           fullImageUrl: topo.getFullImageUrl(),
-          width: topo.width,
-          height: topo.height,
-          originalWidth: topo.originalWidth,
-          originalHeight: topo.originalHeight,
-          viewScale: topo.viewScale,
+          width: topo.dimensions.width,
+          height: topo.dimensions.height,
+          originalWidth: topo.dimensions.originalWidth,
+          originalHeight: topo.dimensions.originalHeight,
+          viewScale: topo.viewScale.toNumber(),
           routes: routesData,
         }
       }),

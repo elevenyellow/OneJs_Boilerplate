@@ -623,10 +623,12 @@ export class TheCragWebScraper {
     return null
   }
 
+  private static readonly MAX_RETRIES = 3
+
   /**
    * Make HTTP request using curl (bypasses some anti-bot measures)
    */
-  private async curlRequest(url: string): Promise<string> {
+  private async curlRequest(url: string, retryCount = 0): Promise<string> {
     const proxy = this.useProxies ? this.proxyManager.getNext() : null
 
     const args = [
@@ -683,10 +685,15 @@ export class TheCragWebScraper {
           this.proxyManager.reportFailure(proxy)
           logger.warn(
             'scraper:thecrag-web',
-            `Request blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked}`,
+            `Request blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked} | Attempt: ${retryCount + 1}/${TheCragWebScraper.MAX_RETRIES}`,
           )
-          // Retry with next proxy
-          return this.curlRequest(url)
+          // Retry with next proxy if we haven't exceeded max retries
+          if (retryCount + 1 < TheCragWebScraper.MAX_RETRIES) {
+            return this.curlRequest(url, retryCount + 1)
+          }
+          throw new Error(
+            `Request blocked after ${TheCragWebScraper.MAX_RETRIES} attempts: ${isBlocked}`,
+          )
         }
         throw new Error(`Request blocked: ${isBlocked}`)
       }

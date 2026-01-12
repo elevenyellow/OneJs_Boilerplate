@@ -1,6 +1,16 @@
 // Domain - Entities
 export { CragEntity } from './domain/entities/crag.entity'
 
+// Domain - DTOs
+export type {
+  CragWithLocationDto,
+  FindNearbyCragsDto,
+  HeaderImageDto,
+  HeaderImageS3Dto,
+  NearbyCragsResultDto,
+  OverviewTopoDto,
+} from './domain/dtos/crag.dto'
+
 // Domain - Value Objects
 export { CragId } from './domain/value-objects/crag-id.vo'
 

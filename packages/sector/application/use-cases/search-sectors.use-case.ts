@@ -261,8 +261,7 @@ export class SearchSectorsUseCase {
       // 5. Adjust relevance score with conditions bonus
       // Add up to 20 points based on combined conditions
       const conditionsBonus = (combinedConditionsScore / 100) * 20
-      const adjustedRelevanceScore =
-        baseScore.relevanceScore + conditionsBonus
+      const adjustedRelevanceScore = baseScore.relevanceScore + conditionsBonus
 
       // Extract crag name from urlAncestorStub
       const cragName = sector.urlAncestorStub
@@ -325,9 +324,12 @@ export class SearchSectorsUseCase {
     }
 
     // 10.5. Get total sector counts for all crags
-    const cragIdStrings = Array.from(cragGroups.keys()).filter((id) => id !== 'unknown')
+    const cragIdStrings = Array.from(cragGroups.keys()).filter(
+      (id) => id !== 'unknown',
+    )
     const cragIds = cragIdStrings.map((id) => CragId.fromString(id))
-    const sectorCounts = await this.sectorRepository.getSectorCountsByCragIds(cragIds)
+    const sectorCounts =
+      await this.sectorRepository.getSectorCountsByCragIds(cragIds)
 
     // 11. Build crag-grouped results
     const groupedResults = Array.from(cragGroups.entries()).map(
