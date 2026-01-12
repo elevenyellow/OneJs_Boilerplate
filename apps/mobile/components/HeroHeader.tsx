@@ -42,6 +42,11 @@ interface HeroHeaderProps {
     onPress: () => void
     color?: string
   }[]
+  tags?: {
+    label: string
+    icon: keyof typeof Ionicons.glyphMap
+    color: string
+  }[]
 }
 
 // Unsplash images for climbing - curated collection
@@ -131,6 +136,7 @@ export function HeroHeader({
   stats,
   badge,
   actions,
+  tags,
 }: HeroHeaderProps) {
   const colorScheme = useColorScheme() ?? 'light'
   const colors = Colors[colorScheme]
@@ -267,6 +273,23 @@ export function HeroHeader({
                   )}
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Tags row */}
+          {tags && tags.length > 0 && (
+            <View style={styles.tagsRow}>
+              {tags.map((tag, index) => (
+                <View 
+                  key={index} 
+                  style={[styles.tagItem, { borderColor: tag.color }]}
+                >
+                  <Ionicons name={tag.icon} size={12} color={tag.color} />
+                  <Text style={[styles.tagLabel, { color: tag.color }]}>
+                    {tag.label}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -450,5 +473,26 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     fontSize: 12,
     fontWeight: '500',
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  tagItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  tagLabel: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 })

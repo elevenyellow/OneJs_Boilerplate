@@ -269,7 +269,7 @@ export const SectorCard = memo(
                   <View
                     style={[
                       styles.compactTag,
-                      { backgroundColor: colors.muted },
+                      { backgroundColor: colors.muted, borderColor: colors.border },
                     ]}
                   >
                     <Text
@@ -288,7 +288,7 @@ export const SectorCard = memo(
                   <View
                     style={[
                       styles.compactTag,
-                      { backgroundColor: colors.muted },
+                      { backgroundColor: colors.muted, borderColor: colors.border },
                     ]}
                   >
                     <Ionicons
@@ -308,7 +308,7 @@ export const SectorCard = memo(
                 )}
                 {conditions?.isGoodDay && (
                   <View
-                    style={[styles.compactTag, { backgroundColor: '#ECFDF5' }]}
+                    style={[styles.compactTag, { backgroundColor: '#ECFDF5', borderColor: '#10B981' }]}
                   >
                     <Ionicons
                       name="checkmark-circle"
@@ -461,7 +461,7 @@ export const SectorCard = memo(
                 .map((style: string, index: number) => (
                   <View
                     key={index}
-                    style={[styles.tag, { backgroundColor: colors.muted }]}
+                    style={[styles.tag, { backgroundColor: colors.muted, borderColor: colors.border }]}
                   >
                     <Text style={[styles.tagText, { color: colors.text }]}>
                       {String(style).trim()}
@@ -654,14 +654,15 @@ const styles = StyleSheet.create({
   compactTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   compactTagText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   compactRight: {
     flexDirection: 'row',
@@ -749,8 +750,9 @@ const styles = StyleSheet.create({
   },
   tag: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   tagText: {
     fontSize: 12,

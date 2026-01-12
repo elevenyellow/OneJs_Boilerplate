@@ -345,7 +345,7 @@ export default function RouteDetailScreen() {
             </View>
             <View style={styles.tagsList}>
               {currentRoute.tags.map((tag, index) => (
-                <View key={index} style={[styles.tagBadge, { backgroundColor: colors.primary + '15' }]}>
+                <View key={index} style={[styles.tagBadge, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}>
                   <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
                 </View>
               ))}
@@ -583,13 +583,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tagBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   tagText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
   },
   // Section
   section: {

@@ -216,6 +216,58 @@ export default function SectorDetailScreen() {
       params.scenic, params.camping, params.swimming, params.quiet, params.popular,
       params.sport, params.trad, params.bouldering, params.multipitch])
 
+  // Convert sector tags to HeroHeader format
+  const heroTags = useMemo(() => {
+    if (!sectorTags) return undefined
+    
+    const tags: { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = []
+    
+    if (sectorTags.kidFriendly === true) {
+      tags.push({ label: 'Kid Friendly', icon: 'happy-outline', color: '#16A34A' })
+    }
+    if (sectorTags.kidFriendly === false) {
+      tags.push({ label: 'Not Kid Friendly', icon: 'warning-outline', color: '#DC2626' })
+    }
+    if (sectorTags.dogFriendly === true) {
+      tags.push({ label: 'Dog Friendly', icon: 'paw-outline', color: '#D97706' })
+    }
+    if (sectorTags.beginner === true) {
+      tags.push({ label: 'Beginner', icon: 'school-outline', color: '#2563EB' })
+    }
+    if (sectorTags.accessible === true) {
+      tags.push({ label: 'Accessible', icon: 'accessibility-outline', color: '#4F46E5' })
+    }
+    if (sectorTags.scenic === true) {
+      tags.push({ label: 'Scenic', icon: 'eye-outline', color: '#059669' })
+    }
+    if (sectorTags.camping === true) {
+      tags.push({ label: 'Camping', icon: 'bonfire-outline', color: '#CA8A04' })
+    }
+    if (sectorTags.swimming === true) {
+      tags.push({ label: 'Swimming', icon: 'water-outline', color: '#0891B2' })
+    }
+    if (sectorTags.quiet === true) {
+      tags.push({ label: 'Quiet', icon: 'leaf-outline', color: '#7C3AED' })
+    }
+    if (sectorTags.popular === true) {
+      tags.push({ label: 'Crowded', icon: 'people-outline', color: '#EA580C' })
+    }
+    if (sectorTags.sport === true) {
+      tags.push({ label: 'Sport', icon: 'flash-outline', color: '#3B82F6' })
+    }
+    if (sectorTags.trad === true) {
+      tags.push({ label: 'Trad', icon: 'shield-outline', color: '#F59E0B' })
+    }
+    if (sectorTags.bouldering === true) {
+      tags.push({ label: 'Boulder', icon: 'fitness-outline', color: '#10B981' })
+    }
+    if (sectorTags.multipitch === true) {
+      tags.push({ label: 'Multipitch', icon: 'trending-up-outline', color: '#8B5CF6' })
+    }
+    
+    return tags.length > 0 ? tags : undefined
+  }, [sectorTags])
+
   // Fetch topos for this sector
   const { data: toposData, isLoading: isLoadingTopos } = useSectorTopos(
     params.id || '',
@@ -659,43 +711,29 @@ export default function SectorDetailScreen() {
     )
   }, [highlightedRouteId, colors, isRouteInGlobalRange])
 
-  // Render section header with sticky topo image
+  // Render section header with sticky topo image - no title, just the image
   const renderSectionHeader = useCallback(({ section }: { section: TopoSection }) => {
+    // Only render topo image, skip header for sections without topo
+    if (!section.topo) return null
+    
     return (
       <View style={[styles.stickyTopoHeader, { backgroundColor: colors.background }]}>
-        {section.topo ? (
-          <>
-            <View style={styles.topoHeader}>
-              <Ionicons name="image-outline" size={16} color={colors.primary} />
-              <Text style={[styles.topoTitle, { color: colors.text }]}>
-                {section.title}
-              </Text>
-            </View>
-            <TopoViewer
-              topo={section.topo}
-              highlightedRouteId={highlightedRouteId || undefined}
-              gradeRange={
-                userMinGradeIndex !== null && userMaxGradeIndex !== null
-                  ? { min: userMinGradeIndex, max: userMaxGradeIndex }
-                  : undefined
-              }
-              routeDetails={allRoutes}
-              showRouteList={false}
-              onRoutePress={(routePos) => {
-                setHighlightedRouteId((prev) =>
-                  prev === routePos.routeId ? null : routePos.routeId,
-                )
-              }}
-            />
-          </>
-        ) : (
-          <View style={styles.topoHeader}>
-            <Ionicons name="list-outline" size={16} color={colors.textSecondary} />
-            <Text style={[styles.topoTitle, { color: colors.text }]}>
-              {section.title}
-            </Text>
-          </View>
-        )}
+        <TopoViewer
+          topo={section.topo}
+          highlightedRouteId={highlightedRouteId || undefined}
+          gradeRange={
+            userMinGradeIndex !== null && userMaxGradeIndex !== null
+              ? { min: userMinGradeIndex, max: userMaxGradeIndex }
+              : undefined
+          }
+          routeDetails={allRoutes}
+          showRouteList={false}
+          onRoutePress={(routePos) => {
+            setHighlightedRouteId((prev) =>
+              prev === routePos.routeId ? null : routePos.routeId,
+            )
+          }}
+        />
       </View>
     )
   }, [highlightedRouteId, colors, userMinGradeIndex, userMaxGradeIndex, allRoutes])
@@ -746,6 +784,7 @@ export default function SectorDetailScreen() {
               }
             : undefined
         }
+        tags={heroTags}
       />
 
       <View style={styles.content}>
@@ -914,142 +953,6 @@ export default function SectorDetailScreen() {
             )}
           </View>
 
-          {/* Sector Tags */}
-          {sectorTags && (
-            <View style={styles.tagsContainer}>
-              {/* Kid Friendly */}
-              {sectorTags.kidFriendly === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#DCFCE7' }]}>
-                  <Ionicons name="happy-outline" size={14} color="#16A34A" />
-                  <Text style={[styles.tagBadgeText, { color: '#16A34A' }]}>
-                    Kid Friendly
-                  </Text>
-                </View>
-              )}
-              {sectorTags.kidFriendly === false && (
-                <View style={[styles.tagBadge, { backgroundColor: '#FEE2E2' }]}>
-                  <Ionicons name="warning-outline" size={14} color="#DC2626" />
-                  <Text style={[styles.tagBadgeText, { color: '#DC2626' }]}>
-                    Not Kid Friendly
-                  </Text>
-                </View>
-              )}
-
-              {/* Dog Friendly */}
-              {sectorTags.dogFriendly === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#FEF3C7' }]}>
-                  <Ionicons name="paw-outline" size={14} color="#D97706" />
-                  <Text style={[styles.tagBadgeText, { color: '#D97706' }]}>
-                    Dog Friendly
-                  </Text>
-                </View>
-              )}
-
-              {/* Beginner Friendly */}
-              {sectorTags.beginner === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#DBEAFE' }]}>
-                  <Ionicons name="school-outline" size={14} color="#2563EB" />
-                  <Text style={[styles.tagBadgeText, { color: '#2563EB' }]}>
-                    Beginner Friendly
-                  </Text>
-                </View>
-              )}
-
-              {/* Accessible */}
-              {sectorTags.accessible === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#E0E7FF' }]}>
-                  <Ionicons name="accessibility-outline" size={14} color="#4F46E5" />
-                  <Text style={[styles.tagBadgeText, { color: '#4F46E5' }]}>
-                    Accessible
-                  </Text>
-                </View>
-              )}
-
-              {/* Scenic */}
-              {sectorTags.scenic === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#ECFDF5' }]}>
-                  <Ionicons name="eye-outline" size={14} color="#059669" />
-                  <Text style={[styles.tagBadgeText, { color: '#059669' }]}>
-                    Scenic Views
-                  </Text>
-                </View>
-              )}
-
-              {/* Camping */}
-              {sectorTags.camping === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#FEF9C3' }]}>
-                  <Ionicons name="bonfire-outline" size={14} color="#CA8A04" />
-                  <Text style={[styles.tagBadgeText, { color: '#CA8A04' }]}>
-                    Camping
-                  </Text>
-                </View>
-              )}
-
-              {/* Swimming */}
-              {sectorTags.swimming === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#CFFAFE' }]}>
-                  <Ionicons name="water-outline" size={14} color="#0891B2" />
-                  <Text style={[styles.tagBadgeText, { color: '#0891B2' }]}>
-                    Swimming
-                  </Text>
-                </View>
-              )}
-
-              {/* Quiet */}
-              {sectorTags.quiet === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#F3E8FF' }]}>
-                  <Ionicons name="leaf-outline" size={14} color="#7C3AED" />
-                  <Text style={[styles.tagBadgeText, { color: '#7C3AED' }]}>
-                    Quiet
-                  </Text>
-                </View>
-              )}
-
-              {/* Popular (warning) */}
-              {sectorTags.popular === true && (
-                <View style={[styles.tagBadge, { backgroundColor: '#FFEDD5' }]}>
-                  <Ionicons name="people-outline" size={14} color="#EA580C" />
-                  <Text style={[styles.tagBadgeText, { color: '#EA580C' }]}>
-                    Can be Crowded
-                  </Text>
-                </View>
-              )}
-
-              {/* Climbing Types */}
-              {sectorTags.sport === true && (
-                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
-                  <Ionicons name="flash-outline" size={14} color={colors.primary} />
-                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
-                    Sport
-                  </Text>
-                </View>
-              )}
-              {sectorTags.trad === true && (
-                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
-                  <Ionicons name="shield-outline" size={14} color={colors.primary} />
-                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
-                    Trad
-                  </Text>
-                </View>
-              )}
-              {sectorTags.bouldering === true && (
-                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
-                  <Ionicons name="fitness-outline" size={14} color={colors.primary} />
-                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
-                    Bouldering
-                  </Text>
-                </View>
-              )}
-              {sectorTags.multipitch === true && (
-                <View style={[styles.tagBadge, { backgroundColor: colors.muted }]}>
-                  <Ionicons name="trending-up-outline" size={14} color={colors.primary} />
-                  <Text style={[styles.tagBadgeText, { color: colors.text }]}>
-                    Multipitch
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
         </View>
 
         {/* Weather Card */}
@@ -1157,27 +1060,24 @@ export default function SectorDetailScreen() {
           </View>
         )}
 
-        {/* Routes Section Header and Filters */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="list-outline" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Routes ({filteredAndSortedRoutes.length}
+        {/* Routes Section Header and Filters - Unified Compact Block */}
+        <View style={styles.routesBlock}>
+          <View style={styles.routesTitleRow}>
+            <Ionicons name="list-outline" size={18} color={colors.primary} />
+            <Text style={[styles.routesTitleText, { color: colors.text }]}>
+              {filteredAndSortedRoutes.length}
               {filteredAndSortedRoutes.length !== allRoutes.length
-                ? ` of ${allRoutes.length}`
-                : ''}
-              )
+                ? `/${allRoutes.length}`
+                : ''} routes
             </Text>
             {(isLoadingRoutes || isLoadingTopos) && (
               <ActivityIndicator
                 size="small"
                 color={colors.primary}
-                style={{ marginLeft: 8 }}
+                style={{ marginLeft: 4 }}
               />
             )}
           </View>
-
-          {/* Filter Chips */}
           <FilterChipsRow>
             {/* Sort Filter */}
             <FilterChip
@@ -1257,7 +1157,8 @@ export default function SectorDetailScreen() {
                 setMinStars(options[nextIndex])
               }}
             />
-          </FilterChipsRow>
+            </FilterChipsRow>
+          </View>
 
           {/* Empty state */}
           {filteredAndSortedRoutes.length === 0 && !isLoadingRoutes && (
@@ -1274,7 +1175,7 @@ export default function SectorDetailScreen() {
         </View>
       </View>
     </>
-  ), [sector, params, router, colors, showInfo, parkingLocations, sectorTags, latitude, longitude, routeStats, routesInGlobalRangeCount, globalGradeRange, showGradePicker, gradeFilter, sortBy, minStars, filteredAndSortedRoutes, allRoutes, isLoadingRoutes, isLoadingTopos, userMinGradeIndex, userMaxGradeIndex])
+  ), [sector, params, router, colors, showInfo, parkingLocations, heroTags, latitude, longitude, routeStats, routesInGlobalRangeCount, globalGradeRange, showGradePicker, gradeFilter, sortBy, minStars, filteredAndSortedRoutes, allRoutes, isLoadingRoutes, isLoadingTopos, userMinGradeIndex, userMaxGradeIndex])
 
   // List footer component (content after routes)
   const ListFooterComponent = useCallback(() => (
@@ -1453,24 +1354,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginLeft: 4,
   },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 16,
-  },
-  tagBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  tagBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1616,10 +1499,28 @@ const styles = StyleSheet.create({
   },
   stickyTopoHeader: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   routeItemContainer: {
     paddingHorizontal: 20,
+  },
+  // Unified routes header with filters
+  routesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  routesTitleCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  routesTitleText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 })
