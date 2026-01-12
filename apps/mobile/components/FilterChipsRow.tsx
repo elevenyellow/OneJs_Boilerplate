@@ -6,15 +6,21 @@ interface FilterChipsRowProps {
   children: React.ReactNode
   /** Optional container style */
   style?: ViewStyle
+  /** Compact mode with less vertical spacing */
+  compact?: boolean
 }
 
-export function FilterChipsRow({ children, style }: FilterChipsRowProps) {
+export function FilterChipsRow({
+  children,
+  style,
+  compact,
+}: FilterChipsRowProps) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.content}
-      style={[styles.container, style]}
+      contentContainerStyle={compact ? styles.contentCompact : styles.content}
+      style={[compact ? styles.containerCompact : styles.container, style]}
     >
       {children}
     </ScrollView>
@@ -23,10 +29,18 @@ export function FilterChipsRow({ children, style }: FilterChipsRowProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    marginBottom: 0,
+  },
+  containerCompact: {
+    marginBottom: 0,
+    flexShrink: 1,
   },
   content: {
     gap: 8,
     paddingRight: 8,
+  },
+  contentCompact: {
+    gap: 6,
+    paddingRight: 4,
   },
 })

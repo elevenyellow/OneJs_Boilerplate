@@ -385,7 +385,7 @@ export function TopoViewer({
   const imageUrl = normalizeImageUrl(topo.fullImageUrl)
 
   const screenWidth = Dimensions.get('window').width
-  const maxWidth = screenWidth - 32
+  const maxWidth = screenWidth - 16
 
   const originalWidth =
     topo.originalWidth > 0
