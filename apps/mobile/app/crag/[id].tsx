@@ -18,6 +18,7 @@ import {
   Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   SectionList,
   StyleSheet,
   Text,
@@ -740,7 +741,7 @@ export default function CragDetailScreen() {
   const primaryRockType = allSectors[0]?.sector?.rockType || null
 
   // Helper to check if sector is in sun or shade based on orientation and time
-  const isSectorInSun = (orientation: string | null): boolean => {
+  const isSectorInSun = useCallback((orientation: string | null): boolean => {
     if (!orientation) return true // Unknown = treat as sun
     const hour = new Date().getHours()
     // Simplified sun logic:
@@ -757,7 +758,7 @@ export default function CragDetailScreen() {
     else if (hour >= 18) period = 'evening'
 
     return sunnyOrientations[period].includes(orientation)
-  }
+  }, [])
 
   /**
    * Calculate comprehensive score for each sector based on:
@@ -928,20 +929,20 @@ export default function CragDetailScreen() {
   }, [sunPreference, minRoutes, withTopo])
 
   // Clear all filters (except grade range which is global)
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSunPreference('any')
     setMinRoutes(0)
     setWithTopo(false)
-  }
+  }, [])
 
-  const handleGetDirections = () => {
+  const handleGetDirections = useCallback(() => {
     if (crag?.latitude && crag?.longitude) {
       const url = `https://www.google.com/maps/dir/?api=1&destination=${crag.latitude},${crag.longitude}`
       Linking.openURL(url)
     }
-  }
+  }, [crag?.latitude, crag?.longitude])
 
-  const handleSectorPress = (sectorResult: SearchSectorResult) => {
+  const handleSectorPress = useCallback((sectorResult: SearchSectorResult) => {
     const sector = sectorResult.sector
     const grades =
       sector.routes
@@ -1014,10 +1015,10 @@ export default function CragDetailScreen() {
     }
 
     router.push(`/sector/${sector.id}?${params.toString()}`)
-  }
+  }, [crag?.name, crag?.headerImageUrl, distanceParam, router])
 
   // Navigate to sector by ID (used by PanoramicTopo component)
-  const handleSectorNavigateById = (sectorId: string) => {
+  const handleSectorNavigateById = useCallback((sectorId: string) => {
     const sectorResult = allSectors.find(s => s.sector.id === sectorId)
     if (sectorResult) {
       handleSectorPress(sectorResult)
@@ -1025,57 +1026,7 @@ export default function CragDetailScreen() {
       // Fallback: simple navigation without params
       router.push(`/sector/${sectorId}`)
     }
-  }
-
-  if (isLoading) {
-    return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: colors.background },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Loading zone...
-        </Text>
-      </View>
-    )
-  }
-
-  if (isError || !crag) {
-    return (
-      <View
-        style={[styles.errorContainer, { backgroundColor: colors.background }]}
-      >
-        <Ionicons name="alert-circle" size={64} color={colors.destructive} />
-        <Text style={[styles.errorTitle, { color: colors.text }]}>
-          Error loading zone
-        </Text>
-        <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
-          Could not get information
-        </Text>
-        <Pressable
-          style={[styles.retryButton, { backgroundColor: colors.primary }]}
-          onPress={() => refetch()}
-        >
-          <Text
-            style={[
-              styles.retryButtonText,
-              { color: colors.primaryForeground },
-            ]}
-          >
-            Retry
-          </Text>
-        </Pressable>
-        <Pressable style={styles.backLink} onPress={() => router.back()}>
-          <Text style={[styles.backLinkText, { color: colors.primary }]}>
-            Go back
-          </Text>
-        </Pressable>
-      </View>
-    )
-  }
+  }, [allSectors, handleSectorPress, router])
 
   // Section type for SectionList with sticky panoramic topo header
   interface SectorSection {
@@ -1085,8 +1036,9 @@ export default function CragDetailScreen() {
   }
 
   // Create sections for SectionList
+  // Note: Must be defined before any early returns to maintain consistent hook order
   const sections: SectorSection[] = useMemo(() => {
-    if (filteredSectors.length === 0) return []
+    if (!crag || filteredSectors.length === 0) return []
     
     // Add index to each sector for display
     const sectorsWithIndex = filteredSectors.map((sectorResult, idx) => ({
@@ -1099,7 +1051,7 @@ export default function CragDetailScreen() {
       hasPanoramicTopo: !!(crag?.topoImages && crag.topoImages.length > 0 && crag.topoImages[0].sectorPositions?.length > 0),
       data: sectorsWithIndex,
     }]
-  }, [filteredSectors, crag?.topoImages])
+  }, [filteredSectors, crag])
 
   // Render sector row item
   const renderSectorItem = useCallback(({ item: sectorResult }: { item: SearchSectorResult & { calculatedScore: number; index: number } }) => {
@@ -1661,6 +1613,57 @@ export default function CragDetailScreen() {
   const keyExtractor = useCallback((item: SearchSectorResult & { calculatedScore: number; index: number }) => {
     return item.sector.id
   }, [])
+
+  // Loading and error states must be AFTER all hooks to maintain consistent hook order
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          Loading zone...
+        </Text>
+      </View>
+    )
+  }
+
+  if (isError || !crag) {
+    return (
+      <View
+        style={[styles.errorContainer, { backgroundColor: colors.background }]}
+      >
+        <Ionicons name="alert-circle" size={64} color={colors.destructive} />
+        <Text style={[styles.errorTitle, { color: colors.text }]}>
+          Error loading zone
+        </Text>
+        <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
+          Could not get information
+        </Text>
+        <Pressable
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          onPress={() => refetch()}
+        >
+          <Text
+            style={[
+              styles.retryButtonText,
+              { color: colors.primaryForeground },
+            ]}
+          >
+            Retry
+          </Text>
+        </Pressable>
+        <Pressable style={styles.backLink} onPress={() => router.back()}>
+          <Text style={[styles.backLinkText, { color: colors.primary }]}>
+            Go back
+          </Text>
+        </Pressable>
+      </View>
+    )
+  }
 
   return (
     <SectionList
