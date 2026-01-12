@@ -1,0 +1,105 @@
+---
+description: (no description)
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+Logging Conventions: Levels, App Prefix, and Debug Filtering
+
+Purpose
+- Establish consistent logging across all apps and services.
+- Standardize levels, mandatory app prefixing, and usage of the `debug` package for development-time logs.
+
+Scope
+- Applies to every app and package in this repository (e.g., `api`, `admin`, workers, shared libs).
+
+Log Levels
+- debug: Development-time diagnostics. High-volume. Not emitted unless enabled via `DEBUG`.
+- info: Normal operational events. Low-volume, always emitted.
+- warning: Unexpected but recoverable situations. Action may be required.
+- error: Failures that prevent an operation from completing. Must include context.
+
+App Prefix (Namespace)
+- Prefix every log with the app namespace using the format `app:subsystem[:feature]`.
+- Examples:
+  - api:http
+  - api:db
+  - admin:ui
+  - admin:instagram
+  - worker:queue:payments
+
+Default Level and Debug Filtering
+- Default level for development diagnostics is debug (implemented via the `debug` package).
+- Use the `debug` package only for debug-level logs.
+- Enable/disable debug output with the `DEBUG` environment variable (supports globs):
+  - `DEBUG=api:*`            enables all `api` debug logs
+  - `DEBUG=admin:ui,api:db`  enables multiple namespaces
+  - `DEBUG=*,-api:db`        enables all except `api:db`
+
+Usage Rules
+- Use `debug` only for debug-level messages.
+- For info/warning/error, use a centralized logger wrapper that enforces prefix and structure.
+- Always include minimal, structured context: `requestId`, `userId` (if applicable), entity ids, and relevant parameters.
+- Redact PII and secrets (tokens, passwords, auth headers, emails unless strictly required).
+- Prefer structured objects over concatenated strings for additional context.
+- Logging must never crash the flow; handle errors inside logging helpers defensively.
+
+Minimal Logger Facade (Example)
+```ts
+// logging.ts
+import debug from 'debug';
+
+export type LogContext = { requestId?: string; userId?: string; [key: string]: unknown };
+
+export function createLogger(namespace: string) {
+  const dbg = debug(namespace);
+  return {
+    debug: (message: string, context?: LogContext) => dbg(message, context ?? {}),
+    info: (message: string, context?: LogContext) => console.info(prefix(namespace, 'info'), message, context ?? {}),
+    warn: (message: string, context?: LogContext) => console.warn(prefix(namespace, 'warning'), message, context ?? {}),
+    error: (message: string, context?: LogContext, err?: unknown) =>
+      console.error(prefix(namespace, 'error'), message, { ...context }, normalizeError(err)),
+  };
+}
+
+function prefix(ns: string, level: 'info' | 'warning' | 'error') {
+  return `[${ns}] [${level}]`;
+}
+
+function normalizeError(err: unknown) {
+  return err instanceof Error
+    ? { name: err.name, message: err.message, stack: err.stack }
+    : err;
+}
+```
+
+Examples
+```ts
+// api
+const apiLog = createLogger('api:http');
+apiLog.debug('GET /users', { requestId });
+apiLog.info('users fetched', { count });
+apiLog.warn('slow query', { durationMs });
+apiLog.error('db failure', { userId }, error);
+
+// admin
+const adminLog = createLogger('admin:instagram');
+adminLog.debug('render list', { page });
+```
+
+Anti-patterns
+- Do not use `console.*` for debug-level logs; use `debug` with namespaces.
+- Do not log secrets or PII. Redact tokens, passwords, and auth headers.
+- Do not log huge payloads. Cap arrays/strings and summarize large data.
+- Do not throw inside logging calls.
+
+Testing and Verification
+- Unit: assert that the logger prefixes and structures messages as expected.
+- E2E/dev: run with `DEBUG=api:*` and verify that debug emits, while info/warn/error always appear.
+
+Acceptance Criteria
+- This rule lives in `/.rules/logging.mdc` and is applied across apps.
+- Examples cover `api` and `admin` namespaces and demonstrate `debug` filtering.
+- Guidance mandates app prefixing and correct usage of levels.
+

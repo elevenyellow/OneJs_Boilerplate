@@ -1,0 +1,582 @@
+---
+description: Establishes guidelines for implementing repositories using Prisma as the primary ORM following the Repository pattern with proper domain abstraction
+globs:
+  - "packages/**"
+  - "apps/**"
+  - "prisma/**"
+alwaysApply: false
+---
+# Prisma Repository Pattern
+
+Repositories implement the persistence layer using Prisma as the ORM while maintaining domain abstraction and following DDD principles.
+
+## Repository Structure
+
+### Class Declaration
+
+Repositories **MUST** extend `PrismaRepository<TModel>` where `TModel` is a key of `PrismaClient`:
+
+```typescript
+import { Inject, Injectable } from '@OneJs'
+import { PrismaClientEy, PrismaRepository } from '@OneJs/Prisma'
+import { Category } from '@categories/domain/entities'
+import { Id, Name, Slug } from '@categories/domain/value-objects'
+
+@Injectable()
+export class CategoryPrismaRepository extends PrismaRepository<'category'> {
+  constructor(
+    @Inject(PrismaClientEy) protected readonly prisma: PrismaClientEy,
+  ) {
+    super(prisma, 'category')
+  }
+}
+```
+
+**Key Points:**
+- Extend `PrismaRepository<'modelName'>` where `'modelName'` matches the Prisma model name
+- Inject `PrismaClientEy` (not raw `PrismaClient`)
+- Pass both `prisma` and the model name `'category'` to `super()`
+- Mark `prisma` as `protected` to allow access in subclasses
+
+### ✅ CORRECT - Proper Repository Structure
+
+```typescript
+@Injectable()
+export class UserPrismaRepository extends PrismaRepository<'user'> {
+  constructor(
+    @Inject(PrismaClientEy) protected override readonly prisma: PrismaClientEy,
+  ) {
+    super(prisma, 'user')
+  }
+}
+```
+
+### ❌ INCORRECT - Missing PrismaRepository Base
+
+```typescript
+// ❌ WRONG - Not extending PrismaRepository
+@Injectable()
+export class UserRepository {
+  constructor(@Inject(PrismaClientEy) private prisma: PrismaClientEy) {}
+}
+```
+
+### ❌ INCORRECT - Wrong Model Type
+
+```typescript
+// ❌ WRONG - 'users' doesn't match Prisma model name 'user'
+export class UserPrismaRepository extends PrismaRepository<'users'> {
+  // ...
+}
+```
+
+## Mandatory Repository Methods
+
+All repositories **MUST** implement the following basic CRUD operations plus `upsert()`:
+
+### Required Methods
+
+1. **Create**: `save(entity: Entity): Promise<Entity>` or `create(entity: Entity): Promise<Entity>`
+2. **Read**: 
+   - `findById(id: Id): Promise<Entity | null>` - Find entity by ID
+   - `findAll(): Promise<Entity[]>` - Find all entities
+3. **Update**: `update(entity: Entity): Promise<Entity>` - Update existing entity
+4. **Delete**: `delete(id: Id): Promise<void>` or `deleteById(id: Id): Promise<void>` - Delete entity by ID
+5. **Upsert**: `upsert(entity: Entity): Promise<Entity>` - **MANDATORY** - Create or update entity
+
+### ✅ CORRECT - Complete Repository with Mandatory Methods
+
+```typescript
+@Injectable()
+export class CategoryPrismaRepository extends PrismaRepository<'category'> {
+  constructor(
+    @Inject(PrismaClientEy) protected readonly prisma: PrismaClientEy,
+  ) {
+    super(prisma, 'category')
+  }
+
+  // ✅ Create
+  async save(category: Category): Promise<Category> {
+    const dto = category.toDatabase()
+    await this.prisma.category.create({ data: dto })
+    return category
+  }
+
+  // ✅ Read
+  async findById(id: Id): Promise<Category | null> {
+    const category = await this.prisma.category.findUnique({
+      where: { id: id.toString() },
+    })
+    return category ? Category.fromDto(category) : null
+  }
+
+  async findAll(): Promise<Category[]> {
+    const categories = await this.prisma.category.findMany()
+    return categories.map((category) => Category.fromDto(category))
+  }
+
+  // ✅ Update
+  async update(category: Category): Promise<Category> {
+    const dto = category.toDatabase()
+    await this.prisma.category.update({
+      where: { id: dto.id },
+      data: dto,
+    })
+    return category
+  }
+
+  // ✅ Delete
+  async delete(id: Id): Promise<void> {
+    await this.prisma.category.delete({
+      where: { id: id.toString() },
+    })
+  }
+
+  // ✅ Upsert (MANDATORY)
+  async upsert(category: Category): Promise<Category> {
+    const dto = category.toDatabase()
+    await this.prisma.category.upsert({
+      where: { id: dto.id },
+      update: dto,
+      create: dto,
+    })
+    return category
+  }
+}
+```
+
+### ❌ INCORRECT - Missing Mandatory Methods
+
+```typescript
+// ❌ WRONG - Missing upsert() method
+@Injectable()
+export class CategoryPrismaRepository extends PrismaRepository<'category'> {
+  async save(category: Category): Promise<Category> { /* ... */ }
+  async findById(id: Id): Promise<Category | null> { /* ... */ }
+  // ❌ Missing: findAll(), update(), delete(), upsert()
+}
+
+// ❌ WRONG - Missing findAll() method
+@Injectable()
+export class CategoryPrismaRepository extends PrismaRepository<'category'> {
+  async save(category: Category): Promise<Category> { /* ... */ }
+  async findById(id: Id): Promise<Category | null> { /* ... */ }
+  async update(category: Category): Promise<Category> { /* ... */ }
+  async delete(id: Id): Promise<void> { /* ... */ }
+  // ❌ Missing: findAll() and upsert()
+}
+
+// ❌ WRONG - Missing upsert() (MANDATORY)
+@Injectable()
+export class CategoryPrismaRepository extends PrismaRepository<'category'> {
+  async save(category: Category): Promise<Category> { /* ... */ }
+  async findById(id: Id): Promise<Category | null> { /* ... */ }
+  async findAll(): Promise<Category[]> { /* ... */ }
+  async update(category: Category): Promise<Category> { /* ... */ }
+  async delete(id: Id): Promise<void> { /* ... */ }
+  // ❌ Missing: upsert() - This is MANDATORY
+}
+```
+
+### Method Signature Guidelines
+
+- **Create method**: Use `save()` or `create()` - both are acceptable. Choose one consistently.
+- **Delete method**: Use `delete(id)` or `deleteById(id)` - both are acceptable. Choose one consistently.
+- **Upsert method**: **MUST** be named `upsert()` and accept an entity, returning the entity.
+- **Return types**: 
+  - `findById()` returns `Promise<Entity | null>` (entity or null if not found)
+  - `findAll()` returns `Promise<Entity[]>` (empty array if no results)
+  - `delete()` or `deleteById()` returns `Promise<void>`
+  - All other methods return `Promise<Entity>`
+
+## Recommended Additional Methods
+
+While not mandatory, these methods are commonly useful and should be considered:
+
+1. **`count(): Promise<number>`** - Count total records (optionally with filters)
+2. **`exists(id: Id): Promise<boolean>`** - Check if entity exists by ID
+3. **`findWithPagination(params): Promise<{ data: Entity[]; total: number }>`** - Paginated queries
+
+### ✅ CORRECT - Repository with Recommended Methods
+
+```typescript
+@Injectable()
+export class CategoryPrismaRepository extends PrismaRepository<'category'> {
+  // ... mandatory methods ...
+
+  // ✅ Recommended: Count
+  async count(): Promise<number> {
+    return this.prisma.category.count()
+  }
+
+  // ✅ Recommended: Exists
+  async exists(id: Id): Promise<boolean> {
+    const count = await this.prisma.category.count({
+      where: { id: id.toString() },
+    })
+    return count > 0
+  }
+
+  // ✅ Recommended: Pagination
+  async findWithPagination(
+    page: Page,
+    limit: Limit,
+  ): Promise<{ data: Category[]; total: number }> {
+    const skip = (page.getValue() - 1) * limit.getValue()
+    const [data, total] = await Promise.all([
+      this.prisma.category.findMany({
+        skip,
+        take: limit.getValue(),
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.category.count(),
+    ])
+    return {
+      data: data.map((category) => Category.fromDto(category)),
+      total,
+    }
+  }
+}
+```
+
+## Domain Abstraction
+
+### Working with Domain Entities
+
+Repositories **MUST** work with domain entities, not Prisma models directly:
+
+- **Accept**: Domain entities and value objects as method parameters
+- **Return**: Domain entities (never Prisma models or raw database DTOs)
+- **Convert**: Between domain and persistence layers using DTOs
+
+### ✅ CORRECT - Domain Entity Abstraction
+
+```typescript
+@Injectable()
+export class CategoryPrismaRepository extends PrismaRepository<'category'> {
+  async save(category: Category): Promise<Category> {
+    // ✅ Convert entity to database DTO
+    const dto = category.toDatabase()
+
+    await this.prisma.category.upsert({
+      where: { slug: dto.slug },
+      update: dto,
+      create: dto,
+    })
+
+    // ✅ Return domain entity (not Prisma model)
+    return category
+  }
+
+  async findById(id: Id): Promise<Category | null> {
+    // ✅ Query Prisma and convert to domain entity
+    const category = await this.prisma.category.findUnique({
+      where: { id: id.toString() },
+    })
+    
+    // ✅ Return domain entity using fromDto
+    return category ? Category.fromDto(category) : null
+  }
+}
+```
+
+### ❌ INCORRECT - Exposing Prisma Types
+
+```typescript
+// ❌ WRONG - Returning Prisma model directly
+async findById(id: string): Promise<Category | null> {
+  const category = await this.prisma.category.findUnique({
+    where: { id },
+  })
+  return category // ❌ NO - Exposes Prisma type to domain
+}
+
+// ❌ WRONG - Accepting Prisma DTOs from outside
+async save(dto: Prisma.CategoryCreateInput): Promise<Category> {
+  // ❌ NO - Should accept domain entity
+}
+```
+
+## Value Object Conversion
+
+Repository methods receive value objects as parameters and convert them for Prisma queries:
+
+### ✅ CORRECT - Value Object to Prisma Conversion
+
+```typescript
+async findById(id: Id): Promise<Category | null> {
+  // ✅ Convert value object to string for Prisma
+  const category = await this.prisma.category.findUnique({
+    where: { id: id.toString() },
+  })
+  return category ? Category.fromDto(category) : null
+}
+
+async findBySlug(slug: Slug): Promise<Category | null> {
+  // ✅ Use value object method for conversion
+  const category = await this.prisma.category.findUnique({
+    where: { slug: slug.toString() },
+  })
+  return category ? Category.fromDto(category) : null
+}
+
+async findByName(name: Name): Promise<Category | null> {
+  const category = await this.prisma.category.findFirst({
+    where: { name: name.toString() },
+  })
+  return category ? Category.fromDto(category) : null
+}
+```
+
+### ✅ CORRECT - Complex Query with Value Objects
+
+```typescript
+async findByWithPagination(
+  cityId: CityId,
+  startDate: EventDateTime,
+  endDate: EventDateTime,
+  limit: Limit,
+  page: Page,
+): Promise<{ events: Event[]; count: number }> {
+  const where: Prisma.EventWhereInput = {
+    // ✅ Convert value objects for Prisma queries
+    cityId: cityId.getValue(),
+    AND: [
+      { startDate: { lte: endDate.toDate() } },
+      { endDate: { gte: startDate.toDate() } },
+    ],
+  }
+
+  const dtos = await this.prisma.event.findMany({
+    where,
+    skip: (page.getValue() - 1) * limit.getValue(),
+    take: limit.getValue(),
+  })
+
+  // ✅ Convert DTOs to domain entities
+  return {
+    events: dtos.map((dto) => Event.fromDto(dto)),
+    count: await this.prisma.event.count({ where }),
+  }
+}
+```
+
+### ❌ INCORRECT - Raw Primitives in Repository Interface
+
+```typescript
+// ❌ WRONG - Should accept value objects, not primitives
+async findById(id: string): Promise<Category | null> {
+  // Should be: async findById(id: Id): Promise<Category | null>
+}
+```
+
+## Using Base Repository Methods
+
+When possible, **use inherited methods** from `PrismaRepository`:
+
+- `findAll(args)` - Find all records with optional filtering
+- `findOne(args)` - Find first record matching criteria
+- `create(args)` - Create a new record
+- `update(args)` - Update a record
+- `delete(args)` - Delete a record
+- `findWithPagination(args)` - Paginated queries
+
+### ✅ CORRECT - Using Base Methods
+
+```typescript
+async findAll(): Promise<Category[]> {
+  // ✅ Use inherited findAll method
+  const categories = await this.findAll({
+    orderBy: { createdAt: 'desc' },
+  })
+  return categories.map((category) => Category.fromDto(category))
+}
+```
+
+### ⚠️ NOTE - Custom Methods Override Base Methods
+
+When you need domain-specific logic, override base methods or add custom ones:
+
+```typescript
+// ✅ Custom method for domain-specific query
+async findBySlug(slug: Slug): Promise<Category | null> {
+  const category = await this.prisma.category.findUnique({
+    where: { slug: slug.toString() },
+  })
+  return category ? Category.fromDto(category) : null
+}
+```
+
+## Entity Conversion Patterns
+
+### Saving Entities
+
+Always use `toDatabase()` or `toSaveDto()` to convert entities before persistence:
+
+```typescript
+async save(category: Category): Promise<Category> {
+  // ✅ Use toDatabase() to get persistence DTO
+  const dto = category.toDatabase()
+
+  await this.prisma.category.upsert({
+    where: { slug: dto.slug },
+    update: dto,
+    create: dto,
+  })
+
+  return category
+}
+```
+
+### Retrieving Entities
+
+Always use `fromDto()` to convert database results to domain entities:
+
+```typescript
+async findById(id: Id): Promise<Category | null> {
+  const category = await this.prisma.category.findUnique({
+    where: { id: id.toString() },
+  })
+  
+  // ✅ Use fromDto() to reconstruct domain entity
+  return category ? Category.fromDto(category) : null
+}
+
+async findAll(): Promise<Category[]> {
+  const categories = await this.prisma.category.findMany()
+  
+  // ✅ Map DTOs to domain entities
+  return categories.map((category) => Category.fromDto(category))
+}
+```
+
+## Prisma Types in Repository
+
+### ✅ CORRECT - Using Prisma Types Internally
+
+Prisma types (`Prisma.*`) can be used **inside** repositories for query building, but never exposed:
+
+```typescript
+async findByWithPagination(
+  cityId: CityId,
+  search: SearchQuery,
+): Promise<{ events: Event[]; count: number }> {
+  // ✅ Prisma types for query building (internal use)
+  const where: Prisma.EventWhereInput = {
+    cityId: cityId.getValue(),
+  }
+
+  if (search.hasQuery()) {
+    where.OR = [
+      { description: { contains: search.toString(), mode: 'insensitive' } },
+      { venueName: { contains: search.toString(), mode: 'insensitive' } },
+    ]
+  }
+
+  const dtos = await this.prisma.event.findMany({ where })
+  return {
+    events: dtos.map((dto) => Event.fromDto(dto)),
+    count: await this.prisma.event.count({ where }),
+  }
+}
+```
+
+### ❌ INCORRECT - Exposing Prisma Types
+
+```typescript
+// ❌ WRONG - Prisma type in method signature
+async findComplex(
+  where: Prisma.EventWhereInput, // ❌ NO - Exposes Prisma type
+): Promise<Event[]> {
+  // ...
+}
+
+// ❌ WRONG - Returning Prisma type
+async findById(id: Id): Promise<Prisma.CategoryGetPayload<...>> {
+  // Should return: Promise<Category | null>
+}
+```
+
+## Complex Queries with Relations
+
+When building queries with relations, maintain domain abstraction:
+
+### ✅ CORRECT - Relations with Domain Abstraction
+
+```typescript
+async findByUserId(userId: Id) {
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId.toString() },
+    include: { venues: { include: { venue: true } } },
+  })
+
+  if (!user) return null
+
+  // ✅ Convert to domain DTO, then to entity
+  const userDto = new UserDto(
+    user.id,
+    user.role,
+    user.venues.map((uv) => uv.venue),
+  )
+
+  return User.fromDto(userDto)
+}
+```
+
+## Transaction Support
+
+When transactions are needed, accept an optional transaction parameter:
+
+```typescript
+async save(
+  category: Category,
+  tx?: PrismaClient,
+): Promise<Category> {
+  const dto = category.toDatabase()
+  const client = tx || this.prisma
+
+  await client.category.upsert({
+    where: { slug: dto.slug },
+    update: dto,
+    create: dto,
+  })
+
+  return category
+}
+```
+
+**Note**: See `.cursor/rules/ddd-application-use.mdc` for transaction patterns at the use case level.
+
+## Rules Summary
+
+### ✅ DO
+
+- Extend `PrismaRepository<'modelName'>` where modelName matches Prisma schema
+- Inject `PrismaClientEy` and pass to `super()`
+- **Implement all mandatory CRUD methods**: `save()` or `create()`, `findById()`, `findAll()`, `update()`, `delete()` or `deleteById()`
+- **Implement `upsert()` method (MANDATORY for all repositories)**
+- Work with domain entities and value objects
+- Use `toDatabase()` for persistence conversion
+- Use `fromDto()` for entity reconstruction
+- Convert value objects to primitives for Prisma queries (`.toString()`, `.getValue()`, etc.)
+- Use Prisma types (`Prisma.*`) internally for query building, never expose them
+- Return domain entities, never Prisma models or raw DTOs
+- Consider implementing recommended methods: `count()`, `exists()`, `findWithPagination()`
+
+### ❌ DON'T DO
+
+- Don't skip mandatory CRUD methods (`save`/`create`, `findById`, `findAll`, `update`, `delete`/`deleteById`)
+- Don't skip the `upsert()` method (it's MANDATORY)
+- Don't work with Prisma models directly in repository interfaces
+- Don't expose Prisma types (`Prisma.*`) in method signatures
+- Don't return raw database DTOs or Prisma models
+- Don't accept raw primitives when value objects should be used
+- Don't skip the conversion layer between domain and persistence
+
+## Related References
+
+- `.cursor/rules/ddd-application-use.mdc` - Domain structure and entity patterns
+- `.cursor/rules/value-object-null-safety.mdc` - Verifying value objects before method access
+- `.cursor/rules/try-catch-handling.mdc` - Error handling patterns
+- `.cursor/rules/aggregates-and-invariants.mdc` - Working with aggregates in repositories
+- `.cursor/rules/specifications-pattern.mdc` - Using specifications with repository queries

@@ -1,6 +1,9 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs } from '@OneJs/prisma'
-import { ImageProcessorService, type ProcessedImages } from '@climb-zone/storage'
+import {
+  ImageProcessorService,
+  type ProcessedImages,
+} from '@climb-zone/storage'
 import { CragPrismaRepository } from '@climb-zone/crag'
 import { SectorPrismaRepository } from '@climb-zone/sector'
 import { TopoPrismaRepository } from '@climb-zone/topo'
@@ -183,14 +186,19 @@ export class ImageUploadService {
       errors: [],
     }
 
-    console.log(`\n📷 Starting S3 image upload for crag ${cragId.toString()}...`)
+    console.log(
+      `\n📷 Starting S3 image upload for crag ${cragId.toString()}...`,
+    )
 
     // 1. Upload crag header image
     if (uploadCragHeader) {
       const crag = await this.cragRepo.findById(cragId)
       if (crag?.headerImageUrl && !crag.headerImageS3Url) {
         console.log(`   🖼️  Uploading crag header image...`)
-        const processed = await this.uploadCragHeaderImage(cragId, crag.headerImageUrl)
+        const processed = await this.uploadCragHeaderImage(
+          cragId,
+          crag.headerImageUrl,
+        )
         if (processed) {
           result.cragsProcessed++
           console.log(`      ✅ Crag header uploaded: ${processed.mobile.url}`)
@@ -214,7 +222,7 @@ export class ImageUploadService {
 
       for (const area of areas) {
         const sectors = await this.prisma.sector.findMany({
-          where: { 
+          where: {
             areaId: area.id,
             headerImageUrl: { not: null },
             headerImageS3Url: null,

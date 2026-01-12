@@ -10,13 +10,8 @@ import { PrismaPlugin } from '@OneJs/prisma'
 
 // Tipos de comandos disponibles
 type Command =
-  | 'test-altura'
-  | 'test-jerica'
-  | 'test-cheste'
-  | 'test-valencia'
-  | 'test-country'
   | 'test-s3-upload'
-  | 'scrape-spain'
+  | 'scrape-crag'
   | 'scrape-world'
   | 'seed-countries'
   | 'verify-data'
@@ -39,56 +34,6 @@ const COOKIE =
 
 // Comandos disponibles
 const COMMANDS: Record<string, CommandDefinition> = {
-  'test-altura': {
-    name: 'test-altura',
-    description:
-      'Test pequeño: Altura (Castellón) - verificar imágenes y topos',
-    execute: async (container) => {
-      const { testAltura } = await import('./commands/test-altura.command')
-      await testAltura(container, COOKIE)
-    },
-  },
-  'test-jerica': {
-    name: 'test-jerica',
-    description:
-      'Test pequeño: Jérica (Castellón) - verificar imágenes y topos',
-    execute: async (container) => {
-      const { testJerica } = await import('./commands/test-jerica.command')
-      await testJerica(container, COOKIE)
-    },
-  },
-  'test-cheste': {
-    name: 'test-cheste',
-    description: 'Test pequeño: Cheste (Valencia) - verificar imágenes y topos',
-    execute: async (container) => {
-      const { testCheste } = await import('./commands/test-cheste.command')
-      await testCheste(container, COOKIE)
-    },
-  },
-  'test-valencia': {
-    name: 'test-valencia',
-    description: 'Scrape solo la región de Valencia para testing',
-    execute: async (container) => {
-      const { testValencia } = await import('./commands/test-valencia.command')
-      await testValencia(container, COOKIE)
-    },
-  },
-  'test-country': {
-    name: 'test-country',
-    description:
-      'Scrape un país completo (batch 100). Uso: test-country <país>',
-    execute: async (container) => {
-      const countryName = process.argv[3]
-      if (!countryName) {
-        console.error('❌ Error: Debes especificar un país')
-        console.log('Uso: bun run apps/scripts/cli.ts test-country <país>')
-        console.log('Ejemplo: bun run apps/scripts/cli.ts test-country Spain')
-        process.exit(1)
-      }
-      const { testCountry } = await import('./commands/test-country.command')
-      await testCountry(container, COOKIE, countryName)
-    },
-  },
   'test-s3-upload': {
     name: 'test-s3-upload',
     description: 'Probar subida de imagen a S3',
@@ -97,12 +42,12 @@ const COMMANDS: Record<string, CommandDefinition> = {
       await testS3Upload(container)
     },
   },
-  'scrape-spain': {
-    name: 'scrape-spain',
-    description: 'Scrape toda España (todas las regiones)',
+  'scrape-crag': {
+    name: 'scrape-crag',
+    description: 'Scrape any crag by name. Usage: scrape-crag "Crag Name"',
     execute: async (container) => {
-      const { scrapeSpain } = await import('./commands/scrape-spain.command')
-      await scrapeSpain(container, COOKIE)
+      const { scrapeCrag } = await import('./commands/scrape-crag.command')
+      await scrapeCrag(container, COOKIE)
     },
   },
   'scrape-world': {
@@ -166,7 +111,9 @@ const COMMANDS: Record<string, CommandDefinition> = {
         console.log(
           'Uso: bun run apps/scripts/cli.ts query-api <crag|area|sector> <externalId>',
         )
-        console.log('Ejemplo: bun run apps/scripts/cli.ts query-api crag 102885390')
+        console.log(
+          'Ejemplo: bun run apps/scripts/cli.ts query-api crag 102885390',
+        )
         process.exit(1)
       }
       const { queryApiResponse } = await import(
@@ -205,7 +152,9 @@ const COMMANDS: Record<string, CommandDefinition> = {
         console.log(
           'Uso: bun run apps/scripts/cli.ts list-sectors <areaExternalId>',
         )
-        console.log('Ejemplo: bun run apps/scripts/cli.ts list-sectors 102885391')
+        console.log(
+          'Ejemplo: bun run apps/scripts/cli.ts list-sectors 102885391',
+        )
         process.exit(1)
       }
       const { listAreaSectors } = await import(
@@ -233,13 +182,8 @@ function printHelp() {
   })
 
   console.log('\nEjemplos:')
-  console.log(
-    '  bun run apps/scripts/cli.ts test-altura    # Test pequeño para verificar imágenes',
-  )
-  console.log('  bun run apps/scripts/cli.ts test-valencia')
-  console.log('  bun run apps/scripts/cli.ts test-country Spain')
-  console.log('  bun run apps/scripts/cli.ts test-country France')
-  console.log('  bun run apps/scripts/cli.ts scrape-spain')
+  console.log('  bun run apps/scripts/cli.ts scrape-crag "El Chorro"')
+  console.log('  bun run apps/scripts/cli.ts seed-countries')
   console.log('')
 }
 

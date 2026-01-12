@@ -1,0 +1,450 @@
+---
+description: Prohibits exporting classes decorated with @Injectable(), @Controller(), or other DI decorators from barrel index files to prevent circular dependencies and DI resolution issues
+globs:
+  - "apps/**/index.ts"
+  - "packages/**/index.ts"
+  - "apps/**"
+  - "packages/**"
+alwaysApply: true
+---
+# No Barrel Index Exports for Dependency-Injected Classes
+
+This rule establishes a **MANDATORY** prohibition against exporting classes decorated with dependency injection decorators (`@Injectable()`, `@Controller()`, `@EventHandler()`) from barrel index files (`index.ts`). This prevents circular dependencies, ambiguous import paths, and dependency injection container resolution issues.
+
+## Core Principle: Direct Imports for DI Classes
+
+**Classes registered in the DI container MUST be imported directly from their source files, NEVER from barrel index files.**
+
+## Rationale
+
+Barrel index files that re-export DI-registered classes create multiple critical problems:
+
+### 1. Circular Dependency Issues
+
+When classes import each other through barrel files, the import chain becomes opaque, making circular dependencies harder to detect and resolve.
+
+```typescript
+// ❌ BAD - Circular dependency hidden by barrel files
+// apps/api/src/admin/events/index.ts
+export { EventsController } from './controllers/events.controller'
+
+// apps/api/src/admin/categories/index.ts  
+export { CategoriesController } from './controllers/categories.controller'
+
+// EventsController imports from barrel
+import { CategoriesController } from '@admin/categories' // Loads entire module
+// CategoriesController imports from barrel
+import { EventsController } from '@admin/events' // CIRCULAR!
+```
+
+### 2. DI Container Resolution Problems
+
+The dependency injection container may resolve classes from the wrong import path, causing:
+- Multiple instances of the same class
+- Injection failures
+- Runtime errors that are hard to debug
+
+```typescript
+// ❌ BAD - DI container confusion
+// File A imports: import { UserRepository } from '@user'
+// File B imports: import { UserRepository } from '@user/infrastructure/persistence/prisma/user.repository'
+// Result: Container may register TWO different instances!
+```
+
+### 3. Ambiguous Import Paths
+
+Multiple ways to import the same class creates maintenance burden and inconsistency:
+
+```typescript
+// ❌ BAD - Three different ways to import the same class
+import { CategoriesController } from '@admin/categories'
+import { CategoriesController } from '@admin/categories/application/controllers'
+import { CategoriesController } from '@admin/categories/application/controllers/categories.controller'
+```
+
+### 4. Tree-Shaking and Bundle Size Issues
+
+Barrel exports prevent bundlers from properly tree-shaking unused code:
+
+```typescript
+// ❌ BAD - Importing one class loads entire module
+import { CategoriesController } from '@admin/categories' 
+// This loads:
+// - CategoriesController
+// - ALL use cases
+// - ALL repositories  
+// - ALL services
+// Even if you only need the controller!
+```
+
+### 5. Unclear Dependencies
+
+Barrel exports hide the true dependency graph, making it harder to understand module relationships and refactor code safely.
+
+## Strict Rules
+
+### MUST NOT Export from Index Files
+
+**FORBIDDEN**: Exporting any class decorated with DI decorators from `index.ts` files.
+
+#### Classes with `@Injectable()` decorator:
+
+```typescript
+// ❌ FORBIDDEN in index.ts
+
+// Repositories
+export { CategoryPrismaRepository } from './infrastructure/persistence/prisma/category-prisma.repository'
+export { EventRepository } from './infrastructure/persistence/event.repository'
+
+// Use Cases  
+export { CreateCategoryUseCase } from './application/use-cases/create-category.use-case'
+export { UpdateCategoryUseCase } from './application/use-cases/update-category.use-case'
+
+// Domain Services
+export { EventScoringService } from './domain/services/event-scoring.service'
+
+// Application Services
+export { CategoryValidationService } from './application/services/category-validation.service'
+```
+
+#### Classes with `@Controller()` decorator:
+
+```typescript
+// ❌ FORBIDDEN in index.ts
+
+// Controllers
+export { CategoriesController } from './application/controllers/categories.controller'
+export { EventsController } from './infrastructure/controllers/events.controller'
+export { AdminEventsController } from './application/controllers/events.controller'
+```
+
+#### Classes with `@EventHandler()` decorator:
+
+```typescript
+// ❌ FORBIDDEN in index.ts
+
+// Event Handlers
+export { EventCreatedHandler } from './application/handlers/event-created.handler'
+export { UserRegisteredHandler } from './application/handlers/user-registered.handler'
+```
+
+#### Any class injected into the DI container:
+
+```typescript
+// ❌ FORBIDDEN in index.ts
+
+// Any class that will be passed to @Inject() decorator
+export { CustomService } from './services/custom.service'
+export { DataProcessor } from './processors/data.processor'
+```
+
+### MAY Export from Index Files
+
+**ALLOWED**: Exporting types, interfaces, DTOs, enums, and constants that are NOT instantiated by the DI container.
+
+```typescript
+// ✅ ALLOWED in index.ts
+
+// Type exports (not classes)
+export type { CreateCategoryDto, UpdateCategoryDto } from './application/dtos'
+export type { CategoryFilters } from './application/types'
+export type { EventSearchCriteria } from './domain/types'
+
+// Interface exports
+export type { ICategoryRepository } from './domain/repositories/category.repository.interface'
+
+// Enum exports
+export { CategoryType } from './domain/enums/category-type.enum'
+export { EventStatus } from './domain/enums/event-status.enum'
+
+// Constant exports
+export { MAX_CATEGORY_NAME_LENGTH } from './domain/constants'
+export { DEFAULT_PAGE_SIZE } from './application/constants'
+
+// Pure utility functions (not decorated classes)
+export { formatCategoryName } from './utils/formatters'
+export { validateEmail } from './utils/validators'
+```
+
+## Real Codebase Examples
+
+### ❌ INCORRECT - Current Violations
+
+```typescript
+// apps/api/src/admin/categories/index.ts (CURRENT - VIOLATES RULE)
+export { CategoriesController } from './application/controllers/categories.controller'
+export type { CreateCategoryDto, UpdateCategoryDto } from './application/dtos'
+```
+
+```typescript
+// apps/api/src/admin/events/index.ts (CURRENT - VIOLATES RULE)
+export {
+  AdminEventsController,
+  EventsMergeController,
+} from './application/controllers/events.controller'
+export type { CreateEventDto, UpdateEventDto } from './application/dtos'
+```
+
+```typescript
+// apps/api/src/admin/tags/index.ts (CURRENT - VIOLATES RULE)
+export { TagsController } from './application/controllers/tags.controller'
+```
+
+### ✅ CORRECT - Rule Compliant
+
+```typescript
+// apps/api/src/admin/categories/index.ts (CORRECT)
+// Only export types and DTOs, NOT controllers
+export type { CreateCategoryDto, UpdateCategoryDto } from './application/dtos'
+export type { CategoryFilters } from './application/types'
+```
+
+```typescript
+// apps/api/src/admin/events/index.ts (CORRECT)
+// Only export types and DTOs, NOT controllers
+export type { CreateEventDto, UpdateEventDto } from './application/dtos'
+export type { EventFilters, EventSearchOptions } from './application/types'
+```
+
+```typescript
+// apps/api/src/admin/tags/index.ts (CORRECT)
+// Only export types and DTOs, NOT controllers
+export type { CreateTagDto, UpdateTagDto } from './application/dtos'
+```
+
+## Correct Import Patterns
+
+### ✅ CORRECT - Direct imports from source files
+
+```typescript
+// Import controllers directly
+import { CategoriesController } from '@admin/categories/application/controllers/categories.controller'
+import { EventsController } from '@admin/events/application/controllers/events.controller'
+import { TagsController } from '@admin/tags/application/controllers/tags.controller'
+
+// Import repositories directly
+import { CategoryPrismaRepository } from '@categories/infrastructure/persistance/prisma/category-prisma.repository'
+import { EventPrismaRepository } from '@events/infrastructure/persistance/prisma/event-prisma.repository'
+
+// Import use cases directly
+import { CreateCategoryUseCase } from '@categories/application/use-cases/create-category.use-case'
+import { UpdateEventUseCase } from '@events/application/use-cases/update-event.use-case'
+
+// Import types from barrel (ALLOWED)
+import type { CreateCategoryDto } from '@admin/categories'
+import type { UpdateEventDto } from '@admin/events'
+```
+
+### ❌ INCORRECT - Importing from barrel files
+
+```typescript
+// ❌ WRONG - Importing DI classes from barrel
+import { CategoriesController } from '@admin/categories'
+import { EventsController } from '@admin/events'
+import { TagsController } from '@admin/tags'
+
+// ❌ WRONG - Importing repositories from barrel
+import { CategoryPrismaRepository } from '@categories'
+import { EventPrismaRepository } from '@events'
+
+// ❌ WRONG - Importing use cases from barrel
+import { CreateCategoryUseCase } from '@categories'
+import { UpdateEventUseCase } from '@events'
+```
+
+## Migration Strategy
+
+### Step 1: Identify Violations
+
+Search for barrel exports of DI classes:
+
+```bash
+# Find index files exporting controllers
+grep -r "export.*Controller.*from" apps/**/index.ts packages/**/index.ts
+
+# Find index files exporting repositories
+grep -r "export.*Repository.*from" apps/**/index.ts packages/**/index.ts
+
+# Find index files exporting use cases
+grep -r "export.*UseCase.*from" apps/**/index.ts packages/**/index.ts
+
+# Find index files exporting services
+grep -r "export.*Service.*from" apps/**/index.ts packages/**/index.ts
+```
+
+### Step 2: Remove DI Class Exports from Index Files
+
+For each barrel index file that exports DI classes:
+
+```typescript
+// BEFORE - apps/api/src/admin/categories/index.ts
+export { CategoriesController } from './application/controllers/categories.controller'
+export type { CreateCategoryDto, UpdateCategoryDto } from './application/dtos'
+
+// AFTER - apps/api/src/admin/categories/index.ts
+// Remove controller export, keep only types
+export type { CreateCategoryDto, UpdateCategoryDto } from './application/dtos'
+```
+
+### Step 3: Update All Import Statements
+
+Find all files that import DI classes from barrel files and update them:
+
+```bash
+# Find files importing from barrel
+grep -r "import.*from '@admin/categories'" apps/
+```
+
+Update each import:
+
+```typescript
+// BEFORE
+import { CategoriesController } from '@admin/categories'
+import type { CreateCategoryDto } from '@admin/categories'
+
+// AFTER
+import { CategoriesController } from '@admin/categories/application/controllers/categories.controller'
+import type { CreateCategoryDto } from '@admin/categories'
+```
+
+### Step 4: Verify No Circular Dependencies
+
+After migration, verify no circular dependencies exist:
+
+```bash
+# Use madge or similar tool to detect circular dependencies
+npx madge --circular --extensions ts apps/
+```
+
+### Step 5: Update Documentation
+
+Document the new import patterns in your team's style guide or onboarding documentation.
+
+## Special Cases
+
+### Package-Level Exports
+
+For packages in the monorepo (`packages/*`), the same rule applies:
+
+```typescript
+// packages/categories/index.ts (CORRECT)
+// Only export domain entities, value objects, and types
+export { Category } from './domain/entities/category'
+export { CategoryName } from './domain/value-objects/category-name'
+export type { CategoryDto } from './domain/dtos/category.dto'
+
+// ❌ DO NOT export repositories or services
+// export { CategoryPrismaRepository } from './infrastructure/persistence/prisma/category-prisma.repository'
+// export { CategoryDomainService } from './domain/services/category.service'
+```
+
+### Testing Files
+
+Test files should also import DI classes directly:
+
+```typescript
+// ✅ CORRECT in test files
+import { CreateCategoryUseCase } from '@categories/application/use-cases/create-category.use-case'
+import { CategoryPrismaRepository } from '@categories/infrastructure/persistance/prisma/category-prisma.repository'
+
+// ❌ INCORRECT in test files
+import { CreateCategoryUseCase } from '@categories'
+```
+
+### Dynamic Imports
+
+Dynamic imports (for lazy loading) must also use direct paths:
+
+```typescript
+// ✅ CORRECT - Dynamic import from source file
+const { EventsController } = await import(
+  '@admin/events/application/controllers/events.controller'
+)
+
+// ❌ INCORRECT - Dynamic import from barrel
+const { EventsController } = await import('@admin/events')
+```
+
+## Enforcement
+
+### Manual Review
+
+During code review, verify:
+- ✅ No `export { <ClassName> }` of DI classes in `index.ts` files
+- ✅ Only `export type { }` statements in `index.ts` files
+- ✅ All DI class imports use direct file paths
+- ✅ No barrel file imports for controllers, repositories, use cases, or services
+
+### Automated Checks
+
+Consider adding ESLint rules or pre-commit hooks:
+
+```javascript
+// .eslintrc.js (example custom rule)
+'no-restricted-syntax': [
+  'error',
+  {
+    selector: 'ExportNamedDeclaration[source.value=/index$/]',
+    message: 'Do not export DI classes from index files. Export types only.',
+  },
+]
+```
+
+## PR Checklist
+
+Before submitting a PR, verify:
+
+- [ ] No `@Injectable()` classes exported from `index.ts` files
+- [ ] No `@Controller()` classes exported from `index.ts` files
+- [ ] No `@EventHandler()` classes exported from `index.ts` files
+- [ ] No repositories exported from `index.ts` files
+- [ ] No use cases exported from `index.ts` files
+- [ ] No services exported from `index.ts` files
+- [ ] Only types, DTOs, interfaces, enums, and constants exported from `index.ts` files
+- [ ] All DI class imports use direct file paths (not barrel imports)
+- [ ] No circular dependencies introduced
+- [ ] All tests use direct imports for DI classes
+
+## Summary
+
+### ✅ DO
+
+- Export types, interfaces, DTOs, enums, and constants from `index.ts` files
+- Import DI classes directly from their source files
+- Use full file paths for controllers, repositories, use cases, and services
+- Keep barrel files minimal and focused on type exports only
+- Review imports during code review to catch violations
+
+### ❌ DON'T DO
+
+- Don't export classes with `@Injectable()` decorator from `index.ts` files
+- Don't export classes with `@Controller()` decorator from `index.ts` files
+- Don't export classes with `@EventHandler()` decorator from `index.ts` files
+- Don't export repositories from `index.ts` files
+- Don't export use cases from `index.ts` files
+- Don't export services from `index.ts` files
+- Don't import DI classes from barrel files
+- Don't create multiple import paths for the same class
+
+## Related Rules
+
+This rule works together with other DI and architecture rules:
+
+- `.cursor/rules/dependency-injection.mdc` - Enforces that `@Inject()` only receives concrete classes with `@Injectable()` decorator
+- `.cursor/rules/controller-dependencies.mdc` - Enforces that controllers only inject use cases and application services, not repositories
+- `.cursor/rules/srp-and-repository.mdc` - Enforces Single Responsibility Principle and Repository pattern usage
+- `.cursor/rules/package-imports.mdc` - Enforces use of package aliases `@<package-name>` instead of relative paths when importing from packages
+- `.cursor/rules/code-style-and-commands.mdc` - General code style guidelines and DDD conventions
+
+## Benefits
+
+Following this rule provides:
+
+1. **Clearer dependency graph**: Direct imports make dependencies explicit
+2. **Faster builds**: Better tree-shaking reduces bundle size
+3. **Easier refactoring**: Changes don't ripple through barrel files
+4. **Fewer circular dependencies**: Direct imports make cycles obvious
+5. **Reliable DI resolution**: Container always resolves same instance
+6. **Better IDE support**: Go-to-definition works more reliably
+7. **Simpler debugging**: Stack traces show actual file paths
+8. **Reduced cognitive load**: One clear way to import each class

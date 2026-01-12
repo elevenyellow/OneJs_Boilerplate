@@ -1,0 +1,616 @@
+---
+description: Establishes rules for aggregates, aggregate roots, and domain invariants following DDD principles. Defines how to design aggregates, maintain consistency, and enforce business invariants.
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Aggregates and Domain Invariants
+
+Aggregates are clusters of domain objects (entities and value objects) treated as a single unit for data changes. The Aggregate Root is the single entity that external code may hold references to. Invariants are business rules that must always be true within an aggregate boundary.
+
+## General Principles
+
+- **Aggregates define consistency boundaries** - All business invariants must be maintained within a single aggregate
+- **Only reference aggregates by ID** - Never hold direct references to entities inside other aggregates
+- **One transaction per aggregate** - Modify one aggregate per transaction when possible
+- **Keep aggregates small** - Prefer small, focused aggregates over large ones
+- **Invariants must always be true** - Business rules must be enforced and validated
+
+## Aggregates
+
+### What is an Aggregate?
+
+An aggregate is a cluster of related entities and value objects that form a **consistency boundary**. The aggregate is treated as a single unit for data modifications and maintains business invariants.
+
+### Aggregate Root
+
+The **Aggregate Root** is the single entity that serves as the entry point to the aggregate. External code may only hold references to the aggregate root, never to internal entities.
+
+**Characteristics:**
+- Only entity that can be referenced from outside the aggregate
+- Responsible for maintaining invariants of the entire aggregate
+- Controls access to child entities and value objects
+- Used as the identifier for the entire aggregate
+
+### ✅ CORRECT - Simple Aggregate with Root
+
+```typescript
+// Aggregate Root - Order
+export class Order {
+  constructor(
+    private readonly id: OrderId,
+    private readonly customerId: CustomerId,
+    private readonly items: OrderItem[], // Child entities
+    private readonly status: OrderStatus,
+    private readonly totalAmount: Money,
+  ) {}
+
+  getId(): OrderId {
+    return this.id
+  }
+
+  // ✅ Aggregate root controls access to children
+  getItems(): ReadonlyArray<OrderItem> {
+    return [...this.items]
+  }
+
+  // ✅ Aggregate root maintains invariants
+  addItem(item: OrderItem): void {
+    // Validate invariant: items must have positive quantity
+    if (item.getQuantity() <= 0) {
+      throw new OneJsError(
+        'Invalid item quantity',
+        400,
+        'Order item quantity must be greater than zero',
+        { itemId: item.getId().toString() },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+
+    // Validate invariant: order total must not exceed limit
+    const newTotal = this.calculateTotalWithItem(item)
+    if (newTotal.isGreaterThan(Order.MAX_TOTAL_AMOUNT)) {
+      throw new OneJsError(
+        'Order total exceeded',
+        400,
+        `Order total cannot exceed ${Order.MAX_TOTAL_AMOUNT.toString()}`,
+        { currentTotal: this.totalAmount.toString(), newTotal: newTotal.toString() },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+
+    this.items.push(item)
+    this.recalculateTotal()
+  }
+
+  // ✅ Business operation that maintains invariants
+  cancel(): void {
+    if (this.status.isCancelled()) {
+      throw new OneJsError(
+        'Order already cancelled',
+        400,
+        'Cannot cancel an already cancelled order',
+        { orderId: this.id.toString() },
+        ErrorCodes.INVALID_STATE
+      )
+    }
+    // ... cancellation logic maintaining invariants
+  }
+
+  private recalculateTotal(): void {
+    // ... recalculate total maintaining invariant
+  }
+
+  static readonly MAX_TOTAL_AMOUNT = Money.create(10000)
+}
+
+// Child Entity - OrderItem (only accessible through Order)
+export class OrderItem {
+  constructor(
+    private readonly id: OrderItemId,
+    private readonly productId: ProductId, // Reference to another aggregate by ID
+    private readonly quantity: Quantity,
+    private readonly price: Money,
+  ) {}
+
+  getId(): OrderItemId {
+    return this.id
+  }
+
+  getQuantity(): Quantity {
+    return this.quantity
+  }
+
+  getProductId(): ProductId {
+    return this.productId // ✅ Reference to external aggregate by ID
+  }
+}
+```
+
+### ❌ INCORRECT - Violating Aggregate Boundaries
+
+```typescript
+// ❌ WRONG - Direct reference to child entity outside aggregate
+export class Payment {
+  constructor(
+    private readonly id: PaymentId,
+    private readonly order: Order, // ❌ NO - Should be OrderId
+    private readonly amount: Money,
+  ) {}
+}
+
+// ❌ WRONG - Direct reference to internal entity
+export class Shipment {
+  constructor(
+    private readonly id: ShipmentId,
+    private readonly orderItem: OrderItem, // ❌ NO - OrderItem is internal to Order aggregate
+    private readonly address: Address,
+  ) {}
+}
+
+// ✅ CORRECT - References by ID only
+export class Payment {
+  constructor(
+    private readonly id: PaymentId,
+    private readonly orderId: OrderId, // ✅ Reference aggregate root by ID
+    private readonly amount: Money,
+  ) {}
+}
+```
+
+## Aggregate References
+
+### ✅ CORRECT - References Between Aggregates by ID
+
+When one aggregate needs to reference another, always use the aggregate root's ID, never a direct reference.
+
+```typescript
+export class Event {
+  constructor(
+    private readonly id: EventId,
+    private readonly cityId: CityId, // ✅ Reference to City aggregate by ID
+    private readonly categoryIds: CategoryId[], // ✅ Reference to Category aggregates by ID
+    private readonly tagIds: TagId[], // ✅ Reference to Tag aggregates by ID
+    // ... other properties
+  ) {}
+
+  // ✅ Access related aggregates through repositories, not direct references
+}
+
+// In use case:
+@Injectable()
+export class CreateEventUseCase {
+  constructor(
+    @Inject(EventRepository)
+    private readonly eventRepository: EventRepository,
+    @Inject(CityRepository)
+    private readonly cityRepository: CityRepository,
+  ) {}
+
+  async execute(input: { cityId: CityId; /* ... */ }): Promise<Event> {
+    // ✅ Load related aggregate if needed for validation
+    const city = await this.cityRepository.findById(input.cityId)
+    if (!city) {
+      throw new OneJsError('City not found', 404, '...')
+    }
+
+    // Create event with ID references only
+    const event = Event.create({
+      cityId: input.cityId, // ✅ ID reference, not direct object
+      // ...
+    })
+
+    return await this.eventRepository.save(event)
+  }
+}
+```
+
+### ❌ INCORRECT - Direct References Between Aggregates
+
+```typescript
+// ❌ WRONG - Holding direct reference to another aggregate
+export class Event {
+  constructor(
+    private readonly id: EventId,
+    private readonly city: City, // ❌ NO - Should be CityId
+    // ...
+  ) {}
+}
+
+// ❌ WRONG - Navigating through aggregate boundaries
+export class UseCase {
+  async execute(input: { eventId: EventId }): Promise<void> {
+    const event = await this.eventRepository.findById(input.eventId)
+    // ❌ NO - Accessing internal entities of another aggregate
+    const cityName = event.getCity().getName() // ❌ NO - City is another aggregate
+  }
+}
+```
+
+## Domain Invariants
+
+### What are Domain Invariants?
+
+**Invariants** are business rules that must always be true. They represent constraints that must be enforced to maintain domain consistency.
+
+**Key characteristics:**
+- Must be enforced at all times
+- Validated during entity/aggregate modifications
+- Can involve multiple properties or entities within an aggregate
+- Cannot be violated by business operations
+
+### Where to Validate Invariants
+
+1. **In Entity Methods** - When the invariant involves only that entity
+2. **In Aggregate Root Methods** - When the invariant spans multiple entities within the aggregate
+3. **In Domain Services** - When the invariant involves entities from different aggregates (rare)
+4. **In Value Object Creation** - When the invariant is about the value itself
+
+### ✅ CORRECT - Invariant Validation in Entity
+
+```typescript
+export class Order {
+  constructor(
+    private readonly id: OrderId,
+    private readonly items: OrderItem[],
+    private totalAmount: Money,
+    private status: OrderStatus,
+  ) {}
+
+  // ✅ Invariant: Order total must equal sum of item totals
+  addItem(item: OrderItem): void {
+    // Validate item-level invariant
+    if (item.getQuantity() <= 0) {
+      throw new OneJsError('Item quantity must be positive', 400)
+    }
+
+    this.items.push(item)
+
+    // ✅ Maintain aggregate invariant
+    this.recalculateTotal()
+    this.validateTotalInvariant()
+  }
+
+  // ✅ Invariant validation method
+  private validateTotalInvariant(): void {
+    const calculatedTotal = this.items.reduce(
+      (sum, item) => sum.add(item.getSubtotal()),
+      Money.zero()
+    )
+
+    if (!this.totalAmount.equals(calculatedTotal)) {
+      throw new OneJsError(
+        'Order total invariant violated',
+        500,
+        `Order total ${this.totalAmount.toString()} does not match items total ${calculatedTotal.toString()}`,
+        { orderId: this.id.toString() },
+        ErrorCodes.INVARIANT_VIOLATION
+      )
+    }
+  }
+
+  private recalculateTotal(): void {
+    this.totalAmount = this.items.reduce(
+      (sum, item) => sum.add(item.getSubtotal()),
+      Money.zero()
+    )
+  }
+}
+```
+
+### ✅ CORRECT - Invariant Validation Across Multiple Entities
+
+```typescript
+export class User {
+  constructor(
+    private readonly id: UserId,
+    private readonly venues: Venue[], // Child entities
+    private readonly role: UserRole,
+  ) {}
+
+  // ✅ Invariant: User can have max 5 venues if not premium
+  addVenue(venue: Venue): void {
+    // Validate aggregate-level invariant
+    if (!this.role.isPremium() && this.venues.length >= User.MAX_VENUES_FOR_STANDARD) {
+      throw new OneJsError(
+        'Venue limit exceeded',
+        400,
+        `Standard users can have maximum ${User.MAX_VENUES_FOR_STANDARD} venues`,
+        { userId: this.id.toString(), currentVenueCount: this.venues.length },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+
+    // Validate venue-level invariant
+    if (this.venues.some(v => v.getId().equals(venue.getId()))) {
+      throw new OneJsError(
+        'Duplicate venue',
+        400,
+        'User already has this venue',
+        { userId: this.id.toString(), venueId: venue.getId().toString() },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+
+    this.venues.push(venue)
+  }
+
+  static readonly MAX_VENUES_FOR_STANDARD = 5
+}
+```
+
+### ✅ CORRECT - Invariant Validation in Domain Service
+
+```typescript
+// ✅ When invariant spans multiple aggregates, use domain service
+@Injectable()
+export class EventSchedulingDomainService {
+  validateEventDoesNotOverlap(
+    event: Event,
+    existingEvents: Event[],
+  ): void {
+    // ✅ Invariant: Events in same venue cannot overlap
+    const overlappingEvent = existingEvents.find(existing =>
+      existing.getVenueId().equals(event.getVenueId()) &&
+      existing.getStartDate().isBefore(event.getEndDate()) &&
+      existing.getEndDate().isAfter(event.getStartDate())
+    )
+
+    if (overlappingEvent) {
+      throw new OneJsError(
+        'Event overlap',
+        400,
+        'Event overlaps with existing event at same venue',
+        {
+          eventId: event.getId().toString(),
+          overlappingEventId: overlappingEvent.getId().toString(),
+          venueId: event.getVenueId().toString(),
+        },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+  }
+}
+```
+
+### ❌ INCORRECT - Missing Invariant Validation
+
+```typescript
+// ❌ WRONG - No invariant validation
+export class Order {
+  addItem(item: OrderItem): void {
+    // ❌ NO - No validation of quantity
+    // ❌ NO - No validation of order total
+    this.items.push(item)
+  }
+}
+
+// ❌ WRONG - Invariant validated too late
+export class Order {
+  addItem(item: OrderItem): void {
+    this.items.push(item)
+    // ❌ NO - Should validate before adding
+    if (this.items.length > 10) {
+      this.items.pop()
+      throw new Error('Too many items')
+    }
+  }
+}
+
+// ❌ WRONG - Invariant validated outside aggregate
+export class OrderUseCase {
+  async execute(input: { orderId: OrderId; item: OrderItem }): Promise<void> {
+    const order = await this.repository.findById(input.orderId)
+    // ❌ NO - Invariant should be validated in Order.addItem()
+    if (order.getItems().length >= 10) {
+      throw new Error('Too many items')
+    }
+    order.addItem(input.item)
+  }
+}
+```
+
+## Consistency Patterns
+
+### Transactional Consistency (Within Aggregate)
+
+Within an aggregate, all changes must be **transactionally consistent**. All invariants must be maintained immediately.
+
+```typescript
+// ✅ All changes to Order aggregate happen in one transaction
+@Injectable()
+export class AddOrderItemUseCase {
+  async execute(input: { orderId: OrderId; item: OrderItem }): Promise<Order> {
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await this.orderRepository.findById(input.orderId, tx)
+      if (!order) {
+        throw new OneJsError('Order not found', 404)
+      }
+
+      // ✅ Aggregate maintains invariants transactionally
+      order.addItem(input.item)
+
+      // ✅ Save entire aggregate atomically
+      return await this.orderRepository.save(order, tx)
+    })
+  }
+}
+```
+
+### Eventual Consistency (Between Aggregates)
+
+Between aggregates, consistency may be **eventual**. Use domain events to propagate changes across aggregates.
+
+```typescript
+// ✅ Event published to maintain eventual consistency
+@Injectable()
+export class CreateEventUseCase {
+  async execute(input: CreateEventDto): Promise<Event> {
+    // ✅ Modify one aggregate transactionally
+    const event = Event.create({ ... })
+    const savedEvent = await this.eventRepository.save(event)
+
+    // ✅ Publish event for eventual consistency with other aggregates
+    await this.eventBus.publish(new EventCreatedEvent(savedEvent.toEventDto()))
+
+    return savedEvent
+  }
+}
+
+// ✅ Handler maintains eventual consistency
+@EventHandler(EventCreatedEvent)
+async handle(event: EventCreatedEvent): Promise<void> {
+  // Update related aggregates asynchronously
+  await this.cityStatisticsService.incrementEventCount(event.data.cityId)
+}
+```
+
+### ❌ INCORRECT - Trying to Maintain Transactional Consistency Across Aggregates
+
+```typescript
+// ❌ WRONG - Trying to modify multiple aggregates in one transaction
+@Injectable()
+export class CreateEventUseCase {
+  async execute(input: CreateEventDto): Promise<Event> {
+    return await this.prisma.$transaction(async (tx) => {
+      const event = Event.create({ ... })
+      await this.eventRepository.save(event, tx)
+
+      // ❌ NO - Modifying another aggregate in same transaction
+      const city = await this.cityRepository.findById(input.cityId, tx)
+      city.incrementEventCount() // ❌ NO - City is separate aggregate
+      await this.cityRepository.save(city, tx)
+
+      return event
+    })
+  }
+}
+```
+
+## Aggregate Size Guidelines
+
+### Keep Aggregates Small
+
+**Prefer small, focused aggregates** over large ones:
+
+- **Small aggregates** are easier to understand and maintain
+- **Small aggregates** reduce locking and contention
+- **Small aggregates** improve transaction performance
+- **Small aggregates** make invariants easier to validate
+
+### ✅ CORRECT - Small, Focused Aggregate
+
+```typescript
+// ✅ Small aggregate with clear boundary
+export class Tag {
+  constructor(
+    private readonly id: TagId,
+    private readonly name: TagName,
+    private readonly slug: Slug,
+  ) {}
+
+  // ✅ Simple, focused invariants
+  static create(dto: { name: string; slug: string }): Tag {
+    const tagName = TagName.create(dto.name)
+    const tagSlug = Slug.create(dto.slug)
+
+    // ✅ Invariant: name and slug must be consistent
+    if (tagName.toSlug() !== tagSlug.toString()) {
+      throw new OneJsError(
+        'Slug mismatch',
+        400,
+        'Tag slug must match name',
+        { name: tagName.toString(), slug: tagSlug.toString() },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+
+    return new Tag(Id.generate(), tagName, tagSlug)
+  }
+}
+```
+
+### ❌ INCORRECT - Overly Large Aggregate
+
+```typescript
+// ❌ WRONG - Aggregate too large, includes everything
+export class EventAggregate {
+  constructor(
+    private readonly event: Event,
+    private readonly venue: Venue, // ❌ NO - Venue should be separate aggregate
+    private readonly city: City, // ❌ NO - City should be separate aggregate
+    private readonly categories: Category[], // ❌ NO - Categories are separate aggregates
+    private readonly organizer: User, // ❌ NO - User is separate aggregate
+    private readonly attendees: User[], // ❌ NO - Too many references
+  ) {}
+}
+```
+
+## Repository Per Aggregate
+
+### ✅ CORRECT - Repository for Aggregate Root
+
+Repositories should work with aggregate roots, not individual entities or value objects.
+
+```typescript
+// ✅ Repository works with Order aggregate root
+@Injectable()
+export class OrderPrismaRepository extends PrismaRepository<'order'> {
+  async findById(id: OrderId): Promise<Order | null> {
+    const orderDto = await this.prisma.order.findUnique({
+      where: { id: id.toString() },
+      include: { items: true }, // ✅ Load entire aggregate
+    })
+
+    return orderDto ? Order.fromDto(orderDto) : null
+  }
+
+  async save(order: Order): Promise<Order> {
+    // ✅ Save entire aggregate atomically
+    const dto = order.toDatabase()
+    await this.prisma.order.upsert({
+      where: { id: dto.id },
+      update: dto,
+      create: dto,
+      include: { items: true },
+    })
+
+    return order
+  }
+}
+```
+
+## Rules Summary
+
+### ✅ DO
+
+- Design aggregates with clear boundaries
+- Use one aggregate root per aggregate
+- Reference other aggregates only by ID
+- Validate invariants within aggregate boundaries
+- Maintain transactional consistency within aggregates
+- Use domain events for eventual consistency between aggregates
+- Keep aggregates small and focused
+- Validate invariants in entity/aggregate methods
+- Use domain services for invariants spanning multiple aggregates (rare)
+
+### ❌ DON'T DO
+
+- Don't hold direct references to entities in other aggregates
+- Don't navigate through aggregate boundaries
+- Don't modify multiple aggregates in one transaction
+- Don't validate invariants outside aggregate
+- Don't create oversized aggregates
+- Don't expose internal entities of aggregates
+- Don't skip invariant validation
+- Don't validate invariants after state change
+
+## Related References
+
+- `.cursor/rules/ddd-application-use.mdc` - Transaction patterns and boundaries
+- `.cursor/rules/domain-encapsulation.mdc` - Encapsulation for aggregate roots
+- `.cursor/rules/prisma-repository-pattern.mdc` - Repository patterns for aggregates
+- `.cursor/rules/domain-services-differentiation.mdc` - When to use domain services for invariants
+- `.cursor/rules/factory-pattern.mdc` - Creating aggregates with factories
+- `.cursor/rules/bounded-context-relationships.mdc` - References between aggregates in different contexts

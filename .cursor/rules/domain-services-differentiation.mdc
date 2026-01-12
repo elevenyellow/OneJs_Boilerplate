@@ -1,0 +1,600 @@
+---
+description: Establishes clear differentiation between Domain Services and Application Services, when to use each, and their respective responsibilities following DDD principles.
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Domain Services vs Application Services
+
+Domain Services and Application Services serve different purposes in DDD. Understanding when to use each is critical for maintaining proper layer separation and domain clarity.
+
+## General Principles
+
+- **Domain Services** contain pure business logic that doesn't naturally fit in entities or value objects
+- **Application Services** orchestrate domain objects, repositories, and infrastructure to fulfill use cases
+- **Domain layer must not depend on application or infrastructure layers**
+- **Domain Services are domain concepts**, Application Services are technical orchestration
+
+## Domain Services
+
+### What are Domain Services?
+
+Domain Services represent **domain concepts and operations** that don't naturally belong to a single entity or value object. They contain **pure business logic** and express domain rules that span multiple entities or don't fit naturally in entities/value objects.
+
+**Key characteristics:**
+- Contain pure business logic
+- Are domain concepts (not technical concerns)
+- Can operate on multiple entities/value objects
+- Must not depend on infrastructure or application layer
+- Usually stateless (or minimal state)
+- Located in `domain/services/`
+
+### When to Use Domain Services
+
+Use Domain Services when:
+
+1. **Operation involves multiple entities** from the same aggregate
+   ```typescript
+   // ✅ Domain concept: Calculating discount based on order and customer
+   @Injectable()
+   export class DiscountCalculationService {
+     calculateDiscount(order: Order, customer: Customer): Money {
+       // Business logic involving multiple entities
+       if (customer.isPremium() && order.getTotalAmount().isGreaterThan(1000)) {
+         return order.getTotalAmount().multiply(0.1) // 10% discount
+       }
+       return Money.zero()
+     }
+   }
+   ```
+
+2. **Business rule spans multiple entities** but doesn't belong to any single entity
+   ```typescript
+   // ✅ Domain concept: Validating event scheduling rules
+   @Injectable()
+   export class EventSchedulingDomainService {
+     validateEventDoesNotOverlap(
+       event: Event,
+       existingEvents: Event[],
+     ): void {
+       // Business rule: Events at same venue cannot overlap
+       const overlapping = existingEvents.find(existing =>
+         existing.getVenueId().equals(event.getVenueId()) &&
+         existing.getStartDate().isBefore(event.getEndDate()) &&
+         existing.getEndDate().isAfter(event.getStartDate())
+       )
+
+       if (overlapping) {
+         throw new OneJsError(
+           'Event overlap',
+           400,
+           'Event overlaps with existing event',
+           { eventId: event.getId().toString() },
+           ErrorCodes.VALIDATION_FAILED
+         )
+       }
+     }
+   }
+   ```
+
+3. **Complex calculation** that is a domain concept
+   ```typescript
+   // ✅ Domain concept: Pricing calculation
+   @Injectable()
+   export class PricingDomainService {
+     calculateEventPrice(
+       basePrice: Money,
+       duration: EventDuration,
+       category: Category,
+     ): Money {
+       let price = basePrice
+
+       // Business rule: Longer events cost more
+       if (duration.isLongerThan(EventDuration.HOURS_4)) {
+         price = price.multiply(1.5)
+       }
+
+       // Business rule: Premium categories cost more
+       if (category.isPremium()) {
+         price = price.multiply(1.2)
+       }
+
+       return price
+     }
+   }
+   ```
+
+4. **Domain transformation** that doesn't belong to a single entity
+   ```typescript
+   // ✅ Domain concept: Event date formatting rules
+   @Injectable()
+   export class EventDateFormattingService {
+     formatEventDateRange(
+       startDate: EventDateTime,
+       endDate: EventDateTime,
+       timezone: string,
+     ): string {
+       // Domain logic for how event dates should be formatted
+       if (startDate.isSameDay(endDate)) {
+         return `${startDate.format(timezone)} - ${endDate.formatTime(timezone)}`
+       }
+       return `${startDate.format(timezone)} to ${endDate.format(timezone)}`
+     }
+   }
+   ```
+
+### ✅ CORRECT - Domain Service Structure
+
+```typescript
+// Location: packages/events/domain/services/event-scheduling.service.ts
+
+import { Inject, Injectable } from '@OneJs'
+import { OneJsError } from '@OneJs/Core'
+import { ErrorCodes } from '@OneJs/shared-errors'
+import { Event } from '../entities/event'
+
+@Injectable()
+export class EventSchedulingDomainService {
+  /**
+   * Validates that an event does not overlap with existing events at the same venue.
+   * This is a domain rule that involves multiple events.
+   */
+  validateEventDoesNotOverlap(
+    newEvent: Event,
+    existingEvents: Event[],
+  ): void {
+    const overlappingEvent = existingEvents.find(existing =>
+      existing.getVenueId().equals(newEvent.getVenueId()) &&
+      existing.getStartDate().isBefore(newEvent.getEndDate()) &&
+      existing.getEndDate().isAfter(newEvent.getStartDate())
+    )
+
+    if (overlappingEvent) {
+      throw new OneJsError(
+        'Event overlap detected',
+        400,
+        'Event overlaps with existing event at same venue',
+        {
+          newEventId: newEvent.getId().toString(),
+          overlappingEventId: overlappingEvent.getId().toString(),
+          venueId: newEvent.getVenueId().toString(),
+        },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+  }
+
+  /**
+   * Calculates optimal event duration based on business rules.
+   */
+  calculateOptimalDuration(
+    category: Category,
+    baseDuration: EventDuration,
+  ): EventDuration {
+    // Business rule: Premium categories have longer recommended duration
+    if (category.isPremium()) {
+      return baseDuration.extend(EventDuration.MINUTES_30)
+    }
+    return baseDuration
+  }
+}
+```
+
+### ❌ INCORRECT - Domain Service with Infrastructure Dependencies
+
+```typescript
+// ❌ WRONG - Domain service depending on infrastructure
+@Injectable()
+export class EventSchedulingDomainService {
+  constructor(
+    @Inject(EventRepository) // ❌ NO - Domain service cannot depend on repository
+    private readonly eventRepository: EventRepository,
+    @Inject(Logger) // ❌ NO - Domain service cannot depend on logger
+    private readonly logger: Logger,
+  ) {}
+
+  // ❌ WRONG - Domain service should not query infrastructure
+  async validateEvent(event: Event): Promise<void> {
+    const existing = await this.eventRepository.findByVenue(event.getVenueId())
+    // ...
+  }
+}
+```
+
+### ❌ INCORRECT - Domain Logic in Wrong Place
+
+```typescript
+// ❌ WRONG - Complex domain logic in use case (should be domain service)
+@Injectable()
+export class CreateEventUseCase {
+  async execute(input: CreateEventDto): Promise<Event> {
+    const event = Event.create({ ... })
+
+    // ❌ NO - Complex domain calculation in use case
+    let price = input.basePrice
+    if (input.duration > 240) {
+      price = price * 1.5 // Business rule in wrong layer
+    }
+    if (input.category.isPremium()) {
+      price = price * 1.2 // Business rule in wrong layer
+    }
+
+    return await this.repository.save(event)
+  }
+}
+```
+
+## Application Services
+
+### What are Application Services?
+
+Application Services orchestrate domain objects, repositories, and infrastructure to fulfill **reusable application logic** shared across multiple use cases. They handle technical concerns like coordination, transactions, and cross-cutting concerns.
+
+**Key characteristics:**
+- Orchestrate domain objects and repositories
+- Handle reusable application logic
+- May coordinate multiple repositories
+- Can access infrastructure (with caution)
+- Located in `application/services/`
+- Shared by multiple use cases
+
+### When to Use Application Services
+
+Use Application Services when:
+
+1. **Reusable logic** shared by multiple use cases
+   ```typescript
+   // ✅ Application service: Reusable pagination logic
+   @Injectable()
+   export class PaginationService {
+     async paginate<T>(
+       repository: Repository<T>,
+       page: Page,
+       limit: Limit,
+       filters: FilterCriteria,
+     ): Promise<{ items: T[]; total: number }> {
+       const skip = (page.getValue() - 1) * limit.getValue()
+       const items = await repository.findMany({
+         ...filters,
+         skip,
+         take: limit.getValue(),
+       })
+       const total = await repository.count(filters)
+       return { items, total }
+     }
+   }
+   ```
+
+2. **Coordination** of multiple repositories or services
+   ```typescript
+   // ✅ Application service: Coordinates multiple repositories
+   @Injectable()
+   export class EventSearchService {
+     constructor(
+       @Inject(EventRepository)
+       private readonly eventRepository: EventRepository,
+       @Inject(CityRepository)
+       private readonly cityRepository: CityRepository,
+       @Inject(CategoryRepository)
+       private readonly categoryRepository: CategoryRepository,
+     ) {}
+
+     async execute(input: {
+       cityId?: CityId
+       categoryIds?: CategoryId[]
+       searchQuery?: SearchQuery
+       page: Page
+       limit: Limit
+     }): Promise<{ events: Event[]; total: number }> {
+       // ✅ Orchestrates multiple repositories
+       const city = input.cityId
+         ? await this.cityRepository.findById(input.cityId)
+         : null
+
+       const categories = input.categoryIds
+         ? await this.categoryRepository.findByIds(input.categoryIds)
+         : []
+
+       return await this.eventRepository.search({
+         cityId: city?.getId(),
+         categoryIds: categories.map(c => c.getId()),
+         searchQuery: input.searchQuery,
+         page: input.page,
+         limit: input.limit,
+       })
+     }
+   }
+   ```
+
+3. **Cross-cutting concerns** like caching, logging, metrics
+   ```typescript
+   // ✅ Application service: Handles caching logic
+   @Injectable()
+   export class CachedEventService {
+     constructor(
+       @Inject(EventRepository)
+       private readonly eventRepository: EventRepository,
+       @Inject(Cache)
+       private readonly cache: Cache,
+       @Inject(Logger)
+       private readonly logger: Logger,
+     ) {}
+
+     async findById(id: EventId): Promise<Event | null> {
+       const cacheKey = `event:${id.toString()}`
+       const cached = await this.cache.get<EventDto>(cacheKey)
+
+       if (cached) {
+         this.logger.debug('MATO:EVENTS:CACHE', 'Cache hit', { id: id.toString() })
+         return Event.fromDto(cached)
+       }
+
+       const event = await this.eventRepository.findById(id)
+       if (event) {
+         await this.cache.set(cacheKey, event.toDto(), { ttl: 3600 })
+       }
+
+       return event
+     }
+   }
+   ```
+
+### ✅ CORRECT - Application Service Structure
+
+```typescript
+// Location: packages/events/application/services/event-detection.service.ts
+
+import { Inject, Injectable } from '@OneJs'
+import { Logger } from '@OneJs/Core'
+import { EventRepository } from '../../infrastructure/persistence'
+import { PostRepository } from '@instagram/posts/infrastructure/persistence'
+import { Event } from '../../domain/entities/event'
+import { Post } from '@instagram/posts/domain/entities/post'
+
+@Injectable()
+export class EventDetectionService {
+  constructor(
+    @Inject(EventRepository)
+    private readonly eventRepository: EventRepository,
+    @Inject(PostRepository)
+    private readonly postRepository: PostRepository,
+    @Inject(Logger)
+    private readonly logger: Logger,
+  ) {}
+
+  /**
+   * Detects events from Instagram posts.
+   * This is application orchestration, not domain logic.
+   */
+  async detectEventsFromPost(postId: PostId): Promise<Event[]> {
+    const post = await this.postRepository.findById(postId)
+    if (!post) {
+      throw new OneJsError('Post not found', 404)
+    }
+
+    // ✅ Orchestrates multiple repositories and services
+    const detectedEvents = await this.detectEventsInPost(post)
+    
+    this.logger.info('[MATO:EVENTS:DETECTION] Events detected', {
+      postId: postId.toString(),
+      eventCount: detectedEvents.length,
+    })
+
+    return detectedEvents
+  }
+
+  private async detectEventsInPost(post: Post): Promise<Event[]> {
+    // Application logic for detecting events
+    // ...
+  }
+}
+```
+
+### ❌ INCORRECT - Application Service with Domain Logic
+
+```typescript
+// ❌ WRONG - Domain business rules in application service
+@Injectable()
+export class PricingService {
+  calculatePrice(
+    basePrice: Money,
+    duration: EventDuration,
+    category: Category,
+  ): Money {
+    // ❌ NO - This is domain logic (business rules), should be domain service
+    let price = basePrice
+    if (duration.isLongerThan(EventDuration.HOURS_4)) {
+      price = price.multiply(1.5) // Business rule in wrong layer
+    }
+    return price
+  }
+}
+```
+
+## Use Cases vs Application Services
+
+### Use Cases
+
+**Use Cases** represent **complete user interactions** or business workflows. They:
+- Are the entry point from controllers/handlers
+- Have a single, well-defined responsibility
+- Execute one complete business operation
+- May use application services for shared logic
+
+### Application Services
+
+**Application Services** provide **reusable application logic** shared across multiple use cases. They:
+- Are used by multiple use cases
+- Focus on technical orchestration
+- Provide cross-cutting concerns
+- Handle reusable coordination patterns
+
+### ✅ CORRECT - Use Case Using Application Service
+
+```typescript
+// ✅ Use case: Complete user interaction
+@Injectable()
+export class SearchEventsUseCase {
+  constructor(
+    @Inject(EventSearchService) // ✅ Uses application service for reusable logic
+    private readonly eventSearchService: EventSearchService,
+  ) {}
+
+  async execute(input: {
+    cityId?: CityId
+    categoryIds?: CategoryId[]
+    search?: SearchQuery
+    page: Page
+    limit: Limit
+  }): Promise<{ events: Event[]; total: number }> {
+    // ✅ Delegates to application service
+    return await this.eventSearchService.execute({
+      cityId: input.cityId,
+      categoryIds: input.categoryIds,
+      searchQuery: input.search,
+      page: input.page,
+      limit: input.limit,
+    })
+  }
+}
+
+// ✅ Application service: Reusable search logic
+@Injectable()
+export class EventSearchService {
+  // ... reusable search implementation
+}
+```
+
+### ❌ INCORRECT - Use Case Duplicating Application Service Logic
+
+```typescript
+// ❌ WRONG - Use case duplicating logic that should be in application service
+@Injectable()
+export class SearchEventsUseCase {
+  async execute(input: SearchEventsDto): Promise<Event[]> {
+    // ❌ NO - Complex search logic duplicated in use case
+    const city = input.cityId
+      ? await this.cityRepository.findById(input.cityId)
+      : null
+
+    const categories = input.categoryIds
+      ? await this.categoryRepository.findByIds(input.categoryIds)
+      : []
+
+    // ... duplicated logic that other use cases might need
+    return await this.eventRepository.search({ ... })
+  }
+}
+```
+
+## Layer Separation
+
+### ✅ CORRECT - Proper Layer Dependencies
+
+```
+Use Cases (Application)
+  ├──> Application Services (Application)
+  ├──> Domain Services (Domain)
+  ├──> Entities (Domain)
+  └──> Repositories (Infrastructure)
+
+Domain Services (Domain)
+  ├──> Entities (Domain)
+  └──> Value Objects (Domain)
+  ❌ Cannot depend on Application or Infrastructure
+
+Application Services (Application)
+  ├──> Domain Services (Domain)
+  ├──> Entities (Domain)
+  └──> Repositories (Infrastructure)
+```
+
+### ❌ INCORRECT - Layer Violations
+
+```typescript
+// ❌ WRONG - Domain service depending on infrastructure
+@Injectable()
+export class EventSchedulingDomainService {
+  constructor(
+    @Inject(EventRepository) // ❌ NO - Domain cannot depend on infrastructure
+    private readonly eventRepository: EventRepository,
+  ) {}
+
+  async validateEvent(event: Event): Promise<void> {
+    const existing = await this.eventRepository.findByVenue(event.getVenueId())
+    // ...
+  }
+}
+
+// ❌ WRONG - Application service containing domain logic
+@Injectable()
+export class PricingApplicationService {
+  calculatePrice(/* ... */): Money {
+    // ❌ NO - Business rules in application layer
+    if (duration > 240) {
+      price = price * 1.5
+    }
+  }
+}
+```
+
+## Naming Conventions
+
+### Domain Services
+
+- File: `*.service.ts` in `domain/services/`
+- Class: `*DomainService` or descriptive domain name
+- Examples: `EventSchedulingDomainService`, `DiscountCalculationService`, `PricingDomainService`
+
+### Application Services
+
+- File: `*.service.ts` in `application/services/`
+- Class: `*Service` or descriptive application name
+- Examples: `EventSearchService`, `PaginationService`, `EventDetectionService`
+
+### ✅ CORRECT - Naming
+
+```typescript
+// ✅ Domain service
+// packages/events/domain/services/event-scheduling.service.ts
+export class EventSchedulingDomainService {
+  // Domain logic
+}
+
+// ✅ Application service
+// packages/events/application/services/event-search.service.ts
+export class EventSearchService {
+  // Application orchestration
+}
+```
+
+## Rules Summary
+
+### ✅ DO
+
+- Use Domain Services for business logic that spans multiple entities
+- Use Domain Services for domain concepts that don't belong to entities
+- Use Application Services for reusable application orchestration
+- Use Application Services for cross-cutting concerns (caching, logging)
+- Keep Domain Services in `domain/services/`
+- Keep Application Services in `application/services/`
+- Keep Domain Services pure (no infrastructure dependencies)
+- Use Application Services to coordinate multiple repositories
+
+### ❌ DON'T DO
+
+- Don't put domain logic in Application Services
+- Don't put infrastructure dependencies in Domain Services
+- Don't use Domain Services for technical orchestration
+- Don't duplicate logic that should be in Application Services
+- Don't make Domain Services depend on repositories
+- Don't make Domain Services depend on logging infrastructure
+- Don't mix domain concepts with application concerns
+
+## Related References
+
+- `.cursor/rules/ddd-application-use.mdc` - Application layer structure and use cases
+- `.cursor/rules/aggregates-and-invariants.mdc` - When to use domain services for invariants
+- `.cursor/rules/dependency-injection.mdc` - Dependency injection patterns
+- `.cursor/rules/module-placement.mdc` - Where to place services

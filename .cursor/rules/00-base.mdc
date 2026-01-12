@@ -1,0 +1,18 @@
+---
+description: Base rules for the monorepo (always on)
+globs:
+  - "**"
+alwaysApply: true
+---
+
+# Base
+
+- Default to TypeScript for new files.
+- Conventional Commits.
+- Keep PRs small where possible.
+- Do not commit secrets. Use environment variables and vaults.
+- Write short docs when adding new modules.
+
+@README.md
+@CONTRIBUTING.md
+@.editorconfig

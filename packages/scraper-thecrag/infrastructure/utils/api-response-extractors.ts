@@ -8,18 +8,18 @@
  */
 export function extractAverageHeight(data: unknown): number | null {
   if (!data) return null
-  
+
   if (Array.isArray(data) && data.length >= 1) {
     const value = Number(data[0])
     return isNaN(value) ? null : value
   }
-  
+
   if (typeof data === 'number') return data
   if (typeof data === 'string') {
     const value = parseFloat(data)
     return isNaN(value) ? null : value
   }
-  
+
   return null
 }
 
@@ -29,7 +29,7 @@ export function extractAverageHeight(data: unknown): number | null {
 export function extractRedirectStubs(data: unknown): string[] {
   if (!data) return []
   if (Array.isArray(data)) {
-    return data.filter(item => typeof item === 'string')
+    return data.filter((item) => typeof item === 'string')
   }
   return []
 }

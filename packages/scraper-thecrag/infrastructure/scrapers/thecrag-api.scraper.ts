@@ -1,43 +1,33 @@
-import type { GeometryData } from '@climb-zone/shared'
 import { Injectable, logger } from '@OneJs/core'
-import type {
-  ScrapedCragNode,
-  ScrapedNodeInfo,
-  ScrapedRouteData,
-} from '@scraper-thecrag/domain/dtos/scraped-node.dto'
-import type {
-  TopoImageData,
-  TopoRouteAnnotation,
-} from '@scraper-thecrag/domain/dtos/topo-image.dto'
+import { ScrapedArea } from '@scraper-thecrag/domain/entities/scraped-area.entity'
+import { ScrapedRoute } from '@scraper-thecrag/domain/entities/scraped-route.entity'
+import { AreaBeta } from '@scraper-thecrag/domain/value-objects/area-beta.vo'
+import { AreaName } from '@scraper-thecrag/domain/value-objects/area-name.vo'
+import { AreaSlug } from '@scraper-thecrag/domain/value-objects/area-slug.vo'
+import { AreaUrl } from '@scraper-thecrag/domain/value-objects/area-url.vo'
+import { ImageUrl } from '@scraper-thecrag/domain/value-objects/image-url.vo'
+import { NodeId } from '@scraper-thecrag/domain/value-objects/node-id.vo'
+import { NodeMetadata } from '@scraper-thecrag/domain/value-objects/node-metadata.vo'
+import { NodeSeasonality } from '@scraper-thecrag/domain/value-objects/node-seasonality.vo'
+import { NodeStatistics } from '@scraper-thecrag/domain/value-objects/node-statistics.vo'
+import { NodeTags } from '@scraper-thecrag/domain/value-objects/node-tags.vo'
+import { RawHtmlResponse } from '@scraper-thecrag/domain/value-objects/raw-html-response.vo'
+import { RawNodeResponse } from '@scraper-thecrag/domain/value-objects/raw-node-response.vo'
+import { RouteBeta } from '@scraper-thecrag/domain/value-objects/route-beta.vo'
+import { RouteGrade } from '@scraper-thecrag/domain/value-objects/route-grade.vo'
+import { RouteHistory } from '@scraper-thecrag/domain/value-objects/route-history.vo'
+import { RouteInfo } from '@scraper-thecrag/domain/value-objects/route-info.vo'
+import { TopoAnnotation } from '@scraper-thecrag/domain/value-objects/topo-annotation.vo'
+import { TopoDimensions } from '@scraper-thecrag/domain/value-objects/topo-dimensions.vo'
+import { TopoImage } from '@scraper-thecrag/domain/value-objects/topo-image.vo'
+import { WebCoverFocus } from '@scraper-thecrag/domain/value-objects/webcover-focus.vo'
+import { WebCoverImage } from '@scraper-thecrag/domain/value-objects/webcover-image.vo'
 import * as cheerio from 'cheerio'
 import { DEFAULT_PROXIES, ProxyManager } from '../utils/proxy-manager'
 
-// Node types that can have children
-type NodeType = 'Region' | 'Area' | 'Crag' | 'Sector' | 'Cliff'
-
-interface RawChildData {
-  id: number
-  name: string
-  type: string
-  geometry?: GeometryData
-  urlStub?: string
-  urlAncestorStub?: string
-  [key: string]: unknown
-}
-
-/**
- * TheCrag API Scraper
- * Extracts climbing data from TheCrag's internal API
- */
 export interface ScraperOptions {
-  /** Include photo topos for sectors (default: false) */
-  includeTopos?: boolean
-  /** Download and generate composite images (default: false) */
-  generateComposites?: boolean
-  /** Output directory for composite images */
-  outputDir?: string
-  /** Use proxy rotation (default: true) */
-  useProxies?: boolean
+  includeTopos: boolean
+  useProxies: boolean
 }
 
 @Injectable()
@@ -48,7 +38,10 @@ export class TheCragApiScraper {
 
   private cookie: string = ''
   private delayMs: number = 50
-  private options: ScraperOptions = { useProxies: true, includeTopos: true }
+  private options: ScraperOptions = {
+    includeTopos: true,
+    useProxies: true,
+  }
   private proxyManager: ProxyManager
 
   constructor() {
@@ -71,13 +64,6 @@ export class TheCragApiScraper {
   }
 
   /**
-   * Set scraper options
-   */
-  setOptions(options: ScraperOptions): void {
-    this.options = { ...this.options, ...options }
-  }
-
-  /**
    * Enable or disable proxy usage
    */
   setUseProxies(enabled: boolean): void {
@@ -95,350 +81,289 @@ export class TheCragApiScraper {
 
   /**
    * Add custom proxies to the pool
+   * @param proxyUrls - Array of proxy URLs like "http://user:pass@host:port"
    */
   addProxies(proxyUrls: string[]): void {
     this.proxyManager.addProxies(proxyUrls)
   }
 
   /**
-   * Get proxy pool stats
+   * Set scraper options
    */
-  getProxyStats(): { total: number; active: number; disabled: number } {
-    return this.proxyManager.getStats()
+  setOptions(options: Partial<ScraperOptions>): void {
+    this.options = { ...this.options, ...options }
+  }
+
+  // ========================================
+  // PUBLIC METHODS - New Domain Model
+  // ========================================
+
+  /**
+   * Scrape an area (crag, sector, or zone) and return a ScrapedArea entity
+   */
+  async scrapeArea(areaId: NodeId): Promise<ScrapedArea> {
+    logger.info('scraper:thecrag', `Scraping area: ${areaId.toString()}`)
+
+    // Fetch API data
+    const apiResponse = await this.fetchNodeInfo(areaId)
+
+    const rawNodeResponse = apiResponse
+      ? RawNodeResponse.fromApiResponse(apiResponse)
+      : null
+
+    // Build URL and fetch HTML
+    const data = apiResponse?.data as Record<string, unknown> | undefined
+
+    // Extract name from API response
+    const name = (data?.name as string) || `Area ${areaId.toString()}`
+
+    const urlStub = (data?.urlStub as string) || undefined
+    const urlAncestorStub = (data?.urlAncestorStub as string) || undefined
+    const pageUrl = this.buildNodeUrl(areaId, urlStub, urlAncestorStub)
+    const fullUrl = `${this.BASE_URL}${pageUrl}`
+
+    await this.delay()
+    const html = await this.curlRequestHtml(fullUrl)
+    const rawHtmlResponse = RawHtmlResponse.create(html, fullUrl)
+
+    // Parse all VOs from API response
+    const statistics = this.parseNodeStatistics(apiResponse)
+    const seasonality = this.parseNodeSeasonality(apiResponse)
+    const tags = this.parseNodeTags(apiResponse)
+    const metadata = this.parseNodeMetadata(apiResponse)
+    const webCover = this.parseWebCoverImage(apiResponse)
+    const topoImages = this.parseTopoImages(html)
+    const childIds = this.parseChildIds(apiResponse)
+
+    // Extract beta information (summary, description, approach)
+    const areaBeta = this.parseAreaBeta(apiResponse)
+
+    logger.info(
+      'scraper:thecrag',
+      `Scraped area: ${name} (${areaId.toString()})`,
+    )
+
+    return ScrapedArea.create(
+      areaId,
+      AreaName.createFrom(name),
+      AreaSlug.createFrom(this.slugify(name)),
+      AreaUrl.createFrom(fullUrl),
+      areaBeta,
+      statistics,
+      seasonality,
+      tags,
+      metadata,
+      webCover,
+      null,
+      topoImages,
+      childIds,
+      rawNodeResponse,
+      rawHtmlResponse,
+    )
   }
 
   /**
-   * Scrape a complete crag with all children and routes
+   * Scrape a route and return a ScrapedRoute entity
    */
-  async scrapeCrag(
-    cragId: number,
-    name: string,
-    type = 'Crag',
-    options?: ScraperOptions,
-  ): Promise<ScrapedCragNode> {
-    if (options) {
-      this.options = { ...this.options, ...options }
-    }
-    return this.traverse(cragId, name, type, 0, null)
-  }
+  async scrapeRoute(
+    routeId: NodeId,
+    parentAreaId?: NodeId,
+  ): Promise<ScrapedRoute> {
+    logger.info('scraper:thecrag', `Scraping route: ${routeId.toString()}`)
 
-  /**
-   * Recursively traverse the crag hierarchy
-   */
-  private async traverse(
-    nodeId: number,
-    name: string,
-    type: string,
-    depth: number,
-    geometryFromParent: GeometryData | null,
-    urlStubFromParent?: string,
-    urlAncestorStubFromParent?: string,
-  ): Promise<ScrapedCragNode> {
-    const node: ScrapedCragNode = {
-      id: nodeId,
+    // Fetch API data
+    const apiResponse = await this.fetchNodeInfo(routeId)
+    const rawNodeResponse = apiResponse
+      ? RawNodeResponse.fromApiResponse(apiResponse)
+      : null
+
+    // Build URL and fetch HTML
+    const data = apiResponse?.data as Record<string, unknown> | undefined
+
+    // Extract name from API response
+    const name = (data?.name as string) || `Route ${routeId.toString()}`
+
+    const urlStub = (data?.urlStub as string) || undefined
+    const urlAncestorStub = (data?.urlAncestorStub as string) || undefined
+    const pageUrl = this.buildNodeUrl(routeId, urlStub, urlAncestorStub)
+    const fullUrl = `${this.BASE_URL}${pageUrl}`
+
+    await this.delay()
+    const html = await this.curlRequestHtml(fullUrl)
+    const rawHtmlResponse = RawHtmlResponse.create(html, fullUrl)
+
+    // Parse VOs
+    const grade = this.parseRouteGrade(apiResponse)
+    const routeInfo = this.parseRouteInfoFromHtml(html)
+    const history = this.parseRouteHistory(apiResponse)
+    const beta = this.parseRouteBeta(apiResponse)
+
+    logger.info(
+      'scraper:thecrag',
+      `Scraped route: ${name} (${routeId.toString()})`,
+    )
+
+    return ScrapedRoute.create(
+      routeId,
       name,
-      type,
-      children: [],
-    }
-
-    logger.info('scraper:thecrag', `Traversing node: ${name} (type: ${type})`)
-
-    // Only expand nodes that can have children
-    const expandableTypes: NodeType[] = [
-      'Region',
-      'Area',
-      'Crag',
-      'Sector',
-      'Cliff',
-    ]
-
-    if (expandableTypes.includes(type as NodeType)) {
-      await this.delay()
-
-      // Paralelizar las llamadas principales
-      const needsRoutes = ['Sector', 'Cliff', 'Crag'].includes(type)
-      const needsSectorTopos =
-        this.options.includeTopos && ['Sector', 'Cliff'].includes(type)
-      const needsCragTopos = this.options.includeTopos && type === 'Crag'
-
-      const [info, children, routes] = await Promise.all([
-        this.getNodeInfo(nodeId),
-        this.getChildren(nodeId),
-        needsRoutes ? this.getRoutes(nodeId) : Promise.resolve([]),
-      ])
-
-      // Use urlStub from parent (children endpoint) if not in info
-      const urlStub = info?.urlStub || urlStubFromParent
-      const urlAncestorStub = info?.urlAncestorStub || urlAncestorStubFromParent
-
-      // Build URL path for fetching HTML pages
-      // Priority: urlStub from info/parent > fallback using urlAncestorStub + area/{nodeId}
-      let sectorPath: string
-      if (urlStub) {
-        // Ensure there's a / between ancestor and stub if both exist
-        const ancestorPart = urlAncestorStub ? `${urlAncestorStub}/` : ''
-        const stubPart = urlStub.startsWith('/') ? urlStub.slice(1) : urlStub
-        sectorPath = `/en/climbing/${ancestorPart}${stubPart}`
-      } else if (urlAncestorStub) {
-        // Use ancestor stub + area/{nodeId} format
-        sectorPath = `/en/climbing/${urlAncestorStub}/area/${nodeId}`
-      } else {
-        // Last resort fallback (likely won't work)
-        sectorPath = `/en/climbing/area/${nodeId}`
-      }
-
-      // Fetch topos from sector page (not /topos endpoint)
-      let topos: TopoImageData[] = []
-      if (needsSectorTopos) {
-        logger.info(
-          'scraper:thecrag',
-          `Fetching topos for ${name} from: ${sectorPath}`,
-        )
-        topos = await this.getToposFromSectorPage(sectorPath)
-      }
-
-      // Fetch crag overview topos (showing sectors/areas)
-      let cragTopos: TopoImageData[] = []
-      if (needsCragTopos) {
-        logger.info(
-          'scraper:thecrag',
-          `Fetching crag overview topos for ${name} from: ${sectorPath}`,
-        )
-        cragTopos = await this.getCragToposFromPage(sectorPath)
-      }
-
-      // Special case: Crag with direct routes (no children) - also fetch sector topos
-      // Some crags like Cheste have routes directly without sub-sectors but still have route topos
-      const isCragWithDirectRoutes =
-        type === 'Crag' &&
-        this.options.includeTopos &&
-        routes.length > 0 &&
-        children.length === 0
-      if (isCragWithDirectRoutes) {
-        logger.info(
-          'scraper:thecrag',
-          `Crag ${name} has direct routes - fetching sector topos from: ${sectorPath}`,
-        )
-        topos = await this.getToposFromSectorPage(sectorPath)
-      }
-
-      // Fetch header image for Crag, Sector, Cliff nodes
-      const needsHeaderImage = ['Crag', 'Sector', 'Cliff'].includes(type)
-      let headerImageUrl: string | null = null
-      if (needsHeaderImage) {
-        logger.info(
-          'scraper:thecrag',
-          `Fetching header image for ${name} from: ${sectorPath}`,
-        )
-        headerImageUrl = await this.getHeaderImage(nodeId, sectorPath)
-      }
-
-      logger.debug('scraper:thecrag', `Info: ${JSON.stringify(info)}`)
-      logger.debug('scraper:thecrag', `Children: ${JSON.stringify(children)}`)
-      logger.debug('scraper:thecrag', `Routes: ${JSON.stringify(routes)}`)
-      if (topos.length > 0) {
-        logger.info(
-          'scraper:thecrag',
-          `Found ${topos.length} topos for ${name}`,
-        )
-      }
-
-      if (info) {
-        node.info = info
-      }
-
-      // Assign urlStub from parent if not in info
-      if (urlStub && !node.info?.urlStub) {
-        node.info = node.info || {}
-        node.info.urlStub = urlStub
-      }
-      if (urlAncestorStub && !node.info?.urlAncestorStub) {
-        node.info = node.info || {}
-        node.info.urlAncestorStub = urlAncestorStub
-      }
-
-      // Assign header image URL after info is set
-      if (headerImageUrl) {
-        node.info = node.info || {}
-        node.info.headerImageUrl = headerImageUrl
-      }
-
-      // Use geometry from parent if available (from children/area endpoint)
-      if (geometryFromParent) {
-        node.info = node.info || {}
-        node.info.geometry = geometryFromParent
-        if (geometryFromParent.lat && geometryFromParent.long) {
-          node.info.googleMapsUrl = `https://www.google.com/maps?q=${geometryFromParent.lat},${geometryFromParent.long}`
-        }
-      }
-
-      // Procesar hijos en paralelo (con límite de concurrencia)
-      node.children = await this.traverseChildrenInBatches(children, depth)
-
-      // Asignar rutas si las hay
-      if (routes.length > 0) {
-        node.routes = routes
-      }
-
-      // Asignar topos si los hay
-      if (topos.length > 0) {
-        node.topos = topos
-      }
-
-      // Asignar crag topos si los hay
-      if (cragTopos.length > 0) {
-        node.cragTopos = cragTopos
-        // Also store the first/main overview topo info in node.info for easy access
-        const mainTopo = cragTopos[0]
-        node.info = node.info || {}
-        node.info.overviewTopoImageUrl = mainTopo.fullImageUrl
-        node.info.overviewTopoThumbnailUrl = mainTopo.thumbnailUrl
-        node.info.overviewTopoWidth = mainTopo.originalWidth
-        node.info.overviewTopoHeight = mainTopo.originalHeight
-        node.info.overviewTopoExternalId = mainTopo.topoId
-        logger.info(
-          'scraper:thecrag',
-          `Set overview topo for ${name}: ${mainTopo.topoId}`,
-        )
-      }
-    }
-
-    return node
+      this.slugify(name),
+      fullUrl,
+      grade,
+      routeInfo,
+      history,
+      beta,
+      parentAreaId ?? null,
+      rawNodeResponse,
+      rawHtmlResponse,
+    )
   }
 
   /**
-   * Traverse children in parallel batches to avoid overwhelming the server
+   * Get child area/route IDs for a node
    */
-  private async traverseChildrenInBatches(
-    children: RawChildData[],
-    depth: number,
-  ): Promise<ScrapedCragNode[]> {
-    const BATCH_SIZE = 3 // Procesar 3 nodos en paralelo
-    const results: ScrapedCragNode[] = []
-
-    for (let i = 0; i < children.length; i += BATCH_SIZE) {
-      const batch = children.slice(i, i + BATCH_SIZE)
-      const batchResults = await Promise.all(
-        batch.map((child) =>
-          this.traverse(
-            child.id,
-            child.name,
-            child.type,
-            depth + 1,
-            child.geometry ?? null,
-            child.urlStub,
-            child.urlAncestorStub,
-          ),
-        ),
-      )
-      results.push(...batchResults)
-    }
-
-    return results
-  }
-
-  /**
-   * Get children of a node (sub-areas)
-   */
-  async getChildren(nodeId: number): Promise<RawChildData[]> {
-    const url = `${this.BASE_URL}/api/node/id/${nodeId}/children/area?flatten=data[id,name,urlStub,urlAncestorStub,subAreaCount,subType,asciiName,approach,map,geo,location,geolocation,geometry,lat,lng,latitude,longitude,image,images,photo,photos,coverImage,thumbnail,media,numberPhotos]&expires=10`
+  async getChildrenIds(nodeId: NodeId): Promise<NodeId[]> {
+    const url = `${this.BASE_URL}/api/node/id/${nodeId.getValue()}/children/area?flatten=data[id]&expires=10`
 
     const output = await this.curlRequest(url)
     const parsed = JSON.parse(output)
     const data = parsed[0] ?? []
 
-    // Parse array format: [id, name, urlStub, urlAncestorStub, subAreaCount, subType, asciiName, approach, map, geo, location, geolocation, geometry, ...]
-    const children = data.map((item: unknown[]) => ({
-      id: item[0] as number,
-      name: item[1] as string,
-      urlStub: (item[2] as string) || undefined,
-      urlAncestorStub: (item[3] as string) || undefined,
-      type: (item[5] as string) || 'Area',
-      geometry: item[12] as GeometryData | undefined,
-    }))
-
-    // Debug: log first child to see URL structure
-    if (children.length > 0) {
-      logger.info(
-        'scraper:thecrag',
-        `First child URL info: urlStub=${children[0].urlStub}, urlAncestorStub=${children[0].urlAncestorStub}`,
-      )
-    }
-
-    return children
+    return data.map((item: unknown[]) => NodeId.create(item[0] as number))
   }
 
   /**
-   * Get routes for a node
+   * Get route IDs for a node (sector/crag)
    */
-  async getRoutes(nodeId: number): Promise<ScrapedRouteData[]> {
-    const url = `${this.BASE_URL}/api/node/id/${nodeId}/children/route?flatten=data[id,name,grade,gradeIndex,height,pitches,quality,stars,ascents,subType,bolts,firstAscent,tags,warnings]&expires=10`
+  async getRouteIds(nodeId: NodeId): Promise<NodeId[]> {
+    const url = `${this.BASE_URL}/api/node/id/${nodeId.getValue()}/children/route?flatten=data[id]&expires=10`
 
     const output = await this.curlRequest(url)
     const parsed = JSON.parse(output)
     const data = parsed[0] ?? []
 
-    // Parse array format: [id, name, grade, gradeIndex, height, pitches, quality, stars, ascents, subType, bolts, firstAscent, tags, warnings]
-    return data.map((r: unknown[]) => ({
-      id: Number(r[0]),
-      name: r[1] as string,
-      grade: (r[2] as string) || null,
-      gradeIndex: (r[3] as number) || null,
-      height: this.parseHeight(r[4]),
-      pitches: (r[5] as number) ?? null,
-      quality: (r[6] as number) ?? null,
-      stars: (r[7] as number) ?? null,
-      ascents: (r[8] as number) ?? null,
-      subType: (r[9] as string) ?? null,
-      bolts: (r[10] as number) ?? null,
-      firstAscent: (r[11] as string) ?? null,
-      tags: r[12] ?? null,
-      warnings: r[13] ?? null,
-    }))
+    return data.map((item: unknown[]) => NodeId.create(item[0] as number))
   }
 
-  /**
-   * Get topos (images with route annotations) from sector page
-   * @param sectorPath - Full path like "/en/climbing/spain/castellon/area/787116657"
-   */
-  async getToposFromSectorPage(sectorPath: string): Promise<TopoImageData[]> {
-    try {
-      const url = `${this.BASE_URL}${sectorPath}`
-      logger.info('scraper:thecrag', `Fetching topos from sector page: ${url}`)
+  // ========================================
+  // PRIVATE PARSING METHODS - Value Objects
+  // ========================================
 
-      await this.delay()
-      const html = await this.curlRequestHtml(url)
+  private parseNodeStatistics(
+    apiResponse: Record<string, unknown> | null,
+  ): NodeStatistics | null {
+    if (!apiResponse) return null
 
-      const topos = this.parseToposFromSectorHtml(html)
-      if (topos.length > 0) {
-        logger.info(
-          'scraper:thecrag',
-          `Found ${topos.length} topos in sector page: ${sectorPath}`,
-        )
-      }
-      return topos
-    } catch (err) {
-      logger.warn('scraper:thecrag', `Failed to get topos from sector: ${err}`)
-      return []
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return null
+
+    return NodeStatistics.create(
+      (data.numberRoutes as number) ?? 0,
+      (data.numberAscents as number) ?? 0,
+      (data.numberPhotos as number) ?? 0,
+      (data.numberFavorites as number) ?? 0,
+      (data.numberKudos as number) ?? 0,
+    )
+  }
+
+  private parseNodeSeasonality(
+    apiResponse: Record<string, unknown> | null,
+  ): NodeSeasonality | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const seasonality = data?.seasonality as number[] | undefined
+
+    if (!seasonality || !Array.isArray(seasonality)) return null
+
+    return NodeSeasonality.create(seasonality)
+  }
+
+  private parseNodeTags(
+    apiResponse: Record<string, unknown> | null,
+  ): NodeTags | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const tags = data?.tags as
+      | Record<string, Record<string, unknown>>
+      | undefined
+
+    if (!tags || typeof tags !== 'object') return null
+
+    return NodeTags.fromApiTags(
+      tags as Parameters<typeof NodeTags.fromApiTags>[0],
+    )
+  }
+
+  private parseNodeMetadata(
+    apiResponse: Record<string, unknown> | null,
+  ): NodeMetadata | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return null
+
+    return NodeMetadata.create(
+      (data.depth as number) ?? 0,
+      (data.siblingLabel as number) ?? 0,
+      (data.priceCategory as string) ?? '',
+      (data.isTopLevelCrag as boolean) ?? false,
+      (data.locatedness as number) ?? 0,
+      (data.maxPopularity as number) ?? 0,
+    )
+  }
+
+  private parseWebCoverImage(
+    apiResponse: Record<string, unknown> | null,
+  ): WebCoverImage | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const webcover = data?.webcover as Record<string, unknown> | undefined
+
+    if (!webcover) return null
+
+    const hashId = webcover.hashId as string | undefined
+    if (!hashId) return null
+
+    const thumbnailUrl = this.buildImageUrl(hashId, 200, 150)
+    const fullUrl = this.buildFullImageUrl(hashId)
+
+    const imageUrl = ImageUrl.create(thumbnailUrl, fullUrl, hashId)
+
+    const focusData = webcover.focus as Record<string, unknown> | undefined
+    let focus: WebCoverFocus | null = null
+    if (focusData) {
+      focus = WebCoverFocus.create(
+        (focusData.top as number) ?? 0,
+        (focusData.bottom as number) ?? 0,
+        (focusData.left as number) ?? 0,
+        (focusData.right as number) ?? 0,
+        (focusData.label as string) ?? '',
+      )
     }
+
+    return WebCoverImage.create({
+      imageUrl,
+      focus,
+      originalWidth: (webcover.width as number) ?? null,
+      originalHeight: (webcover.height as number) ?? null,
+      dateUploaded: (webcover.dateUploaded as string) ?? null,
+      title: (webcover.title as string) ?? null,
+    })
   }
 
-  /**
-   * Parse topo images from sector HTML page
-   * Extracts phototopo elements with images and route/area annotations
-   */
-  private parseToposFromSectorHtml(html: string): TopoImageData[] {
+  private parseTopoImages(html: string): TopoImage[] {
     const $ = cheerio.load(html)
-    const topos: TopoImageData[] = []
+    const topoImages: TopoImage[] = []
 
-    // Find all phototopo elements with data-tid
     $('div.phototopo[data-tid]').each((_, el) => {
       const $el = $(el)
 
       const topoId = $el.attr('data-tid') || ''
-      const width = parseInt($el.attr('data-width') || '0', 10)
-      const height = parseInt($el.attr('data-height') || '0', 10)
-      const viewScale = parseFloat($el.attr('data-view-scale') || '1')
+      const displayWidth = Number.parseInt($el.attr('data-width') || '0', 10)
+      const displayHeight = Number.parseInt($el.attr('data-height') || '0', 10)
+      const viewScale = Number.parseFloat($el.attr('data-view-scale') || '1')
       const topoDataStr = $el.attr('data-topodata') || '[]'
 
       // Extract image URLs
@@ -447,184 +372,202 @@ export class TheCragApiScraper {
       const fullImageUrl =
         this.normalizeImageUrl(imgEl.attr('data-big') || '') || thumbnailUrl
 
-      // Calculate original dimensions
-      const originalWidth =
-        viewScale > 0 ? Math.round(width / viewScale) : width
-      const originalHeight =
-        viewScale > 0 ? Math.round(height / viewScale) : height
+      if (!topoId || (!thumbnailUrl && !fullImageUrl)) return
 
-      // Parse route/area annotations (contains SVG points data)
-      let routes: TopoRouteAnnotation[] = []
-      try {
-        const rawRoutes = JSON.parse(topoDataStr)
-        if (Array.isArray(rawRoutes)) {
-          routes = rawRoutes.map((r: Record<string, unknown>) => ({
-            id: r.id as number,
-            type: ((r.type as string) ||
-              'route') as TopoRouteAnnotation['type'],
-            num: (r.num as string) || '',
-            grade: (r.grade as string) || '',
-            gradeClass: (r.class as string) || '',
-            zindex: (r.zindex as string) || '1',
-            name: (r.name as string) || '',
-            stars: (r.stars as string) || '',
-            style: (r.style as string) || '',
-            order: (r.order as number) || 0,
-            url: (r.url as string) || '',
-            points: (r.points as string) || '', // SVG path points
-          }))
-        }
-      } catch {
-        logger.warn(
-          'scraper:thecrag',
-          `Failed to parse topo annotations for ${topoId}`,
-        )
-      }
+      // Parse dimensions
+      const dimensions = TopoDimensions.fromDisplayWithScale(
+        displayWidth,
+        displayHeight,
+        viewScale,
+      )
 
-      // Only add if we have an image
-      if (topoId && (thumbnailUrl || fullImageUrl)) {
-        topos.push({
-          topoId,
-          width,
-          height,
-          viewScale,
-          thumbnailUrl,
-          fullImageUrl,
-          originalWidth,
-          originalHeight,
-          routes,
-        })
-      }
+      // Parse annotations
+      const annotations = TopoAnnotation.parseFromTopoDataJson(topoDataStr)
+
+      const topoImage = TopoImage.create(
+        topoId,
+        dimensions,
+        thumbnailUrl,
+        fullImageUrl,
+        annotations,
+      )
+
+      topoImages.push(topoImage)
     })
 
-    return topos
+    return topoImages
   }
 
-  /**
-   * Get crag overview topos (topos that show sectors/areas instead of routes)
-   * @param cragPath - Full path like "/en/climbing/spain/castellon/chulilla"
-   */
-  async getCragToposFromPage(cragPath: string): Promise<TopoImageData[]> {
+  private parseChildIds(apiResponse: Record<string, unknown> | null): NodeId[] {
+    if (!apiResponse) return []
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const childIDs = data?.childIDs as number[] | undefined
+
+    if (!childIDs || !Array.isArray(childIDs)) return []
+
+    return childIDs.map((id) => NodeId.create(id))
+  }
+
+  private parseRouteGrade(
+    apiResponse: Record<string, unknown> | null,
+  ): RouteGrade | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const grade = data?.grade as string | undefined
+    const gradeClass = data?.gradeClass as string | undefined
+
+    if (!grade) return null
+
+    return RouteGrade.create(grade, gradeClass ?? 'gb3')
+  }
+
+  private parseRouteInfoFromHtml(html: string): RouteInfo | null {
+    const $ = cheerio.load(html)
+
+    // Look for data-route-tick attribute in route elements
+    const routeEl = $('[data-route-tick]').first()
+    if (!routeEl.length) return null
+
+    const routeTickStr = routeEl.attr('data-route-tick') || '{}'
+
     try {
-      const url = `${this.BASE_URL}${cragPath}`
-      logger.info(
-        'scraper:thecrag',
-        `Fetching crag overview topos from: ${url}`,
-      )
-
-      await this.delay()
-      const html = await this.curlRequestHtml(url)
-
-      const topos = this.parseCragToposFromHtml(html)
-      if (topos.length > 0) {
-        logger.info(
-          'scraper:thecrag',
-          `Found ${topos.length} crag overview topos in: ${cragPath}`,
-        )
-      }
-      return topos
-    } catch (err) {
-      logger.warn(
-        'scraper:thecrag',
-        `Failed to get crag topos from page: ${err}`,
-      )
-      return []
+      const routeTickData = JSON.parse(routeTickStr)
+      return RouteInfo.fromRouteTickData(routeTickData)
+    } catch {
+      return null
     }
   }
 
-  /**
-   * Parse crag overview topo images from HTML page
-   * These topos have annotations of type 'area' instead of 'route'
-   * Specifically looks for topos inside .phototopo-fsc container (full-size crag overview)
-   */
-  private parseCragToposFromHtml(html: string): TopoImageData[] {
-    const $ = cheerio.load(html)
-    const topos: TopoImageData[] = []
+  private parseRouteHistory(
+    apiResponse: Record<string, unknown> | null,
+  ): RouteHistory | null {
+    if (!apiResponse) return null
 
-    // First, try to find topos specifically inside .phototopo-fsc container
-    // This is the main crag overview topo showing all sectors
-    const fscContainer = $('div.phototopo-fsc')
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const history = data?.history as Array<Record<string, unknown>> | undefined
 
-    // If we have a .phototopo-fsc container, only look for topos there
-    // Otherwise, fall back to searching all phototopo elements with area annotations
-    const searchContext = fscContainer.length > 0 ? fscContainer : $('body')
+    if (!history || !Array.isArray(history) || history.length === 0) return null
 
-    searchContext.find('div.phototopo[data-tid]').each((_, el) => {
-      const $el = $(el)
+    // Get first ascent info
+    const fa = history.find((h) => h.type === 'FA' || h.type === 'FFA')
+    if (!fa) return null
 
-      const topoId = $el.attr('data-tid') || ''
-      const width = parseInt($el.attr('data-width') || '0', 10)
-      const height = parseInt($el.attr('data-height') || '0', 10)
-      const viewScale = parseFloat($el.attr('data-view-scale') || '1')
-      const topoDataStr = $el.attr('data-topodata') || '[]'
+    return RouteHistory.create(
+      (fa.type as string) ?? 'FA',
+      (fa.climber as string) ?? '',
+      (fa.date as string) ?? null,
+    )
+  }
 
-      // Extract image URLs
-      const imgEl = $el.find('img').first()
-      const thumbnailUrl = this.normalizeImageUrl(imgEl.attr('src') || '')
-      const fullImageUrl =
-        this.normalizeImageUrl(imgEl.attr('data-big') || '') || thumbnailUrl
+  private parseRouteBeta(
+    apiResponse: Record<string, unknown> | null,
+  ): RouteBeta | null {
+    if (!apiResponse) return null
 
-      // Calculate original dimensions
-      const originalWidth =
-        viewScale > 0 ? Math.round(width / viewScale) : width
-      const originalHeight =
-        viewScale > 0 ? Math.round(height / viewScale) : height
+    const data = apiResponse.data as Record<string, unknown> | undefined
 
-      // Parse annotations - for crag topos, default type is 'area' since these show sectors
-      let routes: TopoRouteAnnotation[] = []
-      try {
-        const rawData = JSON.parse(topoDataStr)
-        if (Array.isArray(rawData)) {
-          routes = rawData.map((r: Record<string, unknown>) => {
-            // Default to 'area' for crag overview topos (they show sectors, not routes)
-            const annotationType = ((r.type as string) ||
-              'area') as TopoRouteAnnotation['type']
-            return {
-              id: r.id as number,
-              type: annotationType,
-              num: (r.num as string) || '',
-              grade: (r.grade as string) || '',
-              gradeClass: (r.class as string) || '',
-              zindex: (r.zindex as string) || '1',
-              name: (r.name as string) || '',
-              stars: (r.stars as string) || '',
-              style: (r.style as string) || '',
-              order: (r.order as number) || 0,
-              url: (r.url as string) || '',
-              points: (r.points as string) || '',
-            }
-          })
-        }
-      } catch {
-        logger.warn(
-          'scraper:thecrag',
-          `Failed to parse crag topo annotations for ${topoId}`,
-        )
-      }
+    const description = data?.description as string | undefined
+    const approach = data?.approach as string | undefined
+    const uniqueFeatures = data?.uniqueFeatures as string | undefined
 
-      // Include all topos found - crag overview topos can have various annotation types
-      // The key is that they're on the crag page, not a sector page
-      if (topoId && (thumbnailUrl || fullImageUrl)) {
-        topos.push({
-          topoId,
-          width,
-          height,
-          viewScale,
-          thumbnailUrl,
-          fullImageUrl,
-          originalWidth,
-          originalHeight,
-          routes, // Contains area annotations
-        })
-      }
-    })
+    if (!description && !approach && !uniqueFeatures) return null
 
-    return topos
+    return RouteBeta.create(
+      description ?? null,
+      approach ?? null,
+      uniqueFeatures ?? null,
+    )
   }
 
   /**
-   * Normalize image URL - TheCrag uses protocol-relative URLs like //image.thecrag.com/...
+   * Parse area beta information from API response.
+   * Extracts summary from 'unique' field and description/approach from 'beta' array.
    */
+  private parseAreaBeta(apiResponse: Record<string, unknown> | null): AreaBeta {
+    if (!apiResponse) return AreaBeta.empty()
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return AreaBeta.empty()
+
+    // Summary comes from the 'unique' field
+    const summary = (data.unique as string) ?? null
+
+    // Description and approach come from the 'beta' array
+    const description = this.extractBetaEntryByName(data, 'Description')
+    const approach = this.extractBetaEntryByName(data, 'Approach')
+
+    return AreaBeta.create(summary, description, approach)
+  }
+
+  /**
+   * Extract a specific entry from the 'beta' array by name.
+   * The beta array contains objects with 'name' and 'markdown' fields.
+   */
+  private extractBetaEntryByName(
+    data: Record<string, unknown>,
+    entryName: string,
+  ): string | null {
+    const beta = data.beta as
+      | Array<{ markdown?: string; name?: string }>
+      | undefined
+
+    if (!beta || !Array.isArray(beta)) return null
+
+    const entry = beta.find((b) => b.name === entryName)
+    return entry?.markdown ?? null
+  }
+
+  // ========================================
+  // PRIVATE FETCH METHODS
+  // ========================================
+
+  private async fetchNodeInfo(
+    nodeId: NodeId,
+  ): Promise<Record<string, unknown> | null> {
+    const url = `${this.BASE_URL}/api/node/id/${nodeId.toString()}?show=info,description,approach,access,beta,history,ethics,tags,geometry,urlStub,urlAncestorStub,webcover,seasonality,childIDs`
+
+    const output = await this.curlRequest(url)
+    const parsed = JSON.parse(output)
+    return parsed
+  }
+
+  private buildNodeUrl(
+    nodeId: NodeId,
+    urlStub?: string,
+    urlAncestorStub?: string,
+  ): string {
+    if (urlStub) {
+      const ancestorPart = urlAncestorStub ? `${urlAncestorStub}/` : ''
+      const stubPart = urlStub.startsWith('/') ? urlStub.slice(1) : urlStub
+      return `/en/climbing/${ancestorPart}${stubPart}`
+    }
+    if (urlAncestorStub) {
+      return `/en/climbing/${urlAncestorStub}/area/${nodeId}`
+    }
+    return `/en/climbing/area/${nodeId}`
+  }
+
+  private buildImageUrl(hashId: string, width: number, height: number): string {
+    if (!hashId) return ''
+    return `https://static.thecrag.com/cache/img_${hashId.substring(0, 8)}_${width}x${height}.jpg`
+  }
+
+  private buildFullImageUrl(hashId: string): string {
+    if (!hashId) return ''
+    return `https://static.thecrag.com/cids/${hashId}.jpg`
+  }
+
+  private slugify(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+  }
+
   private normalizeImageUrl(url: string): string {
     if (!url) return ''
     if (url.startsWith('//')) return `https:${url}`
@@ -632,629 +575,12 @@ export class TheCragApiScraper {
     return url
   }
 
-  /**
-   * Get header/cover image URL for a node (crag or sector)
-   * @param nodeId - Node ID to get header image for
-   * @param urlStub - URL stub for the node (e.g., "spain/valencia/chulilla")
-   * @returns Header image URL or null if not found
-   */
-  async getHeaderImage(
-    nodeId: number,
-    urlStub?: string,
-  ): Promise<string | null> {
-    try {
-      // Build the URL - use urlStub if available, otherwise use nodeId
-      const path = urlStub
-        ? `${this.BASE_URL}${urlStub}`
-        : `${this.BASE_URL}/en/climbing/area/${nodeId}`
-
-      await this.delay()
-
-      const html = await this.curlRequestHtml(path)
-
-      // Check if we got a valid page
-      if (html.length < 1000) {
-        return null
-      }
-
-      const imageUrl = this.parseHeaderImageFromHtml(html)
-      if (imageUrl) {
-        logger.info(
-          'scraper:thecrag',
-          `Found header image for node ${nodeId}: ${imageUrl.substring(0, 80)}...`,
-        )
-      }
-      return imageUrl
-    } catch (err) {
-      logger.warn(
-        'scraper:thecrag',
-        `Failed to get header image for node ${nodeId}: ${err}`,
-      )
-      return null
-    }
-  }
-
-  /**
-   * Parse header image URL from HTML page
-   * @returns Normalized image URL or null if not found
-   */
-  private parseHeaderImageFromHtml(html: string): string | null {
-    const $ = cheerio.load(html)
-
-    // 1. OG image from meta tags (usually the main representative image)
-    const ogImage = $('meta[property="og:image"]').attr('content')
-    if (ogImage && ogImage.includes('image.thecrag.com')) {
-      return this.normalizeImageUrl(ogImage)
-    }
-
-    // 2. Hero/banner images
-    const heroImg = $(
-      '.hero-image img, .cover-image img, .header-image img, .banner img',
-    ).first()
-    if (heroImg.length > 0) {
-      const src = heroImg.attr('src') || heroImg.attr('data-src')
-      if (src && src.includes('image.thecrag.com')) {
-        return this.normalizeImageUrl(src)
-      }
-    }
-
-    // 3. First large image in the page (likely the main photo)
-    let foundUrl: string | null = null
-    $('img[src*="image.thecrag.com"]').each((_, el) => {
-      if (foundUrl) return // Already found one
-      const src = $(el).attr('src') || ''
-      // Look for larger images (containing size hints like /700x or larger)
-      const sizeMatch = src.match(/\/(\d+)x(\d+)\//)
-      if (sizeMatch) {
-        const width = parseInt(sizeMatch[1], 10)
-        // Only consider images that are reasonably large (at least 400px wide)
-        if (width >= 400) {
-          foundUrl = src
-        }
-      }
-    })
-
-    return foundUrl ? this.normalizeImageUrl(foundUrl) : null
-  }
-
-  /**
-   * Get detailed info for a node
-   */
-  async getNodeInfo(nodeId: number): Promise<ScrapedNodeInfo | null> {
-    // Include urlStub in the API request
-    const url = `${this.BASE_URL}/api/node/id/${nodeId}?show=info,description,approach,access,beta,history,ethics,tags,geometry,urlStub,urlAncestorStub`
-
-    const output = await this.curlRequest(url)
-    const parsed = JSON.parse(output)
-    const data = parsed.data || parsed
-
-    const info: ScrapedNodeInfo = {}
-
-    // Guardar respuesta completa para análisis futuro
-    info.apiResponseRaw = data
-
-    // Geometry - extract coordinates for geographic search
-    // Priority: 1. API geometry/map/location fields, 2. Beta text, 3. Web page scraping
-    const coords = this.extractCoordsFromApiResponse(data)
-    if (coords) {
-      info.geometry = {
-        lat: coords.lat,
-        long: coords.lng,
-      }
-      info.googleMapsUrl = `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
-      logger.info(
-        'scraper:thecrag',
-        `Got coordinates from API for node ${nodeId}: ${coords.lat}, ${coords.lng}`,
-      )
-    }
-
-    // If no geometry from API, try to extract from beta text (approach, description)
-    if (!info.geometry) {
-      const betaCoords = this.extractCoordsFromBeta(data.beta)
-      if (betaCoords) {
-        info.geometry = {
-          lat: betaCoords.lat,
-          long: betaCoords.lng,
-        }
-        info.googleMapsUrl = `https://www.google.com/maps?q=${betaCoords.lat},${betaCoords.lng}`
-        logger.info(
-          'scraper:thecrag',
-          `Got coordinates from beta text for node ${nodeId}: ${betaCoords.lat}, ${betaCoords.lng}`,
-        )
-      }
-    }
-
-    // If still no geometry, try web page scraping as last resort
-    if (!info.geometry) {
-      const urlStub = data.urlStub
-      const urlAncestorStub = data.urlAncestorStub
-      if (urlStub || urlAncestorStub) {
-        const pagePath = `/en/climbing/${urlAncestorStub || ''}${urlStub || `area/${nodeId}`}`
-        const webCoords = await this.getCoordinatesFromWebPage(pagePath)
-        if (webCoords) {
-          info.geometry = {
-            lat: webCoords.lat,
-            long: webCoords.lng,
-          }
-          info.googleMapsUrl = `https://www.google.com/maps?q=${webCoords.lat},${webCoords.lng}`
-          logger.info(
-            'scraper:thecrag',
-            `Got coordinates from web page for node ${nodeId}: ${webCoords.lat}, ${webCoords.lng}`,
-          )
-        }
-      }
-    }
-
-    // Metadata
-    if (data.seasonality) info.seasonality = data.seasonality
-    if (data.tags) {
-      info.tags = data.tags
-      // Parse structured tags from raw tags object
-      const parsedTags = this.parseTagsToStructuredFields(data.tags)
-      if (parsedTags.orientation) info.orientation = parsedTags.orientation
-      if (parsedTags.rockType) info.rockType = parsedTags.rockType
-      if (parsedTags.climbingStyle && parsedTags.climbingStyle.length > 0)
-        info.climbingStyle = parsedTags.climbingStyle
-      if (parsedTags.sunExposure) info.sunExposure = parsedTags.sunExposure
-      if (parsedTags.sheltered !== undefined)
-        info.sheltered = parsedTags.sheltered
-    }
-
-    // Beta (approach, description, etc.)
-    if (data.beta && Array.isArray(data.beta) && data.beta.length > 0) {
-      info.beta = data.beta
-    }
-
-    // Statistics
-    if (data.ascentCount) info.ascentCount = data.ascentCount
-    if (data.averageHeight) info.averageHeight = data.averageHeight
-    if (data.displayAverageHeight)
-      info.displayAverageHeight = data.displayAverageHeight
-    if (data.numberRoutes) info.numberRoutes = data.numberRoutes
-    if (data.numberPhotos) info.numberPhotos = data.numberPhotos
-    if (data.numberTopos) info.numberTopos = data.numberTopos
-    if (data.hasTopo !== undefined) info.hasTopo = data.hasTopo
-    if (data.subAreaCount) info.subAreaCount = data.subAreaCount
-    if (data.totalFavorites) info.totalFavorites = data.totalFavorites
-    if (data.kudos) info.kudos = data.kudos
-    if (data.maxPop) info.maxPop = data.maxPop
-
-    // Additional info
-    if (data.altNames) info.altNames = data.altNames
-    if (data.description) info.description = data.description
-    if (data.approach) info.approach = data.approach
-    if (data.siblingLabel) info.siblingLabel = data.siblingLabel
-    if (data.priceCategory) info.priceCategory = data.priceCategory
-    if (data.permitNode) info.permitNode = data.permitNode
-    if (data.locatedness) info.locatedness = data.locatedness
-
-    // URLs
-    if (data.urlStub) info.urlStub = data.urlStub
-    if (data.urlAncestorStub) info.urlAncestorStub = data.urlAncestorStub
-    if (data.urlShortestStub) info.urlShortestStub = data.urlShortestStub
-    if (data.urlShortestAncestorStub)
-      info.urlShortestAncestorStub = data.urlShortestAncestorStub
-    if (data.redirectStubs) info.redirectStubs = data.redirectStubs
-
-    // PDF
-    if (data.lastPDFSize) info.lastPDFSize = data.lastPDFSize
-    if (data.lastPDFStaticDate) info.lastPDFStaticDate = data.lastPDFStaticDate
-    if (data.lastPDFStaticSize) info.lastPDFStaticSize = data.lastPDFStaticSize
-
-    // Flags
-    if (data.isTLC !== undefined) info.isTLC = data.isTLC
-    if (data.hide !== undefined) info.hide = data.hide
-    if (data.hasUnarchivedChildren !== undefined)
-      info.hasUnarchivedChildren = data.hasUnarchivedChildren
-    if (data.unique !== undefined) info.unique = data.unique
-
-    return Object.keys(info).length > 0 ? info : null
-  }
-
-  /**
-   * Get coordinates from web page as fallback when API doesn't return them
-   * Searches for coordinates in:
-   * 1. JavaScript variables (lat/lng patterns)
-   * 2. Data attributes (data-lat, data-lng)
-   * 3. Google Maps links
-   * 4. Parking coordinates in approach text
-   */
-  async getCoordinatesFromWebPage(
-    pagePath: string,
-  ): Promise<{ lat: number; lng: number } | null> {
-    try {
-      await this.delay()
-      const html = await this.curlRequestHtml(`${this.BASE_URL}${pagePath}`)
-
-      if (!html || html.length < 500) {
-        return null
-      }
-
-      const $ = cheerio.load(html)
-
-      // 1. Try script with coordinates (common in TheCrag pages)
-      const scripts = $('script').toArray()
-      for (const script of scripts) {
-        const content = $(script).html() || ''
-
-        // Look for lat/lng patterns in JavaScript
-        // Pattern: "lat": 39.826554 or lat = 39.826554 or latitude: 39.826554
-        const latMatch = content.match(
-          /["']?lat(?:itude)?["']?\s*[:=]\s*(-?\d+\.?\d*)/i,
-        )
-        const lngMatch = content.match(
-          /["']?(?:lng|lon|long|longitude)["']?\s*[:=]\s*(-?\d+\.?\d*)/i,
-        )
-
-        if (latMatch && lngMatch) {
-          const lat = parseFloat(latMatch[1])
-          const lng = parseFloat(lngMatch[1])
-          if (this.isValidCoordinate(lat, lng)) {
-            return { lat, lng }
-          }
-        }
-      }
-
-      // 2. Try data attributes on elements
-      const geoEl = $(
-        '[data-lat][data-lng], [data-lat][data-lon], [data-latitude][data-longitude]',
-      ).first()
-      if (geoEl.length) {
-        const lat = parseFloat(
-          geoEl.attr('data-lat') || geoEl.attr('data-latitude') || '',
-        )
-        const lng = parseFloat(
-          geoEl.attr('data-lng') ||
-            geoEl.attr('data-lon') ||
-            geoEl.attr('data-longitude') ||
-            '',
-        )
-        if (this.isValidCoordinate(lat, lng)) {
-          return { lat, lng }
-        }
-      }
-
-      // 3. Try Google Maps link (including .loc .mappin links)
-      const mapsLinks = $(
-        'a[href*="google.com/maps"], a[href*="maps.google"], .loc a[href*="maps"], .mappin',
-      ).toArray()
-      for (const link of mapsLinks) {
-        const href = $(link).attr('href') || ''
-        // Pattern: maps?q=lat,lng or @lat,lng
-        const match = href.match(/[?&@q=](-?\d+\.?\d*),(-?\d+\.?\d*)/)
-        if (match) {
-          const lat = parseFloat(match[1])
-          const lng = parseFloat(match[2])
-          if (this.isValidCoordinate(lat, lng)) {
-            logger.info(
-              'scraper:thecrag',
-              `Found coordinates in maps link: ${lat}, ${lng}`,
-            )
-            return { lat, lng }
-          }
-        }
-      }
-
-      // 4. Try to find coordinates in any link with lat/lng format
-      const allLinks = $('a[href]').toArray()
-      for (const link of allLinks) {
-        const href = $(link).attr('href') || ''
-        // Look for coordinates pattern in any href
-        const match = href.match(
-          /[?&@=](-?\d{1,3}\.\d{4,8}),(-?\d{1,3}\.\d{4,8})/,
-        )
-        if (match) {
-          const lat = parseFloat(match[1])
-          const lng = parseFloat(match[2])
-          if (
-            this.isValidCoordinate(lat, lng) &&
-            Math.abs(lat) > 20 &&
-            Math.abs(lat) < 70
-          ) {
-            logger.info(
-              'scraper:thecrag',
-              `Found coordinates in link: ${lat}, ${lng}`,
-            )
-            return { lat, lng }
-          }
-        }
-      }
-
-      // 5. Try to extract from approach/description text (parking coordinates)
-      // TheCrag often has coordinates like ":parking:, 39.826554, -0.574161"
-      const approachText = $(
-        '.beta-approach, .approach, [data-beta="Approach"]',
-      ).text()
-      const descText = $('.beta-description, .description').text()
-      const fullText = approachText + ' ' + descText
-
-      // Pattern: coordinates like "39.826554, -0.574161" or "(39.826554, -0.574161)"
-      const coordMatch = fullText.match(
-        /(\d{1,3}\.\d{3,8})\s*,\s*(-?\d{1,3}\.\d{3,8})/,
-      )
-      if (coordMatch) {
-        const lat = parseFloat(coordMatch[1])
-        const lng = parseFloat(coordMatch[2])
-        if (this.isValidCoordinate(lat, lng)) {
-          return { lat, lng }
-        }
-      }
-
-      return null
-    } catch (err) {
-      logger.warn(
-        'scraper:thecrag',
-        `Failed to get coordinates from web page ${pagePath}: ${err}`,
-      )
-      return null
-    }
-  }
-
-  /**
-   * Extract coordinates from API response data
-   * Searches multiple possible fields: geometry, map, location, geo, lat/lng, etc.
-   */
-  private extractCoordsFromApiResponse(
-    data: Record<string, unknown>,
-  ): { lat: number; lng: number } | null {
-    // 1. Try geometry field (standard format)
-    if (data.geometry) {
-      const geo = data.geometry as Record<string, unknown>
-      const lat = geo.lat as number | undefined
-      const lng = (geo.long || geo.lng || geo.longitude) as number | undefined
-      if (lat && lng && this.isValidCoordinate(lat, lng)) {
-        return { lat, lng }
-      }
-      // Try center array format [lng, lat]
-      if (geo.center && Array.isArray(geo.center) && geo.center.length >= 2) {
-        const centerLat = geo.center[1] as number
-        const centerLng = geo.center[0] as number
-        if (this.isValidCoordinate(centerLat, centerLng)) {
-          return { lat: centerLat, lng: centerLng }
-        }
-      }
-    }
-
-    // 2. Try map field
-    if (data.map) {
-      const map = data.map as Record<string, unknown>
-      const lat = (map.lat || map.latitude) as number | undefined
-      const lng = (map.lng || map.lon || map.long || map.longitude) as
-        | number
-        | undefined
-      if (lat && lng && this.isValidCoordinate(lat, lng)) {
-        return { lat, lng }
-      }
-      // Try center format
-      if (map.center && Array.isArray(map.center) && map.center.length >= 2) {
-        const centerLat = map.center[1] as number
-        const centerLng = map.center[0] as number
-        if (this.isValidCoordinate(centerLat, centerLng)) {
-          return { lat: centerLat, lng: centerLng }
-        }
-      }
-    }
-
-    // 3. Try location field
-    if (data.location) {
-      const loc = data.location as Record<string, unknown>
-      const lat = (loc.lat || loc.latitude) as number | undefined
-      const lng = (loc.lng || loc.lon || loc.long || loc.longitude) as
-        | number
-        | undefined
-      if (lat && lng && this.isValidCoordinate(lat, lng)) {
-        return { lat, lng }
-      }
-    }
-
-    // 4. Try geo field
-    if (data.geo) {
-      const geo = data.geo as Record<string, unknown>
-      const lat = (geo.lat || geo.latitude) as number | undefined
-      const lng = (geo.lng || geo.lon || geo.long || geo.longitude) as
-        | number
-        | undefined
-      if (lat && lng && this.isValidCoordinate(lat, lng)) {
-        return { lat, lng }
-      }
-    }
-
-    // 5. Try direct lat/lng fields
-    const lat = (data.lat || data.latitude) as number | undefined
-    const lng = (data.lng || data.lon || data.long || data.longitude) as
-      | number
-      | undefined
-    if (lat && lng && this.isValidCoordinate(lat, lng)) {
-      return { lat, lng }
-    }
-
-    // 6. Try geolocation field
-    if (data.geolocation) {
-      const geoloc = data.geolocation as Record<string, unknown>
-      const geoLat = (geoloc.lat || geoloc.latitude) as number | undefined
-      const geoLng = (geoloc.lng || geoloc.lon || geoloc.longitude) as
-        | number
-        | undefined
-      if (geoLat && geoLng && this.isValidCoordinate(geoLat, geoLng)) {
-        return { lat: geoLat, lng: geoLng }
-      }
-    }
-
-    return null
-  }
-
-  /**
-   * Extract coordinates from beta array (approach, description text)
-   * TheCrag often includes parking coordinates like ":parking:, 39.826554, -0.574161"
-   */
-  private extractCoordsFromBeta(
-    beta: Array<{ name: string; markdown: string }> | undefined,
-  ): { lat: number; lng: number } | null {
-    if (!beta || !Array.isArray(beta)) {
-      return null
-    }
-
-    // Combine all beta text
-    const fullText = beta.map((b) => b.markdown || '').join(' ')
-
-    // Pattern 1: :parking:, lat, lng or (lat, lng)
-    // Example: ":parking:, 39.826554, -0.574161"
-    const parkingMatch = fullText.match(
-      /:parking:[,\s]+(-?\d{1,3}\.\d{3,8})\s*,\s*(-?\d{1,3}\.\d{3,8})/i,
-    )
-    if (parkingMatch) {
-      const lat = parseFloat(parkingMatch[1])
-      const lng = parseFloat(parkingMatch[2])
-      if (this.isValidCoordinate(lat, lng)) {
-        return { lat, lng }
-      }
-    }
-
-    // Pattern 2: Generic coordinate pattern (lat, lng) where lat is typically 30-60 for Europe
-    // Look for patterns like "39.826554, -0.574161" or "(39.826554, -0.574161)"
-    const genericMatches = fullText.matchAll(
-      /[(\s,](-?\d{1,3}\.\d{4,8})\s*,\s*(-?\d{1,3}\.\d{4,8})[)\s,]/g,
-    )
-    for (const match of genericMatches) {
-      const lat = parseFloat(match[1])
-      const lng = parseFloat(match[2])
-      // Validate: lat should be reasonable (not too small, indicates it's actually a lat)
-      if (this.isValidCoordinate(lat, lng) && Math.abs(lat) > 20) {
-        return { lat, lng }
-      }
-    }
-
-    // Pattern 3: Google Maps URL in text
-    const mapsMatch = fullText.match(
-      /google\.com\/maps[^"'\s]*[?&@](-?\d+\.?\d*),(-?\d+\.?\d*)/i,
-    )
-    if (mapsMatch) {
-      const lat = parseFloat(mapsMatch[1])
-      const lng = parseFloat(mapsMatch[2])
-      if (this.isValidCoordinate(lat, lng)) {
-        return { lat, lng }
-      }
-    }
-
-    return null
-  }
-
-  /**
-   * Validate that coordinates are within reasonable bounds
-   */
-  private isValidCoordinate(lat: number, lng: number): boolean {
-    return (
-      !isNaN(lat) &&
-      !isNaN(lng) &&
-      lat >= -90 &&
-      lat <= 90 &&
-      lng >= -180 &&
-      lng <= 180 &&
-      // Exclude obviously wrong values (like 0,0)
-      !(lat === 0 && lng === 0)
-    )
-  }
-
-  /**
-   * Parse TheCrag tags object into structured fields
-   * Tags typically contain: orientation, rock type, climbing style, etc.
-   */
-  private parseTagsToStructuredFields(tags: Record<string, unknown>): {
-    orientation?: string
-    rockType?: string
-    climbingStyle?: string[]
-    sunExposure?: string
-    sheltered?: boolean
-  } {
-    const result: {
-      orientation?: string
-      rockType?: string
-      climbingStyle?: string[]
-      sunExposure?: string
-      sheltered?: boolean
-    } = {}
-
-    // Common tag keys that TheCrag uses (may vary)
-    // Orientation
-    if (tags.orientation || tags.facing || tags.aspect) {
-      result.orientation = String(
-        tags.orientation || tags.facing || tags.aspect,
-      )
-    }
-
-    // Rock type
-    if (tags.rockType || tags.rock || tags['rock-type']) {
-      result.rockType = String(tags.rockType || tags.rock || tags['rock-type'])
-    }
-
-    // Climbing style (can be multiple)
-    const styleKeys = [
-      'style',
-      'climbingStyle',
-      'type',
-      'angle',
-      'feature',
-      'features',
-    ]
-    const styles: string[] = []
-    for (const key of styleKeys) {
-      if (tags[key]) {
-        const value = tags[key]
-        if (Array.isArray(value)) {
-          styles.push(...value.map(String))
-        } else if (typeof value === 'string') {
-          styles.push(value)
-        }
-      }
-    }
-    if (styles.length > 0) {
-      result.climbingStyle = styles
-    }
-
-    // Sun exposure
-    if (tags.sun || tags.shade || tags.exposure || tags.sunExposure) {
-      result.sunExposure = String(
-        tags.sun || tags.shade || tags.exposure || tags.sunExposure,
-      )
-    }
-
-    // Sheltered
-    if (tags.sheltered !== undefined) {
-      result.sheltered = Boolean(tags.sheltered)
-    } else if (tags.protected !== undefined) {
-      result.sheltered = Boolean(tags.protected)
-    } else if (tags.wind !== undefined) {
-      result.sheltered = String(tags.wind).toLowerCase().includes('protected')
-    }
-
-    return result
-  }
-
-  /**
-   * Parse height value (can be array [value, unit] or number)
-   */
-  private parseHeight(height: unknown): number | null {
-    if (height === null || height === undefined) return null
-
-    if (Array.isArray(height) && height.length >= 1) {
-      const value = parseFloat(String(height[0]))
-      return isNaN(value) ? null : value
-    }
-
-    if (typeof height === 'number') return height
-    if (typeof height === 'string') {
-      const value = parseFloat(height)
-      return isNaN(value) ? null : value
-    }
-
-    return null
-  }
+  // ========================================
+  // HTTP REQUEST METHODS
+  // ========================================
 
   private static readonly MAX_API_RETRIES = 3
 
-  /**
-   * Make HTTP request using curl for API endpoints
-   */
   private async curlRequest(url: string, retryCount = 0): Promise<string> {
     const proxy = this.options.useProxies ? this.proxyManager.getNext() : null
 
@@ -1288,7 +614,6 @@ export class TheCragApiScraper {
       'TE: trailers',
     ]
 
-    // Add proxy if available
     if (proxy) {
       args.push('-x', proxy.url)
       logger.debug(
@@ -1305,7 +630,6 @@ export class TheCragApiScraper {
       const proc = Bun.spawn(args)
       const result = await new Response(proc.stdout).text()
 
-      // Check for actual blocking indicators (be more specific)
       const isBlocked = this.isResponseBlocked(result)
 
       if (isBlocked) {
@@ -1315,7 +639,6 @@ export class TheCragApiScraper {
             'scraper:thecrag',
             `Request blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked} | Attempt: ${retryCount + 1}/${TheCragApiScraper.MAX_API_RETRIES}`,
           )
-          // Retry with next proxy if we haven't exceeded max retries
           if (retryCount + 1 < TheCragApiScraper.MAX_API_RETRIES) {
             return this.curlRequest(url, retryCount + 1)
           }
@@ -1339,32 +662,24 @@ export class TheCragApiScraper {
     }
   }
 
-  /**
-   * Check if response indicates blocking/error
-   * Returns false if OK, or a string describing the block reason
-   */
   private isResponseBlocked(result: string): string | false {
-    // Empty response - could be network error
     if (!result || result.length === 0) {
       return 'empty response'
     }
 
     const trimmed = result.trim()
 
-    // Valid JSON responses from TheCrag API (even if empty)
-    // TheCrag returns [[]] for empty results, [] for no data, {} for empty objects
     if (
       trimmed === '[]' ||
       trimmed === '{}' ||
       trimmed === 'null' ||
-      trimmed === '[[]]' || // TheCrag empty response format
-      trimmed.startsWith('[') || // Valid JSON array
-      trimmed.startsWith('{') // Valid JSON object
+      trimmed === '[[]]' ||
+      trimmed.startsWith('[') ||
+      trimmed.startsWith('{')
     ) {
-      return false // Valid response
+      return false
     }
 
-    // Specific blocking messages
     if (result.includes('Access Denied')) {
       return 'Access Denied'
     }
@@ -1377,21 +692,15 @@ export class TheCragApiScraper {
     if (result.includes('blocked') && result.includes('IP')) {
       return 'IP blocked'
     }
-
-    // Cloudflare/bot detection - be specific
     if (result.includes('cf-browser-verification')) {
       return 'Cloudflare challenge'
     }
-
-    // Proxy authentication error - be specific to avoid false positives
     if (
       result.includes('Proxy Authentication Required') ||
       result.includes('407 Proxy Authentication')
     ) {
       return 'proxy auth failed'
     }
-
-    // HTML error pages (not JSON)
     if (result.includes('<!DOCTYPE') || result.includes('<html')) {
       if (result.includes('Access Denied') || result.includes('Forbidden')) {
         return 'Access Denied (HTML)'
@@ -1399,7 +708,6 @@ export class TheCragApiScraper {
       if (result.includes('cloudflare')) {
         return 'Cloudflare challenge'
       }
-      // Could be a legitimate HTML response or error page
       return false
     }
 
@@ -1408,13 +716,7 @@ export class TheCragApiScraper {
 
   private static readonly MAX_HTML_RETRIES = 3
 
-  /**
-   * Make HTTP request using curl for HTML pages
-   */
-  private async curlRequestHtml(
-    url: string,
-    retryCount = 0,
-  ): Promise<string> {
+  private async curlRequestHtml(url: string, retryCount = 0): Promise<string> {
     const proxy = this.options.useProxies ? this.proxyManager.getNext() : null
 
     const args = [
@@ -1423,7 +725,7 @@ export class TheCragApiScraper {
       '--globoff',
       '--compressed',
       '-s',
-      '-L', // Follow redirects
+      '-L',
       '-H',
       `User-Agent: ${this.USER_AGENT}`,
       '-H',
@@ -1446,7 +748,6 @@ export class TheCragApiScraper {
       'Sec-Fetch-User: ?1',
     ]
 
-    // Add proxy if available
     if (proxy) {
       args.push('-x', proxy.url)
       logger.debug(
@@ -1463,7 +764,6 @@ export class TheCragApiScraper {
       const proc = Bun.spawn(args)
       const result = await new Response(proc.stdout).text()
 
-      // Check for actual blocking indicators
       const isBlocked = this.isHtmlResponseBlocked(result)
 
       if (isBlocked) {
@@ -1473,7 +773,6 @@ export class TheCragApiScraper {
             'scraper:thecrag',
             `HTML blocked | URL: ${url} | Proxy: ${proxy.host}:${proxy.port} | Reason: ${isBlocked} | Attempt: ${retryCount + 1}/${TheCragApiScraper.MAX_HTML_RETRIES}`,
           )
-          // Retry with next proxy if we haven't exceeded max retries
           if (retryCount + 1 < TheCragApiScraper.MAX_HTML_RETRIES) {
             return this.curlRequestHtml(url, retryCount + 1)
           }
@@ -1497,21 +796,15 @@ export class TheCragApiScraper {
     }
   }
 
-  /**
-   * Check if HTML response indicates blocking/error
-   */
   private isHtmlResponseBlocked(result: string): string | false {
-    // Empty response
     if (!result || result.length === 0) {
       return 'empty response'
     }
 
-    // Very short for HTML (less than 100 chars is suspicious for an HTML page)
     if (result.length < 100 && !result.includes('<')) {
       return `too short for HTML (${result.length} chars)`
     }
 
-    // Specific blocking messages
     if (result.includes('Access Denied')) {
       return 'Access Denied'
     }
@@ -1521,21 +814,15 @@ export class TheCragApiScraper {
     if (result.includes('rate limit') || result.includes('Rate limit')) {
       return 'rate limited'
     }
-
-    // Cloudflare/bot detection - be specific to avoid false positives
-    // The actual block page has "Just a moment" as title, not just "challenge-platform" in scripts
     if (result.includes('cf-browser-verification')) {
       return 'Cloudflare challenge'
     }
-    // Cloudflare waiting page - check for title specifically
     if (
       result.includes('<title>Just a moment...</title>') ||
       (result.includes('Just a moment...') && !result.includes('theCrag'))
     ) {
       return 'Cloudflare waiting page'
     }
-
-    // Proxy errors - be specific to avoid false positives with coordinates like "407.6"
     if (
       result.includes('Proxy Authentication Required') ||
       result.includes('407 Proxy Authentication')

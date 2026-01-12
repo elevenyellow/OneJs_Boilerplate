@@ -1,0 +1,576 @@
+---
+description: Establishes patterns for React component props including TypeScript interfaces, prop limits, avoiding prop drilling, composition over configuration, and callback naming conventions
+globs:
+  - "apps/**/*.tsx"
+  - "apps/**/*.ts"
+  - "packages/**/*.tsx"
+  - "packages/**/*.ts"
+alwaysApply: true
+---
+# React: Props and Component Interfaces
+
+This rule defines how to design component props and interfaces in React applications. The goal is to create clear, maintainable component APIs that are easy to use and understand.
+
+## Rationale
+
+- Explicit prop types catch errors at compile time
+- Prop limits prevent components from becoming too complex
+- Composition reduces coupling and improves reusability
+- Clear naming conventions improve code readability
+- Avoiding prop drilling keeps component trees clean
+
+## Strict Limits
+
+### MUST NOT exceed 8 props per component
+
+If a component needs more than 8 props, it violates Single Responsibility Principle or needs better composition.
+
+**Solutions:**
+- Group related props into a config object
+- Split component into smaller components
+- Use composition instead of configuration
+- Extract sub-components with focused responsibilities
+
+### MUST NOT prop drill more than 2 levels
+
+Passing props through more than 2 component levels creates tight coupling and maintenance burden.
+
+**Solutions:**
+- Use Context for deeply shared state
+- Use composition (children, render props)
+- Extract intermediate components
+- Use state management library if needed
+
+## TypeScript Patterns
+
+### ✅ CORRECT - Explicit prop interfaces
+
+```tsx
+// ✅ Clear interface with descriptive names
+interface EventCardProps {
+  event: Event
+  onEdit: (event: Event) => void
+  onDelete: (event: Event) => void
+  showActions?: boolean
+  className?: string
+}
+
+export function EventCard({ 
+  event, 
+  onEdit, 
+  onDelete, 
+  showActions = true,
+  className 
+}: EventCardProps) {
+  return (
+    <div className={className}>
+      <h3>{event.title}</h3>
+      {showActions && (
+        <div>
+          <Button onClick={() => onEdit(event)}>Edit</Button>
+          <Button onClick={() => onDelete(event)}>Delete</Button>
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+### ✅ CORRECT - Optional props with default values
+
+```tsx
+interface PaginatorProps {
+  page: number
+  totalPages: number
+  onPageChange: (page: number) => void
+  // Optional props
+  showFirstLast?: boolean
+  showPageNumbers?: boolean
+  maxPageButtons?: number
+}
+
+export function Paginator({ 
+  page, 
+  totalPages, 
+  onPageChange,
+  showFirstLast = true,
+  showPageNumbers = true,
+  maxPageButtons = 5,
+}: PaginatorProps) {
+  // Implementation
+}
+```
+
+### ✅ CORRECT - Discriminated unions for variants
+
+```tsx
+// ✅ Type-safe variants with discriminated union
+type ButtonProps = 
+  | { variant: 'primary'; onClick: () => void; children: React.ReactNode }
+  | { variant: 'link'; href: string; children: React.ReactNode }
+  | { variant: 'submit'; type: 'submit'; children: React.ReactNode }
+
+export function Button(props: ButtonProps) {
+  if (props.variant === 'link') {
+    return <a href={props.href}>{props.children}</a>
+  }
+  if (props.variant === 'submit') {
+    return <button type="submit">{props.children}</button>
+  }
+  return <button onClick={props.onClick}>{props.children}</button>
+}
+```
+
+### ✅ CORRECT - Generic props for reusable components
+
+```tsx
+interface DataTableProps<T> {
+  data: T[]
+  columns: Column<T>[]
+  onRowClick?: (row: T) => void
+  loading?: boolean
+  emptyMessage?: string
+}
+
+export function DataTable<T>({ 
+  data, 
+  columns, 
+  onRowClick,
+  loading = false,
+  emptyMessage = 'No data available'
+}: DataTableProps<T>) {
+  // Generic table implementation
+}
+
+// Usage with type inference
+<DataTable<Event> 
+  data={events} 
+  columns={eventColumns} 
+  onRowClick={handleEventClick} 
+/>
+```
+
+## Callback Naming Conventions
+
+### MUST use on* pattern for callback props
+
+Callback props MUST follow the `on<Action>` naming pattern.
+
+```tsx
+// ✅ CORRECT - on* pattern
+interface EventCardProps {
+  onEdit: (event: Event) => void
+  onDelete: (event: Event) => void
+  onClick: () => void
+  onChange: (value: string) => void
+  onSubmit: (data: FormData) => void
+}
+
+// ❌ INCORRECT - Inconsistent naming
+interface EventCardProps {
+  editHandler: (event: Event) => void  // ❌ Should be onEdit
+  handleDelete: (event: Event) => void // ❌ Should be onDelete
+  clicked: () => void                  // ❌ Should be onClick
+}
+```
+
+### Component internal handlers use handle* pattern
+
+```tsx
+function EventCard({ event, onEdit, onDelete }: EventCardProps) {
+  // ✅ Internal handlers use handle* pattern
+  const handleEditClick = useCallback(() => {
+    onEdit(event)
+  }, [event, onEdit])
+  
+  const handleDeleteClick = useCallback(() => {
+    if (confirm('Are you sure?')) {
+      onDelete(event)
+    }
+  }, [event, onDelete])
+  
+  return (
+    <div>
+      <Button onClick={handleEditClick}>Edit</Button>
+      <Button onClick={handleDeleteClick}>Delete</Button>
+    </div>
+  )
+}
+```
+
+## Composition Over Configuration
+
+### ✅ CORRECT - Composition with children
+
+```tsx
+// ✅ GOOD - Flexible composition
+interface CardProps {
+  children: React.ReactNode
+  className?: string
+}
+
+export function Card({ children, className }: CardProps) {
+  return <div className={`card ${className}`}>{children}</div>
+}
+
+// Usage - compose different content
+<Card>
+  <CardHeader>
+    <h2>Event Details</h2>
+  </CardHeader>
+  <CardContent>
+    <p>Event description...</p>
+  </CardContent>
+  <CardFooter>
+    <Button>Edit</Button>
+  </CardFooter>
+</Card>
+```
+
+### ✅ CORRECT - Render props for flexibility
+
+```tsx
+interface DataTableProps<T> {
+  data: T[]
+  renderRow: (item: T, index: number) => React.ReactNode
+  renderEmpty?: () => React.ReactNode
+}
+
+export function DataTable<T>({ data, renderRow, renderEmpty }: DataTableProps<T>) {
+  if (data.length === 0) {
+    return renderEmpty ? renderEmpty() : <p>No data</p>
+  }
+  
+  return (
+    <table>
+      <tbody>
+        {data.map((item, index) => renderRow(item, index))}
+      </tbody>
+    </table>
+  )
+}
+
+// Usage - full control over row rendering
+<DataTable 
+  data={events}
+  renderRow={(event) => (
+    <EventRow key={event.id} event={event} onEdit={handleEdit} />
+  )}
+/>
+```
+
+### ✅ CORRECT - Slots pattern for complex composition
+
+```tsx
+interface PageLayoutProps {
+  header: React.ReactNode
+  sidebar?: React.ReactNode
+  content: React.ReactNode
+  footer?: React.ReactNode
+}
+
+export function PageLayout({ header, sidebar, content, footer }: PageLayoutProps) {
+  return (
+    <div className="page-layout">
+      <header>{header}</header>
+      <div className="page-body">
+        {sidebar && <aside>{sidebar}</aside>}
+        <main>{content}</main>
+      </div>
+      {footer && <footer>{footer}</footer>}
+    </div>
+  )
+}
+
+// Usage - compose different sections
+<PageLayout
+  header={<PageHeader title="Events" />}
+  sidebar={<EventsFilters />}
+  content={<EventsTable />}
+  footer={<Paginator />}
+/>
+```
+
+### ❌ INCORRECT - Too many configuration props
+
+```tsx
+// ❌ BAD - 12 props, mostly configuration
+interface EventCardProps {
+  event: Event
+  showTitle?: boolean
+  showDescription?: boolean
+  showDate?: boolean
+  showVenue?: boolean
+  showCategory?: boolean
+  showTags?: boolean
+  showImage?: boolean
+  showActions?: boolean
+  titleClassName?: string
+  descriptionClassName?: string
+  dateFormat?: string
+  onEdit?: (event: Event) => void
+  // ... more props
+}
+
+// ✅ GOOD - Composition instead
+interface EventCardProps {
+  event: Event
+  children?: React.ReactNode
+  actions?: React.ReactNode
+}
+
+export function EventCard({ event, children, actions }: EventCardProps) {
+  return (
+    <div className="event-card">
+      {children}
+      {actions}
+    </div>
+  )
+}
+
+// Usage - compose what you need
+<EventCard event={event} actions={<EventActions event={event} />}>
+  <EventTitle>{event.title}</EventTitle>
+  <EventDate date={event.startDate} />
+  <EventVenue venue={event.venueName} />
+</EventCard>
+```
+
+## Grouping Related Props
+
+### ✅ CORRECT - Config object for related props
+
+```tsx
+// ✅ GOOD - Group related filter props
+interface EventsFiltersProps {
+  filters: EventFilters  // Group related state
+  cities: City[]
+  categories: Category[]
+  onFilterChange: (filters: Partial<EventFilters>) => void
+}
+
+type EventFilters = {
+  cityId?: string
+  startDate?: number
+  endDate?: number
+  categoryId?: string
+  search?: string
+}
+
+export function EventsFilters({ 
+  filters, 
+  cities, 
+  categories, 
+  onFilterChange 
+}: EventsFiltersProps) {
+  // 4 props instead of 8+
+}
+```
+
+### ✅ CORRECT - Separate concerns into sub-components
+
+```tsx
+// ❌ BAD - Too many props (15+)
+interface EventsPageProps {
+  events: Event[]
+  cities: City[]
+  categories: Category[]
+  filters: EventFilters
+  page: number
+  totalPages: number
+  loading: boolean
+  selectedEvent: Event | null
+  dialogOpen: boolean
+  onFilterChange: (filters: EventFilters) => void
+  onPageChange: (page: number) => void
+  onEdit: (event: Event) => void
+  onDelete: (event: Event) => void
+  onDialogClose: () => void
+  // ... more props
+}
+
+// ✅ GOOD - Split into focused components
+function EventsPage() {
+  // Page-level state and logic
+  
+  return (
+    <div>
+      <PageHeader title="Events" />
+      <EventsFilters 
+        filters={filters} 
+        cities={cities} 
+        categories={categories}
+        onFilterChange={handleFilterChange}
+      />
+      <EventsTable 
+        events={events} 
+        loading={loading}
+        onEdit={handleEdit} 
+        onDelete={handleDelete}
+      />
+      <Paginator 
+        page={page} 
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
+      <EventDialog 
+        open={dialogOpen} 
+        event={selectedEvent}
+        onClose={handleDialogClose}
+      />
+    </div>
+  )
+}
+```
+
+## Avoiding Prop Drilling
+
+### ✅ CORRECT - Context for deeply shared state
+
+```tsx
+// ✅ GOOD - Use Context instead of drilling through 3+ levels
+import { createContext, useContext } from 'react'
+
+type EventsContextValue = {
+  selectedEvent: Event | null
+  setSelectedEvent: (event: Event | null) => void
+  onEdit: (event: Event) => void
+  onDelete: (event: Event) => void
+}
+
+const EventsContext = createContext<EventsContextValue | null>(null)
+
+export function EventsProvider({ children }: { children: React.ReactNode }) {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  
+  const handleEdit = useCallback((event: Event) => {
+    setSelectedEvent(event)
+    // Edit logic
+  }, [])
+  
+  const handleDelete = useCallback((event: Event) => {
+    // Delete logic
+  }, [])
+  
+  return (
+    <EventsContext.Provider value={{ selectedEvent, setSelectedEvent, onEdit: handleEdit, onDelete: handleDelete }}>
+      {children}
+    </EventsContext.Provider>
+  )
+}
+
+export function useEventsContext() {
+  const context = useContext(EventsContext)
+  if (!context) throw new Error('useEventsContext must be used within EventsProvider')
+  return context
+}
+
+// Usage - no prop drilling
+function EventsPage() {
+  return (
+    <EventsProvider>
+      <EventsTable />
+      <EventDialog />
+    </EventsProvider>
+  )
+}
+
+function EventsTable() {
+  const { onEdit, onDelete } = useEventsContext()
+  // Use context values directly - no props needed
+}
+```
+
+### ✅ CORRECT - Composition to avoid drilling
+
+```tsx
+// ✅ GOOD - Composition instead of prop drilling
+function EventsPage() {
+  const handleEdit = useCallback((event: Event) => {
+    // Edit logic
+  }, [])
+  
+  // Pass callbacks directly to where they're used
+  return (
+    <EventsTable events={events}>
+      {(event) => (
+        <EventRow event={event}>
+          <EventActions onEdit={() => handleEdit(event)} />
+        </EventRow>
+      )}
+    </EventsTable>
+  )
+}
+```
+
+## Spreading Props
+
+### ✅ CORRECT - Controlled spreading with known props
+
+```tsx
+// ✅ GOOD - Spread known HTML attributes
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary'
+  size?: 'sm' | 'md' | 'lg'
+}
+
+export function Button({ variant = 'primary', size = 'md', className, ...props }: ButtonProps) {
+  return (
+    <button 
+      className={`btn btn-${variant} btn-${size} ${className}`}
+      {...props}  // ✅ Spread known HTML attributes
+    />
+  )
+}
+```
+
+### ❌ INCORRECT - Uncontrolled spreading
+
+```tsx
+// ❌ BAD - Spreading unknown props
+interface EventCardProps {
+  event: Event
+  [key: string]: any  // ❌ Avoid any
+}
+
+export function EventCard({ event, ...rest }: EventCardProps) {
+  return <div {...rest}>{/* ... */}</div>  // ❌ Unknown props
+}
+
+// ✅ GOOD - Explicit props
+interface EventCardProps {
+  event: Event
+  className?: string
+  style?: React.CSSProperties
+  onClick?: () => void
+}
+
+export function EventCard({ event, className, style, onClick }: EventCardProps) {
+  return <div className={className} style={style} onClick={onClick}>{/* ... */}</div>
+}
+```
+
+## PR Checklist
+
+- [ ] All components have ≤8 props
+- [ ] Prop drilling doesn't exceed 2 levels
+- [ ] All props have explicit TypeScript types
+- [ ] Callback props follow on* naming convention
+- [ ] Related props are grouped into objects where appropriate
+- [ ] Composition is preferred over configuration
+- [ ] No uncontrolled prop spreading (except HTML attributes)
+- [ ] Optional props have default values or clear documentation
+
+## Exceptions
+
+- Form components may have more props if using form libraries
+- Wrapper components for third-party libraries may need more props
+- Complex data visualization components may exceed 8 props if necessary
+- Temporary prototypes may exceed limits with TODO comments
+
+## Related Rules
+
+- `.cursor/rules/react-component-decomposition.mdc` - Component size and responsibility
+- `.cursor/rules/react-performance.mdc` - Prop stability and memoization
+- `.cursor/rules/react-state-management.mdc` - State management patterns
+- `.cursor/rules/code-style-and-commands.mdc` - TypeScript and naming conventions

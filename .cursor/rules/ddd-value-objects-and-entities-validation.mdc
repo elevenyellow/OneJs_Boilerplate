@@ -1,0 +1,238 @@
+---
+description: Regla para creación y validación de Value Objects y Entidades siguiendo DDD con Result/Either y factorías create().
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Validación en Value Objects y Entidades (DDD)
+
+Esta regla estandariza cómo crear y validar Value Objects (VO) y Entidades, utilizando un estilo funcional con Result/Either para el flujo normal de errores de dominio. Evita excepciones para la lógica esperada (validación), reservándolas para fallos excepcionales o infraestructura.
+
+## Decisiones clave
+
+- Usar Result/Either para retornar éxito/fracaso en creación y operaciones de dominio.
+- VO con `static create(props): Result<VO, DomainError>`; constructor privado.
+- Entidades con `static create(props): Result<Entity, DomainError[]>` validando invariantes y composición de VOs.
+- Errores tipados que extienden `DomainError` con `code` estable y mensaje humano.
+- Validaciones síncronas en dominio; validaciones externas/IO se traducen a `DomainError` en application layer.
+
+## Principios
+
+- Un VO siempre es válido después de crearse; su invariantes se verifican en `create()`.
+- Una Entidad sólo se crea si todas sus invariantes y las de sus VOs se cumplen.
+- No se lanzan excepciones para validar; se devuelve `Result` con errores de dominio.
+- Las factorías no validan invariantes de Entidades/VOs; delegan en `create()`.
+- Las Specifications no sustituyen las invariantes; se usan para reglas compuestas/reutilizables.
+
+## Tipos guía
+
+> Estos tipos son orientativos. No definen implementación global; usa los equivalentes del proyecto.
+
+```ts
+export type Result<T, E> = Ok<T, E> | Err<T, E>
+
+export interface Ok<T, E> {
+  readonly ok: true
+  readonly value: T
+}
+
+export interface Err<T, E> {
+  readonly ok: false
+  readonly error: E
+}
+
+export const ok = <T, E = never>(value: T): Result<T, E> => ({ ok: true, value })
+export const err = <T = never, E = unknown>(error: E): Result<T, E> => ({ ok: false, error })
+
+export abstract class DomainError extends Error {
+  abstract readonly code: string
+  constructor(message: string) {
+    super(message)
+  }
+}
+```
+
+## Value Objects
+
+Características:
+
+- Inmutables tras creación.
+- Encapsulan validaciones atómicas (formato, rango, normalización).
+- Exponen getters/métodos sin modificar estado.
+
+### Estructura recomendada
+
+```ts
+// packages/shared/domain/value-objects/email.ts
+export class InvalidEmailError extends DomainError {
+  readonly code = 'USER.EMAIL.INVALID'
+  constructor(readonly input: string) { super(`Invalid email: ${input}`) }
+}
+
+export class Email {
+  private constructor(private readonly value: string) {}
+
+  static create(raw: string): Result<Email, DomainError> {
+    if (typeof raw !== 'string') return err(new InvalidEmailError(String(raw)))
+
+    const normalized = raw.trim().toLowerCase()
+    const emailRegex = /^\S+@\S+\.\S+$/
+    if (!emailRegex.test(normalized)) return err(new InvalidEmailError(raw))
+
+    return ok(new Email(normalized))
+  }
+
+  equals(other: Email): boolean { return this.value === other.value }
+  asString(): string { return this.value }
+}
+```
+
+### Checklist de VO
+
+- Constructor privado.
+- Método `static create(...)` valida y normaliza.
+- Devuelve `Result<VO, DomainError>`.
+- Métodos sin efectos secundarios; sin dependencias de infraestructura.
+- Códigos de error estables y testeables.
+
+## Entidades
+
+Características:
+
+- Identidad estable (e.g., `UniqueEntityId`).
+- Componen VOs; validan invariantes propias (coherencia entre campos, reglas del agregado).
+- `static create(props): Result<Entity, DomainError[]>` acumula errores y sólo construye si no hay errores.
+
+### Estructura recomendada
+
+```ts
+// packages/users/domain/entities/user.ts
+export class MissingEmailError extends DomainError {
+  readonly code = 'USER.EMAIL.MISSING'
+  constructor() { super('Email is required') }
+}
+
+export class User {
+  private constructor(
+    readonly id: UniqueEntityId,
+    readonly email: Email,
+  ) {}
+
+  static create(props: { id?: UniqueEntityId; email: string }): Result<User, DomainError[]> {
+    const errors: DomainError[] = []
+    const id = props.id ?? UniqueEntityId.generate()
+
+    const emailResult = Email.create(props.email)
+    if (!emailResult.ok) errors.push(emailResult.error)
+
+    // Invariantes de entidad (ejemplos):
+    // - id válido (si viene de fuera)
+    // - no permitir dominios bloqueados, etc.
+
+    if (errors.length) return err(errors)
+    return ok(new User(id, emailResult.value))
+  }
+}
+```
+
+### Checklist de Entidad
+
+- `static create(props)` que compone y valida VOs.
+- Acumula errores `DomainError[]`; no lanza.
+- No usa infraestructura; orquestación externa via Use Cases/Factories.
+- Mantiene invariantes simples en dominio; reglas complejas reutilizables pueden ir en Specifications.
+
+## Agregados e invariantes
+
+- Cuando múltiples Entidades/VOs interactúan, los invariantes del agregado se validan en la raíz del agregado.
+- Mantén la validación donde residen los datos y su consistencia.
+- Preferir `Result<Aggregate, DomainError[]>` con acumulación de errores.
+
+## Antipatrones
+
+- Lanzar excepciones para validaciones esperadas de dominio.
+- Factorías que validan lo que corresponde a `create()` de VO/Entidad.
+- Esconder normalización en getters en vez de en `create()`.
+- Devolver tipos parciales o mutables desde VO/Entidad.
+
+## Interacción con otros patrones
+
+- Factory Pattern: orquesta dependencias externas; delega validaciones de VO/Entidad a `create()`.
+- Specification Pattern: compone reglas complejas/reutilizables; no sustituye invariantes.
+
+## Testing
+
+- Testea `ok/err` en casos límite (inputs vacíos, nulos, formatos inválidos).
+- Asegura que `create()` normaliza correctamente (e.g., trim/lowercase).
+- Verifica igualdad/valor de VO y construcción de Entidad cuando todos los VOs son válidos.
+
+```ts
+// Ejemplo de test mínimo
+it('should fail to create Email on invalid format', () => {
+  const result = Email.create('not-an-email')
+  expect(result.ok).toBe(false)
+  if (!result.ok) expect(result.error.code).toBe('USER.EMAIL.INVALID')
+})
+```
+
+## Checklist rápida (copiable)
+
+- VO
+  - constructor privado
+  - `static create(...) => Result<VO, DomainError>`
+  - normaliza + valida
+  - sin efectos secundarios
+  - códigos de error estables
+- Entidad
+  - `static create(...) => Result<Entity, DomainError[]>`
+  - compone VOs y acumula errores
+  - sin infraestructura
+  - invariantes en la raíz del agregado si aplica
+
+## Ejemplo extendido (composición)
+
+```ts
+export class Username {
+  private constructor(private readonly value: string) {}
+  static create(raw: string): Result<Username, DomainError> {
+    const v = raw?.trim()
+    if (!v || v.length < 3) return err(new class extends DomainError { readonly code = 'USER.USERNAME.TOO_SHORT'; constructor(){super('Username too short')} }())
+    if (v.length > 30) return err(new class extends DomainError { readonly code = 'USER.USERNAME.TOO_LONG'; constructor(){super('Username too long')} }())
+    return ok(new Username(v))
+  }
+  asString(): string { return this.value }
+}
+
+export class UserProfile {
+  private constructor(
+    readonly id: UniqueEntityId,
+    readonly username: Username,
+    readonly email: Email,
+  ) {}
+
+  static create(props: { id?: UniqueEntityId; username: string; email: string }): Result<UserProfile, DomainError[]> {
+    const errors: DomainError[] = []
+    const id = props.id ?? UniqueEntityId.generate()
+
+    const usernameR = Username.create(props.username)
+    if (!usernameR.ok) errors.push(usernameR.error)
+
+    const emailR = Email.create(props.email)
+    if (!emailR.ok) errors.push(emailR.error)
+
+    // Invariante ejemplo: username y email no pueden pertenecer a dominio bloqueado
+    if (emailR.ok && emailR.value.asString().endsWith('@blocked.com')) {
+      errors.push(new class extends DomainError { readonly code = 'USER.EMAIL.DOMAIN_BLOCKED'; constructor(){super('Email domain blocked')} }())
+    }
+
+    if (errors.length) return err(errors)
+    return ok(new UserProfile(id, usernameR.value, emailR.value))
+  }
+}
+```
+
+## Referencias relacionadas
+
+- `.cursor/rules/factory-pattern.mdc`
+- `.cursor/rules/specifications-pattern.mdc`

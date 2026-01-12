@@ -1,0 +1,227 @@
+---
+description: Enforces that @Inject decorator only receives concrete classes with @Injectable decorator, not interfaces, types, or abstract classes
+globs:
+  - "packages/**/*.ts"
+  - "apps/**/*.ts"
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Dependency Injection Rules
+
+The `@Inject()` decorator from the DI container must only receive concrete classes that are decorated with `@Injectable()`. This ensures the DI container can properly instantiate and manage dependencies at runtime.
+
+## Allowed Injection Patterns
+
+### ✅ CORRECT - Injecting concrete class
+
+```typescript
+import { Inject, Injectable } from '@OneJs/Core'
+import { UserPrismaRepository } from '@user/infrastructure/persistance/prisma/user.repository'
+
+@Injectable()
+export class GetUserUseCase {
+  constructor(
+    @Inject(UserPrismaRepository)
+    private readonly userRepository: UserPrismaRepository,
+  ) {}
+}
+```
+
+The class `UserPrismaRepository` is:
+- A concrete class (not an interface or type)
+- Decorated with `@Injectable()`
+- Can be instantiated by the DI container
+
+### ✅ CORRECT - Injecting framework services
+
+```typescript
+import { Inject, Injectable } from '@OneJs/Core'
+import { Logger } from '@OneJs/Core'
+import { PrismaClientEy } from '@OneJs/Prisma'
+
+@Injectable()
+export class MyRepository {
+  constructor(
+    @Inject(Logger)
+    private readonly logger: Logger,
+    @Inject(PrismaClientEy)
+    private readonly prisma: PrismaClientEy,
+  ) {}
+}
+```
+
+## Forbidden Injection Patterns
+
+### ❌ INCORRECT - Injecting an interface directly
+
+```typescript
+import { Inject, Injectable } from '@OneJs/Core'
+import type { UserRepository } from '@user/domain/interfaces'
+
+@Injectable()
+export class GetUserUseCase {
+  constructor(
+    @Inject(UserRepository) // ❌ NO - UserRepository is an interface
+    private readonly userRepository: UserRepository,
+  ) {}
+}
+```
+
+**Problem**: TypeScript interfaces do not exist at runtime. The DI container receives `undefined` and cannot resolve the dependency.
+
+### ❌ INCORRECT - Injecting with string tokens
+
+```typescript
+import { Inject, Injectable } from '@OneJs/Core'
+import type { CitiesService } from '@cities/domain/interfaces'
+
+@Injectable()
+export class GetCitiesUseCase {
+  constructor(
+    @Inject('CitiesService') // ❌ NO - String tokens are fragile and error-prone
+    private readonly citiesService: CitiesService,
+  ) {}
+}
+```
+
+**Problem**: String tokens bypass type safety, are prone to typos, and make refactoring difficult.
+
+### ❌ INCORRECT - Injecting a type alias
+
+```typescript
+import { Inject, Injectable } from '@OneJs/Core'
+import type { MyService } from './types'
+
+@Injectable()
+export class MyUseCase {
+  constructor(
+    @Inject(MyService) // ❌ NO - Type aliases don't exist at runtime
+    private readonly service: MyService,
+  ) {}
+}
+```
+
+### ❌ INCORRECT - Injecting an abstract class without implementation
+
+```typescript
+import { Inject, Injectable } from '@OneJs/Core'
+import { AbstractService } from './abstract-service'
+
+@Injectable()
+export class MyUseCase {
+  constructor(
+    @Inject(AbstractService) // ❌ NO - Cannot instantiate abstract classes
+    private readonly service: AbstractService,
+  ) {}
+}
+```
+
+## Rationale
+
+1. **Runtime Safety**: Interfaces and types are TypeScript compile-time constructs that don't exist at runtime. The DI container operates at runtime and needs actual class constructors.
+
+2. **Type Safety**: Using concrete classes provides full type checking without manual string mapping.
+
+3. **Refactoring**: IDE refactoring tools work correctly with class references but not with string tokens.
+
+4. **Simplicity**: Direct injection of concrete classes is simpler and more maintainable than managing interface-to-implementation mappings.
+
+5. **Debuggability**: Stack traces and debugging tools show concrete class names, making issues easier to diagnose.
+
+## When to Use Interfaces
+
+According to DDD architecture rules (`.cursor/rules/ddd-application-use.mdc`):
+
+> "avoid interfaces unless they represent real ports to external providers or multiple implementations"
+
+Interfaces should only be defined when:
+- You have multiple implementations (e.g., `PrismaRepository` vs `MongoRepository`)
+- You're defining a port to an external system (e.g., `EmailProvider`, `PaymentGateway`)
+- You need to swap implementations based on environment or configuration
+
+For single implementations within your domain:
+- Skip the interface entirely
+- Inject the concrete class directly
+- The class itself documents the contract
+
+## How to Fix Violations
+
+### If you have a single implementation:
+
+1. Remove the interface
+2. Inject the concrete class directly
+3. Update the type annotation to use the concrete class
+
+**Before:**
+```typescript
+// domain/interfaces/user-repository.interface.ts
+export interface UserRepository { ... }
+
+// infrastructure/persistence/prisma/user.repository.ts
+export class UserPrismaRepository implements UserRepository { ... }
+
+// application/use-cases/get-user.use-case.ts
+@Inject('UserRepository')
+private readonly userRepository: UserRepository
+```
+
+**After:**
+```typescript
+// No interface needed
+
+// infrastructure/persistence/prisma/user.repository.ts
+@Injectable()
+export class UserPrismaRepository { ... }
+
+// application/use-cases/get-user.use-case.ts
+@Inject(UserPrismaRepository)
+private readonly userRepository: UserPrismaRepository
+```
+
+### If you truly need multiple implementations:
+
+1. Keep the interface as a contract
+2. Create concrete classes for each implementation
+3. Decide at application bootstrap which implementation to use
+4. Inject the concrete implementation class, not the interface
+
+**Example with multiple implementations:**
+```typescript
+// domain/interfaces/storage.interface.ts
+export interface StorageProvider {
+  upload(file: File): Promise<string>
+}
+
+// infrastructure/storage/s3-storage.provider.ts
+@Injectable()
+export class S3StorageProvider implements StorageProvider { ... }
+
+// infrastructure/storage/local-storage.provider.ts
+@Injectable()
+export class LocalStorageProvider implements StorageProvider { ... }
+
+// application/use-cases/upload-file.use-case.ts
+@Injectable()
+export class UploadFileUseCase {
+  constructor(
+    // Inject the specific implementation you want
+    @Inject(S3StorageProvider)
+    private readonly storage: S3StorageProvider,
+  ) {}
+}
+```
+
+## Detection Patterns
+
+Watch for these patterns in code reviews:
+
+1. `@Inject(SomethingInterface)` where `SomethingInterface` is an interface
+2. `@Inject('StringToken')` with string literals
+3. `import type { ... }` being used with `@Inject()`
+4. Interfaces in `/domain/interfaces/` that have only one implementation
+
+## See Also
+
+- `.cursor/rules/ddd-application-use.mdc` - DDD architecture and dependency guidelines
+- `.cursor/rules/controller-dependencies.mdc` - Specific rules for controller dependencies

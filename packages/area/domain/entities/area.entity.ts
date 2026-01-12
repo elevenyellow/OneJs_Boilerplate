@@ -1,6 +1,5 @@
 import {
   BetaInfo,
-  Coordinates,
   ExternalId,
   Geometry,
   Name,
@@ -34,6 +33,14 @@ export class AreaEntity {
     public readonly beta: BetaInfo,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
+    // Header image - Original TheCrag URLs
+    public readonly headerImageUrl: string | null = null,
+    public readonly headerImageWidth: number | null = null,
+    public readonly headerImageHeight: number | null = null,
+    // Header image - Optimized S3 URLs
+    public readonly headerImageS3Url: string | null = null,
+    public readonly headerImageS3UrlFull: string | null = null,
+    public readonly headerImageOriginalUrl: string | null = null,
   ) {}
 
   get latitude(): number | null {
@@ -64,6 +71,27 @@ export class AreaEntity {
     return this.seasonality.isGoodMonth(month)
   }
 
+  hasHeaderImage(): boolean {
+    return this.headerImageUrl !== null || this.headerImageS3Url !== null
+  }
+
+  /**
+   * Get the best available header image URL (prefer S3, fallback to TheCrag)
+   */
+  getHeaderImageUrl(size: 'mobile' | 'full' = 'mobile'): string | null {
+    if (size === 'full') {
+      return this.headerImageS3UrlFull ?? this.headerImageUrl
+    }
+    return this.headerImageS3Url ?? this.headerImageUrl
+  }
+
+  /**
+   * Check if S3 images are available
+   */
+  hasS3Images(): boolean {
+    return this.headerImageS3Url !== null && this.headerImageS3UrlFull !== null
+  }
+
   toJSON(): Record<string, unknown> {
     return {
       id: this.id.toString(),
@@ -80,6 +108,12 @@ export class AreaEntity {
       beta: this.beta.toJSON(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      headerImageUrl: this.getHeaderImageUrl('mobile'),
+      headerImageWidth: this.headerImageWidth,
+      headerImageHeight: this.headerImageHeight,
+      headerImageS3Url: this.headerImageS3Url,
+      headerImageS3UrlFull: this.headerImageS3UrlFull,
+      headerImageOriginalUrl: this.headerImageOriginalUrl,
     }
   }
 }

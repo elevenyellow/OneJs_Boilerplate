@@ -1,0 +1,729 @@
+---
+description: Establishes guidelines for verbose, self-documenting naming that clearly communicates purpose and business intent for all code identifiers
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: true
+---
+# Verbose and Self-Documenting Naming
+
+This rule establishes guidelines for writing verbose, self-documenting code identifiers that clearly communicate purpose and business intent. Any developer should be able to understand what a class, function, or variable does by reading its name alone, without needing to read the implementation or comments.
+
+## Rationale
+
+- **Reduces cognitive load**: Clear names eliminate the need to constantly reference documentation or implementation details
+- **Improves maintainability**: Future developers (including yourself) can understand code faster
+- **Makes business logic explicit**: Domain concepts and business rules are evident from the code structure
+- **Facilitates onboarding**: New team members can navigate the codebase more easily
+- **Reduces comment dependency**: Good names make many comments unnecessary
+- **Prevents bugs**: Clear intent reduces misunderstandings and incorrect usage
+
+## Core Principle: Self-Documenting Names
+
+**Names should answer these questions without reading the code:**
+- **What** does this do?
+- **Why** does it exist?
+- **When** should it be used?
+- **What** business rule or domain concept does it represent?
+
+## Naming Requirements by Type
+
+### Classes and Interfaces
+
+Class names MUST clearly indicate their responsibility and domain concept. Include the pattern suffix (UseCase, Service, Repository, etc.) and be specific about what they do.
+
+#### ✅ CORRECT - Clear responsibility and domain concept
+
+```typescript
+// Use cases - verb + entity + business context
+export class CreateEventWithAutomaticCategoryAssignmentUseCase { }
+export class CalculateEventPopularityScoreUseCase { }
+export class FindUpcomingEventsForUserPreferencesUseCase { }
+export class MergeEventsAndPreserveHistoryUseCase { }
+
+// Services - clear domain responsibility
+export class EventPricingCalculationService { }
+export class UserNotificationPreferencesService { }
+export class ImageOptimizationAndResizingService { }
+export class EventRecommendationAlgorithmService { }
+
+// Repositories - entity + storage pattern
+export class EventPrismaRepository { }
+export class CachedCityRepository { }
+export class UserPreferencesInMemoryRepository { }
+
+// Value Objects - domain concept
+export class EventStartDateTime { }
+export class UserEmailAddress { }
+export class EventTicketPrice { }
+export class CityGeographicCoordinates { }
+
+// Domain Services - specific business logic
+export class EventScheduleConflictDetectionService { }
+export class DiscountEligibilityValidationService { }
+export class VenueCapacityCalculationService { }
+```
+
+#### ❌ INCORRECT - Unclear or too generic
+
+```typescript
+// ❌ BAD - What does it create? What context?
+export class CreateUseCase { }
+export class EventUseCase { }
+
+// ❌ BAD - Too generic, what kind of service?
+export class EventService { }
+export class DataService { }
+export class Helper { }
+
+// ❌ BAD - What does it manage? How?
+export class Manager { }
+export class Handler { }
+export class Processor { }
+
+// ❌ BAD - Unclear abbreviations
+export class EvtPrcCalcSvc { }
+export class UsrNotifPrefSvc { }
+
+// ❌ BAD - Missing business context
+export class CalculateUseCase { } // Calculate what?
+export class FindEvents { } // Find by what criteria?
+```
+
+### Functions and Methods
+
+Function names MUST use action verbs and describe what they do, including business intent and context. The name should make the purpose obvious without reading the implementation.
+
+#### ✅ CORRECT - Clear action and business intent
+
+```typescript
+// Business logic with clear intent
+async function calculateEventPopularityScoreBasedOnAttendance(
+  event: Event,
+  attendanceHistory: AttendanceRecord[]
+): Promise<PopularityScore> { }
+
+async function findEventsMatchingUserPreferencesInCity(
+  userId: UserId,
+  cityId: CityId,
+  preferences: UserPreferences
+): Promise<Event[]> { }
+
+async function applyEarlyBirdDiscountIfEligible(
+  ticket: Ticket,
+  purchaseDate: Date
+): Promise<Ticket> { }
+
+async function validateVenueCapacityDoesNotExceedLimit(
+  venue: Venue,
+  requestedCapacity: number
+): Promise<ValidationResult> { }
+
+// Query methods with specific criteria
+async function findEventsByDateRangeAndCategory(
+  startDate: Date,
+  endDate: Date,
+  categoryId: CategoryId
+): Promise<Event[]> { }
+
+async function getUsersWhoAttendedSimilarEvents(
+  eventId: EventId,
+  similarityThreshold: number
+): Promise<User[]> { }
+
+// Transformation methods with clear source and target
+function convertEventEntityToPublicApiDto(event: Event): EventPublicDto { }
+function mapDatabaseRowToEventAggregate(row: DatabaseRow): Event { }
+function transformUserInputToCreateEventCommand(input: CreateEventInput): CreateEventCommand { }
+
+// Validation with specific rules
+function validateEventStartDateIsInFuture(startDate: Date): boolean { }
+function checkUserHasPermissionToEditEvent(user: User, event: Event): boolean { }
+function ensureEventDoesNotConflictWithExistingSchedule(event: Event, schedule: Schedule): void { }
+```
+
+#### ❌ INCORRECT - Unclear or too generic
+
+```typescript
+// ❌ BAD - What does it process? How?
+async function process(data: any): Promise<any> { }
+async function handle(event: Event): Promise<void> { }
+
+// ❌ BAD - Get what? By what criteria?
+async function get(id: string): Promise<Event> { }
+async function fetch(): Promise<Event[]> { }
+
+// ❌ BAD - Calculate what? From what?
+function calculate(event: Event): number { }
+function compute(data: Data): Result { }
+
+// ❌ BAD - Validate what rule?
+function validate(input: Input): boolean { }
+function check(entity: Entity): boolean { }
+
+// ❌ BAD - Too abbreviated
+function calcEvtScore(evt: Event): number { }
+function getUsrPref(id: string): Preferences { }
+
+// ❌ BAD - Missing business context
+function applyDiscount(price: number): number { } // What kind of discount? When?
+function findEvents(): Promise<Event[]> { } // Find by what criteria?
+```
+
+### Variables
+
+Variable names MUST describe their content and purpose, not just their type. Include context about what the data represents and how it will be used.
+
+#### ✅ CORRECT - Descriptive content and purpose
+
+```typescript
+// Collections with clear content
+const upcomingEventsInUserCity = await this.findUpcomingEvents(cityId)
+const eventsUserHasAttended = await this.getUserAttendanceHistory(userId)
+const categoriesWithActiveEvents = await this.findCategoriesWithEvents()
+const venuesExceedingCapacityLimit = venues.filter(v => v.isOverCapacity())
+
+// Computed values with clear meaning
+const totalTicketsSoldForEvent = tickets.reduce((sum, t) => sum + t.quantity, 0)
+const averageEventRatingFromAttendees = calculateAverageRating(ratings)
+const discountPercentageForEarlyBird = 0.15
+const maximumAllowedVenueCapacity = venue.getCapacity()
+
+// Business rule values
+const eventStartsWithinNextSevenDays = isWithinDays(event.startDate, 7)
+const userHasReachedTicketPurchaseLimit = userTicketCount >= MAX_TICKETS_PER_USER
+const venueRequiresAdvanceBooking = venue.getBookingPolicy().requiresAdvance
+
+// Temporary values with context
+const eventDataBeforeUpdate = event.toDto()
+const originalTicketPrice = ticket.getPrice()
+const previousEventStatus = event.getStatus()
+
+// API responses with clear source
+const eventDetailsFromExternalApi = await externalApi.getEvent(id)
+const userPreferencesFromCache = await cache.get(`user:${userId}:preferences`)
+const cityInformationFromDatabase = await this.cityRepository.findById(cityId)
+```
+
+#### ❌ INCORRECT - Unclear or too generic
+
+```typescript
+// ❌ BAD - What data? From where?
+const data = await this.fetch()
+const result = await this.process()
+const items = await this.getAll()
+
+// ❌ BAD - What list? Of what?
+const list = events.filter(e => e.isActive())
+const arr = users.map(u => u.id)
+
+// ❌ BAD - Too abbreviated
+const evts = await this.getEvents()
+const usr = await this.getUser()
+const cat = await this.getCategory()
+
+// ❌ BAD - Type-only names
+const string = event.getTitle()
+const number = calculateScore()
+const boolean = checkStatus()
+
+// ❌ BAD - Generic names without context
+const temp = event.getPrice()
+const value = calculateDiscount()
+const obj = { ...event }
+
+// ❌ BAD - Single letter without clear context
+const e = await this.getEvent() // Not in a loop
+const u = await this.getUser()
+const d = new Date()
+```
+
+### Boolean Variables and Flags
+
+Boolean variables MUST use clear prefixes (is, has, can, should, will, does) that make the true/false meaning obvious.
+
+#### ✅ CORRECT - Clear boolean intent
+
+```typescript
+// State checks
+const isEventPublished = event.getStatus() === 'published'
+const isUserAuthenticated = !!user && user.hasValidSession()
+const isVenueAvailableForBooking = venue.isAvailable() && !venue.isUnderMaintenance()
+const isEventStartDateInPast = event.getStartDate() < new Date()
+
+// Capability checks
+const canUserEditEvent = user.isOwner(event) || user.hasRole('admin')
+const canApplyEarlyBirdDiscount = isPurchaseBeforeDeadline(purchaseDate, event.startDate)
+const canVenueAccommodateAttendees = venue.getCapacity() >= requestedAttendees
+
+// Possession checks
+const hasUserPurchasedTicket = userTickets.some(t => t.eventId === event.id)
+const hasEventReachedCapacity = event.getAttendeeCount() >= event.getMaxCapacity()
+const hasValidPaymentMethod = user.getPaymentMethods().some(pm => pm.isValid())
+
+// Requirement checks
+const shouldSendReminderNotification = isEventStartingSoon && user.hasNotificationsEnabled()
+const shouldApplyTaxToPrice = venue.getCountry().requiresTax()
+const shouldValidateVenueCapacity = event.getType() === 'in-person'
+
+// Future state
+const willEventStartSoon = isWithinHours(event.getStartDate(), 24)
+const willDiscountExpire = discount.getExpiryDate() < addDays(new Date(), 7)
+
+// Action checks
+const doesEventConflictWithExisting = checkScheduleConflict(event, existingEvents)
+const doesUserMeetAgeRequirement = user.getAge() >= event.getMinimumAge()
+```
+
+#### ❌ INCORRECT - Unclear boolean meaning
+
+```typescript
+// ❌ BAD - Not clearly boolean
+const event = checkEvent() // Is this a boolean or Event object?
+const user = validateUser() // Boolean or User?
+const status = getStatus() // What type is this?
+
+// ❌ BAD - Ambiguous meaning
+const active = true // What is active?
+const valid = checkSomething() // What is valid?
+const flag = true // What does this flag mean?
+
+// ❌ BAD - Negative names (harder to reason about)
+const isNotValid = !validate() // Prefer: isValid
+const cannotEdit = !canEdit() // Prefer: canEdit (then negate in usage)
+const hasNoTickets = tickets.length === 0 // Prefer: hasTickets
+
+// ❌ BAD - Missing prefix
+const published = event.getStatus() === 'published' // Prefer: isPublished
+const authenticated = !!user // Prefer: isAuthenticated
+const available = venue.checkAvailability() // Prefer: isAvailable
+```
+
+### Function Parameters
+
+Parameter names MUST be descriptive of their role and purpose in the function. Avoid single letters except in obvious mathematical contexts.
+
+#### ✅ CORRECT - Clear parameter roles
+
+```typescript
+// Clear parameter purposes
+async function calculateEventPopularityScore(
+  eventId: EventId,
+  attendanceHistory: AttendanceRecord[],
+  weightingFactors: PopularityWeightingFactors
+): Promise<PopularityScore> { }
+
+async function sendEventReminderNotification(
+  recipientUser: User,
+  upcomingEvent: Event,
+  hoursBeforeEvent: number
+): Promise<void> { }
+
+function applyDiscountToTicketPrice(
+  originalPrice: Money,
+  discountPercentage: number,
+  minimumPriceThreshold: Money
+): Money { }
+
+function validateEventSchedule(
+  proposedEvent: Event,
+  existingEventsInVenue: Event[],
+  minimumBufferTimeBetweenEvents: Duration
+): ValidationResult { }
+
+// Callback parameters with context
+events.forEach((eventToProcess) => {
+  processEvent(eventToProcess)
+})
+
+users.filter((userWithActiveSubscription) => {
+  return userWithActiveSubscription.hasActiveSubscription()
+})
+
+// Configuration objects with clear names
+function createEventWithOptions(eventData: CreateEventDto, options: {
+  shouldPublishImmediately: boolean
+  shouldNotifyFollowers: boolean
+  shouldValidateVenueAvailability: boolean
+}): Promise<Event> { }
+```
+
+#### ❌ INCORRECT - Unclear parameter roles
+
+```typescript
+// ❌ BAD - Single letters without context
+function calculate(e: Event, u: User, n: number): number { }
+function process(d: Data, f: boolean): Result { }
+
+// ❌ BAD - Too generic
+function createEvent(data: any, options: any): Event { }
+function updateUser(id: string, values: object): User { }
+
+// ❌ BAD - Abbreviated without clarity
+function calcScore(evt: Event, usr: User, wt: number): number { }
+function sendNotif(rcpt: User, msg: string): void { }
+
+// ❌ BAD - Type-only names
+function processEvent(event: Event, string: string, number: number): void { }
+function calculate(array: Array<any>, object: object): number { }
+```
+
+## Balanced Approach: When Shorter Names Are Acceptable
+
+While verbose names are preferred, there are contexts where shorter names are acceptable and even preferred for readability.
+
+### ✅ Acceptable Shorter Names
+
+```typescript
+// Standard loop indices in simple loops
+for (let i = 0; i < events.length; i++) {
+  processEvent(events[i])
+}
+
+for (let row = 0; row < grid.length; row++) {
+  for (let col = 0; col < grid[row].length; col++) {
+    processCell(grid[row][col])
+  }
+}
+
+// Well-known abbreviations
+const eventDto = event.toDto() // DTO is standard
+const userId = user.getId() // ID is standard
+const apiResponse = await fetch(url) // API is standard
+const jsonData = JSON.parse(response) // JSON is standard
+const httpStatus = response.status // HTTP is standard
+const urlPath = '/events/123' // URL is standard
+
+// Callback parameters in obvious contexts
+events.map(e => e.toDto()) // Clear from context
+users.filter(u => u.isActive()) // Clear from context
+items.reduce((sum, item) => sum + item.price, 0) // Standard pattern
+
+// Mathematical contexts
+function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
+  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+}
+
+// Standard error handling
+try {
+  await processEvent(event)
+} catch (err) { // 'err' or 'error' both acceptable
+  logger.error('Failed to process event', { error: err })
+}
+
+// Standard programming terms in limited scope
+const temp = originalValue // Temporary storage in small scope
+const count = items.length // Count is clear
+const index = array.indexOf(item) // Index is clear
+```
+
+### ❌ When Shorter Names Are NOT Acceptable
+
+```typescript
+// ❌ BAD - Short names in large scopes
+function processEvents() {
+  const e = await this.getEvents() // Used across 50+ lines
+  const u = await this.getUser() // Used across 50+ lines
+  // ... 50 more lines
+  return processData(e, u)
+}
+
+// ❌ BAD - Unclear abbreviations
+const evt = await this.getEvent() // Use 'event'
+const usr = await this.getUser() // Use 'user'
+const cat = await this.getCategory() // Use 'category'
+const desc = event.getDescription() // Use 'description'
+
+// ❌ BAD - Domain-specific abbreviations without context
+const prc = calculatePrice() // Use 'price'
+const qty = getQuantity() // Use 'quantity'
+const amt = getAmount() // Use 'amount'
+```
+
+## Business Intent Emphasis
+
+Names should reflect the **business reason** (WHY) and **business rule** (WHEN/HOW), not just the technical operation (WHAT).
+
+### ✅ CORRECT - Business intent is clear
+
+```typescript
+// Business rules in method names
+async function applyEarlyBirdDiscountForPurchasesBeforeDeadline(
+  ticket: Ticket,
+  purchaseDate: Date,
+  eventStartDate: Date
+): Promise<Ticket> {
+  const daysBeforeEvent = calculateDaysBetween(purchaseDate, eventStartDate)
+  if (daysBeforeEvent >= EARLY_BIRD_THRESHOLD_DAYS) {
+    return ticket.applyDiscount(EARLY_BIRD_DISCOUNT_PERCENTAGE)
+  }
+  return ticket
+}
+
+async function calculateDynamicPricingBasedOnDemand(
+  basePrice: Money,
+  currentDemand: DemandMetrics,
+  historicalDemand: DemandMetrics
+): Promise<Money> {
+  // Business logic for surge pricing
+}
+
+async function recommendEventsBasedOnUserAttendanceHistory(
+  userId: UserId,
+  attendanceHistory: AttendanceRecord[],
+  preferenceWeights: PreferenceWeights
+): Promise<Event[]> {
+  // Recommendation algorithm
+}
+
+// Domain concepts in variable names
+const eventsUserIsLikelyToAttendBasedOnHistory = await this.getRecommendations(user)
+const venuesWithAvailabilityForRequestedDate = await this.findAvailableVenues(date)
+const categoriesUserHasShownInterestIn = await this.getUserCategoryPreferences(userId)
+```
+
+### ❌ INCORRECT - Missing business intent
+
+```typescript
+// ❌ BAD - Technical operation without business context
+async function applyDiscount(ticket: Ticket): Promise<Ticket> {
+  // What kind of discount? When? Why?
+}
+
+async function calculatePrice(price: Money): Promise<Money> {
+  // Calculate based on what? What business rule?
+}
+
+async function getEvents(userId: UserId): Promise<Event[]> {
+  // Get by what criteria? What's special about these events?
+}
+
+// ❌ BAD - Generic names without domain meaning
+const data = await this.fetch() // What data? For what purpose?
+const result = await this.process() // Process what? Why?
+const items = await this.getAll() // All of what? Why all?
+```
+
+## Common Naming Patterns
+
+### Use Case Naming Pattern
+
+```typescript
+// Pattern: <Verb><Entity><BusinessContext>UseCase
+export class CreateEventWithAutomaticCategoryAssignmentUseCase { }
+export class UpdateEventAndNotifyFollowersUseCase { }
+export class DeleteEventAndRefundTicketsUseCase { }
+export class FindEventsMatchingUserPreferencesUseCase { }
+export class CalculateEventPopularityScoreUseCase { }
+export class MergeEventsPreservingAttendanceHistoryUseCase { }
+```
+
+### Service Method Naming Pattern
+
+```typescript
+// Pattern: <verb><entity><businessRule>
+class EventPricingService {
+  calculatePriceWithEarlyBirdDiscount(ticket: Ticket, purchaseDate: Date): Money { }
+  calculatePriceWithGroupDiscount(tickets: Ticket[], groupSize: number): Money { }
+  calculatePriceWithSeasonalAdjustment(basePrice: Money, season: Season): Money { }
+  applyDynamicPricingBasedOnDemand(basePrice: Money, demand: DemandMetrics): Money { }
+}
+```
+
+### Repository Method Naming Pattern
+
+```typescript
+// Pattern: find<Entity>By<Criteria>With<Includes>
+class EventRepository {
+  findEventsByDateRangeAndCategoryWithVenueDetails(
+    startDate: Date,
+    endDate: Date,
+    categoryId: CategoryId
+  ): Promise<Event[]> { }
+  
+  findUpcomingEventsInCityWithAttendeeCount(cityId: CityId): Promise<Event[]> { }
+  
+  findEventsByPopularityScoreAboveThresholdWithRecommendations(
+    threshold: number
+  ): Promise<Event[]> { }
+}
+```
+
+### Calculation Function Naming Pattern
+
+```typescript
+// Pattern: calculate<What>From<Source>Considering<Factors>
+function calculateEventPopularityScoreFromAttendanceConsideringRecency(
+  attendance: AttendanceRecord[],
+  recencyWeight: number
+): PopularityScore { }
+
+function calculateRecommendationScoreFromUserHistoryConsideringPreferences(
+  history: AttendanceRecord[],
+  preferences: UserPreferences
+): RecommendationScore { }
+
+function calculateTicketPriceFromBasePriceConsideringDiscountsAndTaxes(
+  basePrice: Money,
+  discounts: Discount[],
+  taxRate: number
+): Money { }
+```
+
+## Integration with Existing Rules
+
+This rule complements and extends existing naming guidelines:
+
+### Relationship to `.cursor/rules/code-language.mdc`
+
+- All verbose names MUST still be in English
+- Descriptive names make the English requirement even more valuable
+- Business intent should use English domain terminology
+
+```typescript
+// ✅ CORRECT - Verbose AND in English
+const upcomingEventsInUserCity = await this.findUpcomingEvents(cityId)
+
+// ❌ INCORRECT - Verbose but not in English
+const proximosEventosEnCiudadDelUsuario = await this.findUpcomingEvents(cityId)
+```
+
+### Relationship to `.cursor/rules/code-style-and-commands.mdc`
+
+- Follow DDD patterns with verbose, descriptive names
+- Use case and service naming should be even more explicit about business logic
+- Repository methods should clearly indicate query criteria
+
+```typescript
+// ✅ CORRECT - DDD pattern with verbose naming
+@Injectable()
+export class CalculateEventPopularityScoreUseCase {
+  async execute(
+    eventId: EventId,
+    attendanceHistory: AttendanceRecord[]
+  ): Promise<PopularityScore> {
+    // Implementation
+  }
+}
+```
+
+### How Verbose Naming Reduces Comment Needs
+
+Per `.cursor/rules/code-comments.mdc`, comments should only explain complex logic. Verbose naming eliminates the need for many comments:
+
+```typescript
+// ❌ BAD - Needs comments because names are unclear
+// Get events for user
+const events = await this.get(userId)
+// Check if user can edit
+const canEdit = this.check(user, event)
+// Apply discount if eligible
+const price = this.apply(ticket, date)
+
+// ✅ GOOD - Self-documenting, no comments needed
+const upcomingEventsMatchingUserPreferences = await this.findUpcomingEventsForUser(userId)
+const userHasPermissionToEditEvent = this.checkUserEditPermission(user, event)
+const ticketPriceWithEarlyBirdDiscountIfEligible = this.applyEarlyBirdDiscount(ticket, purchaseDate)
+```
+
+## Exceptions
+
+### Standard Loop Indices
+
+```typescript
+// ✅ Acceptable - Standard loop patterns
+for (let i = 0; i < items.length; i++) { }
+for (let j = 0; j < matrix[i].length; j++) { }
+for (let k = 0; k < cube[i][j].length; k++) { }
+
+// ✅ Better - Descriptive names when not obvious
+for (let eventIndex = 0; eventIndex < events.length; eventIndex++) { }
+for (let rowIndex = 0; rowIndex < grid.length; rowIndex++) { }
+```
+
+### Well-Known Abbreviations
+
+```typescript
+// ✅ Acceptable - Industry standard abbreviations
+const eventDto = event.toDto() // DTO
+const userId = user.getId() // ID
+const apiEndpoint = '/api/events' // API
+const httpStatus = 200 // HTTP
+const jsonResponse = JSON.parse(data) // JSON
+const xmlDocument = parseXML(data) // XML
+const urlPath = '/events/123' // URL
+const htmlContent = '<div>...</div>' // HTML
+const cssClass = 'event-card' // CSS
+```
+
+### Mathematical and Coordinate Systems
+
+```typescript
+// ✅ Acceptable - Standard mathematical notation
+function calculateDistance(x1: number, y1: number, x2: number, y2: number): number { }
+function rotatePoint(x: number, y: number, angle: number): Point { }
+function calculateVector(x: number, y: number, z: number): Vector3D { }
+```
+
+### Callback Parameters in Obvious Contexts
+
+```typescript
+// ✅ Acceptable - Clear from context
+events.map(e => e.toDto())
+users.filter(u => u.isActive())
+items.forEach(item => processItem(item)) // 'item' is clear here
+
+// ✅ Better - More descriptive when not obvious
+events.map(eventToTransform => eventToTransform.toDto())
+users.filter(candidateUser => candidateUser.isActive())
+```
+
+## PR Checklist
+
+Before submitting code, verify:
+
+- [ ] Class names clearly indicate responsibility and domain concept
+- [ ] Function names describe action and business intent
+- [ ] Variable names describe content and purpose, not just type
+- [ ] Boolean variables use is/has/can/should/will/does prefixes
+- [ ] No generic names (data, item, thing, stuff) without context
+- [ ] Business logic and rules are evident from names
+- [ ] Parameter names are descriptive of their role
+- [ ] Abbreviations are limited to well-known standards (DTO, ID, API, etc.)
+- [ ] Names answer "what", "why", and "when" without reading code
+- [ ] Comments are minimal because names are self-documenting
+
+## Summary
+
+### ✅ DO
+
+- Use verbose, self-documenting names that explain purpose and intent
+- Include business context and rules in names
+- Use clear prefixes for booleans (is, has, can, should, will, does)
+- Make function names describe the complete action and business rule
+- Use descriptive parameter names that explain their role
+- Prefer domain terminology over generic technical terms
+- Make names answer "what", "why", and "when"
+- Use standard patterns for use cases, services, and repositories
+- Allow well-known abbreviations (DTO, ID, API, HTTP, JSON, XML, URL)
+- Use shorter names in limited contexts (loop indices, callbacks)
+
+### ❌ DON'T DO
+
+- Don't use generic names (data, item, thing, stuff, value) without context
+- Don't abbreviate unnecessarily (evt, usr, desc, qty, amt)
+- Don't use single letters outside of standard contexts (loops, math)
+- Don't hide business intent behind technical operations
+- Don't use ambiguous boolean names without prefixes
+- Don't sacrifice clarity for brevity
+- Don't use type-only names (string, number, array, object)
+- Don't create names that require comments to understand
+- Don't use unclear abbreviations that aren't industry standard
+
+## Related References
+
+- `.cursor/rules/code-language.mdc` - English language requirement for all identifiers
+- `.cursor/rules/code-style-and-commands.mdc` - DDD conventions and patterns
+- `.cursor/rules/code-comments.mdc` - How good naming reduces comment needs
+- `.cursor/rules/ddd-application-use.mdc` - Domain structure and organization
+- `.cursor/rules/ddd-value-objects-and-entities-validation.mdc` - Value object and entity naming

@@ -1,0 +1,455 @@
+---
+description: Establishes file and folder structure patterns for React applications including component organization, naming conventions, colocate vs shared guidelines, and feature folders
+globs:
+  - "apps/**/*.tsx"
+  - "apps/**/*.ts"
+  - "packages/**/*.tsx"
+  - "packages/**/*.ts"
+alwaysApply: true
+---
+# React: File and Folder Organization
+
+This rule defines how to organize React components, hooks, and related files in the codebase. The goal is to create a predictable structure that scales well and makes files easy to find.
+
+## Rationale
+
+- Consistent structure reduces cognitive load
+- Clear organization improves discoverability
+- Feature-based folders enable better code splitting
+- Naming conventions prevent ambiguity
+- Proper separation enables better reuse
+
+## Strict Rules
+
+### MUST have one component per file
+
+Each file MUST export exactly one primary component (except tiny helper sub-components used only within that file).
+
+### MUST use PascalCase for component files
+
+Component files MUST use PascalCase matching the component name: `EventCard.tsx`, `UserDialog.tsx`.
+
+### MUST use camelCase for hook files
+
+Hook files MUST use camelCase with `use` prefix: `useEvents.ts`, `usePaginatedTable.ts`.
+
+### MUST NOT mix components and hooks in the same file
+
+Components and hooks MUST be in separate files for clarity and reusability.
+
+## Directory Structure
+
+### Admin App Structure
+
+```
+apps/admin/src/
+├── components/           # Shared UI components
+│   ├── ui/              # shadcn/ui components
+│   │   ├── button.tsx
+│   │   ├── dialog.tsx
+│   │   └── table.tsx
+│   ├── events/          # Event-specific components
+│   │   ├── EventDialog.tsx
+│   │   ├── EventsFilters.tsx
+│   │   └── MergeReviewDialog.tsx
+│   ├── categories/      # Category-specific components
+│   │   └── CategoryDialog.tsx
+│   ├── DataTable.tsx    # Generic shared components
+│   ├── DeleteDialog.tsx
+│   ├── PageHeader.tsx
+│   ├── LazyImage.tsx
+│   └── lazyComponent.tsx
+├── hooks/               # Shared custom hooks
+│   ├── useEvents.ts
+│   ├── useCities.ts
+│   ├── usePaginatedTable.ts
+│   └── useEventDialogs.ts
+├── lib/                 # Utilities and helpers
+│   ├── api/
+│   │   ├── realApi.ts
+│   │   ├── types.ts
+│   │   └── pagination.ts
+│   ├── queryClient.ts
+│   └── utils.ts
+├── routes/              # TanStack Router pages
+│   ├── events/
+│   │   └── index.tsx    # Events list page
+│   ├── categories/
+│   │   └── index.tsx
+│   └── index.tsx
+└── contexts/            # React contexts (if needed)
+    └── AuthContext.tsx
+```
+
+### Next.js App Structure (if applicable)
+
+```
+apps/next/
+├── app/                 # Next.js 14 app directory
+│   ├── (auth)/         # Route groups
+│   ├── events/
+│   │   ├── page.tsx
+│   │   └── [id]/
+│   │       └── page.tsx
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/          # Shared components
+│   ├── ui/             # shadcn/ui components
+│   ├── events/         # Event-specific components
+│   └── shared/         # Generic shared components
+├── lib/                # Utilities
+│   ├── api.ts
+│   └── utils.ts
+└── hooks/              # Custom hooks
+    └── useEvents.ts
+```
+
+## Component Organization Patterns
+
+### ✅ CORRECT - One component per file
+
+```tsx
+// ✅ GOOD - apps/admin/src/components/events/EventCard.tsx
+interface EventCardProps {
+  event: Event
+  onEdit: (event: Event) => void
+}
+
+export function EventCard({ event, onEdit }: EventCardProps) {
+  return (
+    <div className="event-card">
+      <h3>{event.title}</h3>
+      <Button onClick={() => onEdit(event)}>Edit</Button>
+    </div>
+  )
+}
+```
+
+### ✅ CORRECT - Tiny sub-components in same file
+
+```tsx
+// ✅ GOOD - Small helper component used only here
+interface EventCardProps {
+  event: Event
+}
+
+// Small internal component - not exported
+function EventCardHeader({ title }: { title: string }) {
+  return <h3 className="event-card-header">{title}</h3>
+}
+
+// Main component
+export function EventCard({ event }: EventCardProps) {
+  return (
+    <div className="event-card">
+      <EventCardHeader title={event.title} />
+      <p>{event.description}</p>
+    </div>
+  )
+}
+```
+
+### ✅ CORRECT - Colocate types with components
+
+```tsx
+// ✅ GOOD - apps/admin/src/components/events/EventsFilters.tsx
+// Types defined in same file as component
+type EventFilters = {
+  cityId?: string
+  startDate?: number
+  endDate?: number
+  categoryId?: string
+}
+
+interface EventsFiltersProps {
+  filters: EventFilters
+  cities: City[]
+  onFilterChange: (filters: Partial<EventFilters>) => void
+}
+
+export function EventsFilters({ filters, cities, onFilterChange }: EventsFiltersProps) {
+  // Implementation
+}
+```
+
+### ✅ CORRECT - Feature-based component folders
+
+```tsx
+// ✅ GOOD - Group related event components
+apps/admin/src/components/events/
+├── EventCard.tsx
+├── EventDialog.tsx
+├── EventsFilters.tsx
+├── EventsTable.tsx
+├── EventImagePreviewDialog.tsx
+└── MergeReviewDialog.tsx
+
+// ✅ GOOD - Group related category components
+apps/admin/src/components/categories/
+└── CategoryDialog.tsx
+```
+
+### ❌ INCORRECT - Multiple components in one file
+
+```tsx
+// ❌ BAD - Multiple unrelated components in one file
+// apps/admin/src/components/EventComponents.tsx
+
+export function EventCard({ event }: { event: Event }) {
+  return <div>{event.title}</div>
+}
+
+export function EventDialog({ event }: { event: Event }) {
+  return <Dialog>{event.title}</Dialog>
+}
+
+export function EventsTable({ events }: { events: Event[] }) {
+  return <table>{/* ... */}</table>
+}
+
+// ❌ Should be split into separate files:
+// - EventCard.tsx
+// - EventDialog.tsx
+// - EventsTable.tsx
+```
+
+### ❌ INCORRECT - Mixing components and hooks
+
+```tsx
+// ❌ BAD - Component and hook in same file
+// apps/admin/src/components/EventCard.tsx
+
+export function useEventCard() {
+  const [open, setOpen] = useState(false)
+  return { open, setOpen }
+}
+
+export function EventCard({ event }: { event: Event }) {
+  const { open, setOpen } = useEventCard()
+  return <div>{event.title}</div>
+}
+
+// ✅ GOOD - Separate files:
+// apps/admin/src/hooks/useEventCard.ts - hook
+// apps/admin/src/components/events/EventCard.tsx - component
+```
+
+## Naming Conventions
+
+### Component Files
+
+```
+✅ CORRECT:
+- EventCard.tsx
+- UserDialog.tsx
+- EventsFilters.tsx
+- MergeReviewDialog.tsx
+- DataTable.tsx
+
+❌ INCORRECT:
+- eventCard.tsx          (should be PascalCase)
+- event-card.tsx         (should be PascalCase)
+- EventCardComponent.tsx (redundant "Component" suffix)
+- Events.tsx             (too generic, be specific: EventsList.tsx or EventsPage.tsx)
+```
+
+### Hook Files
+
+```
+✅ CORRECT:
+- useEvents.ts
+- usePaginatedTable.ts
+- useEventDialogs.ts
+- useLocalStorage.ts
+
+❌ INCORRECT:
+- UseEvents.ts           (should be camelCase)
+- events-hook.ts         (should use "use" prefix)
+- eventsHook.ts          (should use "use" prefix)
+- use-events.ts          (should be camelCase, not kebab-case)
+```
+
+### Utility Files
+
+```
+✅ CORRECT:
+- utils.ts
+- api.ts
+- pagination.ts
+- formatters.ts
+
+❌ INCORRECT:
+- Utils.ts               (should be camelCase)
+- API.ts                 (should be camelCase: api.ts)
+```
+
+## Colocate vs Shared
+
+### When to Colocate (Route-Specific)
+
+Keep components in route folders when:
+- Used only in that specific route
+- Tightly coupled to route logic
+- Not reusable elsewhere
+
+```
+apps/admin/src/routes/events/
+├── index.tsx                    # Main route component
+└── components/                  # Route-specific components
+    ├── EventsToolbar.tsx
+    └── EventsQuickActions.tsx
+```
+
+### When to Share (apps/admin/src/components/)
+
+Move components to shared folder when:
+- Used in multiple routes
+- Generic and reusable
+- Part of design system
+
+```
+apps/admin/src/components/
+├── ui/                          # Generic UI components
+│   ├── button.tsx
+│   └── dialog.tsx
+├── events/                      # Event domain components
+│   ├── EventCard.tsx           # Used in multiple places
+│   └── EventDialog.tsx         # Used in multiple places
+└── DataTable.tsx               # Generic table component
+```
+
+### ✅ CORRECT - Graduate from colocated to shared
+
+```
+# Start: Component used only in events route
+apps/admin/src/routes/events/
+└── components/
+    └── EventCard.tsx
+
+# Later: Component now used in dashboard too
+# Move to shared:
+apps/admin/src/components/events/
+└── EventCard.tsx
+
+# Update imports in both routes
+```
+
+## Hook Organization
+
+### ✅ CORRECT - Separate hooks by domain
+
+```
+apps/admin/src/hooks/
+├── useEvents.ts         # Event CRUD operations
+├── useCities.ts         # City CRUD operations
+├── useCategories.ts     # Category CRUD operations
+├── useTags.ts           # Tag CRUD operations
+├── useVenues.ts         # Venue CRUD operations
+├── usePaginatedTable.ts # Generic pagination
+└── useLocalStorage.ts   # Generic utility
+```
+
+### ✅ CORRECT - Multiple related hooks in one file
+
+```tsx
+// ✅ GOOD - Related hooks in apps/admin/src/hooks/useEvents.ts
+export function useEvents(filters?: EventFilters) {
+  return useQuery({
+    queryKey: [...queryKeys.events.all, filters],
+    queryFn: () => eventApi.getAll(filters),
+  })
+}
+
+export function useEvent(id: string) {
+  return useQuery({
+    queryKey: queryKeys.events.detail(id),
+    queryFn: () => eventApi.getById(id),
+    enabled: !!id,
+  })
+}
+
+export function useCreateEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateEventDto) => eventApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all })
+    },
+  })
+}
+
+export function useUpdateEvent() {
+  // Similar pattern
+}
+
+export function useDeleteEvent() {
+  // Similar pattern
+}
+```
+
+## File Size Guidelines
+
+### Component Files
+- Target: 50-150 LOC
+- Maximum: 250 LOC (containers, pending extraction)
+- If exceeding: Extract sub-components or split responsibilities
+
+### Hook Files
+- Target: 30-100 LOC
+- Maximum: 150 LOC
+- If exceeding: Split into multiple hooks or extract utilities
+
+### Utility Files
+- Target: 50-200 LOC
+- Maximum: 300 LOC
+- If exceeding: Split by domain or responsibility
+
+## Import Organization
+
+### ✅ CORRECT - Organized imports
+
+```tsx
+// ✅ GOOD - Grouped and ordered imports
+// 1. External libraries
+import { useState, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+
+// 2. Internal packages (if monorepo)
+import { Event } from '@events/domain'
+
+// 3. Local absolute imports
+import { Button } from '@/components/ui/button'
+import { useEvents } from '@/hooks/useEvents'
+
+// 4. Relative imports (same feature)
+import { EventCard } from './EventCard'
+
+// 5. Types (if not inline)
+import type { EventFilters } from './types'
+```
+
+## PR Checklist
+
+- [ ] One component per file (except tiny sub-components)
+- [ ] Component files use PascalCase
+- [ ] Hook files use camelCase with `use` prefix
+- [ ] Components and hooks are in separate files
+- [ ] Feature-related components are grouped in folders
+- [ ] Shared components are in `components/` directory
+- [ ] Route-specific components are colocated with routes
+- [ ] File names match exported component/hook names
+- [ ] Imports are organized and grouped logically
+
+## Exceptions
+
+- Index files (`index.tsx`) may export multiple related items
+- Type definition files may contain multiple related types
+- Utility files may contain multiple related functions
+- Test files may contain multiple test cases
+
+## Related Rules
+
+- `.cursor/rules/react-component-decomposition.mdc` - Component size limits
+- `.cursor/rules/react-custom-hooks.mdc` - Hook creation guidelines
+- `.cursor/rules/code-language.mdc` - Naming conventions
+- `.cursor/rules/package-imports.mdc` - Import patterns in monorepo

@@ -1,0 +1,612 @@
+---
+description: DEPRECATED - This rule has been replaced by tdd-cycle.mdc which enforces mandatory TDD workflow with comprehensive testing guidelines.
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Testing Rules - DEPRECATED
+
+**⚠️ DEPRECATED**: This rule has been replaced by `.cursor/rules/tdd-cycle.mdc`.
+
+Please refer to `.cursor/rules/tdd-cycle.mdc` for the mandatory TDD cycle that includes:
+- 5-step workflow (REASON-RED-GREEN-REFACTOR-RE-EVALUATE)
+- Comprehensive testing guidelines
+- Test organization and structure
+- What to test by layer
+- TPP (Transformation Priority Premise)
+- Strict preservation rules
+
+**All content below is deprecated and retained for reference only.**
+
+---
+
+These rules establish when and how to write tests that add value to the codebase. Tests must be maintained and removed when their corresponding functionality is deleted.
+
+## Core Principles
+
+1. **Tests must add value** - Write tests for meaningful behavior, not trivial code
+2. **Tests must be maintained** - Keep tests updated with code changes
+3. **Tests must be deleted** - Remove tests when functionality is removed
+4. **Focus on behavior** - Test business logic, not implementation details
+
+## Test Types and When to Use Them
+
+### Unit Tests (`*.test.ts`)
+
+**Purpose**: Test isolated units of code in isolation with mocked dependencies.
+
+**Use for**:
+- Domain value objects (validation, invariants, transformations)
+- Domain entities (creation, transformations, business rules)
+- Domain services (business logic, calculations)
+- Application use cases (with mocked repositories/infrastructure)
+- Application services (with mocked dependencies)
+
+**File naming**: `*.test.ts` (e.g., `url.test.ts`, `createTagUseCase.test.ts`)
+
+### Integration Tests (`*.integration.test.ts`)
+
+**Purpose**: Test interactions between components with real infrastructure.
+
+**Use for**:
+- Use cases with real database connections
+- Repository implementations with real database
+- Infrastructure adapters (S3, external APIs, etc.)
+- Event handlers with real event bus
+- Operations that require real external services
+
+**File naming**: `*.integration.test.ts` (e.g., `deleteImageUseCase.integration.test.ts`)
+
+**Important**: Integration tests may require:
+- Real database setup/teardown
+- Real external services (or test equivalents)
+- Test data cleanup
+
+## Test Organization
+
+### Directory Structure
+
+Tests are located in `__tests__/` directories alongside the code:
+
+```
+packages/<bounded-context>/
+  domain/
+    value-objects/
+      url.ts
+      __tests__/
+        url.test.ts          # Unit test for value object
+    entities/
+      tag.ts
+      __tests__/
+        tag.test.ts          # Unit test for entity
+  application/
+    use-cases/
+      create-tag.use-case.ts
+      __tests__/
+        create-tag-use-case.test.ts          # Unit test (with mocks)
+        create-tag-use-case.integration.test.ts  # Integration test
+```
+
+### Naming Conventions
+
+- **Unit tests**: `<component-name>.test.ts`
+- **Integration tests**: `<component-name>.integration.test.ts`
+- **Test descriptions**: Use descriptive names explaining the behavior being tested
+
+```typescript
+// ✅ CORRECT - Descriptive test name
+test('should throw error when creating tag with duplicate name', async () => {
+  // ...
+})
+
+// ❌ INCORRECT - Vague test name
+test('test create tag', async () => {
+  // ...
+})
+```
+
+## What to Test by Layer
+
+### Domain Layer - Value Objects
+
+**Test**:
+- Creation with valid/invalid input (`create()`, `createFrom()`)
+- Validation rules (invariants)
+- Comparison methods (`equals()`)
+- Transformation methods (`toString()`, `getValue()`)
+
+**✅ CORRECT - Value Object Test**
+
+```typescript
+import { describe, expect, test } from 'bun:test'
+import { Url } from '../url'
+
+describe('Url', () => {
+  test('should create a Url instance with valid URL', () => {
+    const validUrl = 'https://example.com'
+    const url = Url.createFrom(validUrl)
+    expect(url).toBeInstanceOf(Url)
+    expect(url.toString()).toBe(validUrl)
+  })
+
+  test('should throw error when creating with invalid URL', () => {
+    const invalidUrls = ['not-a-url', '', 'http://']
+    invalidUrls.forEach((invalidUrl) => {
+      expect(() => Url.createFrom(invalidUrl)).toThrow('Invalid URL format')
+    })
+  })
+
+  test('should correctly compare two Url instances', () => {
+    const url1 = Url.createFrom('https://example.com')
+    const url2 = Url.createFrom('https://example.com')
+    const url3 = Url.createFrom('https://different.com')
+
+    expect(url1.equals(url2)).toBe(true)
+    expect(url1.equals(url3)).toBe(false)
+  })
+})
+```
+
+**❌ DON'T TEST**: Trivial getters without logic, framework functionality
+
+### Domain Layer - Entities
+
+**Test**:
+- Entity creation (`create()`, `fromDto()`)
+- Transformation methods (`toDto()`, `toFrontendDto()`, `toEventDto()`, `toDatabase()`)
+- Business rule enforcement
+- Value object composition
+
+**✅ CORRECT - Entity Test**
+
+```typescript
+import { describe, expect, test } from 'bun:test'
+import { ImageEntity } from '../image-entity'
+import { Id } from '../id'
+import { Url, CreatedAt } from '../../value-objects'
+import { MediaDto } from '../../dtos/media.dto'
+
+describe('ImageEntity', () => {
+  test('should create an ImageEntity with valid parameters', () => {
+    const id = Id.generateUniqueId('123')
+    const url = Url.createFrom('https://example.com/image.jpg')
+    const uploadedAt = CreatedAt.createFrom(new Date())
+
+    const image = new ImageEntity(id, url, uploadedAt)
+
+    expect(image.id).toBeInstanceOf(Id)
+    expect(image.url).toBeInstanceOf(Url)
+    expect(image.uploadedAt).toBeInstanceOf(CreatedAt)
+  })
+
+  test('should convert entity to DTO correctly', () => {
+    const id = Id.generateUniqueId('123')
+    const url = Url.createFrom('https://example.com/image.jpg')
+    const uploadedAt = CreatedAt.createFrom(new Date('2024-01-01'))
+
+    const image = new ImageEntity(id, url, uploadedAt)
+    const dto = image.toDto()
+
+    expect(dto).toBeInstanceOf(MediaDto)
+    expect(dto.id).toBe('123')
+    expect(dto.url).toBe('https://example.com/image.jpg')
+  })
+})
+```
+
+**❌ DON'T TEST**: Simple getters that return private fields without transformation
+
+### Application Layer - Use Cases
+
+**Test**:
+- Happy path scenarios
+- Error handling (validation failures, not found, business rule violations)
+- Interaction with dependencies (verify mocks called correctly)
+- Input validation
+
+**Unit Test Pattern (with mocks)**:
+
+```typescript
+import { describe, expect, mock, test } from 'bun:test'
+import { CreateTagUseCase } from '../create-tag.use-case'
+import type { TagRepository } from '../../domain/interfaces/tag-repository.interface'
+import { Tag } from '../../domain/entities/tag'
+import { TagName } from '../../domain/value-objects/tag-name'
+
+describe('CreateTagUseCase', () => {
+  test('should create tag successfully', async () => {
+    // Arrange
+    const mockRepository: TagRepository = {
+      findByName: mock(async () => null),
+      save: mock(async (tag: Tag) => tag),
+    }
+    const mockEventBus = {
+      publish: mock(async () => {}),
+    }
+    const useCase = new CreateTagUseCase(mockRepository, mockEventBus)
+
+    // Act
+    const result = await useCase.execute({ name: 'New Tag' })
+
+    // Assert
+    expect(result).toBeInstanceOf(Tag)
+    expect(mockRepository.findByName).toHaveBeenCalled()
+    expect(mockRepository.save).toHaveBeenCalled()
+    expect(mockEventBus.publish).toHaveBeenCalled()
+  })
+
+  test('should throw error when tag name already exists', async () => {
+    // Arrange
+    const existingTag = Tag.create({ name: TagName.create('Existing Tag') })
+    const mockRepository: TagRepository = {
+      findByName: mock(async () => existingTag),
+      save: mock(async () => existingTag),
+    }
+    const useCase = new CreateTagUseCase(mockRepository, mockEventBus)
+
+    // Act & Assert
+    await expect(useCase.execute({ name: 'Existing Tag' })).rejects.toThrow(
+      'Tag already exists'
+    )
+    expect(mockRepository.save).not.toHaveBeenCalled()
+  })
+})
+```
+
+**Integration Test Pattern (with real infrastructure)**:
+
+```typescript
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
+import { DeleteImageUseCase } from '../delete-image.use-case'
+import { s3MediaStorage } from '../../infrastructure/s3'
+
+describe('DeleteImageUseCase Integration', () => {
+  let deleteImageUseCase: DeleteImageUseCase
+
+  beforeEach(() => {
+    deleteImageUseCase = new DeleteImageUseCase(s3MediaStorage)
+  })
+
+  test('should delete an image from S3 storage', async () => {
+    // Arrange - upload test image first
+    const testImageBuffer = Buffer.from('test image content')
+    const imageId = `test-${Date.now()}.jpg`
+    await s3MediaStorage.upload(imageId, testImageBuffer, 'image/jpeg')
+
+    // Act
+    await deleteImageUseCase.execute({ imageId })
+
+    // Assert
+    await expect(s3MediaStorage.getUrl(imageId)).rejects.toThrow()
+  })
+
+  test('should handle non-existent image deletion gracefully', async () => {
+    const nonExistentImageId = `non-existent-${Date.now()}.jpg`
+    await expect(
+      deleteImageUseCase.execute({ imageId: nonExistentImageId })
+    ).rejects.toThrow()
+  })
+})
+```
+
+### Application Layer - Event Handlers
+
+**Test**:
+- Event processing logic
+- Delegation to use cases (verify correct use case called)
+- Idempotency (handling duplicate events)
+- Error handling and logging
+
+**✅ CORRECT - Event Handler Test**
+
+```typescript
+import { describe, expect, mock, test } from 'bun:test'
+import { CreateCityEventHandler } from '../create-city-event.handler'
+import { CreateCityEvent } from '../../domain/events/create-city.event'
+import type { ProcessCityUseCase } from '../../use-cases/process-city.use-case'
+
+describe('CreateCityEventHandler', () => {
+  test('should process city creation event and delegate to use case', async () => {
+    // Arrange
+    const mockUseCase = {
+      execute: mock(async () => {}),
+    }
+    const handler = new CreateCityEventHandler(mockUseCase)
+    const event = new CreateCityEvent({
+      id: 'city-123',
+      name: 'New City',
+      // ... other fields
+    })
+
+    // Act
+    await handler.handle(event)
+
+    // Assert
+    expect(mockUseCase.execute).toHaveBeenCalledWith({
+      cityId: 'city-123',
+      // ... mapped fields
+    })
+  })
+
+  test('should be idempotent and skip already processed events', async () => {
+    // Arrange
+    const mockEventLogRepository = {
+      findByEventId: mock(async (id: string) => ({ id })), // Already processed
+    }
+    const mockUseCase = {
+      execute: mock(async () => {}),
+    }
+    const handler = new CreateCityEventHandler(mockUseCase, mockEventLogRepository)
+    const event = new CreateCityEvent({ id: 'event-123', ... })
+
+    // Act
+    await handler.handle(event)
+
+    // Assert
+    expect(mockUseCase.execute).not.toHaveBeenCalled()
+  })
+})
+```
+
+### Infrastructure Layer
+
+**Test**:
+- Adaptations between domain and external systems
+- Error handling for external service failures
+- Data mapping (domain ↔ external formats)
+- Critical integration points
+
+**✅ CORRECT - Infrastructure Test**
+
+```typescript
+import { describe, expect, mock, test } from 'bun:test'
+import { S3MediaStorage } from '../s3-media-storage'
+import type { S3Client } from '../s3-client'
+
+describe('S3MediaStorage', () => {
+  test('should upload file successfully', async () => {
+    // Arrange
+    const mockS3Client = {
+      s3: {
+        send: mock(async () => ({ $metadata: { httpStatusCode: 200 } })),
+      },
+      getBucketName: () => 'test-bucket',
+    }
+    const storage = new S3MediaStorage(mockS3Client as unknown as S3Client)
+
+    // Act
+    const result = await storage.upload('image-123', Buffer.from('data'), 'image/jpeg')
+
+    // Assert
+    expect(result).toContain('image-123')
+    expect(mockS3Client.s3.send).toHaveBeenCalled()
+  })
+
+  test('should handle upload errors', async () => {
+    // Arrange
+    const mockS3Client = {
+      s3: {
+        send: mock(async () => {
+          throw new Error('Upload failed')
+        }),
+      },
+    }
+    const storage = new S3MediaStorage(mockS3Client as unknown as S3Client)
+
+    // Act & Assert
+    await expect(
+      storage.upload('image-123', Buffer.from('data'), 'image/jpeg')
+    ).rejects.toThrow('Upload failed')
+  })
+})
+```
+
+## Tests NOT to Write
+
+**Do NOT write tests for**:
+
+1. **Trivial getters** without logic:
+   ```typescript
+   // ❌ DON'T TEST - Simple getter
+   getId(): Id {
+     return this.id
+   }
+   ```
+
+2. **Mock verification only** - Tests that only verify mocks work:
+   ```typescript
+   // ❌ DON'T TEST - Only verifying mock framework
+   test('mock should be called', () => {
+     const mockFn = mock(() => {})
+     mockFn()
+     expect(mockFn).toHaveBeenCalled() // This is testing the mock, not our code
+   })
+   ```
+
+3. **Framework functionality** - Don't test Elysia, decorators, or framework code:
+   ```typescript
+   // ❌ DON'T TEST - Framework decorator
+   test('@Controller decorator works', () => {
+     // Testing framework, not our code
+   })
+   ```
+
+4. **Third-party code** - Don't test library functionality:
+   ```typescript
+   // ❌ DON'T TEST - Third-party library
+   test('Prisma client query works', () => {
+     // Testing Prisma, not our code
+   })
+   ```
+
+5. **Generated code** - Don't test code generated by tools (DTOs without logic, etc.)
+
+## Test Structure - Arrange-Act-Assert
+
+Follow the Arrange-Act-Assert pattern for clarity:
+
+```typescript
+test('should create tag when name is unique', async () => {
+  // Arrange - Set up test data and mocks
+  const mockRepository = {
+    findByName: mock(async () => null),
+    save: mock(async (tag) => tag),
+  }
+  const useCase = new CreateTagUseCase(mockRepository)
+
+  // Act - Execute the behavior being tested
+  const result = await useCase.execute({ name: 'New Tag' })
+
+  // Assert - Verify the expected outcome
+  expect(result).toBeInstanceOf(Tag)
+  expect(mockRepository.save).toHaveBeenCalledWith(expect.any(Tag))
+})
+```
+
+## Using Mocks
+
+### Unit Tests - Mock All Dependencies
+
+```typescript
+import { mock } from 'bun:test'
+
+describe('UseCase', () => {
+  test('should work with mocked dependencies', async () => {
+    // Mock repository
+    const mockRepository = {
+      findById: mock(async (id: string) => ({ id })),
+      save: mock(async (entity) => entity),
+    }
+
+    // Mock event bus
+    const mockEventBus = {
+      publish: mock(async () => {}),
+    }
+
+    const useCase = new UseCase(mockRepository, mockEventBus)
+    // ... test implementation
+  })
+})
+```
+
+### Integration Tests - Use Real Infrastructure
+
+```typescript
+import { s3MediaStorage } from '../../infrastructure/s3'
+
+describe('UseCase Integration', () => {
+  test('should work with real S3 storage', async () => {
+    // Use real infrastructure, not mocks
+    const useCase = new UseCase(s3MediaStorage)
+    // ... test with real service
+  })
+})
+```
+
+## Test Cleanup Rules
+
+### When Functionality is Removed
+
+**MANDATORY**: When deleting functionality, **ALWAYS delete corresponding tests**.
+
+1. **Delete test files** for removed code
+2. **Remove test imports** that reference deleted code
+3. **Update integration tests** that depended on removed functionality
+4. **Clean up test data** related to removed features
+
+**✅ CORRECT - Delete tests with functionality**
+
+```
+# When deleting create-tag.use-case.ts:
+- Delete: __tests__/create-tag-use-case.test.ts
+- Delete: __tests__/create-tag-use-case.integration.test.ts
+- Update: Any other tests that imported or referenced CreateTagUseCase
+```
+
+**❌ INCORRECT - Leaving orphaned tests**
+
+```
+# ❌ DON'T leave tests for deleted code
+create-tag-use-case.test.ts  # Tests removed use case - DELETE THIS
+```
+
+### When Code is Refactored
+
+**MANDATORY**: When refactoring code, **update tests** to match:
+
+1. **Update test names** if behavior changes
+2. **Update mocks** if dependencies change
+3. **Update assertions** if return types change
+4. **Add new tests** if new behavior is added
+5. **Keep existing tests** if behavior is unchanged (only implementation changes)
+
+### Orphaned Test Detection
+
+Before considering a task complete, verify:
+1. ✅ No test files for removed functionality
+2. ✅ No test imports referencing deleted code
+3. ✅ All test files have corresponding source files (or document why they exist independently)
+
+## Test Commands
+
+Run tests using Bun's built-in test runner:
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in specific directory
+bun test packages/media
+
+# Run specific test file
+bun test packages/media/domain/value-objects/__tests__/url.test.ts
+
+# Run with logger output
+TEST_LOGGER=1 bun test packages/media
+
+# Run only integration tests (if using test organization)
+bun test --grep integration
+```
+
+## Test Quality Guidelines
+
+### ✅ DO
+
+- Test business-critical behavior
+- Test error handling and edge cases
+- Use descriptive test names
+- Follow Arrange-Act-Assert pattern
+- Mock external dependencies in unit tests
+- Use real infrastructure in integration tests
+- Clean up test data after integration tests
+- Delete tests when functionality is removed
+- Update tests when code is refactored
+
+### ❌ DON'T DO
+
+- Don't write tests for trivial code
+- Don't test framework functionality
+- Don't test third-party libraries
+- Don't write tests that only verify mocks work
+- Don't leave orphaned tests
+- Don't write tests without clear purpose
+- Don't test implementation details (test behavior)
+- Don't skip updating tests when refactoring
+
+## Coverage Philosophy
+
+**Focus on meaningful coverage, not percentage targets**:
+
+- **High coverage**: Domain logic (value objects, entities, domain services)
+- **Medium coverage**: Application layer (use cases, critical services)
+- **Low coverage**: Infrastructure (only critical adapters), controllers (thin adapters)
+
+**Don't aim for 100% coverage** - focus on testing behavior that matters.
+
+## Related References
+
+- `.cursor/rules/ddd-application-use.mdc` - Domain-driven design architecture (what to test)
+- `.cursor/rules/code-completeness.mdc` - Code completeness rules (includes test cleanup)
+- `.cursor/rules/code-style-and-commands.mdc` - Testing commands and conventions
+- `.cursor/rules/try-catch-handling.mdc` - Error handling patterns (important for testing errors)

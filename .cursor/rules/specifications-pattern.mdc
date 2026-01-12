@@ -1,0 +1,508 @@
+---
+description: Establishes guidelines for using the Specification Pattern to encapsulate reusable business rules, complex validations, and query logic following DDD principles.
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Specification Pattern
+
+The Specification Pattern encapsulates business rules and validation logic into reusable, composable objects. It's particularly useful for complex validations and queries that need to be combined or reused across different contexts.
+
+## General Principles
+
+- **Specifications encapsulate business rules** - They represent domain concepts, not technical queries
+- **Specifications are composable** - Can be combined using AND, OR, NOT operations
+- **Specifications can be used for validation and queries** - Same rule can be applied in different contexts
+- **Specifications belong to domain** - They contain business logic, not technical details
+- **Use when logic is complex and reusable** - Don't overuse for simple checks
+ - **Do not replace invariants** - Entity/VO invariants live in `create()`. See `.cursor/rules/ddd-value-objects-and-entities-validation.mdc`.
+
+## When to Use Specifications
+
+Use Specifications when:
+
+1. **Complex validation logic** that needs to be reused
+   ```typescript
+   // ✅ Reusable validation for premium users
+   const isPremiumUserSpec = new PremiumUserSpecification()
+   if (isPremiumUserSpec.isSatisfiedBy(user)) {
+     // Allow premium features
+   }
+   ```
+
+2. **Business rules** that need to be queried against collections
+   ```typescript
+   // ✅ Find users matching business criteria
+   const activePremiumUsers = users.filter(
+     user => new ActivePremiumUserSpecification().isSatisfiedBy(user)
+   )
+   ```
+
+3. **Query criteria** that represent domain concepts
+   ```typescript
+   // ✅ Domain concept: Events that are suitable for families
+   const familyFriendlyEvents = await eventRepository.findBySpecification(
+     new FamilyFriendlyEventSpecification()
+   )
+   ```
+
+4. **Combinable rules** - When you need to combine multiple business rules
+   ```typescript
+   // ✅ Combining specifications
+   const spec = new ActiveUserSpecification()
+     .and(new PremiumUserSpecification())
+     .and(new VerifiedUserSpecification())
+   ```
+
+## Specification Structure
+
+### Basic Specification Interface
+
+```typescript
+// Base specification interface
+export interface Specification<T> {
+  isSatisfiedBy(candidate: T): boolean
+  and(other: Specification<T>): Specification<T>
+  or(other: Specification<T>): Specification<T>
+  not(): Specification<T>
+}
+```
+
+### ✅ CORRECT - Base Specification Class
+
+```typescript
+// packages/shared/domain/specifications/base-specification.ts
+export abstract class BaseSpecification<T> {
+  abstract isSatisfiedBy(candidate: T): boolean
+
+  and(other: Specification<T>): Specification<T> {
+    return new AndSpecification(this, other)
+  }
+
+  or(other: Specification<T>): Specification<T> {
+    return new OrSpecification(this, other)
+  }
+
+  not(): Specification<T> {
+    return new NotSpecification(this)
+  }
+}
+
+class AndSpecification<T> extends BaseSpecification<T> {
+  constructor(
+    private readonly left: Specification<T>,
+    private readonly right: Specification<T>,
+  ) {
+    super()
+  }
+
+  isSatisfiedBy(candidate: T): boolean {
+    return this.left.isSatisfiedBy(candidate) && this.right.isSatisfiedBy(candidate)
+  }
+}
+
+class OrSpecification<T> extends BaseSpecification<T> {
+  constructor(
+    private readonly left: Specification<T>,
+    private readonly right: Specification<T>,
+  ) {
+    super()
+  }
+
+  isSatisfiedBy(candidate: T): boolean {
+    return this.left.isSatisfiedBy(candidate) || this.right.isSatisfiedBy(candidate)
+  }
+}
+
+class NotSpecification<T> extends BaseSpecification<T> {
+  constructor(private readonly spec: Specification<T>) {
+    super()
+  }
+
+  isSatisfiedBy(candidate: T): boolean {
+    return !this.spec.isSatisfiedBy(candidate)
+  }
+}
+```
+
+### ✅ CORRECT - Domain Specification Implementation
+
+```typescript
+// packages/users/domain/specifications/premium-user.specification.ts
+import { BaseSpecification } from '@shared/domain/specifications'
+import { User } from '../entities/user'
+
+export class PremiumUserSpecification extends BaseSpecification<User> {
+  isSatisfiedBy(user: User): boolean {
+    return user.getRole().isPremium() && user.getSubscriptionStatus().isActive()
+  }
+}
+
+// packages/users/domain/specifications/active-user.specification.ts
+export class ActiveUserSpecification extends BaseSpecification<User> {
+  isSatisfiedBy(user: User): boolean {
+    return user.isActive() && !user.isSuspended()
+  }
+}
+
+// packages/users/domain/specifications/verified-user.specification.ts
+export class VerifiedUserSpecification extends BaseSpecification<User> {
+  isSatisfiedBy(user: User): boolean {
+    return user.isEmailVerified() && user.isPhoneVerified()
+  }
+}
+```
+
+## Using Specifications for Validation
+
+### ✅ CORRECT - Validation with Specifications
+
+```typescript
+@Injectable()
+export class CreateEventUseCase {
+  constructor(
+    @Inject(EventRepository)
+    private readonly eventRepository: EventRepository,
+  ) {}
+
+  async execute(input: CreateEventDto): Promise<Event> {
+    const event = Event.create({ ... })
+
+    // ✅ Use specification for complex validation
+    const canCreateEventSpec = new CanCreateEventSpecification()
+    if (!canCreateEventSpec.isSatisfiedBy(event)) {
+      throw new OneJsError(
+        'Cannot create event',
+        400,
+        'Event does not meet creation requirements',
+        { eventId: event.getId().toString() },
+        ErrorCodes.VALIDATION_FAILED
+      )
+    }
+
+    return await this.eventRepository.save(event)
+  }
+}
+
+// Domain specification
+export class CanCreateEventSpecification extends BaseSpecification<Event> {
+  isSatisfiedBy(event: Event): boolean {
+    // ✅ Complex business rule encapsulated
+    const hasValidDate = event.getStartDate().isAfter(new Date())
+    const hasValidVenue = event.getVenueId() !== null
+    const hasRequiredCategories = event.getCategoryIds().length > 0
+    const hasValidPrice = event.getPrice().isPositive()
+
+    return hasValidDate && hasValidVenue && hasRequiredCategories && hasValidPrice
+  }
+}
+```
+
+### ✅ CORRECT - Composite Validation
+
+```typescript
+// ✅ Combining specifications for complex validation
+export class EligibleForPremiumFeaturesSpecification extends BaseSpecification<User> {
+  private readonly activeSpec = new ActiveUserSpecification()
+  private readonly premiumSpec = new PremiumUserSpecification()
+  private readonly verifiedSpec = new VerifiedUserSpecification()
+
+  isSatisfiedBy(user: User): boolean {
+    // ✅ Composite rule: Active AND Premium AND Verified
+    return this.activeSpec
+      .and(this.premiumSpec)
+      .and(this.verifiedSpec)
+      .isSatisfiedBy(user)
+  }
+}
+```
+
+## Using Specifications for Queries
+
+### ✅ CORRECT - Query Specifications
+
+```typescript
+// Domain specification for queries
+export class FamilyFriendlyEventSpecification extends BaseSpecification<Event> {
+  isSatisfiedBy(event: Event): boolean {
+    return (
+      event.getCategoryIds().some(id => Category.isFamilyFriendly(id)) &&
+      !event.getTags().some(tag => tag.isAdultContent()) &&
+      event.getStartTime().isBefore(EventTime.CHILD_BEDTIME)
+    )
+  }
+}
+
+// In repository
+export class EventPrismaRepository extends PrismaRepository<'event'> {
+  async findBySpecification<T extends BaseSpecification<Event>>(
+    spec: T,
+  ): Promise<Event[]> {
+    // Load all events and filter (for simple cases)
+    // For complex cases, convert specification to query criteria
+    const allEvents = await this.findAll()
+    return allEvents.filter(event => spec.isSatisfiedBy(event))
+  }
+
+  // ✅ Better: Convert specification to query criteria
+  async findBySpecification(
+    spec: EventSpecification,
+  ): Promise<Event[]> {
+    const criteria = spec.toQueryCriteria() // Specification provides query conversion
+    return await this.findMany(criteria)
+  }
+}
+
+// Specification with query conversion
+export class FamilyFriendlyEventSpecification extends BaseSpecification<Event> {
+  isSatisfiedBy(event: Event): boolean {
+    // In-memory check
+    return (
+      event.getCategoryIds().some(id => Category.isFamilyFriendly(id)) &&
+      !event.hasAdultContent() &&
+      event.getStartTime().isBefore(EventTime.CHILD_BEDTIME)
+    )
+  }
+
+  toQueryCriteria(): Prisma.EventWhereInput {
+    // ✅ Convert to database query
+    return {
+      categories: {
+        some: {
+          isFamilyFriendly: true,
+        },
+      },
+      tags: {
+        none: {
+          isAdultContent: true,
+        },
+      },
+      startTime: {
+        lt: EventTime.CHILD_BEDTIME.toDate(),
+      },
+    }
+  }
+}
+```
+
+### ✅ CORRECT - Specification in Use Cases
+
+```typescript
+@Injectable()
+export class SearchFamilyFriendlyEventsUseCase {
+  constructor(
+    @Inject(EventRepository)
+    private readonly eventRepository: EventRepository,
+  ) {}
+
+  async execute(input: {
+    cityId: CityId
+    page: Page
+    limit: Limit
+  }): Promise<{ events: Event[]; total: number }> {
+    // ✅ Use specification for domain query concept
+    const spec = new FamilyFriendlyEventSpecification()
+      .and(new EventsInCitySpecification(input.cityId))
+
+    return await this.eventRepository.findBySpecification(spec, {
+      page: input.page,
+      limit: input.limit,
+    })
+  }
+}
+```
+
+## Specification Composition
+
+### ✅ CORRECT - Composing Specifications
+
+```typescript
+// ✅ Combining multiple specifications
+export class SearchEventsUseCase {
+  async execute(input: {
+    cityId?: CityId
+    familyFriendly?: boolean
+    freeOnly?: boolean
+    upcomingOnly?: boolean
+  }): Promise<Event[]> {
+    let spec = new AllEventsSpecification()
+
+    // ✅ Build composite specification
+    if (input.cityId) {
+      spec = spec.and(new EventsInCitySpecification(input.cityId))
+    }
+
+    if (input.familyFriendly) {
+      spec = spec.and(new FamilyFriendlyEventSpecification())
+    }
+
+    if (input.freeOnly) {
+      spec = spec.and(new FreeEventSpecification())
+    }
+
+    if (input.upcomingOnly) {
+      spec = spec.and(new UpcomingEventSpecification())
+    }
+
+    return await this.eventRepository.findBySpecification(spec)
+  }
+}
+```
+
+### ✅ CORRECT - Reusable Composite Specifications
+
+```typescript
+// ✅ Reusable composite specification
+export class PublicEventSpecification extends BaseSpecification<Event> {
+  private readonly activeSpec = new ActiveEventSpecification()
+  private readonly publishedSpec = new PublishedEventSpecification()
+  private readonly notPrivateSpec = new NotSpecification(new PrivateEventSpecification())
+
+  isSatisfiedBy(event: Event): boolean {
+    return this.activeSpec
+      .and(this.publishedSpec)
+      .and(this.notPrivateSpec)
+      .isSatisfiedBy(event)
+  }
+
+  toQueryCriteria(): Prisma.EventWhereInput {
+    return {
+      AND: [
+        this.activeSpec.toQueryCriteria(),
+        this.publishedSpec.toQueryCriteria(),
+        { isPrivate: false },
+      ],
+    }
+  }
+}
+```
+
+## Specification Location
+
+### ✅ CORRECT - Specification Organization
+
+```
+packages/<bounded-context>/
+  domain/
+    specifications/
+      premium-user.specification.ts
+      active-user.specification.ts
+      family-friendly-event.specification.ts
+      base-specification.ts (or from shared package)
+```
+
+### ✅ CORRECT - Shared Base Specification
+
+```typescript
+// packages/shared/domain/specifications/base-specification.ts
+// Shared across all bounded contexts
+export abstract class BaseSpecification<T> {
+  // ... implementation
+}
+
+// packages/users/domain/specifications/premium-user.specification.ts
+import { BaseSpecification } from '@shared/domain/specifications'
+import { User } from '../entities/user'
+
+export class PremiumUserSpecification extends BaseSpecification<User> {
+  // ...
+}
+```
+
+## When NOT to Use Specifications
+
+### ❌ INCORRECT - Overusing Specifications
+
+```typescript
+// ❌ WRONG - Simple check doesn't need specification
+export class SimpleCheckSpecification extends BaseSpecification<User> {
+  isSatisfiedBy(user: User): boolean {
+    return user.isActive() // ❌ NO - Too simple, just use user.isActive() directly
+  }
+}
+
+// ✅ CORRECT - Use entity method directly
+if (user.isActive()) {
+  // ...
+}
+```
+
+### ❌ INCORRECT - Technical Specifications
+
+```typescript
+// ❌ WRONG - Technical query criteria, not domain concept
+export class EventsCreatedAfterDateSpecification extends BaseSpecification<Event> {
+  constructor(private readonly date: Date) {
+    super()
+  }
+
+  isSatisfiedBy(event: Event): boolean {
+    return event.getCreatedAt().isAfter(this.date) // ❌ NO - This is a technical filter, not domain rule
+  }
+}
+
+// ✅ CORRECT - Use query directly or repository method
+await this.eventRepository.findCreatedAfter(date)
+```
+
+## Performance Considerations
+
+### ✅ CORRECT - Specification with Query Conversion
+
+```typescript
+// ✅ Efficient: Convert specification to query
+export class FamilyFriendlyEventSpecification extends BaseSpecification<Event> {
+  isSatisfiedBy(event: Event): boolean {
+    // For in-memory checks
+    // ...
+  }
+
+  toQueryCriteria(): Prisma.EventWhereInput {
+    // ✅ Convert to database query for efficiency
+    return {
+      categories: { some: { isFamilyFriendly: true } },
+      tags: { none: { isAdultContent: true } },
+    }
+  }
+}
+
+// In repository
+async findBySpecification(spec: EventSpecification): Promise<Event[]> {
+  // ✅ Use query conversion for database queries
+  if (spec.toQueryCriteria) {
+    return await this.findMany(spec.toQueryCriteria())
+  }
+  // Fallback to in-memory filtering
+  const all = await this.findAll()
+  return all.filter(event => spec.isSatisfiedBy(event))
+}
+```
+
+## Rules Summary
+
+### ✅ DO
+
+- Use Specifications for complex, reusable business rules
+- Use Specifications when rules need to be composed (AND, OR, NOT)
+- Place specifications in `domain/specifications/`
+- Use Specifications for domain concepts, not technical filters
+- Convert Specifications to query criteria when possible for performance
+- Make Specifications composable using AND/OR/NOT operations
+- Use Specifications for both validation and querying when appropriate
+
+### ❌ DON'T DO
+
+- Don't create Specifications for simple checks (use entity methods)
+- Don't use Specifications for technical query filters (use repository methods)
+- Don't put technical concerns in Specifications
+- Don't overuse Specifications - prefer simple entity methods when appropriate
+- Don't make Specifications depend on infrastructure
+
+## Related References
+
+- `.cursor/rules/ddd-application-use.mdc` - Domain and application layer structure
+- `.cursor/rules/aggregates-and-invariants.mdc` - Domain invariants (can use specifications)
+- `.cursor/rules/prisma-repository-pattern.mdc` - Using specifications with repositories
+- `.cursor/rules/domain-services-differentiation.mdc` - When specifications are preferred over domain services
+ - `.cursor/rules/ddd-value-objects-and-entities-validation.mdc` - Validación en VO/Entidades y manejo de Result/Either

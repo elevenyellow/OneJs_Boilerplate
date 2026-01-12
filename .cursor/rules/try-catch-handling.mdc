@@ -1,0 +1,364 @@
+---
+description: Establishes guidelines for using try/catch blocks: avoid default usage to allow error propagation, and when necessary to use them, require adequate logging with sufficient context to identify bugs
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Try/Catch Handling Rules
+
+Try/catch blocks should be used with caution to avoid hiding bugs and allow errors to propagate to framework handlers or middleware that handle them appropriately.
+
+## General Principle: Avoid Try/Catch By Default
+
+**DO NOT use try/catch by default.** Let errors propagate naturally.
+
+### Why avoid unnecessary try/catch
+
+1. **Hides bugs**: Errors should be visible so they can be debugged
+2. **Loss of information**: Stack traces and context are lost if not handled correctly
+3. **Makes debugging difficult**: Without error propagation, it's hard to identify where something failed
+4. **Framework already handles errors**: The framework has middleware that catches and handles `OneJsError` appropriately
+
+### ✅ CORRECT - Let the error propagate
+
+```typescript
+@Injectable()
+export class GetTagByIdUseCase {
+  constructor(
+    @Inject(TagPrismaRepository)
+    private readonly tagRepository: TagPrismaRepository,
+  ) {}
+
+  async execute(input: { id: string }): Promise<Tag> {
+    const tagId = Id.createFrom(input.id)
+    // ✅ No try/catch - let the Prisma error propagate
+    // Framework middleware will handle it
+    const tag = await this.tagRepository.findById(tagId)
+    
+    if (!tag) {
+      throw new OneJsError(
+        'Tag not found',
+        404,
+        `Tag with id ${input.id} does not exist`,
+        { id: input.id },
+        ErrorCodes.RESOURCE_NOT_FOUND
+      )
+    }
+    
+    return tag
+  }
+}
+```
+
+### ❌ INCORRECT - Unnecessary try/catch that hides errors
+
+```typescript
+// ❌ WRONG - Try/catch with no purpose, hides the error
+async execute(input: { id: string }): Promise<Tag | null> {
+  try {
+    const tag = await this.tagRepository.findById(input.id)
+    return tag
+  } catch (error) {
+    // ❌ NO - Error hidden, no logging, no context
+    return null
+  }
+}
+
+// ❌ WRONG - Try/catch that returns false without information
+async delete(options: { where: { id: string } }): Promise<boolean> {
+  try {
+    await this.prisma.tag.delete({
+      where: { id: options.where.id },
+    })
+    return true
+  } catch (error) {
+    // ❌ NO - Error completely lost, no logging
+    return false
+  }
+}
+```
+
+## When to Use Try/Catch
+
+Only use try/catch in these specific cases:
+
+1. **Transform infrastructure errors** to `OneJsError` with appropriate context
+2. **Logging before re-throwing** when you need additional debugging information
+3. **Repetitive loops** where an error should not stop processing of independent elements (see specific section)
+
+## Logging Requirement
+
+**IF you use try/catch, you MUST ALWAYS do logging with sufficient context.**
+
+### Log Requirements
+
+1. **Identifiable context**: Must include where the error occurred
+2. **Standard format**: Use `MATO:<context>:<feature>` as prefix
+3. **Error information**: Include the original error and its message
+4. **Relevant data**: Include any context that helps debug (IDs, values, etc.)
+
+### ✅ CORRECT - Try/catch with adequate logging and error transformation
+
+```typescript
+@Injectable()
+export class CreateVenueUseCase {
+  constructor(
+    @Inject(InstagramScraper)
+    private readonly instagramScraper: InstagramScraper,
+    @Inject(Logger)
+    private readonly logger: Logger,
+  ) {}
+
+  async execute(createDto: CreateVenueDto): Promise<Venue> {
+    // ✅ Try/catch to transform infrastructure error
+    try {
+      await this.instagramScraper.fetchProfile(createDto.instagramId)
+    } catch (error) {
+      // ✅ Logging with complete context
+      this.logger.error(
+        'MATO:VENUE:CREATE',
+        `Instagram username verification failed for ${createDto.instagramId}`,
+        { 
+          error: error instanceof Error ? error.message : String(error),
+          instagramId: createDto.instagramId,
+          stack: error instanceof Error ? error.stack : undefined,
+        }
+      )
+      // ✅ Transform to OneJsError with domain context
+      throw new OneJsError(
+        'instagram-user-not-found',
+        404,
+        `Instagram user "${createDto.instagramId}" does not exist or is not accessible`,
+        { instagramId: createDto.instagramId, originalError: String(error) },
+        ErrorCodes.RESOURCE_NOT_FOUND
+      )
+    }
+    // ... rest of the logic
+  }
+}
+```
+
+### ✅ CORRECT - Try/catch with logging before re-throwing
+
+```typescript
+@Injectable()
+export class SaveEntityUseCase {
+  constructor(
+    @Inject(EntityRepository)
+    private readonly repository: EntityRepository,
+    @Inject(Logger)
+    private readonly logger: Logger,
+  ) {}
+
+  async execute(input: { entity: Entity }): Promise<Entity> {
+    try {
+      // ✅ Operation that may fail
+      return await this.repository.save(input.entity)
+    } catch (error) {
+      // ✅ Logging with sufficient context
+      this.logger.error(
+        'MATO:ENTITY:SAVE',
+        'Failed to save entity',
+        {
+          error: error instanceof Error ? error.message : String(error),
+          entityId: input.entity.getId().toString(),
+          stack: error instanceof Error ? error.stack : undefined,
+        }
+      )
+      // ✅ Re-throw or transform to OneJsError
+      throw new OneJsError(
+        'Database operation failed',
+        500,
+        'Failed to persist entity',
+        {
+          entityId: input.entity.getId().toString(),
+          originalError: String(error),
+        },
+        ErrorCodes.SERVER_ERROR
+      )
+    }
+  }
+}
+```
+
+### ❌ INCORRECT - Try/catch without logging
+
+```typescript
+// ❌ WRONG - No logging, error hidden
+async save(entity: Entity): Promise<Entity> {
+  try {
+    await this.prisma.entity.create({ data: entity.toDatabase() })
+    return entity
+  } catch (error) {
+    // ❌ NO - No logging, no information about where/why it failed
+    return entity
+  }
+}
+
+// ❌ WRONG - Insufficient logging without context
+async delete(options: { where: { id: string } }): Promise<boolean> {
+  try {
+    await this.prisma.tag.delete({ where: { id: options.where.id } })
+    return true
+  } catch (error) {
+    // ❌ NO - Logging without standard format, insufficient context
+    console.error('Delete failed') // ❌ Also don't use console.error
+    return false
+  }
+}
+```
+
+## Exception: Repetitive Loops with Independent Elements
+
+When processing multiple elements in a loop and **an error in one element should NOT stop processing of other independent elements**, you can use try/catch inside the loop.
+
+### Requirements for repetitive loops
+
+1. **Individual logging**: Each error must be logged individually with context of the element that failed
+2. **Continue the loop**: The error should not propagate outside the loop
+3. **Element context**: The log must include information about the element that failed (ID, index, etc.)
+
+### ✅ CORRECT - Loop with try/catch for independent elements
+
+```typescript
+@Injectable()
+export class EventBatchProcessorService {
+  constructor(
+    @Inject(EventRepository)
+    private readonly eventRepository: EventRepository,
+    @Inject(Logger)
+    private readonly logger: Logger,
+  ) {}
+
+  async processEvents(events: Event[]): Promise<void> {
+    // ✅ Process independent events - one error should not stop all
+    for (const event of events) {
+      try {
+        await this.eventRepository.save(event)
+      } catch (error) {
+        // ✅ Individual logging with element context
+        this.logger.error(
+          'MATO:EVENTS:BATCH_PROCESSOR',
+          `Failed to save event "${event.getTitle().toString()}"`,
+          {
+            error: error instanceof Error ? error.message : String(error),
+            eventId: event.getId().toString(),
+            eventTitle: event.getTitle().toString(),
+            stack: error instanceof Error ? error.stack : undefined,
+          }
+        )
+        // ✅ Continue with next event - DO NOT propagate the error
+        // Error was logged but does not stop processing the rest
+      }
+    }
+  }
+}
+```
+
+### ✅ CORRECT - Loop with Promise.allSettled for parallelism
+
+```typescript
+@Injectable()
+export class NotificationService {
+  constructor(
+    @Inject(Logger)
+    private readonly logger: Logger,
+  ) {}
+
+  async sendToMultipleUsers(notifications: Notification[]): Promise<void> {
+    // ✅ Use Promise.allSettled for parallel independent operations
+    const results = await Promise.allSettled(
+      notifications.map((notification) => this.sendNotification(notification))
+    )
+
+    // ✅ Process results and log individual errors
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const notification = notifications[index]!
+        this.logger.error(
+          'MATO:NOTIFICATIONS:SEND',
+          `Failed to send notification to ${notification.userId}`,
+          {
+            error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+            userId: notification.userId,
+            notificationId: notification.id,
+            stack: result.reason instanceof Error ? result.reason.stack : undefined,
+          }
+        )
+      }
+    })
+  }
+}
+```
+
+### ❌ INCORRECT - Loop without logging individual errors
+
+```typescript
+// ❌ WRONG - Hidden errors without logging
+async processEvents(events: Event[]): Promise<void> {
+  for (const event of events) {
+    try {
+      await this.eventRepository.save(event)
+    } catch (error) {
+      // ❌ NO - No logging, no context of the element that failed
+      continue // Error completely lost
+    }
+  }
+}
+
+// ❌ WRONG - Try/catch that propagates error and stops the loop
+async processEvents(events: Event[]): Promise<void> {
+  for (const event of events) {
+    try {
+      await this.eventRepository.save(event)
+    } catch (error) {
+      // ❌ NO - If you want the error to stop the loop, don't use try/catch
+      throw error // Better to let it propagate without try/catch
+    }
+  }
+}
+```
+
+### ⚠️ WHEN NOT to use try/catch in loops
+
+If an error in an element **SHOULD stop processing** (dependent elements, transactions, etc.), **DO NOT use try/catch**:
+
+```typescript
+// ✅ CORRECT - No try/catch when elements are dependent
+async processInTransaction(events: Event[]): Promise<void> {
+  // If an event fails, the transaction must be reverted
+  await this.prisma.$transaction(async (tx) => {
+    for (const event of events) {
+      // ✅ No try/catch - if it fails, the entire transaction is reverted
+      await this.eventRepository.save(event, tx)
+    }
+  })
+}
+```
+
+## Rules Summary
+
+### ✅ DO
+
+- Let errors propagate by default
+- Use try/catch only when you need to transform infrastructure errors
+- **ALWAYS do logging** with sufficient context when using try/catch
+- Use standard format: `MATO:<context>:<feature>`
+- Include complete error information (message, stack, relevant context)
+- In repetitive loops, log each error individually with element context
+
+### ❌ DON'T DO
+
+- Don't use try/catch just to "avoid errors" without purpose
+- Don't do try/catch without adequate logging
+- Don't use `console.error` or `console.log` - use injected `Logger`
+- Don't return `null`, `false`, or default values in catch without logging
+- Don't hide errors completely
+- Don't use try/catch in loops when elements are dependent (better to let it propagate)
+
+## Related References
+
+- `.cursor/rules/ddd-application-use.mdc` - Error Handling in Use Cases (when to throw OneJsError)
+- `.cursor/rules/controller-dependencies.mdc` - Error Handling in Controllers (don't handle errors manually)
+- `.cursor/rules/code-style-and-commands.mdc` - Logger usage patterns

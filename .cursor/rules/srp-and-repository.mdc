@@ -1,0 +1,151 @@
+---
+description: Mandatory rule to enforce Repository pattern usage and Single Responsibility across apps/** and packages/**
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Single Responsibility and Repository Enforcement
+
+This rule enforces two foundational practices across the codebase:
+
+- Single Responsibility Principle (SRP) for modules, classes, functions, and React components
+- Repository pattern for all persistence concerns (with Prisma repositories extending the shared base)
+
+See also:
+- `.cursor/rules/prisma-repository-pattern.mdc` — detailed repository design with Prisma
+- `.cursor/rules/ddd-application-use.mdc` — layering and application service guidance
+- `.cursor/rules/react-component-decomposition.mdc` — SRP for React components
+
+## Scope
+
+Applies to all code in `apps/**` and `packages/**`, including:
+
+- Controllers/Handlers, Application Services, Domain Services
+- Repositories and any persistence-related classes
+- React components, hooks, and utilities
+
+## Mandatory Rules (MUST)
+
+1) Repository Pattern
+
+- All persistence logic MUST reside in repositories.
+- Repositories MUST extend the shared base (see `.cursor/rules/prisma-repository-pattern.mdc`).
+- Controllers, application services, and domain services MUST NOT use `Prisma.*` types or call `prisma.*` directly.
+- Repositories MUST accept and return domain entities/value objects (no raw Prisma DTOs in public signatures).
+
+2) Single Responsibility Principle (SRP)
+
+- Each class MUST have one clear responsibility.
+- Each function SHOULD do one thing and do it well; avoid deep branching and mixed concerns.
+- Application services MUST represent a single use case with a single `execute(...)` entry point.
+- React components SHOULD be focused (filters, toolbar, table, row, dialog, etc.), with clear props and no cross-cutting concerns.
+
+## Prohibited (DO NOT)
+
+- DO NOT perform database access outside repositories (no direct Prisma usage in controllers/services/components).
+- DO NOT expose `Prisma.*` types in repository public method signatures.
+- DO NOT mix multiple responsibilities in a single class (e.g., validation + orchestration + persistence).
+- DO NOT place domain logic in controllers/HTTP handlers.
+
+## SRP: Quick Heuristics
+
+Use these checks to spot SRP violations:
+
+- A class name that combines multiple domains (e.g., `UserBillingAndNotificationsService`).
+- A function that: fetches data, validates, transforms, and publishes events all together.
+- A React component that fetches data, manages global state, and renders complex UI in one file.
+
+Preferred refactors:
+
+- Extract validation into dedicated validators/value objects.
+- Extract persistence into repositories.
+- Split orchestration into application services (one use case per service).
+- Decompose React components into smaller focused components and move data-fetching into hooks.
+
+## Examples
+
+### ✅ Correct — Controller uses application service only
+
+```ts
+// apps/api/.../users.controller.ts (excerpt)
+@Controller('users')
+export class UsersController {
+  constructor(private readonly createUser: CreateUserService) {}
+
+  @Post()
+  async create(@Body() dto: CreateUserDto) {
+    const result = await this.createUser.execute(dto)
+    return toHttpResponse(result)
+  }
+}
+```
+
+### ❌ Wrong — Controller touching Prisma
+
+```ts
+// ❌ NO: Controller must not access prisma directly
+@Post()
+async create(@Body() dto: any) {
+  return await this.prisma.user.create({ data: dto })
+}
+```
+
+### ✅ Correct — Repository abstraction with value objects
+
+```ts
+// packages/users/infrastructure/persistence/prisma/user.repository.ts
+@Injectable()
+export class UserPrismaRepository extends PrismaRepository<'user'> {
+  constructor(@Inject(PrismaClientEy) protected readonly prisma: PrismaClientEy) {
+    super(prisma, 'user')
+  }
+
+  async findById(id: UserId): Promise<User | null> {
+    const dto = await this.prisma.user.findUnique({ where: { id: id.toString() } })
+    return dto ? User.fromDto(dto) : null
+  }
+}
+```
+
+### ❌ Wrong — Repository exposing Prisma types
+
+```ts
+// ❌ NO: Exposes Prisma in public signatures
+async find(where: Prisma.UserWhereInput): Promise<Prisma.UserGetPayload<...>[]> {
+  // ...
+}
+```
+
+### ✅ Correct — SRP for application service
+
+```ts
+// packages/users/application/services/create-user.service.ts
+export class CreateUserService {
+  constructor(private readonly users: UserRepository) {}
+
+  async execute(input: CreateUserInput): Promise<Result<User, DomainError>> {
+    const user = User.create(input)
+    await this.users.save(user)
+    return ok(user)
+  }
+}
+```
+
+## Allowed Exceptions
+
+- Database migrations and seeders may use Prisma directly.
+- Very small glue utilities may combine trivial concerns if decomposition harms clarity.
+
+## How to Comply
+
+- If you write persistence logic, create/extend a repository under `.../infrastructure/persistence/...`.
+- When a class feels “too big”, split by responsibility and rely on clear interfaces.
+- Keep controllers thin; move orchestration to application services; keep domain logic inside domain entities/value objects/services.
+
+## Cross-References
+
+- `.cursor/rules/prisma-repository-pattern.mdc` (MUST extend base repository, value objects in signatures)
+- `.cursor/rules/ddd-application-use.mdc` (single-responsibility services with `execute`)
+- `.cursor/rules/react-component-decomposition.mdc` (component SRP guidance)
+

@@ -23,7 +23,12 @@ const DEFAULT_CONFIG: ImageProcessingConfig = {
 }
 
 /** Types of images we process */
-export type ImageType = 'crag-header' | 'sector-header' | 'topo' | 'crag-topo'
+export type ImageType =
+  | 'crag-header'
+  | 'area-header'
+  | 'sector-header'
+  | 'topo'
+  | 'crag-topo'
 
 /**
  * Service for downloading, processing, and uploading images to S3

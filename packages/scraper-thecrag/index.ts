@@ -1,61 +1,35 @@
-// Domain - DTOs
-export {
-  parseHeight,
-  type ScrapedCragNode,
-  type ScrapedNodeInfo,
-  type ScrapedRouteData,
-} from './domain/dtos/scraped-node.dto'
+// Domain - Entities
+export { ScrapedArea } from './domain/entities/scraped-area.entity'
+export { ScrapedRoute } from './domain/entities/scraped-route.entity'
 
-export {
-  parseTopoPoints,
-  topoPointsToSvgPath,
-  generateTopoSvg,
-  type TopoRouteAnnotation,
-  type TopoPoint,
-  type TopoImageData,
-  type HeaderImageData,
-} from './domain/dtos/topo-image.dto'
-
-// Application - Services
-export {
-  CragImporterService,
-  type ImportError,
-  type ImportOptions,
-  type ImportResult,
-} from './application/services/crag-importer.service'
-
-export {
-  ScrapedDataMapperService,
-  type ValidatedAreaData,
-  type ValidatedCragData,
-  type ValidatedRouteData,
-  type ValidatedSectorData,
-} from './application/services/scraped-data-mapper.service'
-
-export {
-  TopoRendererService,
-  type TopoRenderOptions,
-} from './application/services/topo-renderer.service'
-
-export {
-  ImageUploadService,
-  type ImageUploadResult,
-} from './application/services/image-upload.service'
-
-// Application - Use Cases
-export {
-  ImportCragUseCase,
-  type ImportCragInput,
-  type ImportFromJsonInput,
-} from './application/use-cases/import-crag.use-case'
+// Domain - Value Objects
+export { AreaBeta } from './domain/value-objects/area-beta.vo'
+export { AreaDescription } from './domain/value-objects/area-description.vo'
+export { AreaName } from './domain/value-objects/area-name.vo'
+export { AreaSlug } from './domain/value-objects/area-slug.vo'
+export { AreaUrl } from './domain/value-objects/area-url.vo'
+export { ImageUrl } from './domain/value-objects/image-url.vo'
+export { NodeId } from './domain/value-objects/node-id.vo'
+export { NodeMetadata } from './domain/value-objects/node-metadata.vo'
+export { NodeSeasonality } from './domain/value-objects/node-seasonality.vo'
+export { NodeStatistics } from './domain/value-objects/node-statistics.vo'
+export { NodeTags } from './domain/value-objects/node-tags.vo'
+export { RawHtmlResponse } from './domain/value-objects/raw-html-response.vo'
+export { RawNodeResponse } from './domain/value-objects/raw-node-response.vo'
+export { RouteBeta } from './domain/value-objects/route-beta.vo'
+export { RouteGrade } from './domain/value-objects/route-grade.vo'
+export { RouteHistory } from './domain/value-objects/route-history.vo'
+export { RouteInfo } from './domain/value-objects/route-info.vo'
+export { TopoAnnotation } from './domain/value-objects/topo-annotation.vo'
+export { TopoDimensions } from './domain/value-objects/topo-dimensions.vo'
+export { TopoImage } from './domain/value-objects/topo-image.vo'
+export { TopoPath } from './domain/value-objects/topo-path.vo'
+export { TopoPoint } from './domain/value-objects/topo-point.vo'
+export { WebCoverFocus } from './domain/value-objects/webcover-focus.vo'
+export { WebCoverImage } from './domain/value-objects/webcover-image.vo'
 
 // Infrastructure - Scrapers
 export {
   TheCragApiScraper,
   type ScraperOptions,
 } from './infrastructure/scrapers/thecrag-api.scraper'
-export {
-  TheCragWebScraper,
-  type WebScrapedData,
-  type ScrapedAreaInfo,
-} from './infrastructure/scrapers/thecrag-web.scraper'

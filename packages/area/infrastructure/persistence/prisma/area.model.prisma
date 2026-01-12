@@ -27,6 +27,16 @@ model Area {
   // API Response Raw (para análisis futuro)
   apiResponseRaw Json?  // Respuesta completa de la API
 
+  // Imagen de cabecera - URLs originales de TheCrag
+  headerImageUrl    String?
+  headerImageWidth  Int?
+  headerImageHeight Int?
+
+  // Imagen de cabecera - URLs S3 optimizadas
+  headerImageS3Url       String?
+  headerImageS3UrlFull   String?
+  headerImageOriginalUrl String?
+
   crag       Crag   @relation(fields: [cragId], references: [id], onDelete: Cascade)
   parentArea Area?  @relation("AreaHierarchy", fields: [parentAreaId], references: [id])
   childAreas Area[] @relation("AreaHierarchy")

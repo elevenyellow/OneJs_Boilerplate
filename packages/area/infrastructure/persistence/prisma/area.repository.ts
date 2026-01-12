@@ -35,6 +35,13 @@ interface AreaPrismaData {
   redirectStubs: string[]
   tlc: unknown
   apiResponseRaw: unknown
+  // Header image fields
+  headerImageUrl: string | null
+  headerImageWidth: number | null
+  headerImageHeight: number | null
+  headerImageS3Url: string | null
+  headerImageS3UrlFull: string | null
+  headerImageOriginalUrl: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -105,45 +112,45 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
     apiResponseRaw?: Record<string, unknown>,
   ): Promise<AreaEntity> {
     const data = this.toPrismaData(entity)
-    
+
     // Agregar apiResponseRaw si está disponible
     if (apiResponseRaw) {
-      (data as any).apiResponseRaw = apiResponseRaw
-      
+      ;(data as any).apiResponseRaw = apiResponseRaw
+
       // Extraer campos adicionales desde apiResponseRaw
       const raw = apiResponseRaw as any
-      
+
       // locatedness
       if (raw.locatedness !== undefined) {
-        (data as any).locatedness = raw.locatedness
+        ;(data as any).locatedness = raw.locatedness
       }
-      
+
       // averageHeight viene como [valor, "m"]
       if (raw.averageHeight && Array.isArray(raw.averageHeight)) {
         const height = Number(raw.averageHeight[0])
         if (!isNaN(height)) {
-          (data as any).averageHeight = height
+          ;(data as any).averageHeight = height
         }
       }
-      
+
       // Otros campos simples
       if (raw.numberRoutes !== undefined) {
-        (data as any).numberRoutes = raw.numberRoutes
+        ;(data as any).numberRoutes = raw.numberRoutes
       }
       if (raw.permitNode) {
-        (data as any).permitNode = raw.permitNode
+        ;(data as any).permitNode = raw.permitNode
       }
       if (raw.priceCategory) {
-        (data as any).priceCategory = raw.priceCategory
+        ;(data as any).priceCategory = raw.priceCategory
       }
       if (raw.urlAncestorStub) {
-        (data as any).urlAncestorStub = raw.urlAncestorStub
+        ;(data as any).urlAncestorStub = raw.urlAncestorStub
       }
       if (Array.isArray(raw.redirectStubs)) {
-        (data as any).redirectStubs = raw.redirectStubs
+        ;(data as any).redirectStubs = raw.redirectStubs
       }
       if (raw.tlc) {
-        (data as any).tlc = raw.tlc
+        ;(data as any).tlc = raw.tlc
       }
     }
 
@@ -191,6 +198,13 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
       BetaInfo.fromJSON(data.beta as BetaItemData[]),
       data.createdAt,
       data.updatedAt,
+      // Header image fields
+      data.headerImageUrl,
+      data.headerImageWidth,
+      data.headerImageHeight,
+      data.headerImageS3Url,
+      data.headerImageS3UrlFull,
+      data.headerImageOriginalUrl,
     )
   }
 
@@ -202,7 +216,7 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
       parentAreaId: entity.parentAreaId?.toString() ?? null,
       name: entity.name.toString(),
       altNames: entity.altNames.toArray(),
-      type: entity.type,
+      type: entity.type as string,
       latitude: entity.latitude,
       longitude: entity.longitude,
       geometry: entity.geometry?.toJSON() ?? null,
@@ -211,6 +225,34 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
       apiResponseRaw: null, // Placeholder
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+      // Header image fields
+      headerImageUrl: entity.headerImageUrl,
+      headerImageWidth: entity.headerImageWidth,
+      headerImageHeight: entity.headerImageHeight,
+      headerImageS3Url: entity.headerImageS3Url,
+      headerImageS3UrlFull: entity.headerImageS3UrlFull,
+      headerImageOriginalUrl: entity.headerImageOriginalUrl,
     }
+  }
+
+  /**
+   * Update area header image S3 URLs
+   */
+  async updateHeaderImageS3(
+    areaId: AreaId,
+    s3Urls: {
+      s3Url: string
+      s3UrlFull: string
+      originalUrl: string
+    },
+  ): Promise<void> {
+    await this.prisma.area.update({
+      where: { id: areaId.toString() },
+      data: {
+        headerImageS3Url: s3Urls.s3Url,
+        headerImageS3UrlFull: s3Urls.s3UrlFull,
+        headerImageOriginalUrl: s3Urls.originalUrl,
+      },
+    })
   }
 }
