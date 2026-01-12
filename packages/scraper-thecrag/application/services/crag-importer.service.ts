@@ -1,10 +1,13 @@
-import { Inject, Injectable } from '@OneJs/core'
+import { Inject, Injectable, logger } from '@OneJs/core'
 import { AreaId } from '@area/domain/value-objects/area-id.vo'
+import { TextCleanerService } from '@climb-zone/ai'
 import { AreaPrismaRepository } from '@climb-zone/area'
 import { CountryId, CragPrismaRepository } from '@climb-zone/crag'
 import { RegionId } from '@climb-zone/region'
 import { RoutePrismaRepository } from '@climb-zone/route'
 import { SectorPrismaRepository, SectorStatsService } from '@climb-zone/sector'
+import type { BetaItemData } from '@climb-zone/shared'
+import { ImageProcessorService } from '@climb-zone/storage'
 import {
   CragTopoImageEntity,
   TopoImageEntity,
@@ -16,9 +19,11 @@ import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
 import type {
   ScrapedCragNode,
+  ScrapedNodeInfo,
   ScrapedRouteData,
 } from '@scraper-thecrag/domain/dtos/scraped-node.dto'
 import type { TopoImageData } from '@scraper-thecrag/domain/dtos/topo-image.dto'
+import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 import { ScrapedDataMapperService } from './scraped-data-mapper.service'
 
 export interface ImportResult {
@@ -34,6 +39,14 @@ export interface ImportResult {
   headerImages: number
   duration: number
   errors: ImportError[]
+  // S3 upload results (if uploadToS3 was enabled)
+  s3Uploads?: {
+    cragsProcessed: number
+    sectorsProcessed: number
+    toposProcessed: number
+    cragToposProcessed: number
+    uploadErrors: number
+  }
 }
 
 export interface ImportError {
@@ -48,6 +61,8 @@ export interface ImportOptions {
   countryId: CountryId
   /** Region ID (optional) */
   regionId?: RegionId | null
+  /** Upload images to S3 after import (requires S3 config) */
+  uploadToS3?: boolean
 }
 
 /**
@@ -72,7 +87,34 @@ export class CragImporterService {
     private readonly statsService: SectorStatsService,
     @Inject(ScrapedDataMapperService)
     private readonly mapper: ScrapedDataMapperService,
+    @Inject(TextCleanerService)
+    private readonly textCleaner: TextCleanerService,
+    @Inject(ImageProcessorService)
+    private readonly imageProcessor: ImageProcessorService,
   ) {}
+
+  /**
+   * Clean beta items (description, approach) using AI
+   * Removes links, rephrases text, preserves coordinates and tags
+   */
+  private async cleanBetaInfo(
+    info: ScrapedNodeInfo | null,
+  ): Promise<ScrapedNodeInfo | null> {
+    if (!info?.beta || info.beta.length === 0) return info
+
+    try {
+      const cleanedBeta = await this.textCleaner.cleanBetaItems(
+        info.beta as BetaItemData[],
+      )
+      return { ...info, beta: cleanedBeta }
+    } catch (error) {
+      logger.warn(
+        'scraper:importer',
+        `Error cleaning beta, using original: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      return info
+    }
+  }
 
   /**
    * Import a complete scraped crag hierarchy into the database
@@ -103,12 +145,15 @@ export class CragImporterService {
       // 1. Create the root Crag entity using mapper
       console.log(`   💾 Guardando Crag: ${data.name}`)
 
+      // Clean beta info (description, approach) using AI
+      const cleanedInfo = await this.cleanBetaInfo(data.info ?? null)
+
       const cragData = this.mapper.mapToCrag(
         data.id,
         data.name,
         options.countryId,
         data.info?.geometry,
-        data.info ?? null,
+        cleanedInfo,
         options.regionId ?? null,
       )
       const savedCrag = await this.cragRepo.saveByExternalId(
@@ -128,6 +173,15 @@ export class CragImporterService {
       )
       console.log('')
 
+      // 1.5. Upload crag header image to S3
+      if (options.uploadToS3 && data.info?.headerImageUrl) {
+        await this.uploadCragHeaderToS3(
+          savedCrag.id,
+          data.info.headerImageUrl,
+          result,
+        )
+      }
+
       // 2. Save crag overview topos if available
       if (data.cragTopos && data.cragTopos.length > 0) {
         console.log(`   🗺️  Guardando topos panorámicos del crag...`)
@@ -135,21 +189,23 @@ export class CragImporterService {
           data.cragTopos,
           savedCrag.id,
           result,
+          options.uploadToS3 ?? false,
         )
         console.log('')
       }
 
       // 2.5. Handle routes directly on the crag (no children/sectors)
       // Some crags like Cheste have routes directly without sub-sectors
-      if (
-        data.routes &&
-        data.routes.length > 0 &&
-        data.children.length === 0
-      ) {
+      if (data.routes && data.routes.length > 0 && data.children.length === 0) {
         console.log(
           `   📍 Crag tiene ${data.routes.length} rutas directas (sin sectores)`,
         )
-        await this.saveRoutesDirectlyOnCrag(data, savedCrag.id, result)
+        await this.saveRoutesDirectlyOnCrag(
+          data,
+          savedCrag.id,
+          result,
+          options.uploadToS3 ?? false,
+        )
         console.log('')
       }
 
@@ -161,6 +217,7 @@ export class CragImporterService {
             savedCrag.id,
             null, // No parent area for direct children of crag
             result,
+            options.uploadToS3 ?? false,
           )
         } catch (error: unknown) {
           const err = error as Error
@@ -197,6 +254,18 @@ export class CragImporterService {
     console.log(`   - Crag topos: ${result.cragToposCreated}`)
     console.log(`   - Crag topo positions: ${result.cragTopoPositionsCreated}`)
     console.log(`   - Header images: ${result.headerImages}`)
+    if (result.s3Uploads) {
+      console.log(`   📷 S3 uploads:`)
+      console.log(`      - Crag headers: ${result.s3Uploads.cragsProcessed}`)
+      console.log(
+        `      - Sector headers: ${result.s3Uploads.sectorsProcessed}`,
+      )
+      console.log(`      - Topos: ${result.s3Uploads.toposProcessed}`)
+      console.log(`      - Crag topos: ${result.s3Uploads.cragToposProcessed}`)
+      if (result.s3Uploads.uploadErrors > 0) {
+        console.log(`      - Errors: ${result.s3Uploads.uploadErrors}`)
+      }
+    }
     if (result.errors.length > 0) {
       console.log(`   - Errors: ${result.errors.length}`)
     }
@@ -213,6 +282,7 @@ export class CragImporterService {
     cragId: CragId,
     parentAreaId: AreaId | null,
     result: ImportResult,
+    uploadToS3 = false,
   ): Promise<void> {
     console.log(`   🔍 Procesando: ${node.name} (${node.type})`)
 
@@ -228,6 +298,9 @@ export class CragImporterService {
 
     // If this node has routes, treat it as a sector (needs an area parent)
     if (hasRoutes) {
+      // Clean beta info (description, approach) using AI
+      const cleanedNodeInfo = await this.cleanBetaInfo(node.info ?? null)
+
       // Create area first
       const areaData = this.mapper.mapToArea(
         node.id,
@@ -235,7 +308,7 @@ export class CragImporterService {
         cragId,
         parentAreaId,
         node.info?.geometry,
-        node.info ?? null,
+        cleanedNodeInfo,
         node.type,
       )
       const area = await this.areaRepo.saveByExternalId(
@@ -250,7 +323,7 @@ export class CragImporterService {
         node.name,
         area.id,
         node.info?.geometry,
-        node.info ?? null,
+        cleanedNodeInfo,
         node.type,
       )
       const sector = await this.sectorRepo.saveByExternalId(
@@ -259,9 +332,16 @@ export class CragImporterService {
       )
       result.sectorsCreated++
 
-      // Track header image
+      // Track header image and upload to S3
       if (node.info?.headerImageUrl) {
         result.headerImages++
+        if (uploadToS3) {
+          await this.uploadSectorHeaderToS3(
+            sector.id,
+            node.info.headerImageUrl,
+            result,
+          )
+        }
       }
 
       // Build topo number map from topo data
@@ -343,7 +423,7 @@ export class CragImporterService {
             }
 
             if (positions.length > 0) {
-              const { positionsCreated } =
+              const { topo: savedTopo, positionsCreated } =
                 await this.topoRepo.saveTopoImageWithPositions(
                   topoEntity,
                   positions,
@@ -353,6 +433,15 @@ export class CragImporterService {
               console.log(
                 `      ✅ Topo ${topoData.topoId}: ${positions.length} rutas con SVG`,
               )
+
+              // Upload topo to S3
+              if (uploadToS3 && topoData.fullImageUrl) {
+                await this.uploadTopoToS3(
+                  savedTopo.id,
+                  topoData.fullImageUrl,
+                  result,
+                )
+              }
             }
           } catch (error: unknown) {
             const err = error as Error
@@ -374,6 +463,7 @@ export class CragImporterService {
         cragId,
         null, // For simplicity, not tracking nested areas
         result,
+        uploadToS3,
       )
     }
   }
@@ -398,7 +488,11 @@ export class CragImporterService {
     data: ScrapedCragNode,
     cragId: CragId,
     result: ImportResult,
+    uploadToS3 = false,
   ): Promise<void> {
+    // Clean beta info (description, approach) using AI
+    const cleanedInfo = await this.cleanBetaInfo(data.info ?? null)
+
     // Create a virtual area for the crag's direct routes
     const areaData = this.mapper.mapToArea(
       data.id,
@@ -406,7 +500,7 @@ export class CragImporterService {
       cragId,
       null, // No parent area
       data.info?.geometry,
-      data.info ?? null,
+      cleanedInfo,
       'Crag',
     )
     const area = await this.areaRepo.saveByExternalId(
@@ -421,7 +515,7 @@ export class CragImporterService {
       data.name, // Use crag name for the sector
       area.id,
       data.info?.geometry,
-      data.info ?? null,
+      cleanedInfo,
       'Sector',
     )
     const sector = await this.sectorRepo.saveByExternalId(
@@ -430,9 +524,16 @@ export class CragImporterService {
     )
     result.sectorsCreated++
 
-    // Track header image
+    // Track header image and upload to S3
     if (data.info?.headerImageUrl) {
       result.headerImages++
+      if (uploadToS3) {
+        await this.uploadSectorHeaderToS3(
+          sector.id,
+          data.info.headerImageUrl,
+          result,
+        )
+      }
     }
 
     // Build topo number map from topo data (if any)
@@ -440,7 +541,11 @@ export class CragImporterService {
     if (data.topos && data.topos.length > 0) {
       for (const topo of data.topos) {
         for (const topoRoute of topo.routes) {
-          if (topoRoute.id && topoRoute.num && !topoNumberMap.has(topoRoute.id)) {
+          if (
+            topoRoute.id &&
+            topoRoute.num &&
+            !topoNumberMap.has(topoRoute.id)
+          ) {
             topoNumberMap.set(topoRoute.id, topoRoute.num)
           }
         }
@@ -509,13 +614,25 @@ export class CragImporterService {
           }
 
           if (positions.length > 0) {
-            const { positionsCreated } =
-              await this.topoRepo.saveTopoImageWithPositions(topoEntity, positions)
+            const { topo: savedTopo, positionsCreated } =
+              await this.topoRepo.saveTopoImageWithPositions(
+                topoEntity,
+                positions,
+              )
             result.toposCreated++
             result.topoPositionsCreated += positionsCreated
             console.log(
               `      ✅ Topo ${topoData.topoId}: ${positions.length} rutas con SVG`,
             )
+
+            // Upload topo to S3
+            if (uploadToS3 && topoData.fullImageUrl) {
+              await this.uploadTopoToS3(
+                savedTopo.id,
+                topoData.fullImageUrl,
+                result,
+              )
+            }
           }
         } catch (error: unknown) {
           const err = error as Error
@@ -526,7 +643,9 @@ export class CragImporterService {
       }
     }
 
-    console.log(`      ✅ Sector virtual creado: ${data.name} con ${data.routes!.length} rutas`)
+    console.log(
+      `      ✅ Sector virtual creado: ${data.name} con ${data.routes!.length} rutas`,
+    )
   }
 
   /**
@@ -536,6 +655,7 @@ export class CragImporterService {
     topos: TopoImageData[],
     cragId: CragId,
     result: ImportResult,
+    uploadToS3 = false,
   ): Promise<void> {
     for (const topoData of topos) {
       try {
@@ -571,7 +691,7 @@ export class CragImporterService {
           }
         }
 
-        const { positionsCreated } =
+        const { topo: savedTopo, positionsCreated } =
           await this.topoRepo.saveCragTopoImageWithPositions(
             topoEntity,
             positions,
@@ -582,11 +702,169 @@ export class CragImporterService {
         console.log(
           `      ✅ Crag Topo ${topoData.topoId}: ${positionsCreated} sectores con SVG`,
         )
+
+        // Upload crag topo to S3
+        if (uploadToS3 && topoData.fullImageUrl) {
+          await this.uploadCragTopoToS3(
+            savedTopo.id,
+            topoData.fullImageUrl,
+            result,
+          )
+        }
       } catch (error: unknown) {
         const err = error as Error
         console.warn(
           `      ⚠️  Error guardando crag topo ${topoData.topoId}: ${err.message}`,
         )
+      }
+    }
+  }
+
+  // ==================== S3 Upload Methods ====================
+
+  /**
+   * Upload crag header image to S3
+   */
+  private async uploadCragHeaderToS3(
+    cragId: CragId,
+    sourceUrl: string,
+    result: ImportResult,
+  ): Promise<void> {
+    if (!this.imageProcessor.isConfigured()) return
+
+    try {
+      console.log(`      📷 Uploading crag header to S3...`)
+      const processed = await this.imageProcessor.processAndUpload(
+        sourceUrl,
+        'crag-header',
+        cragId.toString(),
+      )
+      await this.cragRepo.updateHeaderImageS3(
+        cragId,
+        processed.mobile.url,
+        processed.full.url,
+        processed.originalUrl,
+      )
+      this.initS3Stats(result)
+      result.s3Uploads!.cragsProcessed++
+      console.log(`      ✅ S3: ${processed.mobile.url}`)
+    } catch (error) {
+      console.warn(
+        `      ⚠️  S3 upload failed:`,
+        error instanceof Error ? error.message : error,
+      )
+      this.initS3Stats(result)
+      result.s3Uploads!.uploadErrors++
+    }
+  }
+
+  /**
+   * Upload sector header image to S3
+   */
+  private async uploadSectorHeaderToS3(
+    sectorId: SectorId,
+    sourceUrl: string,
+    result: ImportResult,
+  ): Promise<void> {
+    if (!this.imageProcessor.isConfigured()) return
+
+    try {
+      console.log(`      📷 Uploading sector header to S3...`)
+      const processed = await this.imageProcessor.processAndUpload(
+        sourceUrl,
+        'sector-header',
+        sectorId.toString(),
+      )
+      await this.sectorRepo.updateHeaderImageS3(
+        sectorId,
+        processed.mobile.url,
+        processed.full.url,
+        processed.originalUrl,
+      )
+      this.initS3Stats(result)
+      result.s3Uploads!.sectorsProcessed++
+      console.log(`      ✅ S3: ${processed.mobile.url}`)
+    } catch (error) {
+      console.warn(
+        `      ⚠️  S3 upload failed:`,
+        error instanceof Error ? error.message : error,
+      )
+      this.initS3Stats(result)
+      result.s3Uploads!.uploadErrors++
+    }
+  }
+
+  /**
+   * Upload topo image to S3
+   */
+  private async uploadTopoToS3(
+    topoId: TopoImageId,
+    sourceUrl: string,
+    result: ImportResult,
+  ): Promise<void> {
+    if (!this.imageProcessor.isConfigured()) return
+
+    try {
+      const processed = await this.imageProcessor.processAndUpload(
+        sourceUrl,
+        'topo',
+        topoId.toString(),
+      )
+      await this.topoRepo.updateTopoS3Urls(
+        topoId,
+        processed.mobile.url,
+        processed.full.url,
+        processed.originalUrl,
+      )
+      this.initS3Stats(result)
+      result.s3Uploads!.toposProcessed++
+    } catch {
+      this.initS3Stats(result)
+      result.s3Uploads!.uploadErrors++
+    }
+  }
+
+  /**
+   * Upload crag topo image to S3
+   */
+  private async uploadCragTopoToS3(
+    topoId: TopoImageId,
+    sourceUrl: string,
+    result: ImportResult,
+  ): Promise<void> {
+    if (!this.imageProcessor.isConfigured()) return
+
+    try {
+      const processed = await this.imageProcessor.processAndUpload(
+        sourceUrl,
+        'crag-topo',
+        topoId.toString(),
+      )
+      await this.topoRepo.updateCragTopoS3Urls(
+        topoId,
+        processed.mobile.url,
+        processed.full.url,
+        processed.originalUrl,
+      )
+      this.initS3Stats(result)
+      result.s3Uploads!.cragToposProcessed++
+    } catch {
+      this.initS3Stats(result)
+      result.s3Uploads!.uploadErrors++
+    }
+  }
+
+  /**
+   * Initialize S3 stats in result if not present
+   */
+  private initS3Stats(result: ImportResult): void {
+    if (!result.s3Uploads) {
+      result.s3Uploads = {
+        cragsProcessed: 0,
+        sectorsProcessed: 0,
+        toposProcessed: 0,
+        cragToposProcessed: 0,
+        uploadErrors: 0,
       }
     }
   }

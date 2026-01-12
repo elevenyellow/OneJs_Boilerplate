@@ -118,6 +118,10 @@ interface SectorPrismaData {
   headerImageUrl: string | null
   headerImageWidth: number | null
   headerImageHeight: number | null
+  // S3 optimized images
+  headerImageS3Url: string | null
+  headerImageS3UrlFull: string | null
+  headerImageOriginalUrl: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -596,12 +600,32 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
             entity.permitNode,
             entity.siblingLabel,
             entity.tagsRaw,
+            // Tags procesados
+            entity.kidFriendly,
+            entity.beginner,
+            entity.dogFriendly,
+            entity.accessible,
+            entity.camping,
+            entity.swimming,
+            entity.scenic,
+            entity.popular,
+            entity.quiet,
+            entity.multipitch,
+            entity.trad,
+            entity.sport,
+            entity.bouldering,
             entity.urlStub,
             entity.urlAncestorStub,
             entity.lastPDFSize,
             entity.lastPDFStaticDate,
             entity.createdAt,
             entity.updatedAt,
+            entity.headerImageUrl,
+            entity.headerImageWidth,
+            entity.headerImageHeight,
+            entity.headerImageS3Url,
+            entity.headerImageS3UrlFull,
+            entity.headerImageOriginalUrl,
           )
           return { entity: updatedEntity, routes, crag: cragInfo }
         }
@@ -719,6 +743,9 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       data.headerImageUrl,
       data.headerImageWidth,
       data.headerImageHeight,
+      data.headerImageS3Url,
+      data.headerImageS3UrlFull,
+      data.headerImageOriginalUrl,
     )
   }
 
@@ -832,6 +859,9 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       headerImageUrl: entity.headerImageUrl,
       headerImageWidth: entity.headerImageWidth,
       headerImageHeight: entity.headerImageHeight,
+      headerImageS3Url: entity.headerImageS3Url,
+      headerImageS3UrlFull: entity.headerImageS3UrlFull,
+      headerImageOriginalUrl: entity.headerImageOriginalUrl,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }
@@ -852,6 +882,26 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
         headerImageUrl,
         headerImageWidth: headerImageWidth ?? null,
         headerImageHeight: headerImageHeight ?? null,
+        updatedAt: new Date(),
+      },
+    })
+  }
+
+  /**
+   * Update S3 header images for a sector
+   */
+  async updateHeaderImageS3(
+    sectorId: SectorId,
+    s3Url: string,
+    s3UrlFull: string,
+    originalUrl: string,
+  ): Promise<void> {
+    await this.prisma.sector.update({
+      where: { id: sectorId.toString() },
+      data: {
+        headerImageS3Url: s3Url,
+        headerImageS3UrlFull: s3UrlFull,
+        headerImageOriginalUrl: originalUrl,
         updatedAt: new Date(),
       },
     })

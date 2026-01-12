@@ -1,9 +1,9 @@
+import { TopoPrismaRepository } from '@climb-zone/topo'
 import { Inject } from '@OneJs/core'
 import type { Context } from '@OneJs/server'
 import { Controller, Get, Post } from '@OneJs/server'
-import { SearchSectorsUseCase, type SearchSectorsDto } from '@sector'
 import { RoutePrismaRepository } from '@route/infrastructure/persistence/prisma/route.repository'
-import { TopoPrismaRepository } from '@climb-zone/topo'
+import { SearchSectorsUseCase, type SearchSectorsDto } from '@sector'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 
 /**
@@ -91,7 +91,7 @@ export class SectorController {
     context.set.headers = {
       ...context.set.headers,
       'Cache-Control': 'private, max-age=300', // 5 minutos
-      'Vary': 'Accept-Encoding',
+      Vary: 'Accept-Encoding',
     }
 
     context.set.status = 200
@@ -146,7 +146,7 @@ export class SectorController {
       context.set.headers = {
         ...context.set.headers,
         'Cache-Control': 'public, max-age=900', // 15 minutos
-        'Vary': 'Accept-Encoding',
+        Vary: 'Accept-Encoding',
       }
 
       context.set.status = 200
@@ -195,12 +195,14 @@ export class SectorController {
       // For each topo, get the route positions
       const toposWithRoutes = await Promise.all(
         topoImages.map(async (topo) => {
-          const positions = await this.topoRepository.findPositionsByTopoId(topo.id)
+          const positions = await this.topoRepository.findPositionsByTopoId(
+            topo.id,
+          )
 
           // Get route details for each position
-          const routeIds = positions.map(p => p.routeId)
+          const routeIds = positions.map((p) => p.routeId)
           const routes = await Promise.all(
-            routeIds.map(routeId => this.routeRepository.findById(routeId))
+            routeIds.map((routeId) => this.routeRepository.findById(routeId)),
           )
 
           // Combine position data with route details
@@ -221,8 +223,8 @@ export class SectorController {
             id: topo.id.toString(),
             externalId: topo.externalId,
             sectorId: topo.sectorId.toString(),
-            thumbnailUrl: topo.thumbnailUrl,
-            fullImageUrl: topo.fullImageUrl,
+            thumbnailUrl: topo.getThumbnailUrl(),
+            fullImageUrl: topo.getFullImageUrl(),
             width: topo.width,
             height: topo.height,
             originalWidth: topo.originalWidth,
@@ -230,14 +232,14 @@ export class SectorController {
             viewScale: topo.viewScale,
             routes: routesData,
           }
-        })
+        }),
       )
 
       // 🚀 HTTP Cache headers - topos cambian muy raramente
       context.set.headers = {
         ...context.set.headers,
         'Cache-Control': 'public, max-age=3600', // 1 hora
-        'Vary': 'Accept-Encoding',
+        Vary: 'Accept-Encoding',
       }
 
       context.set.status = 200

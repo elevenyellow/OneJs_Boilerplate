@@ -37,6 +37,11 @@ export {
   type TopoRenderOptions,
 } from './application/services/topo-renderer.service'
 
+export {
+  ImageUploadService,
+  type ImageUploadResult,
+} from './application/services/image-upload.service'
+
 // Application - Use Cases
 export {
   ImportCragUseCase,

@@ -76,10 +76,14 @@ export class SectorEntity {
     public readonly lastPDFStaticDate: string | null,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
-    // Header image
+    // Header image - TheCrag original
     public readonly headerImageUrl: string | null = null,
     public readonly headerImageWidth: number | null = null,
     public readonly headerImageHeight: number | null = null,
+    // Header image - S3 optimized
+    public readonly headerImageS3Url: string | null = null,
+    public readonly headerImageS3UrlFull: string | null = null,
+    public readonly headerImageOriginalUrl: string | null = null,
   ) {}
 
   get latitude(): number | null {
@@ -254,11 +258,31 @@ export class SectorEntity {
       headerImageUrl: this.headerImageUrl,
       headerImageWidth: this.headerImageWidth,
       headerImageHeight: this.headerImageHeight,
+      headerImageS3Url: this.headerImageS3Url,
+      headerImageS3UrlFull: this.headerImageS3UrlFull,
+      headerImageOriginalUrl: this.headerImageOriginalUrl,
     }
   }
 
   hasHeaderImage(): boolean {
-    return this.headerImageUrl !== null
+    return this.headerImageUrl !== null || this.headerImageS3Url !== null
+  }
+
+  /**
+   * Get the best available header image URL (prefer S3, fallback to TheCrag)
+   */
+  getHeaderImageUrl(size: 'mobile' | 'full' = 'mobile'): string | null {
+    if (size === 'full') {
+      return this.headerImageS3UrlFull ?? this.headerImageUrl
+    }
+    return this.headerImageS3Url ?? this.headerImageUrl
+  }
+
+  /**
+   * Check if S3 images are available
+   */
+  hasS3Images(): boolean {
+    return this.headerImageS3Url !== null && this.headerImageS3UrlFull !== null
   }
 
   /**
@@ -325,6 +349,9 @@ export class SectorEntity {
       this.headerImageUrl,
       this.headerImageWidth,
       this.headerImageHeight,
+      this.headerImageS3Url,
+      this.headerImageS3UrlFull,
+      this.headerImageOriginalUrl,
     )
   }
 }

@@ -39,10 +39,15 @@ model Crag {
   urlStub         String? // URL stub en TheCrag
   urlAncestorStub String?
 
-  // Imagen de cabecera
-  headerImageUrl    String? // URL de la imagen principal del crag
+  // Imagen de cabecera - URLs originales de TheCrag
+  headerImageUrl    String? // URL de la imagen principal del crag (TheCrag)
   headerImageWidth  Int?
   headerImageHeight Int?
+
+  // Imagen de cabecera - URLs S3 optimizadas
+  headerImageS3Url       String? // URL S3 optimizada (800px, WebP)
+  headerImageS3UrlFull   String? // URL S3 original (WebP)
+  headerImageOriginalUrl String? // URL original de TheCrag (backup/referencia)
 
   // Imagen de overview (topo general mostrando sectores)
   overviewTopoImageUrl    String? // URL de la imagen del topo general

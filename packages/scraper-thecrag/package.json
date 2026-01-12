@@ -7,12 +7,15 @@
     ".": "./index.ts"
   },
   "dependencies": {
+    "@climb-zone/ai": "workspace:*",
     "@climb-zone/shared": "workspace:*",
     "@climb-zone/continent": "workspace:*",
     "@climb-zone/country": "workspace:*",
     "@climb-zone/crag": "workspace:*",
     "@climb-zone/area": "workspace:*",
     "@climb-zone/sector": "workspace:*",
-    "@climb-zone/route": "workspace:*"
+    "@climb-zone/route": "workspace:*",
+    "@climb-zone/storage": "workspace:*",
+    "@climb-zone/topo": "workspace:*"
   }
 }

@@ -4,9 +4,14 @@ model TopoImage {
   externalId    String   @unique // TheCrag topoId
   sectorId      String
   
-  // Image URLs
+  // Image URLs - TheCrag originals
   thumbnailUrl  String
   fullImageUrl  String
+
+  // Image URLs - S3 optimized
+  thumbnailS3Url    String? // URL S3 thumbnail (800px, WebP)
+  fullImageS3Url    String? // URL S3 full size (WebP)
+  originalSourceUrl String? // URL original de TheCrag (backup/referencia)
   
   // Dimensions
   width         Int

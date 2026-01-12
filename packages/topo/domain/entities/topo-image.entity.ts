@@ -9,6 +9,7 @@ export class TopoImageEntity {
     public readonly id: TopoImageId,
     public readonly externalId: string,
     public readonly sectorId: SectorId,
+    // TheCrag original URLs
     public readonly thumbnailUrl: string,
     public readonly fullImageUrl: string,
     public readonly width: number,
@@ -19,6 +20,10 @@ export class TopoImageEntity {
     public readonly sourceUrl: string | null = null,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
+    // S3 optimized URLs
+    public readonly thumbnailS3Url: string | null = null,
+    public readonly fullImageS3Url: string | null = null,
+    public readonly originalSourceUrl: string | null = null,
   ) {}
 
   /**
@@ -53,6 +58,30 @@ export class TopoImageEntity {
       sourceUrl: this.sourceUrl,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      thumbnailS3Url: this.thumbnailS3Url,
+      fullImageS3Url: this.fullImageS3Url,
+      originalSourceUrl: this.originalSourceUrl,
     }
+  }
+
+  /**
+   * Get the best available thumbnail URL (prefer S3, fallback to TheCrag)
+   */
+  getThumbnailUrl(): string {
+    return this.thumbnailS3Url ?? this.thumbnailUrl
+  }
+
+  /**
+   * Get the best available full image URL (prefer S3, fallback to TheCrag)
+   */
+  getFullImageUrl(): string {
+    return this.fullImageS3Url ?? this.fullImageUrl
+  }
+
+  /**
+   * Check if S3 images are available
+   */
+  hasS3Images(): boolean {
+    return this.thumbnailS3Url !== null && this.fullImageS3Url !== null
   }
 }

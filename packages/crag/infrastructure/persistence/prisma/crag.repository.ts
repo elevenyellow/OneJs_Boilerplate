@@ -15,8 +15,8 @@ import {
 } from '@climb-zone/shared'
 import { CragEntity } from '@crag/domain/entities/crag.entity'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
-import { PriceCategory } from '@crag/domain/value-objects/price-category.vo'
 import { Kudos } from '@crag/domain/value-objects/kudos.vo'
+import { PriceCategory } from '@crag/domain/value-objects/price-category.vo'
 
 interface CragPrismaData {
   id: string
@@ -57,10 +57,14 @@ interface CragPrismaData {
   apiResponseRaw: unknown
   createdAt: Date
   updatedAt: Date
-  // Header image
+  // Header image - TheCrag original
   headerImageUrl: string | null
   headerImageWidth: number | null
   headerImageHeight: number | null
+  // Header image - S3 optimized
+  headerImageS3Url: string | null
+  headerImageS3UrlFull: string | null
+  headerImageOriginalUrl: string | null
   // Overview topo image
   overviewTopoImageUrl: string | null
   overviewTopoThumbnailUrl: string | null
@@ -82,6 +86,34 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       where: { id: id.toString() },
     })
     return crag ? this.toEntity(crag) : null
+  }
+
+  /**
+   * Find crag by ID with country and region names
+   * Returns raw data for use in detail views
+   */
+  async findByIdWithLocation(id: CragId): Promise<{
+    crag: CragEntity
+    countryName: string
+    regionName: string | null
+    averageHeight: number | null
+  } | null> {
+    const data = await this.prisma.crag.findUnique({
+      where: { id: id.toString() },
+      include: {
+        country: { select: { name: true } },
+        region: { select: { name: true } },
+      },
+    })
+
+    if (!data) return null
+
+    return {
+      crag: this.toEntity(data),
+      countryName: data.country.name,
+      regionName: data.region?.name ?? null,
+      averageHeight: data.averageHeight,
+    }
   }
 
   async findByExternalId(externalId: ExternalId): Promise<CragEntity | null> {
@@ -118,11 +150,19 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
     limit?: number
     offset?: number
   }): Promise<{ crags: CragEntity[]; total: number }> {
-    const { latitude, longitude, maxDistanceKm, search, limit = 50, offset = 0 } = params
+    const {
+      latitude,
+      longitude,
+      maxDistanceKm,
+      search,
+      limit = 50,
+      offset = 0,
+    } = params
 
     // Calculate bounding box for initial filtering (1 degree ≈ 111km)
     const latDelta = maxDistanceKm / 111
-    const lonDelta = maxDistanceKm / (111 * Math.cos((latitude * Math.PI) / 180))
+    const lonDelta =
+      maxDistanceKm / (111 * Math.cos((latitude * Math.PI) / 180))
 
     const latMin = latitude - latDelta
     const latMax = latitude + latDelta
@@ -160,15 +200,30 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
 
     // Sort by distance
     entities.sort((a, b) => {
-      const distA = this.haversineDistance(latitude, longitude, a.latitude!, a.longitude!)
-      const distB = this.haversineDistance(latitude, longitude, b.latitude!, b.longitude!)
+      const distA = this.haversineDistance(
+        latitude,
+        longitude,
+        a.latitude!,
+        a.longitude!,
+      )
+      const distB = this.haversineDistance(
+        latitude,
+        longitude,
+        b.latitude!,
+        b.longitude!,
+      )
       return distA - distB
     })
 
     // Filter by actual distance (bounding box may include corners outside radius)
     const filtered = entities.filter((crag) => {
       if (crag.latitude === null || crag.longitude === null) return false
-      const dist = this.haversineDistance(latitude, longitude, crag.latitude, crag.longitude)
+      const dist = this.haversineDistance(
+        latitude,
+        longitude,
+        crag.latitude,
+        crag.longitude,
+      )
       return dist <= maxDistanceKm
     })
 
@@ -217,37 +272,37 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
     apiResponseRaw?: Record<string, unknown>,
   ): Promise<CragEntity> {
     const data = this.toPrismaData(entity)
-    
+
     // Agregar apiResponseRaw si está disponible
     if (apiResponseRaw) {
-      (data as any).apiResponseRaw = apiResponseRaw
-      
+      ;(data as any).apiResponseRaw = apiResponseRaw
+
       // Extraer campos adicionales desde apiResponseRaw
       const raw = apiResponseRaw as any
-      
+
       // averageHeight viene como [valor, "m"]
       if (raw.averageHeight && Array.isArray(raw.averageHeight)) {
         const height = Number(raw.averageHeight[0])
         if (!isNaN(height)) {
-          (data as any).averageHeight = height
+          ;(data as any).averageHeight = height
         }
       }
-      
+
       // Otros campos simples
       if (raw.numberRoutes !== undefined) {
-        (data as any).numberRoutes = raw.numberRoutes
+        ;(data as any).numberRoutes = raw.numberRoutes
       }
       if (raw.subAreaCount !== undefined) {
-        (data as any).subAreaCount = raw.subAreaCount
+        ;(data as any).subAreaCount = raw.subAreaCount
       }
       if (Array.isArray(raw.redirectStubs)) {
-        (data as any).redirectStubs = raw.redirectStubs
+        ;(data as any).redirectStubs = raw.redirectStubs
       }
       if (raw.tlc) {
-        (data as any).tlc = raw.tlc
+        ;(data as any).tlc = raw.tlc
       }
       if (raw.lastPDFStaticSize) {
-        (data as any).lastPDFStaticSize = raw.lastPDFStaticSize
+        ;(data as any).lastPDFStaticSize = raw.lastPDFStaticSize
       }
     }
 
@@ -329,6 +384,9 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       data.headerImageUrl,
       data.headerImageWidth,
       data.headerImageHeight,
+      data.headerImageS3Url,
+      data.headerImageS3UrlFull,
+      data.headerImageOriginalUrl,
       data.overviewTopoImageUrl,
       data.overviewTopoThumbnailUrl,
       data.overviewTopoWidth,
@@ -374,6 +432,9 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
       headerImageUrl: entity.headerImageUrl,
       headerImageWidth: entity.headerImageWidth,
       headerImageHeight: entity.headerImageHeight,
+      headerImageS3Url: entity.headerImageS3Url,
+      headerImageS3UrlFull: entity.headerImageS3UrlFull,
+      headerImageOriginalUrl: entity.headerImageOriginalUrl,
       overviewTopoImageUrl: entity.overviewTopoImageUrl,
       overviewTopoThumbnailUrl: entity.overviewTopoThumbnailUrl,
       overviewTopoWidth: entity.overviewTopoWidth,
@@ -397,6 +458,26 @@ export class CragPrismaRepository extends PrismaRepository<'crag'> {
         headerImageUrl,
         headerImageWidth: headerImageWidth ?? null,
         headerImageHeight: headerImageHeight ?? null,
+        updatedAt: new Date(),
+      },
+    })
+  }
+
+  /**
+   * Update S3 header images for a crag
+   */
+  async updateHeaderImageS3(
+    cragId: CragId,
+    s3Url: string,
+    s3UrlFull: string,
+    originalUrl: string,
+  ): Promise<void> {
+    await this.prisma.crag.update({
+      where: { id: cragId.toString() },
+      data: {
+        headerImageS3Url: s3Url,
+        headerImageS3UrlFull: s3UrlFull,
+        headerImageOriginalUrl: originalUrl,
         updatedAt: new Date(),
       },
     })

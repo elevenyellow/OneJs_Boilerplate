@@ -15,6 +15,7 @@ type Command =
   | 'test-cheste'
   | 'test-valencia'
   | 'test-country'
+  | 'test-s3-upload'
   | 'scrape-spain'
   | 'scrape-world'
   | 'seed-countries'
@@ -37,7 +38,8 @@ const COOKIE =
 const COMMANDS: Record<string, CommandDefinition> = {
   'test-altura': {
     name: 'test-altura',
-    description: 'Test pequeño: Altura (Castellón) - verificar imágenes y topos',
+    description:
+      'Test pequeño: Altura (Castellón) - verificar imágenes y topos',
     execute: async (container) => {
       const { testAltura } = await import('./commands/test-altura.command')
       await testAltura(container, COOKIE)
@@ -45,7 +47,8 @@ const COMMANDS: Record<string, CommandDefinition> = {
   },
   'test-jerica': {
     name: 'test-jerica',
-    description: 'Test pequeño: Jérica (Castellón) - verificar imágenes y topos',
+    description:
+      'Test pequeño: Jérica (Castellón) - verificar imágenes y topos',
     execute: async (container) => {
       const { testJerica } = await import('./commands/test-jerica.command')
       await testJerica(container, COOKIE)
@@ -81,6 +84,14 @@ const COMMANDS: Record<string, CommandDefinition> = {
       }
       const { testCountry } = await import('./commands/test-country.command')
       await testCountry(container, COOKIE, countryName)
+    },
+  },
+  'test-s3-upload': {
+    name: 'test-s3-upload',
+    description: 'Probar subida de imagen a S3',
+    execute: async (container) => {
+      const { testS3Upload } = await import('./commands/test-s3-upload.command')
+      await testS3Upload(container)
     },
   },
   'scrape-spain': {
@@ -119,17 +130,23 @@ const COMMANDS: Record<string, CommandDefinition> = {
   },
   'fix-crag-coordinates': {
     name: 'fix-crag-coordinates',
-    description: 'Actualizar coordenadas de crags desde el texto de approach/beta',
+    description:
+      'Actualizar coordenadas de crags desde el texto de approach/beta',
     execute: async (container) => {
-      const { fixCragCoordinates } = await import('./commands/fix-crag-coordinates.command')
+      const { fixCragCoordinates } = await import(
+        './commands/fix-crag-coordinates.command'
+      )
       await fixCragCoordinates(container)
     },
   },
   'migrate-sector-tags': {
     name: 'migrate-sector-tags',
-    description: 'Migrar tags de sectores existentes (procesar tagsRaw -> campos booleanos)',
+    description:
+      'Migrar tags de sectores existentes (procesar tagsRaw -> campos booleanos)',
     execute: async (container) => {
-      const MigrateSectorTagsCommand = (await import('./commands/migrate-sector-tags.command')).default
+      const MigrateSectorTagsCommand = (
+        await import('./commands/migrate-sector-tags.command')
+      ).default
       const command = container.get(MigrateSectorTagsCommand)
       await command.execute()
     },
@@ -153,7 +170,9 @@ function printHelp() {
   })
 
   console.log('\nEjemplos:')
-  console.log('  bun run apps/scripts/cli.ts test-altura    # Test pequeño para verificar imágenes')
+  console.log(
+    '  bun run apps/scripts/cli.ts test-altura    # Test pequeño para verificar imágenes',
+  )
   console.log('  bun run apps/scripts/cli.ts test-valencia')
   console.log('  bun run apps/scripts/cli.ts test-country Spain')
   console.log('  bun run apps/scripts/cli.ts test-country France')

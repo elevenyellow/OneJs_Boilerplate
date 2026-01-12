@@ -572,6 +572,9 @@ export class ScrapedDataMapperService {
       data.headerImageUrl,
       null, // headerImageWidth - no guardamos dimensiones
       null, // headerImageHeight - no guardamos dimensiones
+      null, // headerImageS3Url - se actualiza después del upload a S3
+      null, // headerImageS3UrlFull - se actualiza después del upload a S3
+      null, // headerImageOriginalUrl - se actualiza después del upload a S3
       data.overviewTopoImageUrl,
       data.overviewTopoThumbnailUrl,
       data.overviewTopoWidth,

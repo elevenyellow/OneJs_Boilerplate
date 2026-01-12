@@ -25,6 +25,10 @@ interface TopoImagePrismaData {
   sourceUrl: string | null
   createdAt: Date
   updatedAt: Date
+  // S3 optimized URLs
+  thumbnailS3Url: string | null
+  fullImageS3Url: string | null
+  originalSourceUrl: string | null
 }
 
 interface RouteTopoPositionPrismaData {
@@ -201,6 +205,9 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       data.sourceUrl,
       data.createdAt,
       data.updatedAt,
+      data.thumbnailS3Url,
+      data.fullImageS3Url,
+      data.originalSourceUrl,
     )
   }
 
@@ -217,7 +224,30 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       originalHeight: entity.originalHeight,
       viewScale: entity.viewScale,
       sourceUrl: entity.sourceUrl,
+      thumbnailS3Url: entity.thumbnailS3Url,
+      fullImageS3Url: entity.fullImageS3Url,
+      originalSourceUrl: entity.originalSourceUrl,
     }
+  }
+
+  /**
+   * Update S3 URLs for a topo image
+   */
+  async updateTopoS3Urls(
+    topoId: TopoImageId,
+    thumbnailS3Url: string,
+    fullImageS3Url: string,
+    originalSourceUrl: string,
+  ): Promise<void> {
+    await this.prisma.topoImage.update({
+      where: { id: topoId.toString() },
+      data: {
+        thumbnailS3Url,
+        fullImageS3Url,
+        originalSourceUrl,
+        updatedAt: new Date(),
+      },
+    })
   }
 
   private positionToEntity(data: RouteTopoPositionPrismaData): RouteTopoPositionEntity {
@@ -328,6 +358,9 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
     sourceUrl: string | null
     createdAt: Date
     updatedAt: Date
+    thumbnailS3Url?: string | null
+    fullImageS3Url?: string | null
+    originalSourceUrl?: string | null
   }): CragTopoImageEntity {
     return new CragTopoImageEntity(
       TopoImageId.fromString(data.id),
@@ -343,6 +376,29 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       data.sourceUrl,
       data.createdAt,
       data.updatedAt,
+      data.thumbnailS3Url ?? null,
+      data.fullImageS3Url ?? null,
+      data.originalSourceUrl ?? null,
     )
+  }
+
+  /**
+   * Update S3 URLs for a crag topo image
+   */
+  async updateCragTopoS3Urls(
+    topoId: TopoImageId,
+    thumbnailS3Url: string,
+    fullImageS3Url: string,
+    originalSourceUrl: string,
+  ): Promise<void> {
+    await this.prisma.cragTopoImage.update({
+      where: { id: topoId.toString() },
+      data: {
+        thumbnailS3Url,
+        fullImageS3Url,
+        originalSourceUrl,
+        updatedAt: new Date(),
+      },
+    })
   }
 }

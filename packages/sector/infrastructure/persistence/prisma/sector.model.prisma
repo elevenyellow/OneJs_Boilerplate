@@ -74,10 +74,15 @@ model Sector {
   urlStub         String? // URL del sector en TheCrag
   urlAncestorStub String?
 
-  // Imagen de cabecera
-  headerImageUrl    String? // URL de la imagen principal del sector
+  // Imagen de cabecera - URLs originales de TheCrag
+  headerImageUrl    String? // URL de la imagen principal del sector (TheCrag)
   headerImageWidth  Int?
   headerImageHeight Int?
+
+  // Imagen de cabecera - URLs S3 optimizadas
+  headerImageS3Url       String? // URL S3 optimizada (800px, WebP)
+  headerImageS3UrlFull   String? // URL S3 original (WebP)
+  headerImageOriginalUrl String? // URL original de TheCrag (backup/referencia)
 
   // PDF Info (MEDIA PRIORIDAD)
   lastPDFSize       String?
