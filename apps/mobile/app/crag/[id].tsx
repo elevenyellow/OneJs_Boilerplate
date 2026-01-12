@@ -1732,6 +1732,7 @@ const styles = StyleSheet.create({
   legendContainer: {
     borderRadius: 10,
     padding: 10,
+    marginTop: 16,
     marginBottom: 16,
   },
   legendRow: {
