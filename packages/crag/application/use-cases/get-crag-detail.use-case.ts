@@ -29,6 +29,13 @@ export interface SectorSummary {
   // Tags for filtering and display
   kidFriendly: boolean | null
   beginner: boolean | null
+  dogFriendly: boolean | null
+  accessible: boolean | null
+  camping: boolean | null
+  swimming: boolean | null
+  scenic: boolean | null
+  popular: boolean | null
+  quiet: boolean | null
 }
 
 /**
@@ -203,6 +210,13 @@ export class GetCragDetailUseCase {
         // Tags for filtering and display (using stored fields directly)
         kidFriendly: sector.kidFriendly,
         beginner: sector.beginner,
+        dogFriendly: sector.dogFriendly,
+        accessible: sector.accessible,
+        camping: sector.camping,
+        swimming: sector.swimming,
+        scenic: sector.scenic,
+        popular: sector.popular,
+        quiet: sector.quiet,
       }
     })
 

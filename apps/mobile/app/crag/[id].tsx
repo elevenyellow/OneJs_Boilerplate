@@ -570,6 +570,13 @@ export default function CragDetailScreen() {
       // Tags
       kidFriendly?: boolean | null
       beginner?: boolean | null
+      dogFriendly?: boolean | null
+      accessible?: boolean | null
+      camping?: boolean | null
+      swimming?: boolean | null
+      scenic?: boolean | null
+      popular?: boolean | null
+      quiet?: boolean | null
     }): SearchSectorResult => {
       // Calculate routes in range locally using gradeDistribution
       const routesInRange = countRoutesInGradeRange(
@@ -601,6 +608,13 @@ export default function CragDetailScreen() {
           // Tags
           kidFriendly: s.kidFriendly || null,
           beginner: s.beginner || null,
+          dogFriendly: s.dogFriendly || null,
+          accessible: s.accessible || null,
+          camping: s.camping || null,
+          swimming: s.swimming || null,
+          scenic: s.scenic || null,
+          popular: s.popular || null,
+          quiet: s.quiet || null,
         },
         relevanceScore: 0, // Calculated client-side in filteredAndSortedSectors
         distance: 0,
@@ -650,6 +664,7 @@ export default function CragDetailScreen() {
               maxHeight: cragSector.maxHeight || sr.sector.maxHeight,
               hasTopo: cragSector.hasTopo || sr.sector.hasTopo,
               avgStars: cragSector.avgStars || sr.sector.avgStars,
+              headerImageUrl: cragSector.headerImageUrl || sr.sector.headerImageUrl,
               gradeDistribution,
               // Tags
               kidFriendly: cragSector.kidFriendly ?? sr.sector.kidFriendly ?? null,
@@ -967,6 +982,35 @@ export default function CragDetailScreen() {
     } else if (crag?.headerImageUrl) {
       // Fallback to crag header image if sector doesn't have one
       params.set('headerImageUrl', crag.headerImageUrl)
+    }
+
+    // Add tags
+    if (sector.kidFriendly !== null && sector.kidFriendly !== undefined) {
+      params.set('kidFriendly', sector.kidFriendly.toString())
+    }
+    if (sector.beginner !== null && sector.beginner !== undefined) {
+      params.set('beginner', sector.beginner.toString())
+    }
+    if (sector.dogFriendly !== null && sector.dogFriendly !== undefined) {
+      params.set('dogFriendly', sector.dogFriendly.toString())
+    }
+    if (sector.accessible !== null && sector.accessible !== undefined) {
+      params.set('accessible', sector.accessible.toString())
+    }
+    if (sector.camping !== null && sector.camping !== undefined) {
+      params.set('camping', sector.camping.toString())
+    }
+    if (sector.swimming !== null && sector.swimming !== undefined) {
+      params.set('swimming', sector.swimming.toString())
+    }
+    if (sector.scenic !== null && sector.scenic !== undefined) {
+      params.set('scenic', sector.scenic.toString())
+    }
+    if (sector.popular !== null && sector.popular !== undefined) {
+      params.set('popular', sector.popular.toString())
+    }
+    if (sector.quiet !== null && sector.quiet !== undefined) {
+      params.set('quiet', sector.quiet.toString())
     }
 
     router.push(`/sector/${sector.id}?${params.toString()}`)

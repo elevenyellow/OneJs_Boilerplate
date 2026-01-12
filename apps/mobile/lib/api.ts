@@ -467,6 +467,13 @@ export interface SectorSummary {
   // Tags for filtering and display
   kidFriendly: boolean | null // Suitable for children
   beginner: boolean | null // Good for beginners
+  dogFriendly: boolean | null // Dogs allowed
+  accessible: boolean | null // Wheelchair/mobility accessible
+  camping: boolean | null // Camping available nearby
+  swimming: boolean | null // Swimming available nearby
+  scenic: boolean | null // Has scenic views
+  popular: boolean | null // Can be crowded
+  quiet: boolean | null // Quiet/peaceful area
 }
 
 export interface RouteHighlight {

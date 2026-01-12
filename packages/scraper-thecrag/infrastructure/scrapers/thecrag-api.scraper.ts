@@ -207,6 +207,21 @@ export class TheCragApiScraper {
         cragTopos = await this.getCragToposFromPage(sectorPath)
       }
 
+      // Special case: Crag with direct routes (no children) - also fetch sector topos
+      // Some crags like Cheste have routes directly without sub-sectors but still have route topos
+      const isCragWithDirectRoutes =
+        type === 'Crag' &&
+        this.options.includeTopos &&
+        routes.length > 0 &&
+        children.length === 0
+      if (isCragWithDirectRoutes) {
+        logger.info(
+          'scraper:thecrag',
+          `Crag ${name} has direct routes - fetching sector topos from: ${sectorPath}`,
+        )
+        topos = await this.getToposFromSectorPage(sectorPath)
+      }
+
       // Fetch header image for Crag, Sector, Cliff nodes
       const needsHeaderImage = ['Crag', 'Sector', 'Cliff'].includes(type)
       let headerImageUrl: string | null = null
