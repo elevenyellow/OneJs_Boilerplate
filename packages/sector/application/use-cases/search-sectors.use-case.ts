@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { Coordinates, Grade } from '@climb-zone/shared'
+import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { ClimbingConditionsService } from '@sector/application/services/climbing-conditions.service'
 import {
   SectorScoringService,
@@ -324,7 +325,8 @@ export class SearchSectorsUseCase {
     }
 
     // 10.5. Get total sector counts for all crags
-    const cragIds = Array.from(cragGroups.keys()).filter((id) => id !== 'unknown')
+    const cragIdStrings = Array.from(cragGroups.keys()).filter((id) => id !== 'unknown')
+    const cragIds = cragIdStrings.map((id) => CragId.fromString(id))
     const sectorCounts = await this.sectorRepository.getSectorCountsByCragIds(cragIds)
 
     // 11. Build crag-grouped results

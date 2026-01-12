@@ -1,7 +1,9 @@
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { CragPrismaRepository } from '@crag/infrastructure/persistence/prisma/crag.repository'
 import { Inject, Injectable, OneJsError } from '@OneJs/core'
-import { PrismaClientOneJs } from '@OneJs/prisma'
+import { SectorPrismaRepository } from '@sector/infrastructure/persistence/prisma/sector.repository'
+import { RoutePrismaRepository } from '@route/infrastructure/persistence/prisma/route.repository'
+import { TopoPrismaRepository } from '@climb-zone/topo'
 import { WeatherService } from '@weather'
 import type {
   DailyForecast,
@@ -134,8 +136,12 @@ export class GetCragDetailUseCase {
   constructor(
     @Inject(CragPrismaRepository)
     private readonly cragRepo: CragPrismaRepository,
-    @Inject(PrismaClientOneJs)
-    private readonly prisma: PrismaClientOneJs,
+    @Inject(SectorPrismaRepository)
+    private readonly sectorRepo: SectorPrismaRepository,
+    @Inject(RoutePrismaRepository)
+    private readonly routeRepo: RoutePrismaRepository,
+    @Inject(TopoPrismaRepository)
+    private readonly topoRepo: TopoPrismaRepository,
     @Inject(WeatherService)
     private readonly weatherService: WeatherService,
   ) {}
@@ -159,59 +165,44 @@ export class GetCragDetailUseCase {
 
     const { crag, countryName, regionName, averageHeight } = cragData
 
-    // 2. Get all sectors for this crag (through areas)
-    const sectors = await this.prisma.sector.findMany({
-      where: {
-        area: {
-          cragId: cragId,
-        },
-      },
-      orderBy: [{ totalFavorites: 'desc' }, { routeCount: 'desc' }],
-    })
+    // 2. Get all sectors for this crag using SectorRepository
+    const sectors = await this.sectorRepo.findByCragId(crag.id)
 
     // 3. Get sector IDs for route query
     const sectorIds = sectors.map((s) => s.id)
 
     // 4. Count actual routes per sector (in case routeCount is not updated)
-    const routeCountsBySector = await this.prisma.route.groupBy({
-      by: ['sectorId'],
-      where: {
-        sectorId: { in: sectorIds },
-      },
-      _count: { id: true },
-    })
-    const routeCountMap = new Map(
-      routeCountsBySector.map((r) => [r.sectorId, r._count.id]),
+    const routeCountMap = await this.sectorRepo.getRouteCountsBySectorIds(
+      sectorIds,
     )
 
     // 5. Build sector summaries
     // Client will calculate routesInRange and scoring using gradeDistribution
     const sectorSummaries: SectorSummary[] = sectors.map((sector) => {
       const actualRouteCount =
-        routeCountMap.get(sector.id) || sector.routeCount || 0
+        routeCountMap.get(sector.id.toString()) || sector.stats.routeCount || 0
 
       return {
-        id: sector.id,
-        name: sector.name,
-        orientation: sector.orientation,
-        rockType: sector.rockType,
-        sunExposure: sector.sunExposure,
+        id: sector.id.toString(),
+        name: sector.name.toString(),
+        orientation: sector.orientation?.toString() ?? null,
+        rockType: sector.rockType?.toString() ?? null,
+        sunExposure: sector.sunExposure?.toString() ?? null,
         routeCount: actualRouteCount,
-        minGrade: sector.minGrade,
-        maxGrade: sector.maxGrade,
-        avgGrade: sector.avgGrade || null,
-        avgHeight: sector.averageHeight,
-        maxHeight: sector.maxHeight || null,
+        minGrade: sector.stats.minGrade,
+        maxGrade: sector.stats.maxGrade,
+        avgGrade: sector.stats.avgGrade || null,
+        avgHeight: sector.stats.averageHeight,
+        maxHeight: sector.stats.maxHeight || null,
         totalFavorites: sector.totalFavorites,
         hasTopo: sector.hasTopo,
         theCragUrl: sector.urlStub
           ? `https://www.thecrag.com${sector.urlStub}`
           : null,
         headerImageUrl: sector.headerImageS3Url ?? sector.headerImageUrl,
-        gradeDistribution:
-          (sector.gradeDistribution as Record<string, number>) || {},
-        avgStars: sector.avgStars || null,
-        // Tags for filtering and display (using stored fields directly)
+        gradeDistribution: sector.stats.gradeDistribution || {},
+        avgStars: sector.stats.avgStars || null,
+        // Tags for filtering and display
         kidFriendly: sector.kidFriendly,
         beginner: sector.beginner,
         dogFriendly: sector.dogFriendly,
@@ -224,32 +215,9 @@ export class GetCragDetailUseCase {
       }
     })
 
-    // 6. Get top routes across all sectors (sorted by quality)
-    const topRoutes = await this.prisma.route.findMany({
-      where: {
-        sectorId: { in: sectorIds },
-      },
-      orderBy: [{ stars: 'desc' }, { ascents: 'desc' }],
-      take: 15,
-      include: {
-        sector: {
-          select: { name: true },
-        },
-      },
-    })
-
-    const routeHighlights: RouteHighlight[] = topRoutes.map((route) => ({
-      id: route.id,
-      name: route.name,
-      grade: route.grade,
-      gradeIndex: route.gradeIndex,
-      stars: route.stars,
-      ascents: route.ascents,
-      height: route.height,
-      routeType: route.subType,
-      sectorId: route.sectorId,
-      sectorName: route.sector.name,
-    }))
+    // 6. Get top routes using RouteRepository
+    const routeHighlights: RouteHighlight[] =
+      await this.routeRepo.findTopRoutesBySectorIds(sectorIds, 15)
 
     // 7. Fetch weather forecast (7 days daily + hourly for first 2 days)
     let forecast: DailyForecast[] | null = null
@@ -277,36 +245,8 @@ export class GetCragDetailUseCase {
       0,
     )
 
-    // 9. Get crag topo images (overview topos showing sectors)
-    const cragTopos = await this.prisma.cragTopoImage.findMany({
-      where: { cragId },
-      include: {
-        sectorPositions: {
-          orderBy: { order: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    })
-
-    const topoImages: CragTopoImage[] = cragTopos.map((topo) => ({
-      id: topo.id,
-      externalId: topo.externalId,
-      thumbnailUrl: topo.thumbnailS3Url ?? topo.thumbnailUrl,
-      fullImageUrl: topo.fullImageS3Url ?? topo.fullImageUrl,
-      width: topo.width,
-      height: topo.height,
-      originalWidth: topo.originalWidth,
-      originalHeight: topo.originalHeight,
-      viewScale: topo.viewScale,
-      sectorPositions: topo.sectorPositions.map((pos) => ({
-        sectorId: pos.sectorId,
-        areaNumber: pos.areaNumber,
-        areaName: pos.areaName,
-        points: pos.points,
-        externalAreaId: pos.externalAreaId ? Number(pos.externalAreaId) : null,
-        areaUrl: pos.areaUrl,
-      })),
-    }))
+    // 9. Get crag topo images using TopoRepository
+    const topoImages = await this.topoRepo.findCragToposWithPositions(crag.id)
 
     // 10. Build response
     return {
