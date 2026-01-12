@@ -75,7 +75,7 @@ export class CragController {
     context.set.headers = {
       ...context.set.headers,
       'Cache-Control': 'private, max-age=300', // 5 minutos
-      'Vary': 'Accept-Encoding',
+      Vary: 'Accept-Encoding',
     }
 
     context.set.status = 200
@@ -145,7 +145,7 @@ export class CragController {
    * - 7-day weather forecast
    * - All sectors with gradeDistribution for client-side filtering
    * - Top routes (sorted by stars/ascents)
-   * 
+   *
    * Note: Grade filtering and scoring are done client-side using
    * the gradeDistribution returned for each sector. This allows
    * instant updates when the user changes their grade range.
@@ -156,14 +156,14 @@ export class CragController {
 
     try {
       const detail = await this.getCragDetailUseCase.execute(id)
-      
+
       // 🚀 HTTP Cache headers - detalle de crag, caché por 15 minutos
       context.set.headers = {
         ...context.set.headers,
         'Cache-Control': 'public, max-age=900', // 15 minutos
-        'Vary': 'Accept-Encoding',
+        Vary: 'Accept-Encoding',
       }
-      
+
       context.set.status = 200
       return detail
     } catch (error: unknown) {

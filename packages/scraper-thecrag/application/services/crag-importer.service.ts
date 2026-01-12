@@ -476,13 +476,112 @@ export class CragImporterService {
       grade: r.grade,
       height: r.height,
       ascents: r.ascents,
+      stars: r.stars ?? null,
     }))
     return this.statsService.calculateStats(routeData)
   }
 
   /**
+   * Extract virtual sector definitions from crag topo annotations
+   * These are the sectors shown in the panoramic overview image
+   */
+  private extractVirtualSectorsFromCragTopos(
+    cragTopos: TopoImageData[] | undefined,
+  ): Array<{
+    externalId: number
+    name: string
+    num: string
+    order: number
+    url: string | null
+  }> {
+    if (!cragTopos || cragTopos.length === 0) return []
+
+    const sectors: Array<{
+      externalId: number
+      name: string
+      num: string
+      order: number
+      url: string | null
+    }> = []
+
+    // Get annotations from the first (main) crag topo
+    const mainTopo = cragTopos[0]
+    for (const annotation of mainTopo.routes) {
+      // Only process area/annotation types (these represent sectors on the panoramic view)
+      if (
+        (annotation.type === 'area' || annotation.type === 'annotation') &&
+        annotation.id &&
+        annotation.name
+      ) {
+        sectors.push({
+          externalId: annotation.id,
+          name: annotation.name,
+          num: annotation.num || String(sectors.length + 1),
+          order: annotation.order ?? sectors.length,
+          url: annotation.url || null,
+        })
+      }
+    }
+
+    // Sort by order to maintain consistent ordering
+    sectors.sort((a, b) => a.order - b.order)
+
+    return sectors
+  }
+
+  /**
+   * Filter topos to only include sector topos (those with route annotations)
+   * Excludes panoramic/overview topos that only have area annotations
+   */
+  private filterSectorTopos(topos: TopoImageData[] | undefined): TopoImageData[] {
+    if (!topos || topos.length === 0) return []
+
+    return topos.filter((topo) => {
+      // A sector topo has at least one route annotation
+      const hasRouteAnnotations = topo.routes.some(
+        (r) => r.type === 'route' && r.id,
+      )
+      return hasRouteAnnotations
+    })
+  }
+
+  /**
+   * Build a mapping from route external IDs to their virtual sector external ID
+   * Uses the sector topos (data.topos) to determine which routes belong to which sector
+   */
+  private buildRouteToSectorMapping(
+    topos: TopoImageData[] | undefined,
+    virtualSectors: Array<{ externalId: number; name: string; order: number }>,
+  ): Map<number, number> {
+    const routeToSector = new Map<number, number>()
+
+    if (!topos || topos.length === 0 || virtualSectors.length === 0) {
+      return routeToSector
+    }
+
+    // Filter to only include sector topos (those with route annotations)
+    const sectorTopos = this.filterSectorTopos(topos)
+
+    // Strategy: Map each sector topo to a sector by order (sectorTopo[0] -> sector[0], etc.)
+    // This works when sector topos and sectors are in the same order
+    for (let i = 0; i < sectorTopos.length && i < virtualSectors.length; i++) {
+      const topo = sectorTopos[i]
+      const sector = virtualSectors[i]
+
+      // All routes in this topo belong to this sector
+      for (const routeAnnotation of topo.routes) {
+        if (routeAnnotation.type === 'route' && routeAnnotation.id) {
+          routeToSector.set(routeAnnotation.id, sector.externalId)
+        }
+      }
+    }
+
+    return routeToSector
+  }
+
+  /**
    * Save routes that are directly on the crag (no children/sectors)
-   * Creates a virtual sector to contain these routes
+   * Creates virtual sectors based on the panoramic topo annotations if available
    */
   private async saveRoutesDirectlyOnCrag(
     data: ScrapedCragNode,
@@ -493,12 +592,283 @@ export class CragImporterService {
     // Clean beta info (description, approach) using AI
     const cleanedInfo = await this.cleanBetaInfo(data.info ?? null)
 
+    // Extract virtual sectors from the crag topo panoramic view
+    const virtualSectors = this.extractVirtualSectorsFromCragTopos(
+      data.cragTopos,
+    )
+
+    // If we have virtual sectors from the panoramic topo, create multiple sectors
+    if (virtualSectors.length > 1) {
+      console.log(
+        `      🔍 Detectados ${virtualSectors.length} sectores virtuales en topo panorámico`,
+      )
+      await this.saveMultipleVirtualSectors(
+        data,
+        cragId,
+        cleanedInfo,
+        virtualSectors,
+        result,
+        uploadToS3,
+      )
+    } else {
+      // Fallback: Create a single virtual sector with all routes
+      console.log(`      📦 Creando sector virtual único`)
+      await this.saveSingleVirtualSector(
+        data,
+        cragId,
+        cleanedInfo,
+        result,
+        uploadToS3,
+      )
+    }
+  }
+
+  /**
+   * Create multiple virtual sectors based on panoramic topo annotations
+   * Routes are assigned to sectors based on the sector topos
+   */
+  private async saveMultipleVirtualSectors(
+    data: ScrapedCragNode,
+    cragId: CragId,
+    cleanedInfo: ScrapedNodeInfo | null,
+    virtualSectors: Array<{
+      externalId: number
+      name: string
+      num: string
+      order: number
+      url: string | null
+    }>,
+    result: ImportResult,
+    uploadToS3: boolean,
+  ): Promise<void> {
+    // Filter topos to only include sector topos (with route annotations)
+    // Excludes panoramic/overview topos that only show areas
+    const sectorTopos = this.filterSectorTopos(data.topos)
+
+    console.log(
+      `      📊 Topos filtrados: ${sectorTopos.length} sector topos de ${data.topos?.length ?? 0} total`,
+    )
+
+    // Build mapping: route external ID -> sector external ID
+    const routeToSectorMap = this.buildRouteToSectorMapping(
+      data.topos, // Uses filterSectorTopos internally
+      virtualSectors,
+    )
+
+    // Create a map to store created sectors: externalId -> SectorId
+    const createdSectors = new Map<number, SectorId>()
+    // Map to store routes per sector for stats calculation
+    const routesPerSector = new Map<number, ScrapedRouteData[]>()
+
+    // Initialize routes array for each sector
+    for (const vs of virtualSectors) {
+      routesPerSector.set(vs.externalId, [])
+    }
+
+    // Distribute routes to sectors
+    for (const route of data.routes!) {
+      const sectorExternalId = routeToSectorMap.get(route.id)
+      if (sectorExternalId && routesPerSector.has(sectorExternalId)) {
+        routesPerSector.get(sectorExternalId)!.push(route)
+      } else {
+        // Route not mapped to any sector - assign to first sector as fallback
+        const firstSectorId = virtualSectors[0].externalId
+        routesPerSector.get(firstSectorId)!.push(route)
+      }
+    }
+
+    // Map to track saved route IDs for topo position linking
+    const savedRouteIds = new Map<number, RouteId>()
+    // Map to track which topo belongs to which sector (by order)
+    const topoToSector = new Map<number, SectorId>()
+
+    // Create each virtual sector with its routes
+    for (let i = 0; i < virtualSectors.length; i++) {
+      const vs = virtualSectors[i]
+      const sectorRoutes = routesPerSector.get(vs.externalId) || []
+
+      console.log(
+        `      📍 Sector virtual "${vs.name}" (${vs.num}): ${sectorRoutes.length} rutas`,
+      )
+
+      // Create virtual area for this sector
+      const areaData = this.mapper.mapToArea(
+        vs.externalId,
+        vs.name,
+        cragId,
+        null,
+        data.info?.geometry,
+        cleanedInfo,
+        'Sector',
+      )
+      const area = await this.areaRepo.saveByExternalId(
+        this.mapper.createAreaEntity(areaData),
+        undefined,
+      )
+      result.areasCreated++
+
+      // Create virtual sector
+      const sectorData = this.mapper.mapToSector(
+        vs.externalId,
+        vs.name,
+        area.id,
+        data.info?.geometry,
+        cleanedInfo,
+        'Sector',
+      )
+      const sector = await this.sectorRepo.saveByExternalId(
+        this.mapper.createSectorEntity(sectorData),
+        undefined,
+      )
+      result.sectorsCreated++
+
+      createdSectors.set(vs.externalId, sector.id)
+
+      // Track which sector topo index maps to this sector
+      if (i < sectorTopos.length) {
+        topoToSector.set(i, sector.id)
+      }
+
+      // Build topo number map for this sector's routes (from filtered sector topos)
+      const topoNumberMap = new Map<number, string>()
+      if (i < sectorTopos.length) {
+        const topo = sectorTopos[i]
+        for (const topoRoute of topo.routes) {
+          if (
+            topoRoute.id &&
+            topoRoute.num &&
+            !topoNumberMap.has(topoRoute.id)
+          ) {
+            topoNumberMap.set(topoRoute.id, topoRoute.num)
+          }
+        }
+      }
+
+      // Save routes for this sector
+      for (const route of sectorRoutes) {
+        const topoNum = topoNumberMap.get(route.id)
+        const routeData = this.mapper.mapToRoute(route, sector.id, topoNum)
+        const savedRoute = await this.routeRepo.saveByExternalId(
+          this.mapper.createRouteEntity(routeData),
+        )
+        savedRouteIds.set(route.id, savedRoute.id)
+        result.routesCreated++
+      }
+
+      // Calculate and update sector stats
+      if (sectorRoutes.length > 0) {
+        const sectorStats = this.calculateSectorStats(sectorRoutes)
+        sector.updateStats(sectorStats)
+        await this.sectorRepo.updateStats(sector)
+        console.log(
+          `         📊 Stats: ${sectorStats.routeCount} rutas, avg: ${sectorStats.avgGrade}`,
+        )
+      }
+    }
+
+    // Save sector topos with route positions (using filtered sector topos)
+    if (sectorTopos.length > 0) {
+      for (let i = 0; i < sectorTopos.length; i++) {
+        const topoData = sectorTopos[i]
+        const sectorId = topoToSector.get(i)
+
+        if (!sectorId) {
+          console.warn(`      ⚠️  Sector topo ${i} no tiene sector asignado`)
+          continue
+        }
+
+        try {
+          const topoEntity = new TopoImageEntity(
+            TopoImageId.generate(),
+            topoData.topoId,
+            sectorId,
+            topoData.thumbnailUrl,
+            topoData.fullImageUrl,
+            topoData.width,
+            topoData.height,
+            topoData.originalWidth,
+            topoData.originalHeight,
+            topoData.viewScale,
+            null,
+          )
+
+          const positions: Array<{
+            routeId: RouteId
+            topoNumber: string
+            points: string
+            zindex?: number
+            order?: number
+            gradeClass?: string | null
+          }> = []
+
+          for (const topoRoute of topoData.routes) {
+            if (topoRoute.type !== 'route') continue
+            const internalRouteId = savedRouteIds.get(topoRoute.id)
+            if (internalRouteId) {
+              positions.push({
+                routeId: internalRouteId,
+                topoNumber: topoRoute.num,
+                points: topoRoute.points,
+                zindex: parseInt(topoRoute.zindex) || 0,
+                order: topoRoute.order,
+                gradeClass: topoRoute.gradeClass,
+              })
+            }
+          }
+
+          if (positions.length > 0) {
+            const { topo: savedTopo, positionsCreated } =
+              await this.topoRepo.saveTopoImageWithPositions(
+                topoEntity,
+                positions,
+              )
+            result.toposCreated++
+            result.topoPositionsCreated += positionsCreated
+            console.log(
+              `      ✅ Topo ${topoData.topoId}: ${positions.length} rutas con SVG`,
+            )
+
+            if (uploadToS3 && topoData.fullImageUrl) {
+              await this.uploadTopoToS3(
+                savedTopo.id,
+                topoData.fullImageUrl,
+                result,
+              )
+            }
+          }
+        } catch (error: unknown) {
+          const err = error as Error
+          console.warn(
+            `      ⚠️  Error guardando topo ${topoData.topoId}: ${err.message}`,
+          )
+        }
+      }
+    }
+
+    // Update crag topo positions to link with created sectors
+    await this.linkCragTopoPositionsToSectors(cragId, createdSectors)
+
+    console.log(
+      `      ✅ ${virtualSectors.length} sectores virtuales creados con ${data.routes!.length} rutas total`,
+    )
+  }
+
+  /**
+   * Create a single virtual sector with all routes (original behavior)
+   */
+  private async saveSingleVirtualSector(
+    data: ScrapedCragNode,
+    cragId: CragId,
+    cleanedInfo: ScrapedNodeInfo | null,
+    result: ImportResult,
+    uploadToS3: boolean,
+  ): Promise<void> {
     // Create a virtual area for the crag's direct routes
     const areaData = this.mapper.mapToArea(
       data.id,
-      data.name, // Use crag name for the area
+      data.name,
       cragId,
-      null, // No parent area
+      null,
       data.info?.geometry,
       cleanedInfo,
       'Crag',
@@ -512,7 +882,7 @@ export class CragImporterService {
     // Create a virtual sector to contain the routes
     const sectorData = this.mapper.mapToSector(
       data.id,
-      data.name, // Use crag name for the sector
+      data.name,
       area.id,
       data.info?.geometry,
       cleanedInfo,
@@ -646,6 +1016,35 @@ export class CragImporterService {
     console.log(
       `      ✅ Sector virtual creado: ${data.name} con ${data.routes!.length} rutas`,
     )
+  }
+
+  /**
+   * Link crag topo positions to their corresponding sectors
+   * Updates CragTopoSectorPosition.sectorId based on externalAreaId matching
+   */
+  private async linkCragTopoPositionsToSectors(
+    cragId: CragId,
+    createdSectors: Map<number, SectorId>,
+  ): Promise<void> {
+    if (createdSectors.size === 0) return
+
+    try {
+      // Update each position where externalAreaId matches a created sector
+      for (const [externalId, sectorId] of createdSectors) {
+        await this.topoRepo.linkCragTopoPositionToSector(
+          cragId,
+          BigInt(externalId),
+          sectorId,
+        )
+      }
+      console.log(
+        `      🔗 Vinculadas ${createdSectors.size} posiciones del topo panorámico`,
+      )
+    } catch (error) {
+      console.warn(
+        `      ⚠️  Error vinculando posiciones del topo panorámico: ${error instanceof Error ? error.message : error}`,
+      )
+    }
   }
 
   /**

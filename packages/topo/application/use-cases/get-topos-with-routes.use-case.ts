@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@OneJs/core'
-import { RoutePrismaRepository } from '@route/infrastructure/persistence/prisma/route.repository'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
+import { RoutePrismaRepository } from '@route/infrastructure/persistence/prisma/route.repository'
 import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 import { TopoPrismaRepository } from '@topo/infrastructure/persistence/prisma/topo.repository'
 
@@ -90,7 +90,9 @@ export class GetToposWithRoutesUseCase {
   ): Promise<TopoWithRoutes[]> {
     return Promise.all(
       topoImages.map(async (topo) => {
-        const positions = await this.topoRepo.findPositionsByTopoId(topo.id as any)
+        const positions = await this.topoRepo.findPositionsByTopoId(
+          topo.id as any,
+        )
 
         // Get route details for each position
         const routeIds = positions.map((p) => p.routeId)

@@ -458,4 +458,33 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       },
     })
   }
+
+  /**
+   * Link a crag topo position to a sector by matching externalAreaId
+   * Updates CragTopoSectorPosition.sectorId where the externalAreaId matches
+   */
+  async linkCragTopoPositionToSector(
+    cragId: CragId,
+    externalAreaId: bigint,
+    sectorId: SectorId,
+  ): Promise<void> {
+    // Find the crag topo for this crag
+    const cragTopos = await this.prisma.cragTopoImage.findMany({
+      where: { cragId: cragId.toString() },
+      select: { id: true },
+    })
+
+    if (cragTopos.length === 0) return
+
+    // Update positions that match the externalAreaId
+    await this.prisma.cragTopoSectorPosition.updateMany({
+      where: {
+        cragTopoId: { in: cragTopos.map((t) => t.id) },
+        externalAreaId,
+      },
+      data: {
+        sectorId: sectorId.toString(),
+      },
+    })
+  }
 }
