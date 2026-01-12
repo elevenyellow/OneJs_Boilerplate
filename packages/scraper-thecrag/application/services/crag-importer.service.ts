@@ -1,26 +1,25 @@
 import { Inject, Injectable } from '@OneJs/core'
-import { Geometry, BetaInfo, Grade, ExternalId } from '@climb-zone/shared'
-import { CragPrismaRepository, CragEntity } from '@climb-zone/crag'
-import { AreaPrismaRepository, AreaEntity } from '@climb-zone/area'
-import { SectorPrismaRepository, SectorEntity, SectorStatsService, SectorStats } from '@climb-zone/sector'
-import { RoutePrismaRepository, RouteEntity } from '@climb-zone/route'
+import { AreaId } from '@area/domain/value-objects/area-id.vo'
+import { AreaPrismaRepository } from '@climb-zone/area'
+import { CountryId, CragPrismaRepository } from '@climb-zone/crag'
+import { RegionId } from '@climb-zone/region'
+import { RoutePrismaRepository } from '@climb-zone/route'
+import { SectorPrismaRepository, SectorStatsService } from '@climb-zone/sector'
 import {
-  TopoPrismaRepository,
+  CragTopoImageEntity,
   TopoImageEntity,
   TopoImageId,
-  CragTopoImageEntity,
+  TopoPrismaRepository,
   type CragTopoSectorPositionData,
 } from '@climb-zone/topo'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
-import { AreaId } from '@area/domain/value-objects/area-id.vo'
-import { SectorId } from '@sector/domain/value-objects/sector-id.vo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
 import type {
   ScrapedCragNode,
   ScrapedRouteData,
 } from '@scraper-thecrag/domain/dtos/scraped-node.dto'
 import type { TopoImageData } from '@scraper-thecrag/domain/dtos/topo-image.dto'
-import { TopoNumber } from '@route/domain/value-objects/topo-number.vo'
+import { ScrapedDataMapperService } from './scraped-data-mapper.service'
 
 export interface ImportResult {
   cragId: CragId
@@ -32,6 +31,7 @@ export interface ImportResult {
   topoPositionsCreated: number
   cragToposCreated: number
   cragTopoPositionsCreated: number
+  headerImages: number
   duration: number
   errors: ImportError[]
 }
@@ -44,13 +44,16 @@ export interface ImportError {
 }
 
 export interface ImportOptions {
-  country: string
-  region?: string
+  /** Country ID (required) */
+  countryId: CountryId
+  /** Region ID (optional) */
+  regionId?: RegionId | null
 }
 
 /**
  * Service for importing scraped TheCrag data into the database
  * Orchestrates the creation of Crag, Area, Sector, and Route entities
+ * Uses ScrapedDataMapperService for entity creation with proper value objects
  */
 @Injectable()
 export class CragImporterService {
@@ -67,12 +70,17 @@ export class CragImporterService {
     private readonly topoRepo: TopoPrismaRepository,
     @Inject(SectorStatsService)
     private readonly statsService: SectorStatsService,
+    @Inject(ScrapedDataMapperService)
+    private readonly mapper: ScrapedDataMapperService,
   ) {}
 
   /**
    * Import a complete scraped crag hierarchy into the database
    */
-  async importCrag(data: ScrapedCragNode, options: ImportOptions): Promise<ImportResult> {
+  async importCrag(
+    data: ScrapedCragNode,
+    options: ImportOptions,
+  ): Promise<ImportResult> {
     const startTime = Date.now()
     const result: ImportResult = {
       cragId: CragId.generate(),
@@ -84,6 +92,7 @@ export class CragImporterService {
       topoPositionsCreated: 0,
       cragToposCreated: 0,
       cragTopoPositionsCreated: 0,
+      headerImages: 0,
       duration: 0,
       errors: [],
     }
@@ -91,23 +100,79 @@ export class CragImporterService {
     console.log(`🔄 Starting import for ${data.name}...`)
 
     try {
-      // 1. Create the root Crag entity
-      const cragEntity = this.createCragEntity(data, options)
-      const savedCrag = await this.cragRepo.saveByExternalId(cragEntity)
+      // 1. Create the root Crag entity using mapper
+      console.log(`   💾 Guardando Crag: ${data.name}`)
+
+      const cragData = this.mapper.mapToCrag(
+        data.id,
+        data.name,
+        options.countryId,
+        data.info?.geometry,
+        data.info ?? null,
+        options.regionId ?? null,
+      )
+      const savedCrag = await this.cragRepo.saveByExternalId(
+        this.mapper.createCragEntity(cragData),
+        data.info?.apiResponseRaw,
+      )
 
       result.cragId = savedCrag.id
       result.cragsCreated = 1
 
-      console.log(`✅ Created crag: ${savedCrag.name} (${savedCrag.id.toString()})`)
+      console.log(`      ✅ Crag guardado: ${savedCrag.id.toString()}`)
+      console.log(
+        `      - Header Image: ${data.info?.headerImageUrl ? '✅' : '❌'}`,
+      )
+      console.log(
+        `      - Overview Topo: ${data.cragTopos?.length ?? 0} (panorámica de sectores)`,
+      )
+      console.log('')
 
       // 2. Save crag overview topos if available
       if (data.cragTopos && data.cragTopos.length > 0) {
-        await this.saveCragToposWithPositions(data.cragTopos, savedCrag.id, result)
+        console.log(`   🗺️  Guardando topos panorámicos del crag...`)
+        await this.saveCragToposWithPositions(
+          data.cragTopos,
+          savedCrag.id,
+          result,
+        )
+        console.log('')
+      }
+
+      // 2.5. Handle routes directly on the crag (no children/sectors)
+      // Some crags like Cheste have routes directly without sub-sectors
+      if (
+        data.routes &&
+        data.routes.length > 0 &&
+        data.children.length === 0
+      ) {
+        console.log(
+          `   📍 Crag tiene ${data.routes.length} rutas directas (sin sectores)`,
+        )
+        await this.saveRoutesDirectlyOnCrag(data, savedCrag.id, result)
+        console.log('')
       }
 
       // 3. Process children recursively
-      await this.processChildren(data.children, savedCrag.id, null, result)
-
+      for (const child of data.children) {
+        try {
+          await this.processScrapedNode(
+            child,
+            savedCrag.id,
+            null, // No parent area for direct children of crag
+            result,
+          )
+        } catch (error: unknown) {
+          const err = error as Error
+          result.errors.push({
+            nodeId: child.id,
+            nodeName: child.name,
+            type: child.type,
+            message: err.message,
+          })
+          console.error(`   ❌ Error en ${child.name}: ${err.message}`)
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       result.errors.push({
@@ -120,7 +185,9 @@ export class CragImporterService {
 
     result.duration = Date.now() - startTime
 
-    console.log(`\n✅ Import completed in ${(result.duration / 1000).toFixed(2)}s`)
+    console.log(
+      `\n✅ Import completed in ${(result.duration / 1000).toFixed(2)}s`,
+    )
     console.log(`   - Crags: ${result.cragsCreated}`)
     console.log(`   - Areas: ${result.areasCreated}`)
     console.log(`   - Sectors: ${result.sectorsCreated}`)
@@ -129,6 +196,7 @@ export class CragImporterService {
     console.log(`   - Topo positions: ${result.topoPositionsCreated}`)
     console.log(`   - Crag topos: ${result.cragToposCreated}`)
     console.log(`   - Crag topo positions: ${result.cragTopoPositionsCreated}`)
+    console.log(`   - Header images: ${result.headerImages}`)
     if (result.errors.length > 0) {
       console.log(`   - Errors: ${result.errors.length}`)
     }
@@ -137,328 +205,328 @@ export class CragImporterService {
   }
 
   /**
-   * Create a Crag entity from scraped data
+   * Process a scraped node (Area, Sector, or Cliff)
+   * Recursively processes children
    */
-  private createCragEntity(data: ScrapedCragNode, options: ImportOptions): CragEntity {
-    const geometry = data.info?.geometry ? Geometry.fromJSON(data.info.geometry) : null
-    const beta = BetaInfo.fromJSON(data.info?.beta)
-    const sourceUrl = `https://www.thecrag.com/climbing/${data.info?.urlStub ?? data.id}`
-
-    return new CragEntity(
-      CragId.generate(),
-      ExternalId.create(data.id),
-      data.name,
-      options.country,
-      options.region ?? null,
-      geometry,
-      data.info?.seasonality ?? [],
-      beta.getDescription(),
-      beta.getApproach(),
-      beta.getEthic(),
-      sourceUrl,
-    )
-  }
-
-  /**
-   * Process child nodes recursively
-   */
-  private async processChildren(
-    children: ScrapedCragNode[],
-    cragId: CragId,
-    parentAreaId: AreaId | null,
-    result: ImportResult,
-  ): Promise<void> {
-    for (const child of children) {
-      try {
-        await this.processNode(child, cragId, parentAreaId, result)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        result.errors.push({
-          nodeId: child.id,
-          nodeName: child.name,
-          type: child.type,
-          message,
-        })
-      }
-    }
-  }
-
-  /**
-   * Process a single node based on its type
-   */
-  private async processNode(
+  private async processScrapedNode(
     node: ScrapedCragNode,
     cragId: CragId,
     parentAreaId: AreaId | null,
     result: ImportResult,
   ): Promise<void> {
-    const hasRoutes = node.routes && node.routes.length > 0
-    const hasOnlyChildren = node.children.length > 0 && !hasRoutes
+    console.log(`   🔍 Procesando: ${node.name} (${node.type})`)
 
-    if (hasOnlyChildren && !hasRoutes) {
-      // This is an Area (container for other areas/sectors)
-      const areaEntity = this.createAreaEntity(node, cragId, parentAreaId)
-      const savedArea = await this.areaRepo.saveByExternalId(areaEntity)
+    const hasRoutes = node.routes && node.routes.length > 0
+    const hasTopos = node.topos && node.topos.length > 0
+
+    console.log(`      📊 Info del scraper:`)
+    console.log(`         - Routes: ${node.routes?.length ?? 0}`)
+    console.log(`         - Topos: ${node.topos?.length ?? 0}`)
+    console.log(
+      `         - Header Image: ${node.info?.headerImageUrl ? '✅' : '❌'}`,
+    )
+
+    // If this node has routes, treat it as a sector (needs an area parent)
+    if (hasRoutes) {
+      // Create area first
+      const areaData = this.mapper.mapToArea(
+        node.id,
+        node.name,
+        cragId,
+        parentAreaId,
+        node.info?.geometry,
+        node.info ?? null,
+        node.type,
+      )
+      const area = await this.areaRepo.saveByExternalId(
+        this.mapper.createAreaEntity(areaData),
+        node.info?.apiResponseRaw,
+      )
       result.areasCreated++
 
-      // Process children with this area as parent
-      await this.processChildren(node.children, cragId, savedArea.id, result)
-    } else if (hasRoutes) {
-      // This is a Sector (has routes)
-      let areaId = parentAreaId
-
-      // If no parent area, create a default one
-      if (!areaId) {
-        const defaultArea = this.createDefaultAreaEntity(node, cragId)
-        const savedDefaultArea = await this.areaRepo.saveByExternalId(defaultArea)
-        areaId = savedDefaultArea.id
-        result.areasCreated++
-      }
-
-      // Create the sector entity
-      const sectorEntity = this.createSectorEntity(node, areaId)
-      const savedSector = await this.sectorRepo.saveByExternalId(sectorEntity)
+      // Create sector
+      const sectorData = this.mapper.mapToSector(
+        node.id,
+        node.name,
+        area.id,
+        node.info?.geometry,
+        node.info ?? null,
+        node.type,
+      )
+      const sector = await this.sectorRepo.saveByExternalId(
+        this.mapper.createSectorEntity(sectorData),
+        node.info?.apiResponseRaw,
+      )
       result.sectorsCreated++
 
-      // Build topo number map from topo data (routeId -> topoNumber)
-      const topoNumberMap = this.buildTopoNumberMap(node.topos)
-
-      // Create route entities with topo numbers
-      const routeEntities = this.createRouteEntities(node.routes!, savedSector.id, topoNumberMap)
-      const routesCreated = await this.routeRepo.saveMany(routeEntities)
-      result.routesCreated += routesCreated
-
-      // Calculate and update stats
-      const stats = this.calculateSectorStats(node.routes!)
-      savedSector.updateStats(stats)
-      await this.sectorRepo.updateStats(savedSector)
-
-      // Save topo images with route positions
-      if (node.topos && node.topos.length > 0) {
-        await this.saveToposWithPositions(node.topos, savedSector.id, node.routes!, result)
+      // Track header image
+      if (node.info?.headerImageUrl) {
+        result.headerImages++
       }
 
-      // Process any nested children
-      if (node.children.length > 0) {
-        await this.processChildren(node.children, cragId, areaId, result)
-      }
-    } else {
-      // Empty node - create as area anyway
-      const areaEntity = this.createAreaEntity(node, cragId, parentAreaId)
-      await this.areaRepo.saveByExternalId(areaEntity)
-      result.areasCreated++
-    }
-  }
-
-  /**
-   * Create an Area entity from scraped data
-   */
-  private createAreaEntity(
-    node: ScrapedCragNode,
-    cragId: CragId,
-    parentAreaId: AreaId | null,
-  ): AreaEntity {
-    const geometry = node.info?.geometry ? Geometry.fromJSON(node.info.geometry) : null
-    const beta = BetaInfo.fromJSON(node.info?.beta)
-    const areaType = node.type === 'Cliff' ? 'Cliff' : 'Area'
-
-    return new AreaEntity(
-      AreaId.generate(),
-      ExternalId.create(node.id),
-      cragId,
-      parentAreaId,
-      node.name,
-      areaType,
-      geometry,
-      beta,
-    )
-  }
-
-  /**
-   * Create a default Area entity for sectors without a parent
-   */
-  private createDefaultAreaEntity(node: ScrapedCragNode, cragId: CragId): AreaEntity {
-    const geometry = node.info?.geometry ? Geometry.fromJSON(node.info.geometry) : null
-
-    return new AreaEntity(
-      AreaId.generate(),
-      ExternalId.create(node.id * -1), // Negative to avoid conflicts
-      cragId,
-      null,
-      'Default Area',
-      'Area',
-      geometry,
-      BetaInfo.empty(),
-    )
-  }
-
-  /**
-   * Create a Sector entity from scraped data
-   */
-  private createSectorEntity(node: ScrapedCragNode, areaId: AreaId): SectorEntity {
-    const geometry = node.info?.geometry ? Geometry.fromJSON(node.info.geometry) : null
-    const beta = BetaInfo.fromJSON(node.info?.beta)
-    const sectorType = node.type === 'Cliff' ? 'Cliff' : 'Sector'
-
-    return new SectorEntity(
-      SectorId.generate(),
-      ExternalId.create(node.id),
-      areaId,
-      node.name,
-      sectorType,
-      geometry,
-      node.info?.seasonality ?? [],
-      beta,
-      SectorStats.empty(),
-      node.info?.priceCategory ?? null,
-      Boolean(node.info?.hasTopo),
-      node.info?.kudos ?? null,
-    )
-  }
-
-  /**
-   * Build a map of route external IDs to topo numbers from topo data
-   */
-  private buildTopoNumberMap(topos: TopoImageData[] | undefined): Map<number, string> {
-    const map = new Map<number, string>()
-    
-    if (!topos) return map
-
-    for (const topo of topos) {
-      for (const route of topo.routes) {
-        if (route.id && route.num) {
-          // Only set if not already set (first occurrence wins)
-          if (!map.has(route.id)) {
-            map.set(route.id, route.num)
+      // Build topo number map from topo data
+      const topoNumberMap = new Map<number, string>()
+      if (hasTopos) {
+        for (const topo of node.topos!) {
+          for (const topoRoute of topo.routes) {
+            if (
+              topoRoute.id &&
+              topoRoute.num &&
+              !topoNumberMap.has(topoRoute.id)
+            ) {
+              topoNumberMap.set(topoRoute.id, topoRoute.num)
+            }
           }
         }
       }
+
+      // Save routes
+      const savedRouteIds = new Map<number, RouteId>()
+      for (const route of node.routes!) {
+        const topoNum = topoNumberMap.get(route.id)
+        const routeData = this.mapper.mapToRoute(route, sector.id, topoNum)
+        const savedRoute = await this.routeRepo.saveByExternalId(
+          this.mapper.createRouteEntity(routeData),
+        )
+        savedRouteIds.set(route.id, savedRoute.id)
+        result.routesCreated++
+      }
+
+      // Calculate and update sector stats (avgGrade, avgHeight, maxHeight, etc.)
+      const sectorStats = this.calculateSectorStats(node.routes!)
+      sector.updateStats(sectorStats)
+      await this.sectorRepo.updateStats(sector)
+      console.log(
+        `      📊 Stats calculados: ${sectorStats.routeCount} rutas, avg: ${sectorStats.avgGrade}, maxH: ${sectorStats.maxHeight}m`,
+      )
+
+      // Save topos with positions (SVG data)
+      if (hasTopos) {
+        for (const topoData of node.topos!) {
+          try {
+            const topoEntity = new TopoImageEntity(
+              TopoImageId.generate(),
+              topoData.topoId,
+              sector.id,
+              topoData.thumbnailUrl,
+              topoData.fullImageUrl,
+              topoData.width,
+              topoData.height,
+              topoData.originalWidth,
+              topoData.originalHeight,
+              topoData.viewScale,
+              null,
+            )
+
+            // Build positions for routes (contains SVG points data)
+            const positions: Array<{
+              routeId: RouteId
+              topoNumber: string
+              points: string
+              zindex?: number
+              order?: number
+              gradeClass?: string | null
+            }> = []
+
+            for (const topoRoute of topoData.routes) {
+              const internalRouteId = savedRouteIds.get(topoRoute.id)
+              if (internalRouteId) {
+                positions.push({
+                  routeId: internalRouteId,
+                  topoNumber: topoRoute.num,
+                  points: topoRoute.points, // SVG path data
+                  zindex: parseInt(topoRoute.zindex) || 0,
+                  order: topoRoute.order,
+                  gradeClass: topoRoute.gradeClass,
+                })
+              }
+            }
+
+            if (positions.length > 0) {
+              const { positionsCreated } =
+                await this.topoRepo.saveTopoImageWithPositions(
+                  topoEntity,
+                  positions,
+                )
+              result.toposCreated++
+              result.topoPositionsCreated += positionsCreated
+              console.log(
+                `      ✅ Topo ${topoData.topoId}: ${positions.length} rutas con SVG`,
+              )
+            }
+          } catch (error: unknown) {
+            const err = error as Error
+            console.warn(
+              `      ⚠️  Error guardando topo ${topoData.topoId}: ${err.message}`,
+            )
+          }
+        }
+      }
+
+      console.log(`      ✅ Sector guardado: ${node.name}`)
+      console.log('')
     }
 
-    return map
-  }
-
-  /**
-   * Create Route entities from scraped data
-   * @param routes - Array of scraped route data
-   * @param sectorId - The sector ID for these routes
-   * @param topoNumberMap - Map of route external IDs to topo numbers
-   */
-  private createRouteEntities(
-    routes: ScrapedRouteData[],
-    sectorId: SectorId,
-    topoNumberMap: Map<number, string> = new Map(),
-  ): RouteEntity[] {
-    return routes.map((r) => {
-      const grade = r.grade ? new Grade(r.grade, 'french', r.gradeIndex ?? undefined) : null
-      const topoNum = topoNumberMap.get(r.id)
-
-      return new RouteEntity(
-        RouteId.generate(),
-        ExternalId.create(r.id),
-        sectorId,
-        r.name,
-        grade,
-        r.height,
-        r.pitches,
-        r.bolts,
-        r.stars,
-        r.quality,
-        r.ascents,
-        r.subType as 'sport' | 'trad' | 'boulder' | 'mixed' | null,
-        r.firstAscent,
-        r.tags,
-        r.warnings,
-        TopoNumber.create(topoNum),
+    // Process children recursively
+    for (const child of node.children) {
+      await this.processScrapedNode(
+        child,
+        cragId,
+        null, // For simplicity, not tracking nested areas
+        result,
       )
-    })
+    }
   }
 
   /**
-   * Calculate sector statistics from routes
+   * Calculate sector statistics from scraped routes
    */
-  private calculateSectorStats(routes: ScrapedRouteData[]): SectorStats {
+  private calculateSectorStats(routes: ScrapedRouteData[]) {
     const routeData = routes.map((r) => ({
       grade: r.grade,
       height: r.height,
       ascents: r.ascents,
     }))
-
     return this.statsService.calculateStats(routeData)
   }
 
   /**
-   * Save topo images and link routes to their positions
+   * Save routes that are directly on the crag (no children/sectors)
+   * Creates a virtual sector to contain these routes
    */
-  private async saveToposWithPositions(
-    topos: TopoImageData[],
-    sectorId: SectorId,
-    routes: ScrapedRouteData[],
+  private async saveRoutesDirectlyOnCrag(
+    data: ScrapedCragNode,
+    cragId: CragId,
     result: ImportResult,
   ): Promise<void> {
-    // Build a map of external route IDs to internal route IDs
-    // We need to look up routes that were just saved
-    const routeExternalToInternal = new Map<number, RouteId>()
-    for (const route of routes) {
-      const savedRoute = await this.routeRepo.findByExternalId(ExternalId.create(route.id))
-      if (savedRoute) {
-        routeExternalToInternal.set(route.id, savedRoute.id)
-      }
+    // Create a virtual area for the crag's direct routes
+    const areaData = this.mapper.mapToArea(
+      data.id,
+      data.name, // Use crag name for the area
+      cragId,
+      null, // No parent area
+      data.info?.geometry,
+      data.info ?? null,
+      'Crag',
+    )
+    const area = await this.areaRepo.saveByExternalId(
+      this.mapper.createAreaEntity(areaData),
+      data.info?.apiResponseRaw,
+    )
+    result.areasCreated++
+
+    // Create a virtual sector to contain the routes
+    const sectorData = this.mapper.mapToSector(
+      data.id,
+      data.name, // Use crag name for the sector
+      area.id,
+      data.info?.geometry,
+      data.info ?? null,
+      'Sector',
+    )
+    const sector = await this.sectorRepo.saveByExternalId(
+      this.mapper.createSectorEntity(sectorData),
+      data.info?.apiResponseRaw,
+    )
+    result.sectorsCreated++
+
+    // Track header image
+    if (data.info?.headerImageUrl) {
+      result.headerImages++
     }
 
-    for (const topoData of topos) {
-      try {
-        // Create TopoImage entity
-        const topoEntity = new TopoImageEntity(
-          TopoImageId.generate(),
-          topoData.topoId,
-          sectorId,
-          topoData.thumbnailUrl,
-          topoData.fullImageUrl,
-          topoData.width,
-          topoData.height,
-          topoData.originalWidth,
-          topoData.originalHeight,
-          topoData.viewScale,
-          null, // sourceUrl - could be constructed from sector URL
-        )
-
-        // Build position data for each route on this topo
-        const positions: Array<{
-          routeId: RouteId
-          topoNumber: string
-          points: string
-          zindex?: number
-          order?: number
-          gradeClass?: string | null
-        }> = []
-
-        for (const routeAnnotation of topoData.routes) {
-          const internalRouteId = routeExternalToInternal.get(routeAnnotation.id)
-          if (internalRouteId) {
-            positions.push({
-              routeId: internalRouteId,
-              topoNumber: routeAnnotation.num,
-              points: routeAnnotation.points,
-              zindex: parseInt(routeAnnotation.zindex) || 0,
-              order: routeAnnotation.order,
-              gradeClass: routeAnnotation.gradeClass,
-            })
+    // Build topo number map from topo data (if any)
+    const topoNumberMap = new Map<number, string>()
+    if (data.topos && data.topos.length > 0) {
+      for (const topo of data.topos) {
+        for (const topoRoute of topo.routes) {
+          if (topoRoute.id && topoRoute.num && !topoNumberMap.has(topoRoute.id)) {
+            topoNumberMap.set(topoRoute.id, topoRoute.num)
           }
         }
-
-        // Save topo with positions
-        const { positionsCreated } = await this.topoRepo.saveTopoImageWithPositions(
-          topoEntity,
-          positions,
-        )
-
-        result.toposCreated++
-        result.topoPositionsCreated += positionsCreated
-      } catch (error) {
-        console.warn(`Failed to save topo ${topoData.topoId}:`, error)
       }
     }
+
+    // Save routes
+    const savedRouteIds = new Map<number, RouteId>()
+    for (const route of data.routes!) {
+      const topoNum = topoNumberMap.get(route.id)
+      const routeData = this.mapper.mapToRoute(route, sector.id, topoNum)
+      const savedRoute = await this.routeRepo.saveByExternalId(
+        this.mapper.createRouteEntity(routeData),
+      )
+      savedRouteIds.set(route.id, savedRoute.id)
+      result.routesCreated++
+    }
+
+    // Calculate and update sector stats
+    const sectorStats = this.calculateSectorStats(data.routes!)
+    sector.updateStats(sectorStats)
+    await this.sectorRepo.updateStats(sector)
+    console.log(
+      `      📊 Stats calculados: ${sectorStats.routeCount} rutas, avg: ${sectorStats.avgGrade}, maxH: ${sectorStats.maxHeight}m`,
+    )
+
+    // Save topos with positions (if any)
+    if (data.topos && data.topos.length > 0) {
+      for (const topoData of data.topos) {
+        try {
+          const topoEntity = new TopoImageEntity(
+            TopoImageId.generate(),
+            topoData.topoId,
+            sector.id,
+            topoData.thumbnailUrl,
+            topoData.fullImageUrl,
+            topoData.width,
+            topoData.height,
+            topoData.originalWidth,
+            topoData.originalHeight,
+            topoData.viewScale,
+            null,
+          )
+
+          const positions: Array<{
+            routeId: RouteId
+            topoNumber: string
+            points: string
+            zindex?: number
+            order?: number
+            gradeClass?: string | null
+          }> = []
+
+          for (const topoRoute of topoData.routes) {
+            const internalRouteId = savedRouteIds.get(topoRoute.id)
+            if (internalRouteId) {
+              positions.push({
+                routeId: internalRouteId,
+                topoNumber: topoRoute.num,
+                points: topoRoute.points,
+                zindex: parseInt(topoRoute.zindex) || 0,
+                order: topoRoute.order,
+                gradeClass: topoRoute.gradeClass,
+              })
+            }
+          }
+
+          if (positions.length > 0) {
+            const { positionsCreated } =
+              await this.topoRepo.saveTopoImageWithPositions(topoEntity, positions)
+            result.toposCreated++
+            result.topoPositionsCreated += positionsCreated
+            console.log(
+              `      ✅ Topo ${topoData.topoId}: ${positions.length} rutas con SVG`,
+            )
+          }
+        } catch (error: unknown) {
+          const err = error as Error
+          console.warn(
+            `      ⚠️  Error guardando topo ${topoData.topoId}: ${err.message}`,
+          )
+        }
+      }
+    }
+
+    console.log(`      ✅ Sector virtual creado: ${data.name} con ${data.routes!.length} rutas`)
   }
 
   /**
@@ -471,7 +539,6 @@ export class CragImporterService {
   ): Promise<void> {
     for (const topoData of topos) {
       try {
-        // Create CragTopoImage entity
         const topoEntity = new CragTopoImageEntity(
           TopoImageId.generate(),
           topoData.topoId,
@@ -486,14 +553,12 @@ export class CragImporterService {
           null, // sourceUrl
         )
 
-        // Build position data for each area/sector annotation
+        // Build position data for each sector annotation
         const positions: CragTopoSectorPositionData[] = []
-
         for (const annotation of topoData.routes) {
-          // Only process area-type annotations
           if (annotation.type === 'area') {
             positions.push({
-              sectorId: null, // Will be linked later if we can match by externalId
+              sectorId: null, // Will be linked later
               areaNumber: annotation.num,
               areaName: annotation.name,
               points: annotation.points,
@@ -505,21 +570,22 @@ export class CragImporterService {
           }
         }
 
-        // Save crag topo with positions
         const { positionsCreated } =
           await this.topoRepo.saveCragTopoImageWithPositions(
             topoEntity,
             positions,
           )
-
         result.cragToposCreated++
         result.cragTopoPositionsCreated += positionsCreated
 
         console.log(
-          `   📍 Saved crag topo ${topoData.topoId} with ${positionsCreated} sector positions`,
+          `      ✅ Crag Topo ${topoData.topoId}: ${positionsCreated} sectores con SVG`,
         )
-      } catch (error) {
-        console.warn(`Failed to save crag topo ${topoData.topoId}:`, error)
+      } catch (error: unknown) {
+        const err = error as Error
+        console.warn(
+          `      ⚠️  Error guardando crag topo ${topoData.topoId}: ${err.message}`,
+        )
       }
     }
   }

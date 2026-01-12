@@ -48,7 +48,7 @@ export class TheCragApiScraper {
 
   private cookie: string = ''
   private delayMs: number = 50
-  private options: ScraperOptions = { useProxies: true }
+  private options: ScraperOptions = { useProxies: true, includeTopos: true }
   private proxyManager: ProxyManager
 
   constructor() {
@@ -555,18 +555,15 @@ export class TheCragApiScraper {
       const originalHeight =
         viewScale > 0 ? Math.round(height / viewScale) : height
 
-      // Parse annotations
+      // Parse annotations - for crag topos, default type is 'area' since these show sectors
       let routes: TopoRouteAnnotation[] = []
-      let hasAreaAnnotations = false
       try {
         const rawData = JSON.parse(topoDataStr)
         if (Array.isArray(rawData)) {
           routes = rawData.map((r: Record<string, unknown>) => {
+            // Default to 'area' for crag overview topos (they show sectors, not routes)
             const annotationType = ((r.type as string) ||
-              'route') as TopoRouteAnnotation['type']
-            if (annotationType === 'area') {
-              hasAreaAnnotations = true
-            }
+              'area') as TopoRouteAnnotation['type']
             return {
               id: r.id as number,
               type: annotationType,
@@ -590,12 +587,9 @@ export class TheCragApiScraper {
         )
       }
 
-      // If inside .phototopo-fsc, include regardless of annotation type
-      // Otherwise, only include if it has area annotations
-      const isInsideFsc = fscContainer.length > 0
-      const shouldInclude = isInsideFsc || hasAreaAnnotations
-
-      if (topoId && (thumbnailUrl || fullImageUrl) && shouldInclude) {
+      // Include all topos found - crag overview topos can have various annotation types
+      // The key is that they're on the crag page, not a sector page
+      if (topoId && (thumbnailUrl || fullImageUrl)) {
         topos.push({
           topoId,
           width,

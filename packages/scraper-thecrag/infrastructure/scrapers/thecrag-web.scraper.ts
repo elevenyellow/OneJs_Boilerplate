@@ -448,10 +448,8 @@ export class TheCragWebScraper {
         )
       }
 
-      // Only include topos that have area annotations (crag overview topos)
-      const hasAreaAnnotations = routes.some((r) => r.type === 'area')
-      
-      if (topoId && thumbnailUrl && hasAreaAnnotations) {
+      // Include all topos found on crag pages - they show the overview of sectors
+      if (topoId && (thumbnailUrl || fullImageUrl)) {
         topos.push({
           topoId,
           width,

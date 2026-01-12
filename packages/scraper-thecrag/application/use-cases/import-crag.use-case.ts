@@ -1,25 +1,27 @@
 import { Inject, Injectable } from '@OneJs/core'
-import { TheCragApiScraper } from '@scraper-thecrag/infrastructure/scrapers/thecrag-api.scraper'
+import { CountryId } from '@climb-zone/crag'
+import { RegionId } from '@climb-zone/region'
 import {
   CragImporterService,
-  type ImportResult,
   type ImportOptions,
+  type ImportResult,
 } from '@scraper-thecrag/application/services/crag-importer.service'
 import type { ScrapedCragNode } from '@scraper-thecrag/domain/dtos/scraped-node.dto'
+import { TheCragApiScraper } from '@scraper-thecrag/infrastructure/scrapers/thecrag-api.scraper'
 
 export interface ImportCragInput {
   cragId: number
   cragName: string
-  country: string
-  region?: string
+  countryId: CountryId
+  regionId?: RegionId | null
   cookie?: string
   delayMs?: number
 }
 
 export interface ImportFromJsonInput {
   data: ScrapedCragNode
-  country: string
-  region?: string
+  countryId: CountryId
+  regionId?: RegionId | null
 }
 
 /**
@@ -57,9 +59,8 @@ export class ImportCragUseCase {
 
     // Import into database
     const options: ImportOptions = {
-      country: input.country,
-      region: input.region,
-      updateExisting: true,
+      countryId: input.countryId,
+      regionId: input.regionId,
     }
 
     return this.importer.importCrag(scrapedData, options)
@@ -72,9 +73,8 @@ export class ImportCragUseCase {
     console.log(`\n🔄 Importing ${input.data.name} from JSON...`)
 
     const options: ImportOptions = {
-      country: input.country,
-      region: input.region,
-      updateExisting: true,
+      countryId: input.countryId,
+      regionId: input.regionId,
     }
 
     return this.importer.importCrag(input.data, options)

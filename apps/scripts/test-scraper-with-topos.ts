@@ -37,8 +37,15 @@ async function main() {
     includeTopos: true, // Enable topo extraction
   })
 
-  // Optional: set cookie for authenticated access
-  // scraper.setCookie('your_session_cookie')
+  // Set cookie for authenticated access (required by TheCrag API)
+  const cookie = process.env.THECRAG_COOKIE
+  if (cookie) {
+    scraper.setCookie(cookie)
+    console.log('🔐 Using authentication cookie')
+  } else {
+    console.log('⚠️  No THECRAG_COOKIE set - API may reject requests')
+    console.log('   Set it with: THECRAG_COOKIE="your_cookie" bun run ...')
+  }
 
   try {
     await mkdir(OUTPUT_DIR, { recursive: true })
@@ -111,6 +118,34 @@ function displayNode(node: ScrapedCragNode, depth: number): void {
     if (node.info.numberTopos) {
       console.log(`${indent}   Topos in DB: ${node.info.numberTopos}`)
     }
+    // Show header image URL
+    if (node.info.headerImageUrl) {
+      console.log(`${indent}   🖼️  Header Image: ${node.info.headerImageUrl.substring(0, 70)}...`)
+    }
+    // Show overview topo URL
+    if (node.info.overviewTopoImageUrl) {
+      console.log(`${indent}   🗺️  Overview Topo: ${node.info.overviewTopoImageUrl.substring(0, 70)}...`)
+    }
+  }
+
+  // Show crag overview topos (panoramic views showing sectors)
+  if (node.cragTopos && node.cragTopos.length > 0) {
+    console.log(`${indent}   🗺️  ${node.cragTopos.length} crag overview topos:`)
+    for (const topo of node.cragTopos) {
+      const areaCount = topo.routes.filter(r => r.type === 'area').length
+      console.log(
+        `${indent}      - Topo ${topo.topoId}: ${areaCount} areas, ${topo.originalWidth}x${topo.originalHeight}`,
+      )
+      console.log(`${indent}        Full URL: ${topo.fullImageUrl?.substring(0, 60)}...`)
+      for (const area of topo.routes.filter(r => r.type === 'area').slice(0, 3)) {
+        console.log(
+          `${indent}         ${area.num}. ${area.name}`,
+        )
+      }
+      if (areaCount > 3) {
+        console.log(`${indent}         ... and ${areaCount - 3} more areas`)
+      }
+    }
   }
 
   if (node.routes && node.routes.length > 0) {
@@ -132,6 +167,7 @@ function displayNode(node: ScrapedCragNode, depth: number): void {
       console.log(
         `${indent}      - Topo ${topo.topoId}: ${topo.routes.length} routes, ${topo.originalWidth}x${topo.originalHeight}`,
       )
+      console.log(`${indent}        Full URL: ${topo.fullImageUrl?.substring(0, 60)}...`)
       for (const route of topo.routes.slice(0, 3)) {
         console.log(
           `${indent}         ${route.num}. ${route.name} (${route.grade})`,

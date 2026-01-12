@@ -11,6 +11,8 @@ import { PrismaPlugin } from '@OneJs/prisma'
 // Tipos de comandos disponibles
 type Command =
   | 'test-altura'
+  | 'test-jerica'
+  | 'test-cheste'
   | 'test-valencia'
   | 'test-country'
   | 'scrape-spain'
@@ -39,6 +41,22 @@ const COMMANDS: Record<string, CommandDefinition> = {
     execute: async (container) => {
       const { testAltura } = await import('./commands/test-altura.command')
       await testAltura(container, COOKIE)
+    },
+  },
+  'test-jerica': {
+    name: 'test-jerica',
+    description: 'Test pequeño: Jérica (Castellón) - verificar imágenes y topos',
+    execute: async (container) => {
+      const { testJerica } = await import('./commands/test-jerica.command')
+      await testJerica(container, COOKIE)
+    },
+  },
+  'test-cheste': {
+    name: 'test-cheste',
+    description: 'Test pequeño: Cheste (Valencia) - verificar imágenes y topos',
+    execute: async (container) => {
+      const { testCheste } = await import('./commands/test-cheste.command')
+      await testCheste(container, COOKIE)
     },
   },
   'test-valencia': {

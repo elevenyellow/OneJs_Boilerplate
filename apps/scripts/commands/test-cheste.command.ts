@@ -1,8 +1,8 @@
 /**
- * Comando: test-altura
- * Scrape solo el crag de Altura (Castellón, Valencia) para testing de imágenes
+ * Comando: test-cheste
+ * Scrape solo el crag de Cheste (Valencia) para testing
  *
- * Este test es pequeño y enfocado para verificar:
+ * Este test es para verificar:
  * - Extracción de topos de sectores
  * - Guardado de headerImageUrl en sectores
  * - Guardado de TopoImage y RouteTopoPosition
@@ -31,13 +31,13 @@ import {
   type ImportResult,
 } from '@scraper-thecrag/application/services/crag-importer.service'
 
-// Altura IDs from TheCrag
-const ALTURA_ID = 782524281 // Altura crag
+// Cheste IDs from TheCrag
+const CHESTE_ID = 1447606131 // Cheste crag
 const COMUNIDAD_VALENCIANA_ID = 22687829 // Valencia region
 const SPAIN_ID = 16227917
 const EUROPE_ID = 7546062
 
-export async function testAltura(container: unknown, cookie: string) {
+export async function testCheste(container: unknown, cookie: string) {
   // Get repositories and services from container
   const dic = container as { get: <T>(token: unknown) => T }
   const scraper = dic.get<TheCragApiScraper>(TheCragApiScraper)
@@ -53,7 +53,7 @@ export async function testAltura(container: unknown, cookie: string) {
   scraper.setDelay(200) // Slightly slower to allow topo fetching
   scraper.setOptions({ includeTopos: true })
 
-  console.log('🏔️  TEST ALTURA - Verificación de imágenes de sectores y topos')
+  console.log('🏔️  TEST CHESTE - Verificación de imágenes de sectores y topos')
   console.log('='.repeat(80))
   console.log('')
   console.log(
@@ -90,11 +90,11 @@ export async function testAltura(container: unknown, cookie: string) {
     )
 
     // Step 3: Use scraper.scrapeCrag() to get all data
-    console.log('📍 Step 3: Ejecutando scraper para Altura...')
+    console.log('📍 Step 3: Ejecutando scraper para Cheste...')
     console.log('   (El scraper obtiene info, imágenes, topos y rutas)')
     console.log('')
 
-    const scrapedData = await scraper.scrapeCrag(ALTURA_ID, 'Altura', 'Crag')
+    const scrapedData = await scraper.scrapeCrag(CHESTE_ID, 'Cheste', 'Crag')
 
     console.log(`   ✅ Scraping completado:`)
     console.log(`      - Nombre: ${scrapedData.name}`)
@@ -195,7 +195,7 @@ async function ensureRegionExists(
 function printFinalReport(result: ImportResult, duration: string) {
   console.log('')
   console.log('='.repeat(80))
-  console.log('🎉 TEST ALTURA COMPLETADO')
+  console.log('🎉 TEST CHESTE COMPLETADO')
   console.log('='.repeat(80))
   console.log('')
   console.log('📊 RESUMEN:')
