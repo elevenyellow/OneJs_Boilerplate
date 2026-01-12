@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
+import { ExternalId } from '@climb-zone/shared'
 import { TopoImageEntity } from '@topo/domain/entities/topo-image.entity'
 import { RouteTopoPositionEntity } from '@topo/domain/entities/route-topo-position.entity'
 import {
@@ -60,9 +61,9 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
     return topo ? this.toEntity(topo) : null
   }
 
-  async findByExternalId(externalId: string): Promise<TopoImageEntity | null> {
+  async findByExternalId(externalId: ExternalId): Promise<TopoImageEntity | null> {
     const topo = await this.prisma.topoImage.findUnique({
-      where: { externalId },
+      where: { externalId: externalId.toString() },
     })
     return topo ? this.toEntity(topo) : null
   }
@@ -274,10 +275,10 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
   }
 
   async findCragTopoByExternalId(
-    externalId: string,
+    externalId: ExternalId,
   ): Promise<CragTopoImageEntity | null> {
     const topo = await this.prisma.cragTopoImage.findUnique({
-      where: { externalId },
+      where: { externalId: externalId.toString() },
     })
     return topo ? this.toCragTopoEntity(topo) : null
   }
@@ -288,6 +289,62 @@ export class TopoPrismaRepository extends PrismaRepository<'topoImage'> {
       orderBy: { createdAt: 'asc' },
     })
     return topos.map((t) => this.toCragTopoEntity(t))
+  }
+
+  /**
+   * Find crag topos with sector positions for crag detail view
+   * Returns the data structure expected by GetCragDetailUseCase
+   */
+  async findCragToposWithPositions(cragId: CragId): Promise<
+    Array<{
+      id: string
+      externalId: string
+      thumbnailUrl: string
+      fullImageUrl: string
+      width: number
+      height: number
+      originalWidth: number
+      originalHeight: number
+      viewScale: number
+      sectorPositions: Array<{
+        sectorId: string | null
+        areaNumber: string
+        areaName: string
+        points: string
+        externalAreaId: number | null
+        areaUrl: string | null
+      }>
+    }>
+  > {
+    const cragTopos = await this.prisma.cragTopoImage.findMany({
+      where: { cragId: cragId.toString() },
+      include: {
+        sectorPositions: {
+          orderBy: { order: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    return cragTopos.map((topo) => ({
+      id: topo.id,
+      externalId: topo.externalId,
+      thumbnailUrl: topo.thumbnailS3Url ?? topo.thumbnailUrl,
+      fullImageUrl: topo.fullImageS3Url ?? topo.fullImageUrl,
+      width: topo.width,
+      height: topo.height,
+      originalWidth: topo.originalWidth,
+      originalHeight: topo.originalHeight,
+      viewScale: topo.viewScale,
+      sectorPositions: topo.sectorPositions.map((pos) => ({
+        sectorId: pos.sectorId,
+        areaNumber: pos.areaNumber,
+        areaName: pos.areaName,
+        points: pos.points,
+        externalAreaId: pos.externalAreaId ? Number(pos.externalAreaId) : null,
+        areaUrl: pos.areaUrl,
+      })),
+    }))
   }
 
   async saveCragTopoImageWithPositions(

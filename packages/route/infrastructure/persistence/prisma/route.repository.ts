@@ -209,6 +209,55 @@ export class RoutePrismaRepository extends PrismaRepository<'route'> {
     })
   }
 
+  /**
+   * Find top routes across multiple sectors (by stars/ascents)
+   * Returns route data with sector name for display
+   */
+  async findTopRoutesBySectorIds(
+    sectorIds: SectorId[],
+    limit = 15,
+  ): Promise<
+    Array<{
+      id: string
+      name: string
+      grade: string | null
+      gradeIndex: number | null
+      stars: number | null
+      ascents: number | null
+      height: number | null
+      routeType: string | null
+      sectorId: string
+      sectorName: string
+    }>
+  > {
+    const sectorIdStrings = sectorIds.map((id) => id.toString())
+    const routes = await this.prisma.route.findMany({
+      where: {
+        sectorId: { in: sectorIdStrings },
+      },
+      orderBy: [{ stars: 'desc' }, { ascents: 'desc' }],
+      take: limit,
+      include: {
+        sector: {
+          select: { name: true },
+        },
+      },
+    })
+
+    return routes.map((route) => ({
+      id: route.id,
+      name: route.name,
+      grade: route.grade,
+      gradeIndex: route.gradeIndex,
+      stars: route.stars,
+      ascents: route.ascents,
+      height: route.height,
+      routeType: route.subType,
+      sectorId: route.sectorId,
+      sectorName: route.sector.name,
+    }))
+  }
+
   async existsByExternalId(externalId: ExternalId): Promise<boolean> {
     const count = await this.prisma.route.count({
       where: { externalId: externalId.toBigInt() },

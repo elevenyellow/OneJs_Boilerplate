@@ -12,6 +12,7 @@ import {
   Seasonality,
   type BetaItemData,
 } from '@climb-zone/shared'
+import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import type { RouteSearchInfo } from '@sector/domain/dtos/search-sectors.dto'
 import {
   SectorEntity,
@@ -196,6 +197,39 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
       orderBy: { name: 'asc' },
     })
     return sectors.map((s: SectorPrismaData) => this.toEntity(s))
+  }
+
+  /**
+   * Find all sectors belonging to a crag (through areas)
+   * Returns sectors ordered by favorites and route count
+   */
+  async findByCragId(cragId: CragId): Promise<SectorEntity[]> {
+    const sectors = await this.prisma.sector.findMany({
+      where: {
+        area: {
+          cragId: cragId.toString(),
+        },
+      },
+      orderBy: [{ totalFavorites: 'desc' }, { routeCount: 'desc' }],
+    })
+    return sectors.map((s: SectorPrismaData) => this.toEntity(s))
+  }
+
+  /**
+   * Get route counts per sector for a list of sector IDs
+   */
+  async getRouteCountsBySectorIds(
+    sectorIds: SectorId[],
+  ): Promise<Map<string, number>> {
+    const sectorIdStrings = sectorIds.map((id) => id.toString())
+    const counts = await this.prisma.route.groupBy({
+      by: ['sectorId'],
+      where: {
+        sectorId: { in: sectorIdStrings },
+      },
+      _count: { id: true },
+    })
+    return new Map(counts.map((r) => [r.sectorId, r._count.id]))
   }
 
   async findByGradeRange(
@@ -753,13 +787,14 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
    * Get total sector count for multiple crags
    */
   async getSectorCountsByCragIds(
-    cragIds: string[],
+    cragIds: CragId[],
   ): Promise<Map<string, number>> {
+    const cragIdStrings = cragIds.map((id) => id.toString())
     const counts = await this.prisma.sector.groupBy({
       by: ['areaId'],
       where: {
         area: {
-          cragId: { in: cragIds },
+          cragId: { in: cragIdStrings },
         },
       },
       _count: {
@@ -770,7 +805,7 @@ export class SectorPrismaRepository extends PrismaRepository<'sector'> {
     // Get area to crag mapping
     const areas = await this.prisma.area.findMany({
       where: {
-        cragId: { in: cragIds },
+        cragId: { in: cragIdStrings },
       },
       select: {
         id: true,
