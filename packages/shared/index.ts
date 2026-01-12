@@ -10,3 +10,8 @@ export { Seasonality } from './domain/value-objects/seasonality.vo'
 export { AltNames } from './domain/value-objects/alt-names.vo'
 export { Locatedness } from './domain/value-objects/locatedness.vo'
 export { PermitInfo } from './domain/value-objects/permit-info.vo'
+export {
+  PriceCategory,
+  type PriceCategoryType,
+} from './domain/value-objects/price-category.vo'
+export { Kudos } from './domain/value-objects/kudos.vo'

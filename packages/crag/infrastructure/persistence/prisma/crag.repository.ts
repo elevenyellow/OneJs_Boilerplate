@@ -7,16 +7,16 @@ import {
   BetaInfo,
   ExternalId,
   Geometry,
+  Kudos,
   Locatedness,
   Name,
   PermitInfo,
+  PriceCategory,
   Seasonality,
   Url,
 } from '@climb-zone/shared'
 import { CragEntity } from '@crag/domain/entities/crag.entity'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
-import { Kudos } from '@crag/domain/value-objects/kudos.vo'
-import { PriceCategory } from '@crag/domain/value-objects/price-category.vo'
 
 interface CragPrismaData {
   id: string

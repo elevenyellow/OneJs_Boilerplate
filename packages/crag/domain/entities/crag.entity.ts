@@ -1,19 +1,19 @@
 import { CountryId } from '@climb-zone/country'
 import { RegionId } from '@climb-zone/region'
 import {
+  AltNames,
   BetaInfo,
   ExternalId,
   Geometry,
+  Kudos,
+  Locatedness,
   Name,
+  PermitInfo,
+  PriceCategory,
   Seasonality,
   Url,
-  AltNames,
-  Locatedness,
-  PermitInfo,
 } from '@climb-zone/shared'
 import { CragId } from '../value-objects/crag-id.vo'
-import { PriceCategory } from '@sector/domain/value-objects/price-category.vo'
-import { Kudos } from '@sector/domain/value-objects/kudos.vo'
 
 /**
  * Crag Entity - Represents a climbing area at the highest level
