@@ -3,7 +3,7 @@
  */
 export interface TopoRouteAnnotation {
   id: number
-  type: 'route' | 'area' | 'anchor' | 'belay'
+  type: 'route' | 'area' | 'anchor' | 'belay' | 'annotation'
   num: string
   grade: string
   gradeClass: string // e.g., 'gb3' for grade band
