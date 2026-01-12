@@ -2,14 +2,33 @@ import { FilterChip } from '@/components/FilterChip'
 import { FilterChipsRow } from '@/components/FilterChipsRow'
 import { HeroHeader } from '@/components/HeroHeader'
 import { LanguageTextSection } from '@/components/LanguageTextSection'
-import { WeatherCard } from '@/components/WeatherCard'
 import { TopoViewer } from '@/components/TopoViewer'
+import { WeatherChip } from '@/components/WeatherChip'
 import { Colors } from '@/constants/Colors'
 import { useFilters } from '@/contexts/FiltersContext'
 import { useSectorRoutes } from '@/hooks/useSectorRoutes'
 import { useSectorTopos } from '@/hooks/useTopos'
-import type { RouteSearchInfo } from '@/lib/api'
+import type {
+  RouteSearchInfo as RouteInfo,
+  RouteSearchInfo,
+  TopoImage,
+} from '@/lib/api'
 import { t } from '@/lib/i18n'
+import { gradeToIndex, indexToGrade } from '@/utils/gradeConverter'
+import { Ionicons } from '@expo/vector-icons'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import React, { useCallback, useMemo, useState } from 'react'
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  SectionList,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native'
 
 // Local type for parsed tags
 interface SectorTagsLocal {
@@ -28,22 +47,6 @@ interface SectorTagsLocal {
   beginner: boolean | null
   rawTags: string[]
 }
-import { gradeToIndex, indexToGrade } from '@/utils/gradeConverter'
-import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useMemo, useState, useCallback } from 'react'
-import {
-  ActivityIndicator,
-  Linking,
-  Platform,
-  Pressable,
-  SectionList,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native'
-import type { TopoImage, RouteSearchInfo as RouteInfo } from '@/lib/api'
 
 // Section type for SectionList with sticky topo headers
 interface TopoSection {
@@ -180,7 +183,8 @@ export default function SectorDetailScreen() {
   // Parse tags from individual params
   const sectorTags: SectorTagsLocal | null = useMemo(() => {
     // Check if any tag param is present
-    const hasAnyTag = params.kidFriendly !== undefined || 
+    const hasAnyTag =
+      params.kidFriendly !== undefined ||
       params.dogFriendly !== undefined ||
       params.beginner !== undefined ||
       params.accessible !== undefined ||
@@ -197,7 +201,12 @@ export default function SectorDetailScreen() {
     if (!hasAnyTag) return null
 
     return {
-      kidFriendly: params.kidFriendly === 'true' ? true : params.kidFriendly === 'false' ? false : null,
+      kidFriendly:
+        params.kidFriendly === 'true'
+          ? true
+          : params.kidFriendly === 'false'
+            ? false
+            : null,
       dogFriendly: params.dogFriendly === 'true' ? true : null,
       accessible: params.accessible === 'true' ? true : null,
       camping: params.camping === 'true' ? true : null,
@@ -212,30 +221,62 @@ export default function SectorDetailScreen() {
       beginner: params.beginner === 'true' ? true : null,
       rawTags: [],
     }
-  }, [params.kidFriendly, params.dogFriendly, params.beginner, params.accessible, 
-      params.scenic, params.camping, params.swimming, params.quiet, params.popular,
-      params.sport, params.trad, params.bouldering, params.multipitch])
+  }, [
+    params.kidFriendly,
+    params.dogFriendly,
+    params.beginner,
+    params.accessible,
+    params.scenic,
+    params.camping,
+    params.swimming,
+    params.quiet,
+    params.popular,
+    params.sport,
+    params.trad,
+    params.bouldering,
+    params.multipitch,
+  ])
 
   // Convert sector tags to HeroHeader format
   const heroTags = useMemo(() => {
     if (!sectorTags) return undefined
-    
-    const tags: { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = []
-    
+
+    const tags: {
+      label: string
+      icon: keyof typeof Ionicons.glyphMap
+      color: string
+    }[] = []
+
     if (sectorTags.kidFriendly === true) {
-      tags.push({ label: 'Kid Friendly', icon: 'happy-outline', color: '#16A34A' })
+      tags.push({
+        label: 'Kid Friendly',
+        icon: 'happy-outline',
+        color: '#16A34A',
+      })
     }
     if (sectorTags.kidFriendly === false) {
-      tags.push({ label: 'Not Kid Friendly', icon: 'warning-outline', color: '#DC2626' })
+      tags.push({
+        label: 'Not Kid Friendly',
+        icon: 'warning-outline',
+        color: '#DC2626',
+      })
     }
     if (sectorTags.dogFriendly === true) {
-      tags.push({ label: 'Dog Friendly', icon: 'paw-outline', color: '#D97706' })
+      tags.push({
+        label: 'Dog Friendly',
+        icon: 'paw-outline',
+        color: '#D97706',
+      })
     }
     if (sectorTags.beginner === true) {
       tags.push({ label: 'Beginner', icon: 'school-outline', color: '#2563EB' })
     }
     if (sectorTags.accessible === true) {
-      tags.push({ label: 'Accessible', icon: 'accessibility-outline', color: '#4F46E5' })
+      tags.push({
+        label: 'Accessible',
+        icon: 'accessibility-outline',
+        color: '#4F46E5',
+      })
     }
     if (sectorTags.scenic === true) {
       tags.push({ label: 'Scenic', icon: 'eye-outline', color: '#059669' })
@@ -262,9 +303,13 @@ export default function SectorDetailScreen() {
       tags.push({ label: 'Boulder', icon: 'fitness-outline', color: '#10B981' })
     }
     if (sectorTags.multipitch === true) {
-      tags.push({ label: 'Multipitch', icon: 'trending-up-outline', color: '#8B5CF6' })
+      tags.push({
+        label: 'Multipitch',
+        icon: 'trending-up-outline',
+        color: '#8B5CF6',
+      })
     }
-    
+
     return tags.length > 0 ? tags : undefined
   }, [sectorTags])
 
@@ -313,7 +358,11 @@ export default function SectorDetailScreen() {
   }
 
   // Get global grade range and picker
-  const { gradeRange: globalGradeRange, showGradePicker, isGradeInRange } = useFilters()
+  const {
+    gradeRange: globalGradeRange,
+    showGradePicker,
+    isGradeInRange,
+  } = useFilters()
 
   // Filter states
   const [sortBy, setSortBy] = useState<'number' | 'grade' | 'stars' | 'height'>(
@@ -399,7 +448,6 @@ export default function SectorDetailScreen() {
       routes = routes.filter((r) => (r.stars ?? 0) >= minStars)
     }
 
-
     routes.sort((a, b) => {
       switch (sortBy) {
         case 'number': {
@@ -441,12 +489,14 @@ export default function SectorDetailScreen() {
     if (topos.length === 0) {
       // No topos - single section with all routes
       if (filteredAndSortedRoutes.length === 0) return []
-      return [{
-        topo: null,
-        topoIndex: 0,
-        title: `All Routes (${filteredAndSortedRoutes.length})`,
-        data: filteredAndSortedRoutes,
-      }]
+      return [
+        {
+          topo: null,
+          topoIndex: 0,
+          title: `All Routes (${filteredAndSortedRoutes.length})`,
+          data: filteredAndSortedRoutes,
+        },
+      ]
     }
 
     // Build a set of all route IDs that appear in any topo
@@ -458,27 +508,34 @@ export default function SectorDetailScreen() {
     }
 
     // Create sections for each topo
-    const topoSections: TopoSection[] = topos.map((topo, index) => {
-      const topoRouteIds = new Set((topo.routes || []).map(r => r.routeId))
-      const routesInTopo = filteredAndSortedRoutes.filter(route => topoRouteIds.has(route.id))
-      return {
-        topo,
-        topoIndex: index + 1,
-        title: `Topo ${index + 1} (${routesInTopo.length} routes)`,
-        data: routesInTopo,
-      }
-    }).filter(section => section.data.length > 0)
+    const topoSections: TopoSection[] = topos
+      .map((topo, index) => {
+        const topoRouteIds = new Set((topo.routes || []).map((r) => r.routeId))
+        const routesInTopo = filteredAndSortedRoutes.filter((route) =>
+          topoRouteIds.has(route.id),
+        )
+        return {
+          topo,
+          topoIndex: index + 1,
+          title: `Topo ${index + 1} (${routesInTopo.length} routes)`,
+          data: routesInTopo,
+        }
+      })
+      .filter((section) => section.data.length > 0)
 
     // Routes that are not in any topo
-    const routesWithoutTopo = filteredAndSortedRoutes.filter(route => !routeIdsInTopos.has(route.id))
-    
+    const routesWithoutTopo = filteredAndSortedRoutes.filter(
+      (route) => !routeIdsInTopos.has(route.id),
+    )
+
     if (routesWithoutTopo.length > 0) {
       topoSections.push({
         topo: null,
         topoIndex: 0,
-        title: topoSections.length > 0 
-          ? `Other Routes (${routesWithoutTopo.length})`
-          : `All Routes (${routesWithoutTopo.length})`,
+        title:
+          topoSections.length > 0
+            ? `Other Routes (${routesWithoutTopo.length})`
+            : `All Routes (${routesWithoutTopo.length})`,
         data: routesWithoutTopo,
       })
     }
@@ -490,18 +547,31 @@ export default function SectorDetailScreen() {
   const routeStats = useMemo(() => {
     if (allRoutes.length === 0) return null
 
-    const heights = allRoutes.map((r) => r.height).filter((h): h is number => h !== null && h > 0)
-    const grades = allRoutes.map((r) => r.gradeIndex ?? (r.grade ? gradeToIndex(r.grade) : null)).filter((g): g is number => g !== null)
-    const stars = allRoutes.map((r) => r.stars).filter((s): s is number => s !== null && s > 0)
+    const heights = allRoutes
+      .map((r) => r.height)
+      .filter((h): h is number => h !== null && h > 0)
+    const grades = allRoutes
+      .map((r) => r.gradeIndex ?? (r.grade ? gradeToIndex(r.grade) : null))
+      .filter((g): g is number => g !== null)
+    const stars = allRoutes
+      .map((r) => r.stars)
+      .filter((s): s is number => s !== null && s > 0)
 
     const maxHeight = heights.length > 0 ? Math.max(...heights) : null
-    const avgHeight = heights.length > 0 ? Math.round(heights.reduce((a, b) => a + b, 0) / heights.length) : null
-    
+    const avgHeight =
+      heights.length > 0
+        ? Math.round(heights.reduce((a, b) => a + b, 0) / heights.length)
+        : null
+
     const minGradeIndex = grades.length > 0 ? Math.min(...grades) : null
     const maxGradeIndex = grades.length > 0 ? Math.max(...grades) : null
-    const avgGradeIndex = grades.length > 0 ? Math.round(grades.reduce((a, b) => a + b, 0) / grades.length) : null
-    
-    const avgStars = stars.length > 0 ? stars.reduce((a, b) => a + b, 0) / stars.length : null
+    const avgGradeIndex =
+      grades.length > 0
+        ? Math.round(grades.reduce((a, b) => a + b, 0) / grades.length)
+        : null
+
+    const avgStars =
+      stars.length > 0 ? stars.reduce((a, b) => a + b, 0) / stars.length : null
 
     return {
       maxHeight,
@@ -541,9 +611,7 @@ export default function SectorDetailScreen() {
             backgroundColor: isHighlighted
               ? colors.primary + '15'
               : colors.card,
-            borderColor: isHighlighted
-              ? colors.primary
-              : colors.border,
+            borderColor: isHighlighted ? colors.primary : colors.border,
           },
         ]}
       >
@@ -552,9 +620,7 @@ export default function SectorDetailScreen() {
           style={[
             styles.routeNumBadge,
             {
-              backgroundColor: isHighlighted
-                ? colors.primary
-                : colors.muted,
+              backgroundColor: isHighlighted ? colors.primary : colors.muted,
             },
           ]}
         >
@@ -641,9 +707,7 @@ export default function SectorDetailScreen() {
             {route.stars !== null && route.stars > 0 && (
               <View style={styles.routeMetaItem}>
                 <Ionicons name="star" size={11} color="#F59E0B" />
-                <Text
-                  style={[styles.routeMetaText, { color: '#F59E0B' }]}
-                >
+                <Text style={[styles.routeMetaText, { color: '#F59E0B' }]}>
                   {route.stars.toFixed(1)}
                 </Text>
               </View>
@@ -670,10 +734,7 @@ export default function SectorDetailScreen() {
 
         {/* Grade badge */}
         <View
-          style={[
-            styles.gradeBadge,
-            { backgroundColor: gradeColor + '20' },
-          ]}
+          style={[styles.gradeBadge, { backgroundColor: gradeColor + '20' }]}
         >
           <Text style={[styles.gradeText, { color: gradeColor }]}>
             {route.grade || '-'}
@@ -687,10 +748,7 @@ export default function SectorDetailScreen() {
             handleViewRouteDetails(route)
           }}
           hitSlop={8}
-          style={[
-            styles.detailsButton,
-            { backgroundColor: colors.muted },
-          ]}
+          style={[styles.detailsButton, { backgroundColor: colors.muted }]}
         >
           <Ionicons
             name="information-circle-outline"
@@ -703,40 +761,57 @@ export default function SectorDetailScreen() {
   }
 
   // Render item for SectionList
-  const renderItem = useCallback(({ item, index }: { item: RouteSearchInfo; index: number }) => {
-    return (
-      <View style={styles.routeItemContainer}>
-        {renderRouteRow(item, index)}
-      </View>
-    )
-  }, [highlightedRouteId, colors, isRouteInGlobalRange])
+  const renderItem = useCallback(
+    ({ item, index }: { item: RouteSearchInfo; index: number }) => {
+      return (
+        <View style={styles.routeItemContainer}>
+          {renderRouteRow(item, index)}
+        </View>
+      )
+    },
+    [highlightedRouteId, colors, isRouteInGlobalRange],
+  )
 
   // Render section header with sticky topo image - no title, just the image
-  const renderSectionHeader = useCallback(({ section }: { section: TopoSection }) => {
-    // Only render topo image, skip header for sections without topo
-    if (!section.topo) return null
-    
-    return (
-      <View style={[styles.stickyTopoHeader, { backgroundColor: colors.background }]}>
-        <TopoViewer
-          topo={section.topo}
-          highlightedRouteId={highlightedRouteId || undefined}
-          gradeRange={
-            userMinGradeIndex !== null && userMaxGradeIndex !== null
-              ? { min: userMinGradeIndex, max: userMaxGradeIndex }
-              : undefined
-          }
-          routeDetails={allRoutes}
-          showRouteList={false}
-          onRoutePress={(routePos) => {
-            setHighlightedRouteId((prev) =>
-              prev === routePos.routeId ? null : routePos.routeId,
-            )
-          }}
-        />
-      </View>
-    )
-  }, [highlightedRouteId, colors, userMinGradeIndex, userMaxGradeIndex, allRoutes])
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: TopoSection }) => {
+      // Only render topo image, skip header for sections without topo
+      if (!section.topo) return null
+
+      return (
+        <View
+          style={[
+            styles.stickyTopoHeader,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <TopoViewer
+            topo={section.topo}
+            highlightedRouteId={highlightedRouteId || undefined}
+            gradeRange={
+              userMinGradeIndex !== null && userMaxGradeIndex !== null
+                ? { min: userMinGradeIndex, max: userMaxGradeIndex }
+                : undefined
+            }
+            routeDetails={allRoutes}
+            showRouteList={false}
+            onRoutePress={(routePos) => {
+              setHighlightedRouteId((prev) =>
+                prev === routePos.routeId ? null : routePos.routeId,
+              )
+            }}
+          />
+        </View>
+      )
+    },
+    [
+      highlightedRouteId,
+      colors,
+      userMinGradeIndex,
+      userMaxGradeIndex,
+      allRoutes,
+    ],
+  )
 
   // Key extractor
   const keyExtractor = useCallback((item: RouteSearchInfo, index: number) => {
@@ -744,487 +819,587 @@ export default function SectorDetailScreen() {
   }, [])
 
   // List header component (content before routes) - must be before early return
-  const ListHeaderComponent = useCallback(() => (
-    <>
-      {/* Hero Header */}
-      <HeroHeader
-        title={sector.name}
-        subtitle={sector.cragName || undefined}
-        imageUrl={params.headerImageUrl || null}
-        rockType={sector.rockType}
-        climbingType={sector.climbingStyle}
-        icon="layers-outline"
-        onBack={() => router.back()}
-        stats={[
-          { label: 'routes', value: sector.totalRoutes, icon: 'git-branch' },
-          ...(sector.routesInRange !== null
-            ? [
-                {
-                  label: 'in range',
-                  value: sector.routesInRange,
-                  icon: 'checkmark-circle' as const,
-                },
-              ]
-            : []),
-          ...(sector.avgStars !== null && sector.avgStars > 0
-            ? [
-                {
-                  label: 'stars',
-                  value: sector.avgStars.toFixed(1),
-                  icon: 'star' as const,
-                },
-              ]
-            : []),
-        ]}
-        badge={
-          sector.gradeRange.min && sector.gradeRange.max
-            ? {
-                label: `${sector.gradeRange.min} - ${sector.gradeRange.max}`,
-                color: colors.primary,
-              }
-            : undefined
-        }
-        tags={heroTags}
-      />
+  const ListHeaderComponent = useCallback(
+    () => (
+      <>
+        {/* Hero Header */}
+        <HeroHeader
+          title={sector.name}
+          subtitle={sector.cragName || undefined}
+          imageUrl={params.headerImageUrl || null}
+          rockType={sector.rockType}
+          climbingType={sector.climbingStyle}
+          icon="layers-outline"
+          onBack={() => router.back()}
+          stats={[
+            { label: 'routes', value: sector.totalRoutes, icon: 'git-branch' },
+            ...(sector.routesInRange !== null
+              ? [
+                  {
+                    label: 'in range',
+                    value: sector.routesInRange,
+                    icon: 'checkmark-circle' as const,
+                  },
+                ]
+              : []),
+            ...(sector.avgStars !== null && sector.avgStars > 0
+              ? [
+                  {
+                    label: 'stars',
+                    value: sector.avgStars.toFixed(1),
+                    icon: 'star' as const,
+                  },
+                ]
+              : []),
+          ]}
+          badge={
+            sector.gradeRange.min && sector.gradeRange.max
+              ? {
+                  label: `${sector.gradeRange.min} - ${sector.gradeRange.max}`,
+                  color: colors.primary,
+                }
+              : undefined
+          }
+          tags={heroTags}
+        />
 
-      <View style={styles.content}>
-        {/* Action Buttons Row */}
-        <View style={styles.actionButtonsRow}>
-          {/* Info Button */}
-          {(sector.description || sector.approach) && (
-            <Pressable
-              onPress={() => setShowInfo(!showInfo)}
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons name="information-circle" size={22} color="#3B82F6" />
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                Info
-              </Text>
-            </Pressable>
-          )}
-
-          {/* Parking Button */}
-          {parkingLocations.length > 0 && (
-            <Pressable
-              onPress={() => handleNavigateToParking(parkingLocations[0])}
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons name="car" size={22} color="#F59E0B" />
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                Parking
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Collapsible Info Section */}
-        {showInfo && (sector.description || sector.approach) && (
-          <View style={styles.infoSection}>
-            {sector.description && (
-              <LanguageTextSection
-                text={sector.description}
-                title={t('description')}
-              />
+        <View style={styles.content}>
+          {/* Action Buttons Row */}
+          <View style={styles.actionButtonsRow}>
+            {/* Info Button */}
+            {(sector.description || sector.approach) && (
+              <Pressable
+                onPress={() => setShowInfo(!showInfo)}
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="information-circle" size={22} color="#3B82F6" />
+                <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                  Info
+                </Text>
+              </Pressable>
             )}
-            {sector.approach && (
-              <LanguageTextSection
-                text={sector.approach}
-                title={t('approach')}
-                showMapButton={!!latitude && !!longitude}
-                latitude={latitude}
-                longitude={longitude}
-                locationName={sector.name}
-              />
+
+            {/* Parking Button */}
+            {parkingLocations.length > 0 && (
+              <Pressable
+                onPress={() => handleNavigateToParking(parkingLocations[0])}
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="car" size={22} color="#F59E0B" />
+                <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                  Parking
+                </Text>
+              </Pressable>
             )}
           </View>
-        )}
 
-        {/* Stats */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons
-              name="stats-chart-outline"
-              size={20}
-              color={colors.primary}
-            />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Stats
-            </Text>
-          </View>
-          <View style={styles.statsGrid}>
-            {/* Total Routes */}
-            <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {sector.totalRoutes}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                Routes
-              </Text>
+          {/* Collapsible Info Section */}
+          {showInfo && (sector.description || sector.approach) && (
+            <View style={styles.infoSection}>
+              {sector.description && (
+                <LanguageTextSection
+                  text={sector.description}
+                  title={t('description')}
+                />
+              )}
+              {sector.approach && (
+                <LanguageTextSection
+                  text={sector.approach}
+                  title={t('approach')}
+                  showMapButton={!!latitude && !!longitude}
+                  latitude={latitude}
+                  longitude={longitude}
+                  locationName={sector.name}
+                />
+              )}
             </View>
+          )}
 
-            {/* Routes in Global Range */}
-            {routesInGlobalRangeCount > 0 && (
-              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.statValue, { color: '#22C55E' }]}>
-                  {routesInGlobalRangeCount}
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  In Range
-                </Text>
-              </View>
-            )}
-
-            {/* Easiest Grade */}
-            {routeStats && routeStats.minGradeIndex !== null && (
-              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.statValue, { color: '#22C55E' }]}>
-                  {indexToGrade(routeStats.minGradeIndex)}
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Easiest
-                </Text>
-              </View>
-            )}
-
-            {/* Hardest Grade */}
-            {routeStats && routeStats.maxGradeIndex !== null && (
-              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.statValue, { color: '#EF4444' }]}>
-                  {indexToGrade(routeStats.maxGradeIndex)}
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Hardest
-                </Text>
-              </View>
-            )}
-
-            {/* Average Grade */}
-            {routeStats && routeStats.avgGradeIndex !== null && (
-              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.statValue, { color: colors.primary }]}>
-                  {indexToGrade(routeStats.avgGradeIndex)}
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Avg Grade
-                </Text>
-              </View>
-            )}
-
-            {/* Max Height */}
-            {routeStats && routeStats.maxHeight !== null && (
-              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.statValue, { color: '#3B82F6' }]}>
-                  {routeStats.maxHeight}m
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Max Height
-                </Text>
-              </View>
-            )}
-
-            {/* Average Height */}
-            {routeStats && routeStats.avgHeight !== null && (
-              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.statValue, { color: '#3B82F6' }]}>
-                  {routeStats.avgHeight}m
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Avg Height
-                </Text>
-              </View>
-            )}
-
-            {/* Quality (Stars) */}
-            {routeStats && routeStats.avgStars !== null && routeStats.avgStars > 0 && (
-              <View style={[styles.statItem, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.statValue, { color: '#F59E0B' }]}>
-                  {routeStats.avgStars.toFixed(1)} ★
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Quality
-                </Text>
-              </View>
-            )}
-          </View>
-
-        </View>
-
-        {/* Weather Card */}
-        {latitude !== null && longitude !== null && (
-          <WeatherCard
-            latitude={latitude}
-            longitude={longitude}
-            onPress={() => router.push({
-              pathname: '/sector/weather/[id]',
-              params: { id: params.id, lat: latitude.toString(), lon: longitude.toString(), name: sector.name },
-            })}
-            showChevron
-            style={{ marginTop: 16 }}
-          />
-        )}
-
-        {/* Information */}
-        {(sector.rockType ||
-          sector.orientation ||
-          sector.sunExposure ||
-          sector.climbingStyle) && (
+          {/* Stats */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons
-                name="information-circle-outline"
+                name="stats-chart-outline"
                 size={20}
                 color={colors.primary}
               />
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Information
+                Stats
               </Text>
             </View>
-            <View
-              style={[styles.textContainer, { backgroundColor: colors.muted }]}
-            >
-              {sector.rockType && (
-                <View style={styles.infoRow}>
-                  <Ionicons
-                    name="diamond-outline"
-                    size={18}
-                    color={colors.primary}
-                  />
-                  <Text
-                    style={[styles.infoLabel, { color: colors.textSecondary }]}
-                  >
-                    Rock:
+            <View style={styles.statsGrid}>
+              {/* Total Routes */}
+              <View
+                style={[styles.statItem, { backgroundColor: colors.muted }]}
+              >
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {sector.totalRoutes}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Routes
+                </Text>
+              </View>
+
+              {/* Routes in Global Range */}
+              {routesInGlobalRangeCount > 0 && (
+                <View
+                  style={[styles.statItem, { backgroundColor: colors.muted }]}
+                >
+                  <Text style={[styles.statValue, { color: '#22C55E' }]}>
+                    {routesInGlobalRangeCount}
                   </Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {sector.rockType}
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    In Range
                   </Text>
                 </View>
               )}
-              {sector.orientation && (
-                <View style={styles.infoRow}>
-                  <Ionicons
-                    name="compass-outline"
-                    size={18}
-                    color={colors.primary}
-                  />
-                  <Text
-                    style={[styles.infoLabel, { color: colors.textSecondary }]}
-                  >
-                    Orientation:
+
+              {/* Easiest Grade */}
+              {routeStats && routeStats.minGradeIndex !== null && (
+                <View
+                  style={[styles.statItem, { backgroundColor: colors.muted }]}
+                >
+                  <Text style={[styles.statValue, { color: '#22C55E' }]}>
+                    {indexToGrade(routeStats.minGradeIndex)}
                   </Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {sector.orientation}
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Easiest
                   </Text>
                 </View>
               )}
-              {sector.sunExposure && (
-                <View style={styles.infoRow}>
-                  <Ionicons
-                    name="sunny-outline"
-                    size={18}
-                    color={colors.primary}
-                  />
-                  <Text
-                    style={[styles.infoLabel, { color: colors.textSecondary }]}
-                  >
-                    Exposure:
+
+              {/* Hardest Grade */}
+              {routeStats && routeStats.maxGradeIndex !== null && (
+                <View
+                  style={[styles.statItem, { backgroundColor: colors.muted }]}
+                >
+                  <Text style={[styles.statValue, { color: '#EF4444' }]}>
+                    {indexToGrade(routeStats.maxGradeIndex)}
                   </Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {sector.sunExposure}
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Hardest
                   </Text>
                 </View>
               )}
-              {sector.climbingStyle && (
-                <View style={styles.infoRow}>
-                  <Ionicons
-                    name="hand-left-outline"
-                    size={18}
-                    color={colors.primary}
-                  />
-                  <Text
-                    style={[styles.infoLabel, { color: colors.textSecondary }]}
-                  >
-                    Style:
+
+              {/* Average Grade */}
+              {routeStats && routeStats.avgGradeIndex !== null && (
+                <View
+                  style={[styles.statItem, { backgroundColor: colors.muted }]}
+                >
+                  <Text style={[styles.statValue, { color: colors.primary }]}>
+                    {indexToGrade(routeStats.avgGradeIndex)}
                   </Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {sector.climbingStyle}
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Avg Grade
                   </Text>
                 </View>
+              )}
+
+              {/* Max Height */}
+              {routeStats && routeStats.maxHeight !== null && (
+                <View
+                  style={[styles.statItem, { backgroundColor: colors.muted }]}
+                >
+                  <Text style={[styles.statValue, { color: '#3B82F6' }]}>
+                    {routeStats.maxHeight}m
+                  </Text>
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Max Height
+                  </Text>
+                </View>
+              )}
+
+              {/* Average Height */}
+              {routeStats && routeStats.avgHeight !== null && (
+                <View
+                  style={[styles.statItem, { backgroundColor: colors.muted }]}
+                >
+                  <Text style={[styles.statValue, { color: '#3B82F6' }]}>
+                    {routeStats.avgHeight}m
+                  </Text>
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Avg Height
+                  </Text>
+                </View>
+              )}
+
+              {/* Quality (Stars) */}
+              {routeStats &&
+                routeStats.avgStars !== null &&
+                routeStats.avgStars > 0 && (
+                  <View
+                    style={[styles.statItem, { backgroundColor: colors.muted }]}
+                  >
+                    <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+                      {routeStats.avgStars.toFixed(1)} ★
+                    </Text>
+                    <Text
+                      style={[
+                        styles.statLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Quality
+                    </Text>
+                  </View>
+                )}
+
+              {/* Weather Chip integrated in stats */}
+              {latitude !== null && longitude !== null && (
+                <WeatherChip
+                  latitude={latitude}
+                  longitude={longitude}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/sector/weather/[id]',
+                      params: {
+                        id: params.id,
+                        lat: latitude.toString(),
+                        lon: longitude.toString(),
+                        name: sector.name,
+                      },
+                    })
+                  }
+                />
               )}
             </View>
           </View>
-        )}
 
-        {/* Routes Section Header and Filters - Unified Compact Block */}
-        <View style={styles.routesBlock}>
-          <View style={styles.routesTitleRow}>
-            <Ionicons name="list-outline" size={18} color={colors.primary} />
-            <Text style={[styles.routesTitleText, { color: colors.text }]}>
-              {filteredAndSortedRoutes.length}
-              {filteredAndSortedRoutes.length !== allRoutes.length
-                ? `/${allRoutes.length}`
-                : ''} routes
-            </Text>
-            {(isLoadingRoutes || isLoadingTopos) && (
-              <ActivityIndicator
-                size="small"
-                color={colors.primary}
-                style={{ marginLeft: 4 }}
-              />
-            )}
-          </View>
-          <FilterChipsRow>
-            {/* Sort Filter */}
-            <FilterChip
-              label={
-                sortBy === 'number'
-                  ? 'By #'
-                  : sortBy === 'grade'
-                    ? 'By Grade'
-                    : sortBy === 'stars'
-                      ? 'By Stars'
-                      : 'By Height'
-              }
-              icon={
-                sortBy === 'number'
-                  ? 'list-outline'
-                  : sortBy === 'grade'
-                    ? 'trending-up'
-                    : sortBy === 'stars'
-                      ? 'star'
-                      : 'resize-outline'
-              }
-              isActive
-              onPress={() => {
-                const options: Array<'number' | 'grade' | 'stars' | 'height'> =
-                  ['number', 'grade', 'stars', 'height']
-                const currentIndex = options.indexOf(sortBy)
-                const nextIndex = (currentIndex + 1) % options.length
-                setSortBy(options[nextIndex])
-              }}
-            />
-
-            {/* Grade Range Selector (opens global picker) */}
-            <FilterChip
-              label={`${globalGradeRange.min} - ${globalGradeRange.max}`}
-              icon="options-outline"
-              isActive
-              onPress={showGradePicker}
-            />
-
-            {/* Filter by Grade Range Toggle */}
-            <FilterChip
-              label={gradeFilter === 'inRange' 
-                ? `In Range (${routesInGlobalRangeCount})`
-                : 'All Grades'
-              }
-              icon={gradeFilter === 'inRange' ? 'checkmark-circle' : 'ellipse-outline'}
-              isActive={gradeFilter === 'inRange'}
-              activeColor="#22C55E"
-              onPress={() => setGradeFilter(gradeFilter === 'all' ? 'inRange' : 'all')}
-            />
-
-            {/* Sun/Shade Info Badge */}
-            {sector.sunExposure && (
-              <FilterChip
-                label={sector.sunExposure}
-                icon={sector.sunExposure.toLowerCase().includes('sun') || sector.sunExposure.toLowerCase().includes('sol')
-                  ? 'sunny'
-                  : sector.sunExposure.toLowerCase().includes('shade') || sector.sunExposure.toLowerCase().includes('sombra')
-                    ? 'moon'
-                    : 'contrast-outline'
-                }
-                isActive={false}
-                onPress={() => { /* Info badge - no action */ }}
-              />
-            )}
-
-            {/* Stars Filter */}
-            <FilterChip
-              label={minStars > 0 ? `${minStars}+ ★` : 'Any Stars'}
-              icon="star"
-              isActive={minStars > 0}
-              activeColor="#F59E0B"
-              onPress={() => {
-                const options = [0, 1, 2, 3]
-                const currentIndex = options.indexOf(minStars)
-                const nextIndex = (currentIndex + 1) % options.length
-                setMinStars(options[nextIndex])
-              }}
-            />
-            </FilterChipsRow>
-          </View>
-
-          {/* Empty state */}
-          {filteredAndSortedRoutes.length === 0 && !isLoadingRoutes && (
-            <View
-              style={[styles.emptyContainer, { backgroundColor: colors.muted }]}
-            >
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {allRoutes.length === 0
-                  ? 'No routes found'
-                  : 'No routes match filters'}
-              </Text>
+          {/* Information */}
+          {(sector.rockType ||
+            sector.orientation ||
+            sector.sunExposure ||
+            sector.climbingStyle) && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Information
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.textContainer,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
+                {sector.rockType && (
+                  <View style={styles.infoRow}>
+                    <Ionicons
+                      name="diamond-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Rock:
+                    </Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>
+                      {sector.rockType}
+                    </Text>
+                  </View>
+                )}
+                {sector.orientation && (
+                  <View style={styles.infoRow}>
+                    <Ionicons
+                      name="compass-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Orientation:
+                    </Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>
+                      {sector.orientation}
+                    </Text>
+                  </View>
+                )}
+                {sector.sunExposure && (
+                  <View style={styles.infoRow}>
+                    <Ionicons
+                      name="sunny-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Exposure:
+                    </Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>
+                      {sector.sunExposure}
+                    </Text>
+                  </View>
+                )}
+                {sector.climbingStyle && (
+                  <View style={styles.infoRow}>
+                    <Ionicons
+                      name="hand-left-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Style:
+                    </Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>
+                      {sector.climbingStyle}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           )}
+
+          {/* Routes Section Header and Filters - Unified Compact Block */}
+          <View style={styles.routesBlock}>
+            <View style={styles.routesTitleRow}>
+              <Ionicons name="list-outline" size={18} color={colors.primary} />
+              <Text style={[styles.routesTitleText, { color: colors.text }]}>
+                {filteredAndSortedRoutes.length}
+                {filteredAndSortedRoutes.length !== allRoutes.length
+                  ? `/${allRoutes.length}`
+                  : ''}{' '}
+                routes
+              </Text>
+              {(isLoadingRoutes || isLoadingTopos) && (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ marginLeft: 4 }}
+                />
+              )}
+            </View>
+            <FilterChipsRow>
+              {/* Sort Filter */}
+              <FilterChip
+                label={
+                  sortBy === 'number'
+                    ? 'By #'
+                    : sortBy === 'grade'
+                      ? 'By Grade'
+                      : sortBy === 'stars'
+                        ? 'By Stars'
+                        : 'By Height'
+                }
+                icon={
+                  sortBy === 'number'
+                    ? 'list-outline'
+                    : sortBy === 'grade'
+                      ? 'trending-up'
+                      : sortBy === 'stars'
+                        ? 'star'
+                        : 'resize-outline'
+                }
+                isActive
+                onPress={() => {
+                  const options: Array<
+                    'number' | 'grade' | 'stars' | 'height'
+                  > = ['number', 'grade', 'stars', 'height']
+                  const currentIndex = options.indexOf(sortBy)
+                  const nextIndex = (currentIndex + 1) % options.length
+                  setSortBy(options[nextIndex])
+                }}
+              />
+
+              {/* Grade Range Selector (opens global picker) */}
+              <FilterChip
+                label={`${globalGradeRange.min} - ${globalGradeRange.max}`}
+                icon="options-outline"
+                isActive
+                onPress={showGradePicker}
+              />
+
+              {/* Filter by Grade Range Toggle */}
+              <FilterChip
+                label={
+                  gradeFilter === 'inRange'
+                    ? `In Range (${routesInGlobalRangeCount})`
+                    : 'All Grades'
+                }
+                icon={
+                  gradeFilter === 'inRange'
+                    ? 'checkmark-circle'
+                    : 'ellipse-outline'
+                }
+                isActive={gradeFilter === 'inRange'}
+                activeColor="#22C55E"
+                onPress={() =>
+                  setGradeFilter(gradeFilter === 'all' ? 'inRange' : 'all')
+                }
+              />
+
+              {/* Sun/Shade Info Badge */}
+              {sector.sunExposure && (
+                <FilterChip
+                  label={sector.sunExposure}
+                  icon={
+                    sector.sunExposure.toLowerCase().includes('sun') ||
+                    sector.sunExposure.toLowerCase().includes('sol')
+                      ? 'sunny'
+                      : sector.sunExposure.toLowerCase().includes('shade') ||
+                          sector.sunExposure.toLowerCase().includes('sombra')
+                        ? 'moon'
+                        : 'contrast-outline'
+                  }
+                  isActive={false}
+                  onPress={() => {
+                    /* Info badge - no action */
+                  }}
+                />
+              )}
+
+              {/* Stars Filter */}
+              <FilterChip
+                label={minStars > 0 ? `${minStars}+ ★` : 'Any Stars'}
+                icon="star"
+                isActive={minStars > 0}
+                activeColor="#F59E0B"
+                onPress={() => {
+                  const options = [0, 1, 2, 3]
+                  const currentIndex = options.indexOf(minStars)
+                  const nextIndex = (currentIndex + 1) % options.length
+                  setMinStars(options[nextIndex])
+                }}
+              />
+            </FilterChipsRow>
+
+            {/* Empty state */}
+            {filteredAndSortedRoutes.length === 0 && !isLoadingRoutes && (
+              <View
+                style={[
+                  styles.emptyContainer,
+                  { backgroundColor: colors.muted },
+                ]}
+              >
+                <Text
+                  style={[styles.emptyText, { color: colors.textSecondary }]}
+                >
+                  {allRoutes.length === 0
+                    ? 'No routes found'
+                    : 'No routes match filters'}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </>
-  ), [sector, params, router, colors, showInfo, parkingLocations, heroTags, latitude, longitude, routeStats, routesInGlobalRangeCount, globalGradeRange, showGradePicker, gradeFilter, sortBy, minStars, filteredAndSortedRoutes, allRoutes, isLoadingRoutes, isLoadingTopos, userMinGradeIndex, userMaxGradeIndex])
+      </>
+    ),
+    [
+      sector,
+      params,
+      router,
+      colors,
+      showInfo,
+      parkingLocations,
+      heroTags,
+      latitude,
+      longitude,
+      routeStats,
+      routesInGlobalRangeCount,
+      globalGradeRange,
+      showGradePicker,
+      gradeFilter,
+      sortBy,
+      minStars,
+      filteredAndSortedRoutes,
+      allRoutes,
+      isLoadingRoutes,
+      isLoadingTopos,
+      userMinGradeIndex,
+      userMaxGradeIndex,
+    ],
+  )
 
   // List footer component (content after routes)
-  const ListFooterComponent = useCallback(() => (
-    <View style={styles.content}>
-      {/* Description */}
-      {sector.description && (
-        <LanguageTextSection
-          text={sector.description}
-          title={t('description')}
-        />
-      )}
+  const ListFooterComponent = useCallback(
+    () => (
+      <View style={styles.content}>
+        {/* Description */}
+        {sector.description && (
+          <LanguageTextSection
+            text={sector.description}
+            title={t('description')}
+          />
+        )}
 
-      {/* Approach */}
-      {sector.approach && (
-        <LanguageTextSection
-          text={sector.approach}
-          title={t('approach')}
-          showMapButton={!!latitude && !!longitude}
-          latitude={latitude}
-          longitude={longitude}
-          locationName={sector.name}
-        />
-      )}
+        {/* Approach */}
+        {sector.approach && (
+          <LanguageTextSection
+            text={sector.approach}
+            title={t('approach')}
+            showMapButton={!!latitude && !!longitude}
+            latitude={latitude}
+            longitude={longitude}
+            locationName={sector.name}
+          />
+        )}
 
-      {/* Parking buttons */}
-      {parkingLocations.length > 0 && (
-        <View style={styles.parkingContainer}>
-          {parkingLocations.map((parking, index) => (
-            <Pressable
-              key={`parking-${index}-${parking.lat}`}
-              onPress={() => handleNavigateToParking(parking)}
-              style={[
-                styles.parkingButton,
-                { backgroundColor: '#3B82F6' },
-              ]}
-            >
-              <Ionicons name="car" size={20} color="#FFF" />
-              <Text style={styles.parkingButtonText}>
-                {parkingLocations.length > 1
-                  ? parking.name
-                  : 'Navigate to Parking'}
-              </Text>
-              <Ionicons name="navigate" size={16} color="#FFF" />
-            </Pressable>
-          ))}
-        </View>
-      )}
-    </View>
-  ), [sector, latitude, longitude, parkingLocations])
+        {/* Parking buttons */}
+        {parkingLocations.length > 0 && (
+          <View style={styles.parkingContainer}>
+            {parkingLocations.map((parking, index) => (
+              <Pressable
+                key={`parking-${index}-${parking.lat}`}
+                onPress={() => handleNavigateToParking(parking)}
+                style={[styles.parkingButton, { backgroundColor: '#3B82F6' }]}
+              >
+                <Ionicons name="car" size={20} color="#FFF" />
+                <Text style={styles.parkingButtonText}>
+                  {parkingLocations.length > 1
+                    ? parking.name
+                    : 'Navigate to Parking'}
+                </Text>
+                <Ionicons name="navigate" size={16} color="#FFF" />
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
+    ),
+    [sector, latitude, longitude, parkingLocations],
+  )
 
   // Early return for loading state - MUST be after all hooks
   if (isLoadingRoutes && !routesData) {
@@ -1268,7 +1443,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 8,
   },
   section: {
     marginTop: 24,
@@ -1498,29 +1673,26 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   stickyTopoHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingHorizontal: 8,
+    paddingTop: 0,
+    paddingBottom: 8,
   },
   routeItemContainer: {
     paddingHorizontal: 20,
   },
-  // Unified routes header with filters
-  routesHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    flexWrap: 'wrap',
-    gap: 8,
+  // Routes block - title + filters as unified block
+  routesBlock: {
+    marginTop: 12,
+    marginBottom: 0,
   },
-  routesTitleCompact: {
+  routesTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 4,
   },
   routesTitleText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
 })
