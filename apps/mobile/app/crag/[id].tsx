@@ -9,7 +9,7 @@ import type { CragTopoImage, SearchSectorResult } from '@/lib/api'
 import { countRoutesInGradeRange } from '@/utils/gradeConverter'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Dimensions,
@@ -18,7 +18,7 @@ import {
   Modal,
   Pressable,
   RefreshControl,
-  ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   useColorScheme,
@@ -1077,33 +1077,257 @@ export default function CragDetailScreen() {
     )
   }
 
-  return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={refetch}
-          tintColor={colors.primary}
+  // Section type for SectionList with sticky panoramic topo header
+  interface SectorSection {
+    title: string
+    hasPanoramicTopo: boolean
+    data: Array<SearchSectorResult & { calculatedScore: number; index: number }>
+  }
+
+  // Create sections for SectionList
+  const sections: SectorSection[] = useMemo(() => {
+    if (filteredSectors.length === 0) return []
+    
+    // Add index to each sector for display
+    const sectorsWithIndex = filteredSectors.map((sectorResult, idx) => ({
+      ...sectorResult,
+      index: idx,
+    }))
+    
+    return [{
+      title: 'Sectors',
+      hasPanoramicTopo: !!(crag?.topoImages && crag.topoImages.length > 0 && crag.topoImages[0].sectorPositions?.length > 0),
+      data: sectorsWithIndex,
+    }]
+  }, [filteredSectors, crag?.topoImages])
+
+  // Render sector row item
+  const renderSectorItem = useCallback(({ item: sectorResult }: { item: SearchSectorResult & { calculatedScore: number; index: number } }) => {
+    const sector = sectorResult.sector
+    const totalRoutes = sector.routeCount || sector.routes?.length || 0
+    const routesInRange = sectorResult.routesInUserRange
+    const hasRoutesInRange = routesInRange > 0
+    const hasGoodScore = sectorResult.calculatedScore >= 65
+    const hasGoodWeather = sectorResult.conditions?.isGoodDay || 
+                           (sectorResult.conditions?.weatherScore ?? 50) >= 60
+    const isIdeal = hasRoutesInRange && hasGoodScore && hasGoodWeather
+    const hasTopo = sector.hasTopo || sector.headerImageUrl
+    const orientation = sector.orientation
+    const avgHeight = sector.avgHeight
+    const maxHeight = sector.maxHeight
+    const avgStars = sector.avgStars
+    const inSun = isSectorInSun(orientation)
+    const isHighlighted = sector.id === highlightedSectorId
+    const isKidFriendly = sector.kidFriendly === true
+    const isBeginner = sector.beginner === true
+
+    return (
+      <View style={styles.sectorItemContainer}>
+        <Pressable
+          style={[
+            styles.sectorRow,
+            {
+              backgroundColor: isHighlighted ? colors.primary + '15' : colors.card,
+              borderColor: isHighlighted ? colors.primary : colors.border,
+            },
+          ]}
+          onPress={() => {
+            // If already selected, navigate to detail; otherwise select
+            if (highlightedSectorId === sector.id) {
+              handleSectorPress(sectorResult)
+            } else {
+              setHighlightedSectorId(sector.id)
+            }
+          }}
+        >
+          {/* Number badge - use areaNumber from topo if available */}
+          <View
+            style={[
+              styles.sectorNumBadge,
+              { backgroundColor: isHighlighted ? colors.primary : colors.muted },
+            ]}
+          >
+            <Text style={[styles.sectorNumText, { color: isHighlighted ? '#FFF' : colors.text }]}>
+              {sectorIdToAreaNumber.get(sector.id) || (sectorResult.index + 1)}
+            </Text>
+          </View>
+
+          {/* Sector info */}
+          <View style={styles.sectorInfo}>
+            <View style={styles.sectorNameRow}>
+              {isIdeal && (
+                <Ionicons
+                  name="sparkles"
+                  size={14}
+                  color="#10B981"
+                  style={{ marginRight: 4 }}
+                />
+              )}
+              {hasRoutesInRange && !isIdeal && (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={14}
+                  color="#22C55E"
+                  style={{ marginRight: 4 }}
+                />
+              )}
+              <Text
+                style={[styles.sectorNameText, { color: colors.text, fontWeight: isHighlighted ? '700' : '600' }]}
+                numberOfLines={1}
+              >
+                {sector.name}
+              </Text>
+            </View>
+            <View style={styles.sectorMeta}>
+              {/* Routes total / in range */}
+              <View style={styles.sectorMetaItem}>
+                <Ionicons
+                  name="git-branch-outline"
+                  size={11}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
+                  {routesInRange > 0 ? `${routesInRange}/${totalRoutes}` : totalRoutes}
+                </Text>
+              </View>
+              {/* Sun/Shade indicator - always show based on orientation */}
+              <View style={styles.sectorMetaItem}>
+                <Ionicons
+                  name={inSun ? 'sunny-outline' : 'moon-outline'}
+                  size={11}
+                  color={inSun ? '#F59E0B' : '#6366F1'}
+                />
+                {orientation && (
+                  <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
+                    {orientation}
+                  </Text>
+                )}
+              </View>
+              {/* Stars - quality indicator */}
+              {avgStars && avgStars > 0 && (
+                <View style={styles.sectorMetaItem}>
+                  <Ionicons name="star" size={11} color="#F59E0B" />
+                  <Text style={[styles.sectorMetaText, { color: '#F59E0B' }]}>
+                    {avgStars.toFixed(1)}
+                  </Text>
+                </View>
+              )}
+              {/* Height */}
+              {(avgHeight || maxHeight) && (
+                <View style={styles.sectorMetaItem}>
+                  <Ionicons name="resize-outline" size={11} color={colors.textSecondary} />
+                  <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
+                    {maxHeight ? `${Math.round(maxHeight)}m` : `${Math.round(avgHeight!)}m`}
+                  </Text>
+                </View>
+              )}
+              {/* Topo indicator */}
+              {hasTopo && (
+                <View style={styles.sectorMetaItem}>
+                  <Ionicons name="map-outline" size={11} color="#10B981" />
+                </View>
+              )}
+              {/* Beginner friendly */}
+              {isBeginner && (
+                <View style={styles.sectorMetaItem}>
+                  <Ionicons name="school-outline" size={11} color="#3B82F6" />
+                </View>
+              )}
+              {/* Kid friendly */}
+              {isKidFriendly && (
+                <View style={styles.sectorMetaItem}>
+                  <Ionicons name="happy-outline" size={11} color="#8B5CF6" />
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Grade badge */}
+          <View
+            style={[
+              styles.gradeBadge,
+              { backgroundColor: '#F59E0B20' },
+            ]}
+          >
+            <Text style={[styles.gradeText, { color: '#F59E0B' }]}>
+              {sector.minGrade || '?'}-{sector.maxGrade || '?'}
+            </Text>
+          </View>
+
+          {/* Score badge */}
+          {sectorResult.calculatedScore > 0 && (
+            <View
+              style={[
+                styles.scoreBadge,
+                { backgroundColor: getScoreColor(sectorResult.calculatedScore) },
+              ]}
+            >
+              <Text style={styles.scoreText}>
+                {Math.round(sectorResult.calculatedScore)}
+              </Text>
+            </View>
+          )}
+
+          {/* Navigate button */}
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation()
+              handleSectorPress(sectorResult)
+            }}
+            hitSlop={8}
+            style={[
+              styles.navigateButton,
+              { backgroundColor: colors.muted },
+            ]}
+          >
+            <Ionicons
+              name="arrow-forward-circle-outline"
+              size={22}
+              color={colors.primary}
+            />
+          </Pressable>
+        </Pressable>
+      </View>
+    )
+  }, [highlightedSectorId, colors, sectorIdToAreaNumber, handleSectorPress, isSectorInSun])
+
+  // Render sticky section header with panoramic topo
+  const renderSectionHeader = useCallback(({ section }: { section: SectorSection }) => {
+    if (!section.hasPanoramicTopo || !crag?.topoImages?.[0]) return null
+
+    return (
+      <View style={[styles.stickyPanoramicHeader, { backgroundColor: colors.background }]}>
+        <PanoramicTopo
+          topo={crag.topoImages[0]}
+          highlightedSectorId={highlightedSectorId}
+          sectorNameToId={sectorNameToId}
+          sectorInfoMap={sectorInfoMap}
+          onSectorNavigate={handleSectorNavigateById}
+          onSectorSelect={setHighlightedSectorId}
         />
-      }
-    >
+      </View>
+    )
+  }, [highlightedSectorId, sectorNameToId, sectorInfoMap, crag?.topoImages, colors.background, handleSectorNavigateById])
+
+  // List header component (content before sectors list)
+  const ListHeaderComponent = useCallback(() => (
+    <>
       {/* Hero Header with Image */}
       <HeroHeader
-        title={crag.name}
+        title={crag?.name || ''}
         subtitle={
-          crag.region ? `${crag.region}, ${crag.country}` : crag.country
+          crag?.region ? `${crag.region}, ${crag.country}` : crag?.country || ''
         }
-        imageUrl={crag.headerImageUrl}
-        theCragUrl={crag.theCragUrl}
+        imageUrl={crag?.headerImageUrl}
+        theCragUrl={crag?.theCragUrl}
         rockType={primaryRockType}
         icon="layers"
         onBack={() => router.back()}
         stats={[
-          { label: 'sectors', value: crag.totalSectors, icon: 'grid' },
-          { label: 'routes', value: crag.totalRoutes, icon: 'git-branch' },
+          { label: 'sectors', value: crag?.totalSectors || 0, icon: 'grid' },
+          { label: 'routes', value: crag?.totalRoutes || 0, icon: 'git-branch' },
           ...(totalRoutesInRange > 0 &&
-          totalRoutesInRange !== crag.totalRoutes
+          totalRoutesInRange !== crag?.totalRoutes
             ? [
                 {
                   label: 'in range',
@@ -1137,7 +1361,7 @@ export default function CragDetailScreen() {
 
       <View style={styles.content}>
         {/* Weather Card - Full Width */}
-        {crag.latitude && crag.longitude && (
+        {crag?.latitude && crag?.longitude && (
           <WeatherCard
             latitude={crag.latitude}
             longitude={crag.longitude}
@@ -1150,7 +1374,7 @@ export default function CragDetailScreen() {
         {/* Action Buttons Row - Full Width */}
         <View style={styles.actionButtonsRow}>
           {/* Directions Button */}
-          {crag.latitude && crag.longitude && (
+          {crag?.latitude && crag?.longitude && (
             <Pressable
               onPress={handleGetDirections}
               style={[
@@ -1166,7 +1390,7 @@ export default function CragDetailScreen() {
           )}
 
           {/* Info Button */}
-          {(crag.description || crag.approach) && (
+          {(crag?.description || crag?.approach) && (
             <Pressable
               onPress={() => router.push(`/crag/info/${id}`)}
               style={[
@@ -1306,7 +1530,7 @@ export default function CragDetailScreen() {
           </View>
         </View>
 
-        {/* Sectors Section */}
+        {/* Sectors Section Header and Sort Options */}
         <View style={styles.sectorsContainer}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
@@ -1323,11 +1547,7 @@ export default function CragDetailScreen() {
 
           {/* Sort Options */}
           <View style={styles.sortContainer}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sortScrollContent}
-            >
+            <View style={styles.sortScrollContent}>
               {([
                 { key: 'score', label: 'Score', icon: 'analytics-outline' },
                 { key: 'number', label: 'Number', icon: 'list-outline' },
@@ -1380,213 +1600,11 @@ export default function CragDetailScreen() {
                   </Pressable>
                 )
               })}
-            </ScrollView>
+            </View>
           </View>
 
-          {/* Panoramic Topo Image */}
-          {crag.topoImages && crag.topoImages.length > 0 && crag.topoImages[0].sectorPositions?.length > 0 && (
-            <PanoramicTopo
-              topo={crag.topoImages[0]}
-              highlightedSectorId={highlightedSectorId}
-              sectorNameToId={sectorNameToId}
-              sectorInfoMap={sectorInfoMap}
-              onSectorNavigate={handleSectorNavigateById}
-              onSectorSelect={setHighlightedSectorId}
-            />
-          )}
-
-          {/* Sectors List */}
-          {filteredSectors.length > 0 ? (
-            <View style={styles.sectorsList}>
-              {filteredSectors.map((sectorResult, index) => {
-                const sector = sectorResult.sector
-                const totalRoutes = sector.routeCount || sector.routes?.length || 0
-                const routesInRange = sectorResult.routesInUserRange
-                const hasRoutesInRange = routesInRange > 0
-                const hasGoodScore = sectorResult.calculatedScore >= 65
-                const hasGoodWeather = sectorResult.conditions?.isGoodDay || 
-                                       (sectorResult.conditions?.weatherScore ?? 50) >= 60
-                const isIdeal = hasRoutesInRange && hasGoodScore && hasGoodWeather
-                const hasTopo = sector.hasTopo || sector.headerImageUrl
-                const orientation = sector.orientation
-                const avgHeight = sector.avgHeight
-                const maxHeight = sector.maxHeight
-                const avgStars = sector.avgStars
-                const inSun = isSectorInSun(orientation)
-                const isHighlighted = sector.id === highlightedSectorId
-                const isKidFriendly = sector.kidFriendly === true
-                const isBeginner = sector.beginner === true
-
-                return (
-                  <Pressable
-                    key={sector.id}
-                    style={[
-                      styles.sectorRow,
-                      {
-                        backgroundColor: isHighlighted ? colors.primary + '15' : colors.card,
-                        borderColor: isHighlighted ? colors.primary : colors.border,
-                      },
-                    ]}
-                    onPress={() => {
-                      // If already selected, navigate to detail; otherwise select
-                      if (highlightedSectorId === sector.id) {
-                        handleSectorPress(sectorResult)
-                      } else {
-                        setHighlightedSectorId(sector.id)
-                      }
-                    }}
-                  >
-                    {/* Number badge - use areaNumber from topo if available */}
-                    <View
-                      style={[
-                        styles.sectorNumBadge,
-                        { backgroundColor: isHighlighted ? colors.primary : colors.muted },
-                      ]}
-                    >
-                      <Text style={[styles.sectorNumText, { color: isHighlighted ? '#FFF' : colors.text }]}>
-                        {sectorIdToAreaNumber.get(sector.id) || (index + 1)}
-                      </Text>
-                    </View>
-
-                    {/* Sector info */}
-                    <View style={styles.sectorInfo}>
-                      <View style={styles.sectorNameRow}>
-                        {isIdeal && (
-                          <Ionicons
-                            name="sparkles"
-                            size={14}
-                            color="#10B981"
-                            style={{ marginRight: 4 }}
-                          />
-                        )}
-                        {hasRoutesInRange && !isIdeal && (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={14}
-                            color="#22C55E"
-                            style={{ marginRight: 4 }}
-                          />
-                        )}
-                        <Text
-                          style={[styles.sectorNameText, { color: colors.text, fontWeight: isHighlighted ? '700' : '600' }]}
-                          numberOfLines={1}
-                        >
-                          {sector.name}
-                        </Text>
-                      </View>
-                      <View style={styles.sectorMeta}>
-                        {/* Routes total / in range */}
-                        <View style={styles.sectorMetaItem}>
-                          <Ionicons
-                            name="git-branch-outline"
-                            size={11}
-                            color={colors.textSecondary}
-                          />
-                          <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
-                            {routesInRange > 0 ? `${routesInRange}/${totalRoutes}` : totalRoutes}
-                          </Text>
-                        </View>
-                        {/* Sun/Shade indicator - always show based on orientation */}
-                        <View style={styles.sectorMetaItem}>
-                          <Ionicons
-                            name={inSun ? 'sunny-outline' : 'moon-outline'}
-                            size={11}
-                            color={inSun ? '#F59E0B' : '#6366F1'}
-                          />
-                          {orientation && (
-                            <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
-                              {orientation}
-                            </Text>
-                          )}
-                        </View>
-                        {/* Stars - quality indicator */}
-                        {avgStars && avgStars > 0 && (
-                          <View style={styles.sectorMetaItem}>
-                            <Ionicons name="star" size={11} color="#F59E0B" />
-                            <Text style={[styles.sectorMetaText, { color: '#F59E0B' }]}>
-                              {avgStars.toFixed(1)}
-                            </Text>
-                          </View>
-                        )}
-                        {/* Height */}
-                        {(avgHeight || maxHeight) && (
-                          <View style={styles.sectorMetaItem}>
-                            <Ionicons name="resize-outline" size={11} color={colors.textSecondary} />
-                            <Text style={[styles.sectorMetaText, { color: colors.textSecondary }]}>
-                              {maxHeight ? `${Math.round(maxHeight)}m` : `${Math.round(avgHeight!)}m`}
-                            </Text>
-                          </View>
-                        )}
-                        {/* Topo indicator */}
-                        {hasTopo && (
-                          <View style={styles.sectorMetaItem}>
-                            <Ionicons name="map-outline" size={11} color="#10B981" />
-                          </View>
-                        )}
-                        {/* Beginner friendly */}
-                        {isBeginner && (
-                          <View style={styles.sectorMetaItem}>
-                            <Ionicons name="school-outline" size={11} color="#3B82F6" />
-                          </View>
-                        )}
-                        {/* Kid friendly */}
-                        {isKidFriendly && (
-                          <View style={styles.sectorMetaItem}>
-                            <Ionicons name="happy-outline" size={11} color="#8B5CF6" />
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Grade badge */}
-                    <View
-                      style={[
-                        styles.gradeBadge,
-                        { backgroundColor: '#F59E0B20' },
-                      ]}
-                    >
-                      <Text style={[styles.gradeText, { color: '#F59E0B' }]}>
-                        {sector.minGrade || '?'}-{sector.maxGrade || '?'}
-                      </Text>
-                    </View>
-
-                    {/* Score badge */}
-                    {sectorResult.calculatedScore > 0 && (
-                      <View
-                        style={[
-                          styles.scoreBadge,
-                          { backgroundColor: getScoreColor(sectorResult.calculatedScore) },
-                        ]}
-                      >
-                        <Text style={styles.scoreText}>
-                          {Math.round(sectorResult.calculatedScore)}
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* Navigate button */}
-                    <Pressable
-                      onPress={(e) => {
-                        e.stopPropagation()
-                        handleSectorPress(sectorResult)
-                      }}
-                      hitSlop={8}
-                      style={[
-                        styles.navigateButton,
-                        { backgroundColor: colors.muted },
-                      ]}
-                    >
-                      <Ionicons
-                        name="arrow-forward-circle-outline"
-                        size={22}
-                        color={colors.primary}
-                      />
-                    </Pressable>
-                  </Pressable>
-                )
-              })}
-            </View>
-          ) : (
+          {/* Empty state if no sectors */}
+          {filteredSectors.length === 0 && (
             <View
               style={[
                 styles.emptyState,
@@ -1616,13 +1634,71 @@ export default function CragDetailScreen() {
           )}
         </View>
       </View>
-    </ScrollView>
+    </>
+  ), [
+    crag,
+    colors,
+    router,
+    id,
+    avgScore,
+    distanceParam,
+    totalRoutesInRange,
+    primaryRockType,
+    sunPreference,
+    minRoutes,
+    withTopo,
+    activeFiltersCount,
+    globalGradeRange,
+    filteredSectors,
+    allSectors,
+    sortBy,
+    sortAscending,
+    clearFilters,
+    handleGetDirections,
+  ])
+
+  // Key extractor for SectionList
+  const keyExtractor = useCallback((item: SearchSectorResult & { calculatedScore: number; index: number }) => {
+    return item.sector.id
+  }, [])
+
+  return (
+    <SectionList
+      sections={sections}
+      keyExtractor={keyExtractor}
+      renderItem={renderSectorItem}
+      renderSectionHeader={renderSectionHeader}
+      ListHeaderComponent={ListHeaderComponent}
+      stickySectionHeadersEnabled={true}
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.sectionListContent}
+      showsVerticalScrollIndicator={true}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={refetch}
+          tintColor={colors.primary}
+        />
+      }
+    />
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  sectionListContent: {
+    paddingBottom: 40,
+  },
+  stickyPanoramicHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 0,
+    paddingBottom: 8,
+  },
+  sectorItemContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   // Action Buttons Row
   actionButtonsRow: {
@@ -1775,8 +1851,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sortScrollContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingRight: 16,
   },
   sortChip: {
     flexDirection: 'row',
