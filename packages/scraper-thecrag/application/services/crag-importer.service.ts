@@ -554,9 +554,10 @@ export class CragImporterService {
         )
 
         // Build position data for each sector annotation
+        // Types can be 'area' (normal sectors) or 'annotation' (used for sub-zones like in Cheste)
         const positions: CragTopoSectorPositionData[] = []
         for (const annotation of topoData.routes) {
-          if (annotation.type === 'area') {
+          if (annotation.type === 'area' || annotation.type === 'annotation') {
             positions.push({
               sectorId: null, // Will be linked later
               areaNumber: annotation.num,
