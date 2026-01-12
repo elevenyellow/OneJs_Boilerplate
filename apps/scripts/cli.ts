@@ -22,6 +22,9 @@ type Command =
   | 'verify-data'
   | 'fix-crag-coordinates'
   | 'migrate-sector-tags'
+  | 'query-api'
+  | 'list-areas'
+  | 'list-sectors'
   | 'help'
 
 interface CommandDefinition {
@@ -149,6 +152,66 @@ const COMMANDS: Record<string, CommandDefinition> = {
       ).default
       const command = container.get(MigrateSectorTagsCommand)
       await command.execute()
+    },
+  },
+  'query-api': {
+    name: 'query-api',
+    description:
+      'Consultar API response guardada. Uso: query-api <type> <externalId>',
+    execute: async () => {
+      const entityType = process.argv[3] as 'crag' | 'area' | 'sector'
+      const externalId = process.argv[4]
+      if (!entityType || !externalId) {
+        console.error('❌ Error: Debes especificar tipo y externalId')
+        console.log(
+          'Uso: bun run apps/scripts/cli.ts query-api <crag|area|sector> <externalId>',
+        )
+        console.log('Ejemplo: bun run apps/scripts/cli.ts query-api crag 102885390')
+        process.exit(1)
+      }
+      const { queryApiResponse } = await import(
+        './commands/query-api-response.command'
+      )
+      await queryApiResponse(entityType, Number(externalId))
+    },
+  },
+  'list-areas': {
+    name: 'list-areas',
+    description: 'Listar áreas de un crag. Uso: list-areas <cragExternalId>',
+    execute: async () => {
+      const cragExternalId = process.argv[3]
+      if (!cragExternalId) {
+        console.error('❌ Error: Debes especificar el externalId del crag')
+        console.log(
+          'Uso: bun run apps/scripts/cli.ts list-areas <cragExternalId>',
+        )
+        console.log('Ejemplo: bun run apps/scripts/cli.ts list-areas 102885390')
+        process.exit(1)
+      }
+      const { listCragAreas } = await import(
+        './commands/query-api-response.command'
+      )
+      await listCragAreas(Number(cragExternalId))
+    },
+  },
+  'list-sectors': {
+    name: 'list-sectors',
+    description:
+      'Listar sectores de un área. Uso: list-sectors <areaExternalId>',
+    execute: async () => {
+      const areaExternalId = process.argv[3]
+      if (!areaExternalId) {
+        console.error('❌ Error: Debes especificar el externalId del área')
+        console.log(
+          'Uso: bun run apps/scripts/cli.ts list-sectors <areaExternalId>',
+        )
+        console.log('Ejemplo: bun run apps/scripts/cli.ts list-sectors 102885391')
+        process.exit(1)
+      }
+      const { listAreaSectors } = await import(
+        './commands/query-api-response.command'
+      )
+      await listAreaSectors(Number(areaExternalId))
     },
   },
   help: {

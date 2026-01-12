@@ -96,6 +96,11 @@ export async function testJerica(container: unknown, cookie: string) {
 
     const scrapedData = await scraper.scrapeCrag(JERICA_ID, 'Jérica', 'Crag')
 
+    // Save scraped data to file for analysis
+    const outputPath = './scraped-data-jerica.json'
+    await Bun.write(outputPath, JSON.stringify(scrapedData, null, 2))
+    console.log(`   💾 Datos guardados en: ${outputPath}`)
+
     console.log(`   ✅ Scraping completado:`)
     console.log(`      - Nombre: ${scrapedData.name}`)
     console.log(`      - Tipo: ${scrapedData.type}`)
@@ -118,6 +123,7 @@ export async function testJerica(container: unknown, cookie: string) {
     const result = await importer.importCrag(scrapedData, {
       countryId: spainCountryId,
       regionId: valenciaRegion.id,
+      uploadToS3: true, // Enable S3 upload for images
     })
 
     // Final report

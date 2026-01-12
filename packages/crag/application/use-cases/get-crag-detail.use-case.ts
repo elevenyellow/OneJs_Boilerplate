@@ -4,6 +4,7 @@ import { CragPrismaRepository } from '@crag/infrastructure/persistence/prisma/cr
 import { Inject, Injectable, OneJsError } from '@OneJs/core'
 import { RoutePrismaRepository } from '@route/infrastructure/persistence/prisma/route.repository'
 import { SectorPrismaRepository } from '@sector/infrastructure/persistence/prisma/sector.repository'
+import { AreaPrismaRepository } from '@area/infrastructure/persistence/prisma/area.repository'
 import { WeatherService } from '@weather'
 import type {
   DailyForecast,
@@ -11,38 +12,18 @@ import type {
 } from '@weather/domain/entities/weather-response.entity'
 
 /**
- * Sector summary for crag detail view
- * Note: Grade filtering and scoring are done client-side using gradeDistribution
+ * Area summary for crag detail view
  */
-export interface SectorSummary {
+export interface AreaSummary {
   id: string
   name: string
-  orientation: string | null
-  rockType: string | null
-  sunExposure: string | null
+  type: string
+  parentAreaId: string | null
+  sectorCount: number
   routeCount: number
-  minGrade: string | null
-  maxGrade: string | null
-  avgGrade: string | null
-  avgHeight: number | null
-  maxHeight: number | null
-  totalFavorites: number | null
-  hasTopo: boolean
-  theCragUrl: string | null
-  headerImageUrl: string | null
-  // Stats for client-side grade filtering and scoring
-  gradeDistribution: Record<string, number>
-  avgStars: number | null
-  // Tags for filtering and display
-  kidFriendly: boolean | null
-  beginner: boolean | null
-  dogFriendly: boolean | null
-  accessible: boolean | null
-  camping: boolean | null
-  swimming: boolean | null
-  scenic: boolean | null
-  popular: boolean | null
-  quiet: boolean | null
+  description: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 /**
@@ -118,13 +99,13 @@ export interface CragDetailResponse {
   forecast: DailyForecast[] | null
   hourlyForecast: HourlyForecast[] | null
 
-  // Crag overview topos (showing sectors)
+  // Crag overview topos (showing areas/sectors)
   topoImages: CragTopoImage[]
 
-  // Sectors with stats for client-side filtering
-  sectors: SectorSummary[]
+  // Areas (geographic zones) - this is the first level of navigation
+  areas: AreaSummary[]
 
-  // Top routes (by stars/ascents)
+  // Top routes (by stars/ascents) across all areas
   topRoutes: RouteHighlight[]
 
   // Best seasons
@@ -136,6 +117,8 @@ export class GetCragDetailUseCase {
   constructor(
     @Inject(CragPrismaRepository)
     private readonly cragRepo: CragPrismaRepository,
+    @Inject(AreaPrismaRepository)
+    private readonly areaRepo: AreaPrismaRepository,
     @Inject(SectorPrismaRepository)
     private readonly sectorRepo: SectorPrismaRepository,
     @Inject(RoutePrismaRepository)
@@ -147,11 +130,7 @@ export class GetCragDetailUseCase {
   ) {}
 
   /**
-   * Get detailed crag information.
-   *
-   * Note: Grade filtering and scoring are done client-side.
-   * The server returns all sectors with their gradeDistribution,
-   * allowing the client to calculate routesInRange without re-fetching.
+   * Get detailed crag information with areas (first level of navigation)
    */
   async execute(cragId: string): Promise<CragDetailResponse> {
     // 1. Get crag with country/region info from repository
@@ -165,60 +144,49 @@ export class GetCragDetailUseCase {
 
     const { crag, countryName, regionName, averageHeight } = cragData
 
-    // 2. Get all sectors for this crag using SectorRepository
-    const sectors = await this.sectorRepo.findByCragId(crag.id)
+    // 2. Get root areas for this crag (first level of navigation)
+    const areas = await this.areaRepo.findRootAreasByCragId(crag.id)
 
-    // 3. Get sector IDs for route query
+    // 3. Get all sectors for this crag (for stats and top routes)
+    const sectors = await this.sectorRepo.findByCragId(crag.id)
     const sectorIds = sectors.map((s) => s.id)
 
-    // 4. Count actual routes per sector (in case routeCount is not updated)
-    const routeCountMap =
-      await this.sectorRepo.getRouteCountsBySectorIds(sectorIds)
+    // 4. Count sectors per area
+    const sectorsByArea = new Map<string, number>()
+    for (const sector of sectors) {
+      const areaId = sector.areaId.toString()
+      sectorsByArea.set(areaId, (sectorsByArea.get(areaId) || 0) + 1)
+    }
 
-    // 5. Build sector summaries
-    // Client will calculate routesInRange and scoring using gradeDistribution
-    const sectorSummaries: SectorSummary[] = sectors.map((sector) => {
-      const actualRouteCount =
-        routeCountMap.get(sector.id.toString()) || sector.stats.routeCount || 0
+    // 5. Count routes per area
+    const routesByArea = new Map<string, number>()
+    for (const sector of sectors) {
+      const areaId = sector.areaId.toString()
+      const routeCount = sector.stats.routeCount || 0
+      routesByArea.set(areaId, (routesByArea.get(areaId) || 0) + routeCount)
+    }
 
+    // 6. Build area summaries
+    const areaSummaries: AreaSummary[] = areas.map((area) => {
+      const areaId = area.id.toString()
       return {
-        id: sector.id.toString(),
-        name: sector.name.toString(),
-        orientation: sector.orientation?.toString() ?? null,
-        rockType: sector.rockType?.toString() ?? null,
-        sunExposure: sector.sunExposure?.toString() ?? null,
-        routeCount: actualRouteCount,
-        minGrade: sector.stats.minGrade,
-        maxGrade: sector.stats.maxGrade,
-        avgGrade: sector.stats.avgGrade || null,
-        avgHeight: sector.stats.averageHeight,
-        maxHeight: sector.stats.maxHeight || null,
-        totalFavorites: sector.totalFavorites,
-        hasTopo: sector.hasTopo,
-        theCragUrl: sector.urlStub
-          ? `https://www.thecrag.com${sector.urlStub}`
-          : null,
-        headerImageUrl: sector.headerImageS3Url ?? sector.headerImageUrl,
-        gradeDistribution: sector.stats.gradeDistribution || {},
-        avgStars: sector.stats.avgStars || null,
-        // Tags for filtering and display
-        kidFriendly: sector.kidFriendly,
-        beginner: sector.beginner,
-        dogFriendly: sector.dogFriendly,
-        accessible: sector.accessible,
-        camping: sector.camping,
-        swimming: sector.swimming,
-        scenic: sector.scenic,
-        popular: sector.popular,
-        quiet: sector.quiet,
+        id: areaId,
+        name: area.name.toString(),
+        type: area.type,
+        parentAreaId: area.parentAreaId?.toString() ?? null,
+        sectorCount: sectorsByArea.get(areaId) || 0,
+        routeCount: routesByArea.get(areaId) || 0,
+        description: area.beta.getDescription(),
+        latitude: area.latitude,
+        longitude: area.longitude,
       }
     })
 
-    // 6. Get top routes using RouteRepository
+    // 7. Get top routes across all sectors
     const routeHighlights: RouteHighlight[] =
       await this.routeRepo.findTopRoutesBySectorIds(sectorIds, 15)
 
-    // 7. Fetch weather forecast (7 days daily + hourly for first 2 days)
+    // 8. Fetch weather forecast (7 days daily + hourly for first 2 days)
     let forecast: DailyForecast[] | null = null
     let hourlyForecast: HourlyForecast[] | null = null
 
@@ -238,16 +206,16 @@ export class GetCragDetailUseCase {
       }
     }
 
-    // 8. Calculate total routes
-    const totalRoutes = sectorSummaries.reduce(
-      (sum, s) => sum + s.routeCount,
+    // 9. Calculate total routes across all areas
+    const totalRoutes = areaSummaries.reduce(
+      (sum, a) => sum + a.routeCount,
       0,
     )
 
-    // 9. Get crag topo images using TopoRepository
+    // 10. Get crag topo images using TopoRepository
     const topoImages = await this.topoRepo.findCragToposWithPositions(crag.id)
 
-    // 10. Build response
+    // 11. Build response
     return {
       id: crag.id.toString(),
       name: crag.name.toString(),
@@ -269,7 +237,7 @@ export class GetCragDetailUseCase {
       forecast,
       hourlyForecast,
       topoImages,
-      sectors: sectorSummaries,
+      areas: areaSummaries,
       topRoutes: routeHighlights,
       bestSeasons: crag.seasonality.toArray(),
     }

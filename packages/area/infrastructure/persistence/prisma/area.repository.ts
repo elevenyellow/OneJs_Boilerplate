@@ -187,8 +187,8 @@ export class AreaPrismaRepository extends PrismaRepository<'area'> {
       AltNames.create(data.altNames),
       data.type as AreaType,
       Geometry.fromJSON(data.geometry as Record<string, unknown>),
-      BetaInfo.fromJSON(data.beta as BetaItemData[]),
       Seasonality.create(data.seasonality),
+      BetaInfo.fromJSON(data.beta as BetaItemData[]),
       data.createdAt,
       data.updatedAt,
     )

@@ -194,7 +194,11 @@ export class SectorEntity {
    * Check if sector is good for families (kid friendly, accessible, or beginner)
    */
   isGoodForFamilies(): boolean {
-    return this.kidFriendly === true || this.beginner === true || this.accessible === true
+    return (
+      this.kidFriendly === true ||
+      this.beginner === true ||
+      this.accessible === true
+    )
   }
 
   getTheCragUrl(): string | null {
@@ -255,7 +259,7 @@ export class SectorEntity {
       theCragUrl: this.getTheCragUrl(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      headerImageUrl: this.headerImageUrl,
+      headerImageUrl: this.getHeaderImageUrl('mobile'), // Prefer S3, fallback to TheCrag
       headerImageWidth: this.headerImageWidth,
       headerImageHeight: this.headerImageHeight,
       headerImageS3Url: this.headerImageS3Url,
@@ -291,7 +295,7 @@ export class SectorEntity {
    */
   updateStats(newStats: SectorStats): void {
     // @ts-ignore - Mutating readonly for compatibility
-    (this as any).stats = newStats
+    ;(this as any).stats = newStats
   }
 
   /**

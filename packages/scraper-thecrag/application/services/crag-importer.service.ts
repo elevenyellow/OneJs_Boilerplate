@@ -7,6 +7,7 @@ import { RegionId } from '@climb-zone/region'
 import { RoutePrismaRepository } from '@climb-zone/route'
 import { SectorPrismaRepository, SectorStatsService } from '@climb-zone/sector'
 import type { BetaItemData } from '@climb-zone/shared'
+import { ExternalId } from '@climb-zone/shared'
 import { ImageProcessorService } from '@climb-zone/storage'
 import {
   CragTopoImageEntity,
@@ -18,7 +19,6 @@ import {
   ViewScale,
   type CragTopoSectorPositionData,
 } from '@climb-zone/topo'
-import { ExternalId } from '@climb-zone/shared'
 import { CragId } from '@crag/domain/value-objects/crag-id.vo'
 import { RouteId } from '@route/domain/value-objects/route-id.vo'
 import type {
@@ -280,6 +280,11 @@ export class CragImporterService {
   /**
    * Process a scraped node (Area, Sector, or Cliff)
    * Recursively processes children
+   *
+   * Logic:
+   * - If node has routes → create Sector (under parentAreaId, create area if needed)
+   * - If node has children but no routes → create Area (intermediate container)
+   * - Pass the created Area ID to children for proper hierarchy
    */
   private async processScrapedNode(
     node: ScrapedCragNode,
@@ -291,21 +296,31 @@ export class CragImporterService {
     console.log(`   🔍 Procesando: ${node.name} (${node.type})`)
 
     const hasRoutes = node.routes && node.routes.length > 0
+    const hasChildren = node.children && node.children.length > 0
     const hasTopos = node.topos && node.topos.length > 0
 
     console.log(`      📊 Info del scraper:`)
     console.log(`         - Routes: ${node.routes?.length ?? 0}`)
+    console.log(`         - Children: ${node.children?.length ?? 0}`)
     console.log(`         - Topos: ${node.topos?.length ?? 0}`)
     console.log(
       `         - Header Image: ${node.info?.headerImageUrl ? '✅' : '❌'}`,
     )
 
-    // If this node has routes, treat it as a sector (needs an area parent)
-    if (hasRoutes) {
-      // Clean beta info (description, approach) using AI
-      const cleanedNodeInfo = await this.cleanBetaInfo(node.info ?? null)
+    // Track the area ID to pass to children
+    let currentAreaId: AreaId | null = parentAreaId
 
-      // Create area first
+    // Check if this is a container type (Cliff, Area, Field) that should always create an Area
+    const isContainerType = ['Cliff', 'Area', 'Field'].includes(node.type)
+
+    // DECISION LOGIC:
+    // 1. If node is a container type (Cliff/Area/Field) OR has children → create Area
+    // 2. If node has routes → create Sector (under the area from step 1 or parent)
+    // 3. Process children recursively under the area
+
+    // Step 1: Create Area if needed
+    if (isContainerType || hasChildren) {
+      const cleanedNodeInfo = await this.cleanBetaInfo(node.info ?? null)
       const areaData = this.mapper.mapToArea(
         node.id,
         node.name,
@@ -320,12 +335,45 @@ export class CragImporterService {
         node.info?.apiResponseRaw,
       )
       result.areasCreated++
+      currentAreaId = area.id
 
-      // Create sector
+      if (hasChildren) {
+        console.log(`      ✅ Area creada: ${node.name} (agrupa ${node.children.length} hijos)`)
+      } else {
+        console.log(`      ✅ Area creada: ${node.name} (${node.type})`)
+      }
+      console.log('')
+    } else if (hasRoutes && !parentAreaId) {
+      // Orphan sector without parent area - create area for it
+      const cleanedNodeInfo = await this.cleanBetaInfo(node.info ?? null)
+      const areaData = this.mapper.mapToArea(
+        node.id,
+        node.name,
+        cragId,
+        null,
+        node.info?.geometry,
+        cleanedNodeInfo,
+        node.type,
+      )
+      const area = await this.areaRepo.saveByExternalId(
+        this.mapper.createAreaEntity(areaData),
+        node.info?.apiResponseRaw,
+      )
+      result.areasCreated++
+      currentAreaId = area.id
+      console.log(`      📦 Area creada para sector huérfano: ${node.name}`)
+    }
+
+    // Step 2: Create Sector if node has routes
+    if (hasRoutes) {
+      const cleanedNodeInfo = await this.cleanBetaInfo(node.info ?? null)
+      const sectorAreaId = currentAreaId ?? parentAreaId
+
+      // Create sector under the determined area
       const sectorData = this.mapper.mapToSector(
         node.id,
         node.name,
-        area.id,
+        sectorAreaId,
         node.info?.geometry,
         cleanedNodeInfo,
         node.type,
@@ -392,7 +440,10 @@ export class CragImporterService {
               TopoImageId.generate(),
               ExternalId.create(topoData.topoId),
               sector.id,
-              TopoImageUrls.create(topoData.thumbnailUrl, topoData.fullImageUrl),
+              TopoImageUrls.create(
+                topoData.thumbnailUrl,
+                topoData.fullImageUrl,
+              ),
               ImageDimensions.create(
                 topoData.width,
                 topoData.height,
@@ -461,12 +512,12 @@ export class CragImporterService {
       console.log('')
     }
 
-    // Process children recursively
+    // Step 3: Process children recursively with the correct parent area ID
     for (const child of node.children) {
       await this.processScrapedNode(
         child,
         cragId,
-        null, // For simplicity, not tracking nested areas
+        currentAreaId,
         result,
         uploadToS3,
       )
@@ -538,7 +589,9 @@ export class CragImporterService {
    * Filter topos to only include sector topos (those with route annotations)
    * Excludes panoramic/overview topos that only have area annotations
    */
-  private filterSectorTopos(topos: TopoImageData[] | undefined): TopoImageData[] {
+  private filterSectorTopos(
+    topos: TopoImageData[] | undefined,
+  ): TopoImageData[] {
     if (!topos || topos.length === 0) return []
 
     return topos.filter((topo) => {
