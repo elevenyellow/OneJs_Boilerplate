@@ -44,6 +44,47 @@ export class WebCoverImage {
     )
   }
 
+  /**
+   * Creates a WebCoverImage from TheCrag API response.
+   * Extracts webcover data including hashId, dimensions, focus area, and metadata.
+   */
+  static fromApiResponse(
+    apiResponse: Record<string, unknown> | null,
+  ): WebCoverImage | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const webcover = data?.webcover as Record<string, unknown> | undefined
+
+    if (!webcover) return null
+
+    const hashId = webcover.hashId as string | undefined
+    if (!hashId) return null
+
+    const imageUrl = ImageUrl.fromHashId(hashId)
+
+    const focusData = webcover.focus as Record<string, unknown> | undefined
+    let focus: WebCoverFocus | null = null
+    if (focusData) {
+      focus = WebCoverFocus.create(
+        (focusData.top as number) ?? 0,
+        (focusData.bottom as number) ?? 0,
+        (focusData.left as number) ?? 0,
+        (focusData.right as number) ?? 0,
+        (focusData.label as string) ?? '',
+      )
+    }
+
+    return WebCoverImage.create({
+      imageUrl,
+      focus,
+      originalWidth: (webcover.width as number) ?? null,
+      originalHeight: (webcover.height as number) ?? null,
+      dateUploaded: (webcover.dateUploaded as string) ?? null,
+      title: (webcover.title as string) ?? null,
+    })
+  }
+
   getImageUrl(): ImageUrl {
     return this.imageUrl
   }

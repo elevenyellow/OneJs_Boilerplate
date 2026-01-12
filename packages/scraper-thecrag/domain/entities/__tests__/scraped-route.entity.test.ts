@@ -20,6 +20,12 @@ describe('ScrapedRoute Entity', () => {
   // 8. ✓ Get raw responses
   // 9. ✓ Convenience getters (isSport, getBolts, getHeight)
   // 10. ✓ Get grade color
+  // 11. ✓ Create ScrapedRoute from API route data (fromApiRouteData)
+  // 12. ✓ fromApiRouteData with null grade
+  // 13. ✓ fromApiRouteData with parent area ID
+  // 14. ✓ fromApiRouteData parse first ascent string
+  // 15. ✓ fromApiRouteData handle first ascent with only year
+  // 16. ✓ fromApiRouteData generate slug from name
 
   const sampleRouteId = NodeId.createFrom('1447609059')
   const sampleParentId = NodeId.createFrom('17857049')
@@ -370,5 +376,183 @@ describe('ScrapedRoute Entity', () => {
     // Assert
     expect(faClimber).toBe('John Smith')
     expect(faYear).toBe(2020)
+  })
+
+  describe('fromApiRouteData', () => {
+    test('should create ScrapedRoute from API route data with all fields', () => {
+      // Arrange
+      const apiData = {
+        id: 1447609059,
+        name: 'Sargantana',
+        grade: '6b',
+        gradeIndex: 18,
+        height: 15,
+        pitches: 1,
+        quality: 85,
+        stars: 3,
+        ascents: 42,
+        subType: 'sport',
+        bolts: 8,
+        firstAscent: 'John Smith, 2020',
+        tags: ['crimpy', 'technical'],
+        warnings: null,
+      }
+
+      // Act
+      const route = ScrapedRoute.fromApiRouteData(apiData)
+
+      // Assert
+      expect(route).toBeInstanceOf(ScrapedRoute)
+      expect(route.getId().toString()).toBe('1447609059')
+      expect(route.getName()).toBe('Sargantana')
+      expect(route.getSlug()).toBe('sargantana')
+      expect(route.getGradeString()).toBe('6b')
+      expect(route.getHeight()).toBe('15m')
+      expect(route.getBolts()).toBe(8)
+      expect(route.getStars()).toBe(3)
+      expect(route.isSport()).toBe(true)
+    })
+
+    test('should create ScrapedRoute from API route data with null grade', () => {
+      // Arrange
+      const apiData = {
+        id: 1447609060,
+        name: 'Unknown Route',
+        grade: null,
+        gradeIndex: null,
+        height: null,
+        pitches: null,
+        quality: null,
+        stars: null,
+        ascents: null,
+        subType: null,
+        bolts: null,
+        firstAscent: null,
+        tags: null,
+        warnings: null,
+      }
+
+      // Act
+      const route = ScrapedRoute.fromApiRouteData(apiData)
+
+      // Assert
+      expect(route).toBeInstanceOf(ScrapedRoute)
+      expect(route.getId().toString()).toBe('1447609060')
+      expect(route.getName()).toBe('Unknown Route')
+      expect(route.getGrade()).toBeNull()
+      expect(route.getHeight()).toBeNull()
+      expect(route.getBolts()).toBeNull()
+      expect(route.getStars()).toBeNull()
+    })
+
+    test('should create ScrapedRoute from API route data with parent area ID', () => {
+      // Arrange
+      const apiData = {
+        id: 1447609061,
+        name: 'Child Route',
+        grade: '7a',
+        gradeIndex: 20,
+        height: 20,
+        pitches: 2,
+        quality: 90,
+        stars: 4,
+        ascents: 100,
+        subType: 'trad',
+        bolts: null,
+        firstAscent: 'Jane Doe, 1995',
+        tags: ['classic'],
+        warnings: ['loose rock'],
+      }
+      const parentAreaId = NodeId.createFrom('17857049')
+
+      // Act
+      const route = ScrapedRoute.fromApiRouteData(apiData, parentAreaId)
+
+      // Assert
+      expect(route).toBeInstanceOf(ScrapedRoute)
+      expect(route.getParentAreaId()?.toString()).toBe('17857049')
+      expect(route.isTrad()).toBe(true)
+      expect(route.getRouteInfo()?.getPitches()).toBe(2)
+      expect(route.getRouteInfo()?.getAscentCount()).toBe(100)
+    })
+
+    test('should parse first ascent string into history', () => {
+      // Arrange
+      const apiData = {
+        id: 1447609062,
+        name: 'Historic Route',
+        grade: '5c',
+        gradeIndex: 15,
+        height: 12,
+        pitches: 1,
+        quality: 70,
+        stars: 2,
+        ascents: 50,
+        subType: 'sport',
+        bolts: 6,
+        firstAscent: 'Alex Honnold, 2010',
+        tags: null,
+        warnings: null,
+      }
+
+      // Act
+      const route = ScrapedRoute.fromApiRouteData(apiData)
+
+      // Assert
+      expect(route.getFirstAscentClimber()).toBe('Alex Honnold')
+      expect(route.getFirstAscentYear()).toBe(2010)
+    })
+
+    test('should handle first ascent with only year', () => {
+      // Arrange
+      const apiData = {
+        id: 1447609063,
+        name: 'Old Route',
+        grade: '4a',
+        gradeIndex: 10,
+        height: 10,
+        pitches: 1,
+        quality: 60,
+        stars: 1,
+        ascents: 20,
+        subType: 'sport',
+        bolts: 4,
+        firstAscent: '1985',
+        tags: null,
+        warnings: null,
+      }
+
+      // Act
+      const route = ScrapedRoute.fromApiRouteData(apiData)
+
+      // Assert
+      expect(route.getFirstAscentYear()).toBe(1985)
+    })
+
+    test('should generate slug from route name', () => {
+      // Arrange
+      const apiData = {
+        id: 1447609064,
+        name: 'The Great Route (Direct)',
+        grade: '6a+',
+        gradeIndex: 16,
+        height: 18,
+        pitches: 1,
+        quality: 80,
+        stars: 3,
+        ascents: 30,
+        subType: 'sport',
+        bolts: 7,
+        firstAscent: null,
+        tags: null,
+        warnings: null,
+      }
+
+      // Act
+      const route = ScrapedRoute.fromApiRouteData(apiData)
+
+      // Assert
+      expect(route.getSlug()).toBe('the-great-route-direct')
+    })
   })
 })

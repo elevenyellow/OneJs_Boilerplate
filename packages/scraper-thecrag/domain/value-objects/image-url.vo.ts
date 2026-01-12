@@ -68,4 +68,15 @@ export class ImageUrl {
   toString(): string {
     return this.fullUrl
   }
+
+  /**
+   * Normalizes an image URL from TheCrag.
+   * Handles protocol-relative URLs (//...) and relative URLs (/...).
+   */
+  static normalize(url: string): string {
+    if (!url) return ''
+    if (url.startsWith('//')) return `https:${url}`
+    if (url.startsWith('/')) return 'https://www.thecrag.com' + url
+    return url
+  }
 }

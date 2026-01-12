@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { NodeStatistics } from '../node-statistics.vo'
-import { NodeSeasonality } from '../node-seasonality.vo'
-import { NodeTags } from '../node-tags.vo'
 import { NodeMetadata } from '../node-metadata.vo'
+import { NodeSeasonality } from '../node-seasonality.vo'
+import { NodeStatistics } from '../node-statistics.vo'
+import { NodeTags } from '../node-tags.vo'
 
 describe('NodeStatistics Value Object', () => {
   // TEST CASES LIST (REASON)
@@ -12,6 +12,52 @@ describe('NodeStatistics Value Object', () => {
   // 4. ✓ Get photos count
   // 5. ✓ Get favorites count
   // 6. ✓ Get kudos count
+  // 7. ✓ Create from API response
+  // 8. ✓ Return null from empty API response
+  // 9. ✓ Return null from API response without data
+
+  test('should create NodeStatistics from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        numberRoutes: 42,
+        numberAscents: 979,
+        numberPhotos: 6,
+        numberFavorites: 32,
+        numberKudos: 1502,
+      },
+    }
+
+    // Act
+    const stats = NodeStatistics.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(stats).toBeInstanceOf(NodeStatistics)
+    expect(stats?.getRoutes()).toBe(42)
+    expect(stats?.getAscents()).toBe(979)
+    expect(stats?.getPhotos()).toBe(6)
+    expect(stats?.getFavorites()).toBe(32)
+    expect(stats?.getKudos()).toBe(1502)
+  })
+
+  test('should return null from empty API response', () => {
+    // Act
+    const stats = NodeStatistics.fromApiResponse(null)
+
+    // Assert
+    expect(stats).toBeNull()
+  })
+
+  test('should return null from API response without data', () => {
+    // Arrange
+    const apiResponse = {}
+
+    // Act
+    const stats = NodeStatistics.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(stats).toBeNull()
+  })
 
   test('should create NodeStatistics with all counts', () => {
     // Act
@@ -80,8 +126,48 @@ describe('NodeSeasonality Value Object', () => {
   // 3. ✓ Get best months
   // 4. ✓ Get worst months
   // 5. ✓ Get score for specific month
+  // 6. ✓ Create from API response
+  // 7. ✓ Return null from empty API response
+  // 8. ✓ Return null from API response without seasonality
 
   const monthlyScores = [113, 67, 47, 110, 83, 82, 26, 8, 67, 138, 111, 123]
+
+  test('should create NodeSeasonality from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        seasonality: monthlyScores,
+      },
+    }
+
+    // Act
+    const seasonality = NodeSeasonality.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(seasonality).toBeInstanceOf(NodeSeasonality)
+    expect(seasonality?.getMonthlyScores()).toEqual(monthlyScores)
+  })
+
+  test('should return null from API response for seasonality with null', () => {
+    // Act
+    const seasonality = NodeSeasonality.fromApiResponse(null)
+
+    // Assert
+    expect(seasonality).toBeNull()
+  })
+
+  test('should return null from API response without seasonality', () => {
+    // Arrange
+    const apiResponse = {
+      data: {},
+    }
+
+    // Act
+    const seasonality = NodeSeasonality.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(seasonality).toBeNull()
+  })
 
   test('should create NodeSeasonality with monthly scores', () => {
     // Act
@@ -290,6 +376,80 @@ describe('NodeTags Value Object', () => {
     // Act & Assert
     expect(tags.isBeginnerFriendly()).toBe(true)
   })
+
+  // Additional tests for structured fields parsing
+  test('should parse structured fields from generic tags object', () => {
+    // Arrange
+    const genericTags = {
+      orientation: 'South',
+      rockType: 'Limestone',
+      style: 'Overhang',
+      sunExposure: 'Morning shade',
+      sheltered: true,
+    }
+
+    // Act
+    const structuredFields = NodeTags.parseStructuredFields(genericTags)
+
+    // Assert
+    expect(structuredFields.orientation).toBe('South')
+    expect(structuredFields.rockType).toBe('Limestone')
+    expect(structuredFields.climbingStyle).toContain('Overhang')
+    expect(structuredFields.sunExposure).toBe('Morning shade')
+    expect(structuredFields.sheltered).toBe(true)
+  })
+
+  test('should parse orientation from facing field', () => {
+    const tags = { facing: 'West' }
+    const result = NodeTags.parseStructuredFields(tags)
+    expect(result.orientation).toBe('West')
+  })
+
+  test('should parse orientation from aspect field', () => {
+    const tags = { aspect: 'NE' }
+    const result = NodeTags.parseStructuredFields(tags)
+    expect(result.orientation).toBe('NE')
+  })
+
+  test('should parse rock type from alternative fields', () => {
+    const tags1 = { rock: 'Granite' }
+    const tags2 = { 'rock-type': 'Sandstone' }
+
+    expect(NodeTags.parseStructuredFields(tags1).rockType).toBe('Granite')
+    expect(NodeTags.parseStructuredFields(tags2).rockType).toBe('Sandstone')
+  })
+
+  test('should parse multiple climbing styles', () => {
+    const tags = {
+      style: 'Slab',
+      angle: 'Vertical',
+      features: ['Crimps', 'Pockets'],
+    }
+
+    const result = NodeTags.parseStructuredFields(tags)
+
+    expect(result.climbingStyle).toContain('Slab')
+    expect(result.climbingStyle).toContain('Vertical')
+    expect(result.climbingStyle).toContain('Crimps')
+    expect(result.climbingStyle).toContain('Pockets')
+  })
+
+  test('should parse sheltered from protected field', () => {
+    const tags = { protected: true }
+    const result = NodeTags.parseStructuredFields(tags)
+    expect(result.sheltered).toBe(true)
+  })
+
+  test('should parse sheltered from wind field with protected keyword', () => {
+    const tags = { wind: 'Protected from wind' }
+    const result = NodeTags.parseStructuredFields(tags)
+    expect(result.sheltered).toBe(true)
+  })
+
+  test('should return empty object for empty tags', () => {
+    const result = NodeTags.parseStructuredFields({})
+    expect(result).toEqual({})
+  })
 })
 
 describe('NodeMetadata Value Object', () => {
@@ -301,6 +461,42 @@ describe('NodeMetadata Value Object', () => {
   // 5. ✓ Check if top level crag (isTLC)
   // 6. ✓ Get locatedness
   // 7. ✓ Get max popularity
+  // 8. ✓ Create from API response
+  // 9. ✓ Return null from empty API response
+
+  test('should create NodeMetadata from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        depth: 5,
+        siblingLabel: 17,
+        priceCategory: 'Emerging',
+        isTopLevelCrag: true,
+        locatedness: 80,
+        maxPopularity: 50,
+      },
+    }
+
+    // Act
+    const metadata = NodeMetadata.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(metadata).toBeInstanceOf(NodeMetadata)
+    expect(metadata?.getDepth()).toBe(5)
+    expect(metadata?.getSiblingLabel()).toBe(17)
+    expect(metadata?.getPriceCategory()).toBe('Emerging')
+    expect(metadata?.isTLC()).toBe(true)
+    expect(metadata?.getLocatedness()).toBe(80)
+    expect(metadata?.getMaxPop()).toBe(50)
+  })
+
+  test('should return null from API response for metadata with null', () => {
+    // Act
+    const metadata = NodeMetadata.fromApiResponse(null)
+
+    // Assert
+    expect(metadata).toBeNull()
+  })
 
   test('should create NodeMetadata with all fields', () => {
     // Act

@@ -143,6 +143,49 @@ describe('RouteHistory Value Object', () => {
   // 3. ✓ Get climber name
   // 4. ✓ Get date
   // 5. ✓ Parse from HTML route-history element
+  // 6. ✓ Create from API response
+  // 7. ✓ Return null from empty API response
+
+  test('should create RouteHistory from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        history: [
+          { type: 'FA', climber: 'John Smith', date: '2020-05-15' },
+          { type: 'FFA', climber: 'Jane Doe', date: '2021-06-20' },
+        ],
+      },
+    }
+
+    // Act
+    const history = RouteHistory.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(history).toBeInstanceOf(RouteHistory)
+    expect(history?.getFirstAscentClimber()).toBe('John Smith')
+    expect(history?.getFirstFreeAscentClimber()).toBe('Jane Doe')
+  })
+
+  test('should return null from API response without history', () => {
+    // Arrange
+    const apiResponse = {
+      data: {},
+    }
+
+    // Act
+    const history = RouteHistory.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(history).toBeNull()
+  })
+
+  test('should return null from empty API response', () => {
+    // Act
+    const history = RouteHistory.fromApiResponse(null)
+
+    // Assert
+    expect(history).toBeNull()
+  })
 
   test('should create RouteHistory with FA info', () => {
     // Act
@@ -212,6 +255,49 @@ describe('RouteBeta Value Object', () => {
   // 3. ✓ Get approach
   // 4. ✓ Get unique features
   // 5. ✓ Check if has description
+  // 6. ✓ Create from API response
+  // 7. ✓ Return null from empty API response
+
+  test('should create RouteBeta from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        description: 'Technical crimpy route.',
+        approach: 'Follow the main trail.',
+        uniqueFeatures: 'Beautiful limestone.',
+      },
+    }
+
+    // Act
+    const beta = RouteBeta.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(beta).toBeInstanceOf(RouteBeta)
+    expect(beta?.getDescription()).toBe('Technical crimpy route.')
+    expect(beta?.getApproach()).toBe('Follow the main trail.')
+    expect(beta?.getUniqueFeatures()).toBe('Beautiful limestone.')
+  })
+
+  test('should return null from API response without beta data', () => {
+    // Arrange
+    const apiResponse = {
+      data: {},
+    }
+
+    // Act
+    const beta = RouteBeta.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(beta).toBeNull()
+  })
+
+  test('should return null from empty API response for RouteBeta', () => {
+    // Act
+    const beta = RouteBeta.fromApiResponse(null)
+
+    // Assert
+    expect(beta).toBeNull()
+  })
 
   test('should create RouteBeta with description and approach', () => {
     // Act

@@ -1,11 +1,12 @@
 import { Injectable, logger } from '@OneJs/core'
+import { ScrapedAreaComplete } from '@scraper-thecrag/domain/entities/scraped-area-complete.entity'
 import { ScrapedArea } from '@scraper-thecrag/domain/entities/scraped-area.entity'
 import { ScrapedRoute } from '@scraper-thecrag/domain/entities/scraped-route.entity'
+import { ScrapedSector } from '@scraper-thecrag/domain/entities/scraped-sector.entity'
 import { AreaBeta } from '@scraper-thecrag/domain/value-objects/area-beta.vo'
 import { AreaName } from '@scraper-thecrag/domain/value-objects/area-name.vo'
 import { AreaSlug } from '@scraper-thecrag/domain/value-objects/area-slug.vo'
 import { AreaUrl } from '@scraper-thecrag/domain/value-objects/area-url.vo'
-import { ImageUrl } from '@scraper-thecrag/domain/value-objects/image-url.vo'
 import { NodeId } from '@scraper-thecrag/domain/value-objects/node-id.vo'
 import { NodeMetadata } from '@scraper-thecrag/domain/value-objects/node-metadata.vo'
 import { NodeSeasonality } from '@scraper-thecrag/domain/value-objects/node-seasonality.vo'
@@ -17,12 +18,15 @@ import { RouteBeta } from '@scraper-thecrag/domain/value-objects/route-beta.vo'
 import { RouteGrade } from '@scraper-thecrag/domain/value-objects/route-grade.vo'
 import { RouteHistory } from '@scraper-thecrag/domain/value-objects/route-history.vo'
 import { RouteInfo } from '@scraper-thecrag/domain/value-objects/route-info.vo'
+import { RouteWithTopo } from '@scraper-thecrag/domain/value-objects/route-with-topo.vo'
 import { TopoAnnotation } from '@scraper-thecrag/domain/value-objects/topo-annotation.vo'
 import { TopoDimensions } from '@scraper-thecrag/domain/value-objects/topo-dimensions.vo'
-import { TopoImage } from '@scraper-thecrag/domain/value-objects/topo-image.vo'
-import { WebCoverFocus } from '@scraper-thecrag/domain/value-objects/webcover-focus.vo'
+import { TopoImage } from '@scraper-thecrag/domain/entities/topo-image.entity'
+import { TopoId } from '@scraper-thecrag/domain/value-objects/topo-id.vo'
+import { TopoImageUrl } from '@scraper-thecrag/domain/value-objects/topo-image-url.vo'
 import { WebCoverImage } from '@scraper-thecrag/domain/value-objects/webcover-image.vo'
 import * as cheerio from 'cheerio'
+import { load } from 'cheerio'
 import { DEFAULT_PROXIES, ProxyManager } from '../utils/proxy-manager'
 
 export interface ScraperOptions {
@@ -244,6 +248,493 @@ export class TheCragApiScraper {
     return data.map((item: unknown[]) => NodeId.create(item[0] as number))
   }
 
+  /**
+   * Scrape a complete sector with all routes and their topo annotations.
+   *
+   * This method:
+   * 1. Scrapes the sector area data (topos, cover image, metadata)
+   * 2. Gets all route IDs in the sector
+   * 3. Scrapes each route's detailed data
+   * 4. Links routes with their topo annotations from the sector topos
+   * 5. Identifies sub-sectors that may need separate scraping
+   *
+   * @param sectorId - The NodeId of the sector to scrape
+   * @param options - Optional configuration
+   * @returns ScrapedSector with all routes and topos linked
+   */
+  async scrapeSectorWithRoutes(
+    sectorId: NodeId,
+    options?: {
+      /** Include sub-sectors recursively (default: false) */
+      includeSubSectors?: boolean
+      /** Maximum number of routes to scrape (default: no limit) */
+      maxRoutes?: number
+      /** Pre-scraped area data to avoid duplicate requests (optional) */
+      scrapedArea?: ScrapedArea
+    },
+  ): Promise<ScrapedSector> {
+    const includeSubSectors = options?.includeSubSectors ?? false
+    const maxRoutes = options?.maxRoutes
+    const scrapedArea = options?.scrapedArea
+
+    logger.info(
+      'scraper:thecrag',
+      `Scraping sector with routes: ${sectorId.toString()}`,
+    )
+
+    // Step 1: Use pre-scraped area if provided, otherwise scrape it
+    const area = scrapedArea ?? (await this.scrapeArea(sectorId))
+
+    // Step 2: Parse HTML for detailed route data
+    const html = area.getRawHtmlResponse()?.getRawHtml() || ''
+    const htmlRouteData = this.parseRoutesFromHtml(html)
+
+    logger.info(
+      'scraper:thecrag',
+      `Parsed ${htmlRouteData.length} routes from HTML with detailed data`,
+    )
+
+    // Create a map for quick lookup by route ID
+    const htmlRouteDataMap = new Map(
+      htmlRouteData.map((route) => [route.id, route]),
+    )
+
+    // Step 3: Collect all route annotations from topo images
+    const topoImages = area.getTopoImages()
+    const allRouteAnnotations: TopoAnnotation[] = []
+
+    for (const topoImage of topoImages) {
+      allRouteAnnotations.push(...topoImage.getRouteAnnotations())
+    }
+
+    logger.info(
+      'scraper:thecrag',
+      `Found ${allRouteAnnotations.length} route annotations in ${topoImages.length} topo images`,
+    )
+
+    // Step 4: Create ScrapedRoute entities from SVG annotations (no individual requests)
+    const routeAnnotationsToUse = maxRoutes
+      ? allRouteAnnotations.slice(0, maxRoutes)
+      : allRouteAnnotations
+
+    const scrapedRoutes: ScrapedRoute[] = routeAnnotationsToUse.map(
+      (annotation) => {
+        const baseRoute = ScrapedRoute.fromTopoAnnotation(annotation, sectorId)
+
+        // Enrich with HTML data if available
+        const htmlData = htmlRouteDataMap.get(annotation.getId().toString())
+        return htmlData ? baseRoute.enrichWithHtmlData(htmlData) : baseRoute
+      },
+    )
+
+    logger.info(
+      'scraper:thecrag',
+      `Created ${scrapedRoutes.length} routes from SVG annotations (enriched with HTML data where available)`,
+    )
+
+    // Step 5: Link routes with their annotations
+    const routesWithTopos = RouteWithTopo.linkRoutesWithAnnotations(
+      scrapedRoutes,
+      allRouteAnnotations,
+      null, // We'll set topo image per route if needed
+    )
+
+    // For routes with annotations, find and set the correct topo image
+    const routesWithCorrectTopoImage = this.linkRoutesToTopoImages(
+      routesWithTopos,
+      topoImages,
+    )
+
+    // Step 6: Identify sub-sectors (child areas that are not routes)
+    let subSectorIds: NodeId[] = []
+    if (includeSubSectors) {
+      const childIds = area.getChildIds()
+      // Filter out route IDs - remaining are sub-sectors
+      const routeIdSet = new Set(
+        scrapedRoutes.map((route) => route.getId().getValue()),
+      )
+      subSectorIds = childIds.filter((id) => !routeIdSet.has(id.getValue()))
+    }
+
+    logger.info(
+      'scraper:thecrag',
+      `Scraped sector: ${area.getName().toString()} with ${scrapedRoutes.length} routes, ${topoImages.length} topos`,
+    )
+
+    return ScrapedSector.create(
+      sectorId,
+      area.getName().toString(),
+      area.getUrl().toString(),
+      topoImages,
+      routesWithCorrectTopoImage,
+      subSectorIds,
+    )
+  }
+
+  /**
+   * Scrape a sector with all sub-sectors recursively.
+   *
+   * Use this when a sector has child areas (sub-sectors) that contain the actual routes.
+   * This method will:
+   * 1. Scrape the main sector
+   * 2. Identify sub-sectors from area annotations in topos
+   * 3. Recursively scrape each sub-sector
+   * 4. Aggregate all routes and topos
+   *
+   * @param sectorId - The NodeId of the parent sector
+   * @param options - Optional configuration
+   * @returns Array of ScrapedSector (main sector + all sub-sectors)
+   */
+  async scrapeSectorWithSubSectors(
+    sectorId: NodeId,
+    options?: {
+      /** Maximum depth of recursion (default: 2) */
+      maxDepth?: number
+      /** Maximum number of routes per sector (default: no limit) */
+      maxRoutesPerSector?: number
+    },
+  ): Promise<ScrapedSector[]> {
+    const maxDepth = options?.maxDepth ?? 2
+    const maxRoutesPerSector = options?.maxRoutesPerSector
+
+    const allSectors: ScrapedSector[] = []
+    const visited = new Set<number>()
+
+    await this.scrapeSectorRecursive(
+      sectorId,
+      0,
+      maxDepth,
+      maxRoutesPerSector,
+      allSectors,
+      visited,
+    )
+
+    return allSectors
+  }
+
+  /**
+   * Internal recursive method for scraping sectors with sub-sectors.
+   */
+  private async scrapeSectorRecursive(
+    sectorId: NodeId,
+    currentDepth: number,
+    maxDepth: number,
+    maxRoutesPerSector: number | undefined,
+    allSectors: ScrapedSector[],
+    visited: Set<number>,
+  ): Promise<void> {
+    // Avoid infinite loops
+    if (visited.has(sectorId.getValue())) {
+      return
+    }
+    visited.add(sectorId.getValue())
+
+    // Check depth limit
+    if (currentDepth > maxDepth) {
+      logger.info(
+        'scraper:thecrag',
+        `Reached max depth ${maxDepth} at sector ${sectorId.toString()}`,
+      )
+      return
+    }
+
+    logger.info(
+      'scraper:thecrag',
+      `Scraping sector recursively (depth ${currentDepth}): ${sectorId.toString()}`,
+    )
+
+    // Scrape this sector with includeSubSectors to identify children
+    const sector = await this.scrapeSectorWithRoutes(sectorId, {
+      includeSubSectors: true,
+      maxRoutes: maxRoutesPerSector,
+    })
+
+    allSectors.push(sector)
+
+    // If there are sub-sectors, scrape them recursively
+    const subSectorIds = sector.getSubSectorIds()
+    if (subSectorIds.length > 0) {
+      logger.info(
+        'scraper:thecrag',
+        `Found ${subSectorIds.length} sub-sectors in ${sector.getName()}`,
+      )
+
+      for (const subSectorId of subSectorIds) {
+        await this.delay()
+        await this.scrapeSectorRecursive(
+          subSectorId,
+          currentDepth + 1,
+          maxDepth,
+          maxRoutesPerSector,
+          allSectors,
+          visited,
+        )
+      }
+    }
+  }
+
+  /**
+   * Scrape a complete area with all its sub-areas, sectors, and routes.
+   *
+   * This is the main entry point for scraping any area type from TheCrag.
+   * It automatically handles:
+   * - Crags with multiple sectors
+   * - Sectors with direct routes
+   * - Mixed areas with both sub-areas and routes
+   * - Nested hierarchies of any depth
+   *
+   * The method:
+   * 1. Scrapes the root area to get metadata and identify structure
+   * 2. Determines if the area has direct routes, child areas, or both
+   * 3. Recursively scrapes all child areas up to maxDepth
+   * 4. Links all routes with their topo annotations
+   * 5. Returns a complete ScrapedAreaComplete with all data
+   *
+   * @param areaId - The NodeId of the area to scrape
+   * @param options - Optional configuration
+   * @returns ScrapedAreaComplete with all sectors and routes
+   */
+  async scrapeAreaComplete(
+    areaId: NodeId,
+    options?: {
+      /** Maximum number of routes per sector (default: no limit) */
+      maxRoutesPerSector?: number
+      /** Skip areas with no routes (default: false) */
+      skipEmptyAreas?: boolean
+    },
+  ): Promise<ScrapedAreaComplete> {
+    const maxRoutesPerSector = options?.maxRoutesPerSector
+    const skipEmptyAreas = options?.skipEmptyAreas ?? false
+
+    logger.info(
+      'scraper:thecrag',
+      `Starting complete area scrape: ${areaId.toString()} (automatic depth detection)`,
+    )
+
+    // Step 1: Scrape the root area to get metadata
+    const rootArea = await this.scrapeArea(areaId)
+    const rootName = rootArea.getName().toString()
+    const rootUrl = rootArea.getUrl().toString()
+
+    logger.info(
+      'scraper:thecrag',
+      `Root area: ${rootName} - ${rootArea.getChildIds().length} children, checking for routes...`,
+    )
+
+    // Step 2: Check if root area has direct routes by checking HTML/topos
+    // No need for extra API call - if it has topos with annotations, it has routes
+    const rootTopos = rootArea.getTopoImages()
+    const hasDirectRoutes = rootTopos.some(
+      (topo) => topo.getRouteAnnotations().length > 0,
+    )
+
+    // Step 3: Check if root area has child areas (from API response)
+    const childAreaIds = rootArea.getChildIds()
+    const hasChildAreas = childAreaIds.length > 0
+
+    const rootRouteCount = rootTopos.reduce(
+      (sum, topo) => sum + topo.getRouteAnnotations().length,
+      0,
+    )
+
+    logger.info(
+      'scraper:thecrag',
+      `Area structure: ${rootRouteCount} direct routes (from topos), ${childAreaIds.length} child areas`,
+    )
+
+    const allSectors: ScrapedSector[] = []
+    const rootSectorIds: NodeId[] = []
+    const visited = new Set<number>()
+
+    // Step 4: If root has direct routes, scrape it as a sector
+    if (hasDirectRoutes) {
+      logger.info('scraper:thecrag', `Scraping root area routes...`)
+
+      const rootSector = await this.scrapeSectorWithRoutes(areaId, {
+        includeSubSectors: hasChildAreas,
+        maxRoutes: maxRoutesPerSector,
+        scrapedArea: rootArea, // Pass pre-scraped area to avoid duplicate request
+      })
+
+      if (!skipEmptyAreas || rootSector.hasRoutes()) {
+        allSectors.push(rootSector)
+        rootSectorIds.push(areaId)
+      }
+
+      visited.add(areaId.getValue())
+    }
+
+    // Step 5: Recursively scrape all child areas
+    if (hasChildAreas) {
+      for (const childId of childAreaIds) {
+        if (visited.has(childId.getValue())) {
+          continue
+        }
+
+        await this.delay()
+        await this.scrapeAreaCompleteRecursive(
+          childId,
+          1, // Current depth (root is 0)
+          maxRoutesPerSector,
+          skipEmptyAreas,
+          allSectors,
+          rootSectorIds, // These are direct children of root
+          visited,
+          undefined, // Will scrape the child area fresh
+        )
+      }
+    }
+
+    logger.info(
+      'scraper:thecrag',
+      `Complete area scrape finished: ${rootName} - ${allSectors.length} sectors, ${allSectors.reduce((sum, s) => sum + s.getRouteCount(), 0)} total routes`,
+    )
+
+    return ScrapedAreaComplete.create(
+      areaId,
+      rootName,
+      rootUrl,
+      allSectors,
+      rootSectorIds,
+    )
+  }
+
+  /**
+   * Internal recursive method for complete area scraping.
+   *
+   * IMPORTANT: Cannot optimize further - TheCrag's API reports incorrect route/topo counts.
+   * We MUST fetch HTML for every area to get accurate route data from SVG annotations.
+   *
+   * @param areaId - The area to scrape
+   * @param scrapedArea - Optional pre-scraped area data to avoid duplicate requests
+   */
+  private async scrapeAreaCompleteRecursive(
+    areaId: NodeId,
+    currentDepth: number,
+    maxRoutesPerSector: number | undefined,
+    skipEmptyAreas: boolean,
+    allSectors: ScrapedSector[],
+    rootSectorIds: NodeId[],
+    visited: Set<number>,
+    scrapedArea?: ScrapedArea,
+  ): Promise<void> {
+    // Avoid infinite loops
+    if (visited.has(areaId.getValue())) {
+      return
+    }
+    visited.add(areaId.getValue())
+
+    logger.info(
+      'scraper:thecrag',
+      `Scraping area (depth ${currentDepth}): ${areaId.toString()}`,
+    )
+
+    // Use pre-scraped area if provided, otherwise scrape it
+    // This makes 1 API + 1 HTML request per area
+    // NOTE: We CANNOT skip HTML requests based on API data because:
+    //   - API often reports numberRoutes: 0, numberTopos: 0
+    //   - But HTML contains actual route data in SVG annotations
+    //   - Example: "La última" API says 0 routes, HTML has 20 routes
+    const area = scrapedArea ?? (await this.scrapeArea(areaId))
+
+    // Check if this area has routes by checking topos (from HTML, not API)
+    const topos = area.getTopoImages()
+    const hasRoutes = topos.some(
+      (topo) => topo.getRouteAnnotations().length > 0,
+    )
+
+    // Get child areas from API response
+    const childAreaIds = area.getChildIds()
+    const hasChildAreas = childAreaIds.length > 0
+
+    const routeCount = topos.reduce(
+      (sum, topo) => sum + topo.getRouteAnnotations().length,
+      0,
+    )
+
+    logger.debug(
+      'scraper:thecrag',
+      `Area ${area.getName()}: ${routeCount} routes (from topos), ${childAreaIds.length} children`,
+    )
+
+    // Scrape this area as a sector if it has routes
+    if (hasRoutes || !skipEmptyAreas) {
+      const sector = await this.scrapeSectorWithRoutes(areaId, {
+        includeSubSectors: hasChildAreas,
+        maxRoutes: maxRoutesPerSector,
+        scrapedArea: area, // Pass pre-scraped area to avoid duplicate request
+      })
+
+      if (!skipEmptyAreas || sector.hasRoutes()) {
+        allSectors.push(sector)
+
+        // If at depth 1, this is a direct child of root
+        if (currentDepth === 1) {
+          rootSectorIds.push(areaId)
+        }
+      }
+    }
+
+    // Recursively process child areas
+    // NOTE: Each child will do 1 API + 1 HTML request
+    // This is REQUIRED because:
+    //   1. TheCrag doesn't include child topos in parent HTML
+    //   2. TheCrag's API route/topo counts are unreliable
+    //   3. Only way to get accurate route data is parsing each area's HTML
+    if (hasChildAreas) {
+      for (const childId of childAreaIds) {
+        if (visited.has(childId.getValue())) {
+          continue
+        }
+
+        await this.delay()
+        await this.scrapeAreaCompleteRecursive(
+          childId,
+          currentDepth + 1,
+          maxRoutesPerSector,
+          skipEmptyAreas,
+          allSectors,
+          rootSectorIds,
+          visited,
+          undefined, // Will scrape fresh (1 API + 1 HTML per area - required)
+        )
+      }
+    }
+  }
+
+  /**
+   * Links RouteWithTopo objects to their corresponding TopoImage.
+   * Finds the topo image that contains the annotation for each route.
+   */
+  private linkRoutesToTopoImages(
+    routesWithTopos: RouteWithTopo[],
+    topoImages: TopoImage[],
+  ): RouteWithTopo[] {
+    return routesWithTopos.map((routeWithTopo) => {
+      if (!routeWithTopo.hasTopoAnnotation()) {
+        return routeWithTopo
+      }
+
+      const routeId = routeWithTopo.getRouteId().getValue()
+
+      // Find the topo image that contains this route's annotation
+      const matchingTopo = topoImages.find((topo) =>
+        topo.getRouteAnnotations().some((ann) => ann.getId() === routeId),
+      )
+
+      if (matchingTopo) {
+        // Create a new RouteWithTopo with the correct topo image
+        return RouteWithTopo.create(
+          routeWithTopo.getRoute(),
+          routeWithTopo.getTopoAnnotation(),
+          matchingTopo,
+        )
+      }
+
+      return routeWithTopo
+    })
+  }
+
   // ========================================
   // PRIVATE PARSING METHODS - Value Objects
   // ========================================
@@ -251,31 +742,13 @@ export class TheCragApiScraper {
   private parseNodeStatistics(
     apiResponse: Record<string, unknown> | null,
   ): NodeStatistics | null {
-    if (!apiResponse) return null
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-    if (!data) return null
-
-    return NodeStatistics.create(
-      (data.numberRoutes as number) ?? 0,
-      (data.numberAscents as number) ?? 0,
-      (data.numberPhotos as number) ?? 0,
-      (data.numberFavorites as number) ?? 0,
-      (data.numberKudos as number) ?? 0,
-    )
+    return NodeStatistics.fromApiResponse(apiResponse)
   }
 
   private parseNodeSeasonality(
     apiResponse: Record<string, unknown> | null,
   ): NodeSeasonality | null {
-    if (!apiResponse) return null
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-    const seasonality = data?.seasonality as number[] | undefined
-
-    if (!seasonality || !Array.isArray(seasonality)) return null
-
-    return NodeSeasonality.create(seasonality)
+    return NodeSeasonality.fromApiResponse(apiResponse)
   }
 
   private parseNodeTags(
@@ -298,69 +771,30 @@ export class TheCragApiScraper {
   private parseNodeMetadata(
     apiResponse: Record<string, unknown> | null,
   ): NodeMetadata | null {
-    if (!apiResponse) return null
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-    if (!data) return null
-
-    return NodeMetadata.create(
-      (data.depth as number) ?? 0,
-      (data.siblingLabel as number) ?? 0,
-      (data.priceCategory as string) ?? '',
-      (data.isTopLevelCrag as boolean) ?? false,
-      (data.locatedness as number) ?? 0,
-      (data.maxPopularity as number) ?? 0,
-    )
+    return NodeMetadata.fromApiResponse(apiResponse)
   }
 
   private parseWebCoverImage(
     apiResponse: Record<string, unknown> | null,
   ): WebCoverImage | null {
-    if (!apiResponse) return null
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-    const webcover = data?.webcover as Record<string, unknown> | undefined
-
-    if (!webcover) return null
-
-    const hashId = webcover.hashId as string | undefined
-    if (!hashId) return null
-
-    const thumbnailUrl = this.buildImageUrl(hashId, 200, 150)
-    const fullUrl = this.buildFullImageUrl(hashId)
-
-    const imageUrl = ImageUrl.create(thumbnailUrl, fullUrl, hashId)
-
-    const focusData = webcover.focus as Record<string, unknown> | undefined
-    let focus: WebCoverFocus | null = null
-    if (focusData) {
-      focus = WebCoverFocus.create(
-        (focusData.top as number) ?? 0,
-        (focusData.bottom as number) ?? 0,
-        (focusData.left as number) ?? 0,
-        (focusData.right as number) ?? 0,
-        (focusData.label as string) ?? '',
-      )
-    }
-
-    return WebCoverImage.create({
-      imageUrl,
-      focus,
-      originalWidth: (webcover.width as number) ?? null,
-      originalHeight: (webcover.height as number) ?? null,
-      dateUploaded: (webcover.dateUploaded as string) ?? null,
-      title: (webcover.title as string) ?? null,
-    })
+    return WebCoverImage.fromApiResponse(apiResponse)
   }
 
   private parseTopoImages(html: string): TopoImage[] {
     const $ = cheerio.load(html)
     const topoImages: TopoImage[] = []
 
+    // Debug: Check if HTML contains topo images
+    const phototopoDivs = $('div.phototopo[data-tid]')
+    logger.debug(
+      'scraper:thecrag',
+      `Found ${phototopoDivs.length} div.phototopo elements in HTML`,
+    )
+
     $('div.phototopo[data-tid]').each((_, el) => {
       const $el = $(el)
 
-      const topoId = $el.attr('data-tid') || ''
+      const topoIdRaw = $el.attr('data-tid') || ''
       const displayWidth = Number.parseInt($el.attr('data-width') || '0', 10)
       const displayHeight = Number.parseInt($el.attr('data-height') || '0', 10)
       const viewScale = Number.parseFloat($el.attr('data-view-scale') || '1')
@@ -368,11 +802,11 @@ export class TheCragApiScraper {
 
       // Extract image URLs
       const imgEl = $el.find('img').first()
-      const thumbnailUrl = this.normalizeImageUrl(imgEl.attr('src') || '')
-      const fullImageUrl =
-        this.normalizeImageUrl(imgEl.attr('data-big') || '') || thumbnailUrl
+      const thumbnailUrlRaw = this.normalizeImageUrl(imgEl.attr('src') || '')
+      const fullImageUrlRaw =
+        this.normalizeImageUrl(imgEl.attr('data-big') || '') || thumbnailUrlRaw
 
-      if (!topoId || (!thumbnailUrl && !fullImageUrl)) return
+      if (!topoIdRaw || (!thumbnailUrlRaw && !fullImageUrlRaw)) return
 
       // Parse dimensions
       const dimensions = TopoDimensions.fromDisplayWithScale(
@@ -383,6 +817,15 @@ export class TheCragApiScraper {
 
       // Parse annotations
       const annotations = TopoAnnotation.parseFromTopoDataJson(topoDataStr)
+
+      // Create value objects for the entity
+      const topoId = TopoId.create(topoIdRaw)
+      const thumbnailUrl = thumbnailUrlRaw
+        ? TopoImageUrl.create(thumbnailUrlRaw)
+        : TopoImageUrl.empty()
+      const fullImageUrl = fullImageUrlRaw
+        ? TopoImageUrl.create(fullImageUrlRaw)
+        : thumbnailUrl
 
       const topoImage = TopoImage.create(
         topoId,
@@ -412,15 +855,7 @@ export class TheCragApiScraper {
   private parseRouteGrade(
     apiResponse: Record<string, unknown> | null,
   ): RouteGrade | null {
-    if (!apiResponse) return null
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-    const grade = data?.grade as string | undefined
-    const gradeClass = data?.gradeClass as string | undefined
-
-    if (!grade) return null
-
-    return RouteGrade.create(grade, gradeClass ?? 'gb3')
+    return RouteGrade.fromApiResponse(apiResponse)
   }
 
   private parseRouteInfoFromHtml(html: string): RouteInfo | null {
@@ -443,42 +878,13 @@ export class TheCragApiScraper {
   private parseRouteHistory(
     apiResponse: Record<string, unknown> | null,
   ): RouteHistory | null {
-    if (!apiResponse) return null
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-    const history = data?.history as Array<Record<string, unknown>> | undefined
-
-    if (!history || !Array.isArray(history) || history.length === 0) return null
-
-    // Get first ascent info
-    const fa = history.find((h) => h.type === 'FA' || h.type === 'FFA')
-    if (!fa) return null
-
-    return RouteHistory.create(
-      (fa.type as string) ?? 'FA',
-      (fa.climber as string) ?? '',
-      (fa.date as string) ?? null,
-    )
+    return RouteHistory.fromApiResponse(apiResponse)
   }
 
   private parseRouteBeta(
     apiResponse: Record<string, unknown> | null,
   ): RouteBeta | null {
-    if (!apiResponse) return null
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-
-    const description = data?.description as string | undefined
-    const approach = data?.approach as string | undefined
-    const uniqueFeatures = data?.uniqueFeatures as string | undefined
-
-    if (!description && !approach && !uniqueFeatures) return null
-
-    return RouteBeta.create(
-      description ?? null,
-      approach ?? null,
-      uniqueFeatures ?? null,
-    )
+    return RouteBeta.fromApiResponse(apiResponse)
   }
 
   /**
@@ -486,37 +892,7 @@ export class TheCragApiScraper {
    * Extracts summary from 'unique' field and description/approach from 'beta' array.
    */
   private parseAreaBeta(apiResponse: Record<string, unknown> | null): AreaBeta {
-    if (!apiResponse) return AreaBeta.empty()
-
-    const data = apiResponse.data as Record<string, unknown> | undefined
-    if (!data) return AreaBeta.empty()
-
-    // Summary comes from the 'unique' field
-    const summary = (data.unique as string) ?? null
-
-    // Description and approach come from the 'beta' array
-    const description = this.extractBetaEntryByName(data, 'Description')
-    const approach = this.extractBetaEntryByName(data, 'Approach')
-
-    return AreaBeta.create(summary, description, approach)
-  }
-
-  /**
-   * Extract a specific entry from the 'beta' array by name.
-   * The beta array contains objects with 'name' and 'markdown' fields.
-   */
-  private extractBetaEntryByName(
-    data: Record<string, unknown>,
-    entryName: string,
-  ): string | null {
-    const beta = data.beta as
-      | Array<{ markdown?: string; name?: string }>
-      | undefined
-
-    if (!beta || !Array.isArray(beta)) return null
-
-    const entry = beta.find((b) => b.name === entryName)
-    return entry?.markdown ?? null
+    return AreaBeta.fromApiResponse(apiResponse)
   }
 
   // ========================================
@@ -549,16 +925,6 @@ export class TheCragApiScraper {
     return `/en/climbing/area/${nodeId}`
   }
 
-  private buildImageUrl(hashId: string, width: number, height: number): string {
-    if (!hashId) return ''
-    return `https://static.thecrag.com/cache/img_${hashId.substring(0, 8)}_${width}x${height}.jpg`
-  }
-
-  private buildFullImageUrl(hashId: string): string {
-    if (!hashId) return ''
-    return `https://static.thecrag.com/cids/${hashId}.jpg`
-  }
-
   private slugify(text: string): string {
     return text
       .toLowerCase()
@@ -583,6 +949,9 @@ export class TheCragApiScraper {
 
   private async curlRequest(url: string, retryCount = 0): Promise<string> {
     const proxy = this.options.useProxies ? this.proxyManager.getNext() : null
+
+    // Log API request
+    logger.info('scraper:thecrag', `[API REQUEST] ${url}`)
 
     const args = [
       'curl',
@@ -714,10 +1083,182 @@ export class TheCragApiScraper {
     return false
   }
 
+  /**
+   * Parse route data from HTML sector/area page.
+   * Extracts detailed route information from data-route-tick attributes and HTML structure.
+   *
+   * @param html - The HTML content of the sector page
+   * @returns Array of parsed route data objects
+   */
+  private parseRoutesFromHtml(html: string): Array<{
+    id: string
+    name: string
+    grade: string | null
+    stars: number | null
+    styleStub: string | null
+    displayHeight: number | null
+    bolts: number | null
+    description: string | null
+    equipperName: string | null
+    dateEquipped: string | null
+    alternativeNames: string[]
+    popularity: { ascents: number; score: number } | null
+    gradeContext: string | null
+  }> {
+    const $ = load(html)
+    const routes: Array<{
+      id: string
+      name: string
+      grade: string | null
+      stars: number | null
+      styleStub: string | null
+      displayHeight: number | null
+      bolts: number | null
+      description: string | null
+      equipperName: string | null
+      dateEquipped: string | null
+      alternativeNames: string[]
+      popularity: { ascents: number; score: number } | null
+      gradeContext: string | null
+    }> = []
+
+    // Debug: Check what elements exist
+    const routeElements = $('.route[data-nid][data-route-tick]')
+    logger.debug(
+      'scraper:thecrag',
+      `Found ${routeElements.length} .route[data-nid][data-route-tick] elements in HTML`,
+    )
+
+    if (routeElements.length === 0) {
+      // Try alternative selectors
+      const altRoute1 = $('.route[data-nid]')
+      const altRoute2 = $('[data-route-tick]')
+      logger.debug(
+        'scraper:thecrag',
+        `Alternative selectors: .route[data-nid]=${altRoute1.length}, [data-route-tick]=${altRoute2.length}`,
+      )
+    }
+
+    $('.route[data-nid][data-route-tick]').each((_, el) => {
+      const $route = $(el)
+
+      // Parse data-route-tick JSON
+      const routeTickJson = $route.attr('data-route-tick') || ''
+
+      // Define explicit type for route tick data
+      type RouteTickData = {
+        id?: string
+        name?: string
+        gradeAtom?: { grade?: string }
+        stars?: string
+        styleStub?: string
+        displayHeight?: [number, string]
+        context?: string
+        bolts?: number
+      }
+
+      let routeTickData: RouteTickData = {}
+      try {
+        routeTickData = JSON.parse(routeTickJson.replace(/&quot;/g, '"'))
+      } catch (e) {
+        logger.warn(
+          'scraper:thecrag',
+          `Failed to parse data-route-tick for route: ${e}`,
+        )
+      }
+
+      // Extract route ID
+      const id = routeTickData.id || $route.attr('data-nid') || ''
+      if (!id) return // Skip if no ID
+
+      // Extract name
+      const name =
+        routeTickData.name ||
+        $route.find('.name .primary-node-name').text().trim() ||
+        ''
+      if (!name) return // Skip if no name
+
+      // Extract grade
+      const grade = routeTickData.gradeAtom?.grade || null
+
+      // Extract stars (convert to number)
+      const stars = routeTickData.stars
+        ? Number.parseFloat(routeTickData.stars)
+        : null
+
+      // Extract style
+      const styleStub = routeTickData.styleStub || null
+
+      // Extract display height (meters)
+      const displayHeight =
+        Array.isArray(routeTickData.displayHeight) &&
+        routeTickData.displayHeight[0]
+          ? Number.parseInt(routeTickData.displayHeight[0].toString())
+          : null
+
+      // Extract number of bolts
+      const boltsFromData = routeTickData.bolts
+      const boltsTitle = $route.find('.bolts').attr('title')
+      const boltsMatch = boltsTitle?.match(/(\d+)\s+bolt/)
+      const bolts =
+        boltsFromData || (boltsMatch ? Number.parseInt(boltsMatch[1]) : null)
+
+      // Extract description
+      const description = $route.find('.markdown.desc').text().trim() || null
+
+      // Extract route history (equipper/setter info)
+      const histWho = $route.find('.route-history .fa__who').text().trim()
+      const histWhen = $route.find('.route-history .fa__when').text().trim()
+
+      const equipperName = histWho || null
+      const dateEquipped = histWhen || null
+
+      // Extract alternative names (aka)
+      const akaText = $route.find('.name .aka').next().text().trim()
+      const alternativeNames = akaText ? [akaText] : []
+
+      // Extract popularity (ascent count)
+      const popTitle = $route.find('.r-pop a').attr('title')
+      const popMatch = popTitle?.match(/(\d+)\s+ascents?/)
+      const popScoreMatch = popTitle?.match(/Relative popularity \((\d+)\)/)
+      const popularity =
+        popMatch && popScoreMatch
+          ? {
+              ascents: Number.parseInt(popMatch[1]),
+              score: Number.parseInt(popScoreMatch[1]),
+            }
+          : null
+
+      // Extract grade context (system)
+      const gradeContext = routeTickData.context || null
+
+      routes.push({
+        id,
+        name,
+        grade,
+        stars,
+        styleStub,
+        displayHeight,
+        bolts,
+        description,
+        equipperName,
+        dateEquipped,
+        alternativeNames,
+        popularity,
+        gradeContext,
+      })
+    })
+
+    return routes
+  }
+
   private static readonly MAX_HTML_RETRIES = 3
 
   private async curlRequestHtml(url: string, retryCount = 0): Promise<string> {
     const proxy = this.options.useProxies ? this.proxyManager.getNext() : null
+
+    // Log HTML request
+    logger.info('scraper:thecrag', `[HTML REQUEST] ${url}`)
 
     const args = [
       'curl',
@@ -735,6 +1276,8 @@ export class TheCragApiScraper {
       '-H',
       'Accept-Encoding: gzip, deflate, br',
       '-H',
+      'DNT: 1',
+      '-H',
       'Connection: keep-alive',
       '-H',
       'Upgrade-Insecure-Requests: 1',
@@ -746,6 +1289,8 @@ export class TheCragApiScraper {
       'Sec-Fetch-Site: none',
       '-H',
       'Sec-Fetch-User: ?1',
+      '-H',
+      'Cache-Control: max-age=0',
     ]
 
     if (proxy) {

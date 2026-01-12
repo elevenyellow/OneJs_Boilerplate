@@ -8,12 +8,63 @@ import { NodeMetadata } from '../../value-objects/node-metadata.vo'
 import { NodeSeasonality } from '../../value-objects/node-seasonality.vo'
 import { NodeStatistics } from '../../value-objects/node-statistics.vo'
 import { NodeTags } from '../../value-objects/node-tags.vo'
+import { NodeType } from '../../value-objects/node-type.vo'
 import { RawHtmlResponse } from '../../value-objects/raw-html-response.vo'
 import { RawNodeResponse } from '../../value-objects/raw-node-response.vo'
-import { TopoAnnotation } from '../../value-objects/topo-annotation.vo'
 import { TopoDimensions } from '../../value-objects/topo-dimensions.vo'
-import { TopoImage } from '../../value-objects/topo-image.vo'
+import { TopoAnnotation } from '../../value-objects/topo-annotation.vo'
+import { TopoId } from '../../value-objects/topo-id.vo'
+import { TopoImageUrl } from '../../value-objects/topo-image-url.vo'
+import type { ScrapedNode } from '../scraped-node.interface'
 import { ScrapedArea } from '../scraped-area.entity'
+import type { ScrapedRoute } from '../scraped-route.entity'
+import { TopoImage } from '../topo-image.entity'
+
+/**
+ * Helper function to create a ScrapedArea with the new signature.
+ * Uses sensible defaults for new required fields.
+ */
+function createTestArea(
+  overrides: Partial<{
+    id: NodeId
+    type: NodeType
+    name: AreaName
+    slug: AreaSlug
+    url: AreaUrl
+    beta: AreaBeta
+    statistics: NodeStatistics | null
+    seasonality: NodeSeasonality | null
+    tags: NodeTags | null
+    metadata: NodeMetadata | null
+    topoImages: TopoImage[]
+    childIds: NodeId[]
+    rawNodeResponse: RawNodeResponse | null
+    rawHtmlResponse: RawHtmlResponse | null
+  }> = {},
+): ScrapedArea {
+  return ScrapedArea.create(
+    overrides.id ?? NodeId.createFrom('17857049'),
+    overrides.type ?? NodeType.crag(),
+    overrides.name ?? AreaName.createFrom('Test Area'),
+    overrides.slug ?? AreaSlug.createFrom('test-area'),
+    overrides.url ?? AreaUrl.createFrom('/climbing/test-area'),
+    null, // info
+    overrides.beta ?? AreaBeta.empty(),
+    overrides.statistics ?? null,
+    overrides.seasonality ?? null,
+    overrides.tags ?? null,
+    overrides.metadata ?? null,
+    null, // webCoverImage
+    null, // ogImage
+    overrides.topoImages ?? [],
+    [], // cragTopos
+    [] as ScrapedRoute[], // routes
+    [] as ScrapedNode[], // children
+    overrides.childIds ?? [],
+    overrides.rawNodeResponse ?? null,
+    overrides.rawHtmlResponse ?? null,
+  )
+}
 
 describe('ScrapedArea Entity', () => {
   // TEST CASES LIST (REASON)
@@ -23,13 +74,12 @@ describe('ScrapedArea Entity', () => {
   // 4. ✓ Get seasonality
   // 5. ✓ Get tags
   // 6. ✓ Get metadata
-  // 7. ✓ Get webcover image
-  // 8. ✓ Get topo images
-  // 9. ✓ Get raw responses
-  // 10. ✓ Get child IDs
-  // 11. ✓ Convenience getters for stats (getRoutesCount, etc.)
-  // 12. ✓ Check if has topos
-  // 13. ✓ Check if is kid/dog friendly
+  // 7. ✓ Get topo images
+  // 8. ✓ Get raw responses
+  // 9. ✓ Get child IDs
+  // 10. ✓ Convenience getters for stats (getRoutesCount, etc.)
+  // 11. ✓ Check if has topos
+  // 12. ✓ Check if is kid/dog friendly
 
   const sampleNodeId = NodeId.createFrom('17857049')
   const sampleName = AreaName.createFrom('Cheste')
@@ -60,50 +110,26 @@ describe('ScrapedArea Entity', () => {
   )
 
   test('should create ScrapedArea with minimal data', () => {
-    // Act
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+    })
 
-    // Assert
     expect(area).toBeInstanceOf(ScrapedArea)
   })
 
   test('should get basic properties', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+    })
 
-    // Act & Assert
     expect(area.getId().toString()).toBe('17857049')
     expect(area.getName().toString()).toBe('Cheste')
     expect(area.getSlug().toString()).toBe('cheste')
@@ -111,30 +137,16 @@ describe('ScrapedArea Entity', () => {
   })
 
   test('should get beta information (summary, description, approach)', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+    })
 
-    // Act & Assert
     expect(area.getBeta()).toBe(sampleBeta)
-    expect(area.getSummary()).toBe(
-      'Small crag with short routes for beginners.',
-    )
+    expect(area.getSummary()).toBe('Small crag with short routes for beginners.')
     expect(area.getDescription()).toBe(
       'A small crag about 40 minutes from Valencia near Cheste.',
     )
@@ -145,27 +157,15 @@ describe('ScrapedArea Entity', () => {
   })
 
   test('should handle empty beta', () => {
-    // Arrange
     const emptyBeta = AreaBeta.empty()
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      emptyBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: emptyBeta,
+    })
 
-    // Act & Assert
     expect(area.getSummary()).toBeNull()
     expect(area.getDescription()).toBeNull()
     expect(area.getApproach()).toBeNull()
@@ -173,144 +173,85 @@ describe('ScrapedArea Entity', () => {
   })
 
   test('should get statistics', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      sampleStats,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      statistics: sampleStats,
+    })
 
-    // Act
     const stats = area.getStatistics()
 
-    // Assert
     expect(stats).not.toBeNull()
     expect(stats?.getRoutes()).toBe(42)
     expect(stats?.getAscents()).toBe(979)
   })
 
   test('should get seasonality', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      sampleSeasonality,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      seasonality: sampleSeasonality,
+    })
 
-    // Act
     const seasonality = area.getSeasonality()
 
-    // Assert
     expect(seasonality).not.toBeNull()
     expect(seasonality?.getBestMonth()).toBe('October')
   })
 
   test('should get tags', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      sampleTags,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      tags: sampleTags,
+    })
 
-    // Act
     const tags = area.getTags()
 
-    // Assert
     expect(tags).not.toBeNull()
     expect(tags?.getAspect()).toBe('SW')
   })
 
   test('should get metadata', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      sampleMetadata,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      metadata: sampleMetadata,
+    })
 
-    // Act
     const metadata = area.getMetadata()
 
-    // Assert
     expect(metadata).not.toBeNull()
     expect(metadata?.getDepth()).toBe(5)
     expect(metadata?.isTLC()).toBe(true)
   })
 
   test('should get raw responses', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      sampleRawNode,
-      sampleRawHtml,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      rawNodeResponse: sampleRawNode,
+      rawHtmlResponse: sampleRawHtml,
+    })
 
-    // Act
     const rawNode = area.getRawNodeResponse()
     const rawHtml = area.getRawHtmlResponse()
 
-    // Assert
     expect(rawNode).not.toBeNull()
     expect(rawNode?.getNodeName()).toBe('Cheste')
     expect(rawHtml).not.toBeNull()
@@ -320,59 +261,36 @@ describe('ScrapedArea Entity', () => {
   })
 
   test('should get child IDs', () => {
-    // Arrange
     const childIds = [
       NodeId.createFrom('123'),
       NodeId.createFrom('456'),
       NodeId.createFrom('789'),
     ]
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
       childIds,
-      null,
-      null,
-    )
+    })
 
-    // Act
     const returnedChildIds = area.getChildIds()
 
-    // Assert
     expect(returnedChildIds).toHaveLength(3)
     expect(returnedChildIds[0].toString()).toBe('123')
   })
 
   test('should have convenience getters for stats', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      sampleStats,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      statistics: sampleStats,
+    })
 
-    // Act & Assert
     expect(area.getRoutesCount()).toBe(42)
     expect(area.getAscentsCount()).toBe(979)
     expect(area.getPhotosCount()).toBe(6)
@@ -380,31 +298,18 @@ describe('ScrapedArea Entity', () => {
   })
 
   test('should return null counts when no statistics', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+    })
 
-    // Act & Assert
     expect(area.getRoutesCount()).toBeNull()
   })
 
   test('should check if has topos', () => {
-    // Arrange
     const dimensions = TopoDimensions.create(600, 400, 2.0, 1200, 800)
     const annotations = TopoAnnotation.parseFromTopoDataJson(
       JSON.stringify([
@@ -424,98 +329,59 @@ describe('ScrapedArea Entity', () => {
         },
       ]),
     )
+    const topoId = TopoId.create('topo-123')
+    const thumbnailUrl = TopoImageUrl.create('https://example.com/thumb.jpg')
+    const fullImageUrl = TopoImageUrl.create('https://example.com/full.jpg')
     const topoImage = TopoImage.create(
-      'topo-123',
+      topoId,
       dimensions,
-      'https://example.com/thumb.jpg',
-      'https://example.com/full.jpg',
+      thumbnailUrl,
+      fullImageUrl,
       annotations,
     )
-    const areaWithTopos = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [topoImage],
-      [],
-      null,
-      null,
-    )
-    const areaWithoutTopos = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const areaWithTopos = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      topoImages: [topoImage],
+    })
+    const areaWithoutTopos = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      topoImages: [],
+    })
 
-    // Act & Assert
     expect(areaWithTopos.hasTopos()).toBe(true)
     expect(areaWithoutTopos.hasTopos()).toBe(false)
   })
 
   test('should check if is kid friendly', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      sampleTags,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+      tags: sampleTags,
+    })
 
-    // Act & Assert
     expect(area.isKidFriendly()).toBe(true)
   })
 
   test('should return false for kid friendly when no tags', () => {
-    // Arrange
-    const area = ScrapedArea.create(
-      sampleNodeId,
-      sampleName,
-      sampleSlug,
-      sampleUrl,
-      sampleBeta,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      [],
-      [],
-      null,
-      null,
-    )
+    const area = createTestArea({
+      id: sampleNodeId,
+      name: sampleName,
+      slug: sampleSlug,
+      url: sampleUrl,
+      beta: sampleBeta,
+    })
 
-    // Act & Assert
     expect(area.isKidFriendly()).toBe(false)
   })
 })

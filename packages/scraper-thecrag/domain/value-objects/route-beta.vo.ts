@@ -17,11 +17,15 @@ export class RouteBeta {
     approach: string | null,
     uniqueFeatures: string | null,
   ): RouteBeta {
-    return new RouteBeta(
-      description?.trim() || null,
-      approach?.trim() || null,
-      uniqueFeatures?.trim() || null,
-    )
+    // Ensure values are strings before calling trim()
+    const safeDescription =
+      typeof description === 'string' ? description.trim() || null : null
+    const safeApproach =
+      typeof approach === 'string' ? approach.trim() || null : null
+    const safeUniqueFeatures =
+      typeof uniqueFeatures === 'string' ? uniqueFeatures.trim() || null : null
+
+    return new RouteBeta(safeDescription, safeApproach, safeUniqueFeatures)
   }
 
   /**
@@ -29,6 +33,27 @@ export class RouteBeta {
    */
   static empty(): RouteBeta {
     return new RouteBeta(null, null, null)
+  }
+
+  /**
+   * Creates RouteBeta from TheCrag API response.
+   * Extracts description, approach, and uniqueFeatures from the data property.
+   */
+  static fromApiResponse(
+    apiResponse: Record<string, unknown> | null,
+  ): RouteBeta | null {
+    if (!apiResponse) return null
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return null
+    const description = data.description as string | undefined
+    const approach = data.approach as string | undefined
+    const uniqueFeatures = data.uniqueFeatures as string | undefined
+    if (!description && !approach && !uniqueFeatures) return null
+    return RouteBeta.create(
+      description ?? null,
+      approach ?? null,
+      uniqueFeatures ?? null,
+    )
   }
 
   /**

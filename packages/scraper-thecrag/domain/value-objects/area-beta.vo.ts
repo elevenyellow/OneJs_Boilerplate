@@ -33,6 +33,35 @@ export class AreaBeta {
   }
 
   /**
+   * Creates AreaBeta from TheCrag API response.
+   * Extracts unique (summary), and beta array entries for description and approach.
+   */
+  static fromApiResponse(
+    apiResponse: Record<string, unknown> | null,
+  ): AreaBeta {
+    if (!apiResponse) return AreaBeta.empty()
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return AreaBeta.empty()
+
+    const summary = (data.unique as string) ?? null
+    const betaArray = data.beta as
+      | Array<{ name?: string; markdown?: string }>
+      | undefined
+
+    let description: string | null = null
+    let approach: string | null = null
+
+    if (betaArray && Array.isArray(betaArray)) {
+      const descEntry = betaArray.find((b) => b.name === 'Description')
+      const approachEntry = betaArray.find((b) => b.name === 'Approach')
+      description = descEntry?.markdown ?? null
+      approach = approachEntry?.markdown ?? null
+    }
+
+    return AreaBeta.create(summary, description, approach)
+  }
+
+  /**
    * Returns the area summary (unique features).
    * This comes from the 'unique' field or 'Unique Features And Strengths' beta entry.
    */

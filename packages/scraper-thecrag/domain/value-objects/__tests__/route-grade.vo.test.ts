@@ -16,6 +16,47 @@ describe('RouteGrade Value Object', () => {
   // 9. ✓ Compare two RouteGrades for equality
   // 10. ✓ Parse grade class from grade string if not provided
   // 11. ✓ Check if grade is in a specific band
+  // 12. ✓ Create from API response
+  // 13. ✓ Return null from empty API response
+
+  test('should create RouteGrade from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        grade: '6b+',
+        gradeClass: 'gb3',
+      },
+    }
+
+    // Act
+    const grade = RouteGrade.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(grade).toBeInstanceOf(RouteGrade)
+    expect(grade?.getGrade()).toBe('6b+')
+    expect(grade?.getGradeClass()).toBe('gb3')
+  })
+
+  test('should return null from API response without grade', () => {
+    // Arrange
+    const apiResponse = {
+      data: {},
+    }
+
+    // Act
+    const grade = RouteGrade.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(grade).toBeNull()
+  })
+
+  test('should return null from empty API response', () => {
+    // Act
+    const grade = RouteGrade.fromApiResponse(null)
+
+    // Assert
+    expect(grade).toBeNull()
+  })
 
   test('should create RouteGrade with grade and class', () => {
     // Arrange & Act

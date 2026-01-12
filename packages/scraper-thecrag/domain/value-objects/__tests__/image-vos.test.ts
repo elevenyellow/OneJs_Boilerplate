@@ -11,6 +11,10 @@ describe('ImageUrl Value Object', () => {
   // 4. ✓ Get hash ID
   // 5. ✓ Get resized URL with custom dimensions
   // 6. ✓ Throw error for invalid URLs
+  // 7. ✓ Normalize protocol-relative URL
+  // 8. ✓ Normalize relative URL
+  // 9. ✓ Return empty string for empty URL
+  // 10. ✓ Return absolute URL as-is
 
   test('should create ImageUrl with thumbnail and full URLs', () => {
     // Act
@@ -103,6 +107,28 @@ describe('ImageUrl Value Object', () => {
     expect(imageUrl1.equals(imageUrl2)).toBe(true)
     expect(imageUrl1.equals(imageUrl3)).toBe(false)
   })
+
+  // Tests for normalize static method
+  test('should normalize protocol-relative URL', () => {
+    const normalized = ImageUrl.normalize(
+      '//image.thecrag.com/path/to/image.jpg',
+    )
+    expect(normalized).toBe('https://image.thecrag.com/path/to/image.jpg')
+  })
+
+  test('should normalize relative URL', () => {
+    const normalized = ImageUrl.normalize('/path/to/image.jpg')
+    expect(normalized).toBe('https://www.thecrag.com/path/to/image.jpg')
+  })
+
+  test('should return empty string for empty URL', () => {
+    expect(ImageUrl.normalize('')).toBe('')
+  })
+
+  test('should return absolute URL as-is', () => {
+    const url = 'https://example.com/image.jpg'
+    expect(ImageUrl.normalize(url)).toBe(url)
+  })
 })
 
 describe('WebCoverFocus Value Object', () => {
@@ -170,6 +196,62 @@ describe('WebCoverImage Value Object', () => {
   // 4. ✓ Get original dimensions
   // 5. ✓ Get date uploaded
   // 6. ✓ Get title
+  // 7. ✓ Create from API response
+  // 8. ✓ Return null from API response without webcover
+  // 9. ✓ Return null from empty API response
+
+  test('should create WebCoverImage from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        webcover: {
+          hashId: 'e45661d2abd7b229f508a8509c9343fe788210f0',
+          width: 5472,
+          height: 3648,
+          dateUploaded: '2021-11-05T20:59:36Z',
+          title: 'Test Image.jpg',
+          focus: {
+            top: 100,
+            bottom: 300,
+            left: 50,
+            right: 250,
+            label: '1',
+          },
+        },
+      },
+    }
+
+    // Act
+    const webCover = WebCoverImage.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(webCover).toBeInstanceOf(WebCoverImage)
+    expect(webCover?.getOriginalWidth()).toBe(5472)
+    expect(webCover?.getOriginalHeight()).toBe(3648)
+    expect(webCover?.getTitle()).toBe('Test Image.jpg')
+    expect(webCover?.getFocus()?.getTop()).toBe(100)
+  })
+
+  test('should return null from API response without webcover', () => {
+    // Arrange
+    const apiResponse = {
+      data: {},
+    }
+
+    // Act
+    const webCover = WebCoverImage.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(webCover).toBeNull()
+  })
+
+  test('should return null from empty API response', () => {
+    // Act
+    const webCover = WebCoverImage.fromApiResponse(null)
+
+    // Assert
+    expect(webCover).toBeNull()
+  })
 
   test('should create WebCoverImage with image URL and focus area', () => {
     // Arrange

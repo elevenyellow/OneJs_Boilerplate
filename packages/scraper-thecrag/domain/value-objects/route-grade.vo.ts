@@ -46,6 +46,22 @@ export class RouteGrade {
     return new RouteGrade(grade, gradeClass)
   }
 
+  /**
+   * Creates a RouteGrade from TheCrag API response.
+   * Extracts grade and gradeClass from the data property.
+   */
+  static fromApiResponse(
+    apiResponse: Record<string, unknown> | null,
+  ): RouteGrade | null {
+    if (!apiResponse) return null
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return null
+    const grade = data.grade as string | undefined
+    if (!grade) return null
+    const gradeClass = (data.gradeClass as string) ?? ''
+    return RouteGrade.create(grade, gradeClass)
+  }
+
   getGrade(): string {
     return this.grade
   }

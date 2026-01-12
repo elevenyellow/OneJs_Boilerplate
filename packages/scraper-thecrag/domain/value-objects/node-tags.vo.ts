@@ -192,4 +192,78 @@ export class NodeTags {
     if (this.family.length > 0) parts.push(`family: ${this.family.join(', ')}`)
     return `Tags(${parts.join(', ')})`
   }
+
+  /**
+   * Parse structured fields from a generic tags object.
+   * This handles alternative tag formats with fields like orientation, rockType, style, etc.
+   */
+  static parseStructuredFields(tags: Record<string, unknown>): {
+    orientation?: string
+    rockType?: string
+    climbingStyle?: string[]
+    sunExposure?: string
+    sheltered?: boolean
+  } {
+    const result: {
+      orientation?: string
+      rockType?: string
+      climbingStyle?: string[]
+      sunExposure?: string
+      sheltered?: boolean
+    } = {}
+
+    // Orientation (multiple possible field names)
+    if (tags.orientation || tags.facing || tags.aspect) {
+      result.orientation = String(
+        tags.orientation || tags.facing || tags.aspect,
+      )
+    }
+
+    // Rock type
+    if (tags.rockType || tags.rock || tags['rock-type']) {
+      result.rockType = String(tags.rockType || tags.rock || tags['rock-type'])
+    }
+
+    // Climbing style (can be multiple, from various fields)
+    const styleKeys = [
+      'style',
+      'climbingStyle',
+      'type',
+      'angle',
+      'feature',
+      'features',
+    ]
+    const styles: string[] = []
+    for (const key of styleKeys) {
+      if (tags[key]) {
+        const value = tags[key]
+        if (Array.isArray(value)) {
+          styles.push(...value.map(String))
+        } else if (typeof value === 'string') {
+          styles.push(value)
+        }
+      }
+    }
+    if (styles.length > 0) {
+      result.climbingStyle = styles
+    }
+
+    // Sun exposure
+    if (tags.sun || tags.shade || tags.exposure || tags.sunExposure) {
+      result.sunExposure = String(
+        tags.sun || tags.shade || tags.exposure || tags.sunExposure,
+      )
+    }
+
+    // Sheltered
+    if (tags.sheltered !== undefined) {
+      result.sheltered = Boolean(tags.sheltered)
+    } else if (tags.protected !== undefined) {
+      result.sheltered = Boolean(tags.protected)
+    } else if (tags.wind !== undefined) {
+      result.sheltered = String(tags.wind).toLowerCase().includes('protected')
+    }
+
+    return result
+  }
 }

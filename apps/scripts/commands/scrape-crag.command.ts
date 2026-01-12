@@ -1,31 +1,20 @@
-import { TheCragApiScraper } from '@scraper-thecrag'
 import { NodeId } from '@scraper-thecrag/domain/value-objects/node-id.vo'
+import { NodeType } from '@scraper-thecrag/domain/value-objects/node-type.vo'
+import { TheCragApiScraper } from '@scraper-thecrag/infrastructure/scrapers/scraper'
 
 export async function scrapeCrag(container: unknown, cookie: string) {
-  const cragId = process.argv[3]
+  const areaIdArg = process.argv[3]
 
-  const dic = container as { get: <T>(token: unknown) => T }
+  const scraper = new TheCragApiScraper()
+  scraper.setCookie(cookie)
+  scraper.setDelay(200)
 
-  // const importer = dic.get<CragImporterService>(CragImporterService)
+  // Scraper now returns proper domain entities (ScrapedArea or ScrapedSector)
+  const cragData = await scraper.scrapeCrag(
+    NodeId.createFrom(Number.parseInt(areaIdArg)),
+    NodeType.crag(),
+  )
 
-  const apiScraper = dic.get<TheCragApiScraper>(TheCragApiScraper)
-
-  // Configure scrapers
-  apiScraper.setCookie(cookie)
-  apiScraper.setDelay(200)
-
-  console.log('🏔️  SCRAPE CRAG - Full crag import by name')
-  console.log('='.repeat(80))
-  console.log('')
-  console.log(`📍 Searching for: "${cragId}"`)
-  console.log('')
-
-  // await apiScraper.getRouteIds(NodeId.create(cragId))
-
-  // Scrapear un área completa (devuelve ScrapedArea entity)
-  const area = await apiScraper.scrapeArea(NodeId.create(cragId))
-  console.log(area.toDto())
-
-  // Scrapear una ruta completa (devuelve ScrapedRoute entity)
-  // await apiScraper.scrapeRoute(NodeId.create(cragId))
+  // Output the DTO for readability
+  console.log(JSON.stringify(cragData.toDto(), null, 2))
 }

@@ -14,6 +14,28 @@ export class NodeMetadata {
   ) {}
 
   /**
+   * Creates NodeMetadata from TheCrag API response.
+   * Extracts metadata from the data field of the API response.
+   */
+  static fromApiResponse(
+    apiResponse: Record<string, unknown> | null,
+  ): NodeMetadata | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return null
+
+    return NodeMetadata.create(
+      (data.depth as number) ?? 0,
+      (data.siblingLabel as number) ?? 0,
+      (data.priceCategory as string) ?? '',
+      (data.isTopLevelCrag as boolean) ?? false,
+      (data.locatedness as number) ?? 0,
+      (data.maxPopularity as number) ?? 0,
+    )
+  }
+
+  /**
    * Creates NodeMetadata with all fields.
    */
   static create(

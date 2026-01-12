@@ -24,6 +24,23 @@ export class NodeSeasonality {
   private constructor(private readonly monthlyScores: number[]) {}
 
   /**
+   * Creates NodeSeasonality from TheCrag API response.
+   * Extracts seasonality data from the data.seasonality array.
+   */
+  static fromApiResponse(
+    apiResponse: Record<string, unknown> | null,
+  ): NodeSeasonality | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    const seasonality = data?.seasonality as number[] | undefined
+
+    if (!seasonality || !Array.isArray(seasonality)) return null
+
+    return NodeSeasonality.create(seasonality)
+  }
+
+  /**
    * Creates NodeSeasonality from an array of 12 monthly scores.
    */
   static create(monthlyScores: number[]): NodeSeasonality {

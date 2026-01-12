@@ -428,6 +428,39 @@ describe('AreaBeta Value Object', () => {
   // 9. ✓ Compare two betas for equality
   // 10. ✓ Convert to string
   // 11. ✓ Convert to DTO
+  // 12. ✓ Create from API response
+  // 13. ✓ Return empty from null API response
+
+  test('should create AreaBeta from API response', () => {
+    // Arrange
+    const apiResponse = {
+      data: {
+        unique: 'Great crag for beginners',
+        beta: [
+          { name: 'Description', markdown: 'Detailed area description' },
+          { name: 'Approach', markdown: 'Park and walk 5 minutes' },
+        ],
+      },
+    }
+
+    // Act
+    const beta = AreaBeta.fromApiResponse(apiResponse)
+
+    // Assert
+    expect(beta).toBeInstanceOf(AreaBeta)
+    expect(beta.getSummary()).toBe('Great crag for beginners')
+    expect(beta.getDescription()).toBe('Detailed area description')
+    expect(beta.getApproach()).toBe('Park and walk 5 minutes')
+  })
+
+  test('should return empty from null API response', () => {
+    // Act
+    const beta = AreaBeta.fromApiResponse(null)
+
+    // Assert
+    expect(beta).toBeInstanceOf(AreaBeta)
+    expect(beta.hasBeta()).toBe(false)
+  })
 
   test('should create beta with all fields', () => {
     // Arrange & Act

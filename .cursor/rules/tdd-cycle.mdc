@@ -3,7 +3,7 @@ description: Mandatory Test-Driven Development cycle enforcing 5 steps (Reason-R
 globs:
   - "packages/**"
   - "apps/**"
-alwaysApply: true
+alwaysApply: false
 ---
 # TDD Cycle: Mandatory Test-Driven Development
 

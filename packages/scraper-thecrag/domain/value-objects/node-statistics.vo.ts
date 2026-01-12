@@ -12,6 +12,27 @@ export class NodeStatistics {
   ) {}
 
   /**
+   * Creates NodeStatistics from TheCrag API response.
+   * Extracts statistics from the data field of the API response.
+   */
+  static fromApiResponse(
+    apiResponse: Record<string, unknown> | null,
+  ): NodeStatistics | null {
+    if (!apiResponse) return null
+
+    const data = apiResponse.data as Record<string, unknown> | undefined
+    if (!data) return null
+
+    return NodeStatistics.create(
+      (data.numberRoutes as number) ?? 0,
+      (data.numberAscents as number) ?? 0,
+      (data.numberPhotos as number) ?? 0,
+      (data.numberFavorites as number) ?? 0,
+      (data.numberKudos as number) ?? 0,
+    )
+  }
+
+  /**
    * Creates NodeStatistics with all counts.
    */
   static create(

@@ -1,6 +1,9 @@
 // Domain - Entities
 export { ScrapedArea } from './domain/entities/scraped-area.entity'
+export { ScrapedAreaComplete } from './domain/entities/scraped-area-complete.entity'
 export { ScrapedRoute } from './domain/entities/scraped-route.entity'
+export { ScrapedSector } from './domain/entities/scraped-sector.entity'
+export { TopoImage } from './domain/entities/topo-image.entity'
 
 // Domain - Value Objects
 export { AreaBeta } from './domain/value-objects/area-beta.vo'
@@ -20,9 +23,11 @@ export { RouteBeta } from './domain/value-objects/route-beta.vo'
 export { RouteGrade } from './domain/value-objects/route-grade.vo'
 export { RouteHistory } from './domain/value-objects/route-history.vo'
 export { RouteInfo } from './domain/value-objects/route-info.vo'
+export { RouteWithTopo } from './domain/value-objects/route-with-topo.vo'
 export { TopoAnnotation } from './domain/value-objects/topo-annotation.vo'
 export { TopoDimensions } from './domain/value-objects/topo-dimensions.vo'
-export { TopoImage } from './domain/value-objects/topo-image.vo'
+export { TopoId } from './domain/value-objects/topo-id.vo'
+export { TopoImageUrl } from './domain/value-objects/topo-image-url.vo'
 export { TopoPath } from './domain/value-objects/topo-path.vo'
 export { TopoPoint } from './domain/value-objects/topo-point.vo'
 export { WebCoverFocus } from './domain/value-objects/webcover-focus.vo'
