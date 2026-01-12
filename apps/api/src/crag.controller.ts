@@ -1,8 +1,9 @@
+import { GetCragDetailUseCase } from '@crag/application/use-cases/get-crag-detail.use-case'
+import { GetNearbyCragsUseCase } from '@crag/application/use-cases/get-nearby-crags.use-case'
 import { Inject } from '@OneJs/core'
 import type { Context } from '@OneJs/server'
 import { Controller, Get, Post } from '@OneJs/server'
 import { SearchCragsUseCase, type SearchCragsDto } from '@sector'
-import { GetCragDetailUseCase } from '@crag/application/use-cases/get-crag-detail.use-case'
 
 /**
  * Crag Controller
@@ -18,6 +19,8 @@ export class CragController {
     private readonly searchCragsUseCase: SearchCragsUseCase,
     @Inject(GetCragDetailUseCase)
     private readonly getCragDetailUseCase: GetCragDetailUseCase,
+    @Inject(GetNearbyCragsUseCase)
+    private readonly getNearbyCragsUseCase: GetNearbyCragsUseCase,
   ) {}
 
   /**
@@ -115,81 +118,24 @@ export class CragController {
       }
     }
 
-    const maxDistance = query.maxDistance ? parseFloat(query.maxDistance) : 100
-    const search = query.search?.trim() || undefined
-    const limit = query.limit ? parseInt(query.limit, 10) : 50
-    const offset = query.offset ? parseInt(query.offset, 10) : 0
-
-    const { crags, total } = await this.cragRepository.findNearbyWithSearch({
+    const response = await this.getNearbyCragsUseCase.execute({
       latitude: lat,
       longitude: lon,
-      maxDistanceKm: maxDistance,
-      search,
-      limit,
-      offset,
-    })
-
-    // Calculate distance for each crag and build response
-    const results = crags.map((crag) => {
-      const cragLat = crag.latitude
-      const cragLon = crag.longitude
-      let distance = null
-
-      if (cragLat !== null && cragLon !== null) {
-        // Haversine formula
-        const R = 6371
-        const dLat = ((cragLat - lat) * Math.PI) / 180
-        const dLon = ((cragLon - lon) * Math.PI) / 180
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos((lat * Math.PI) / 180) *
-            Math.cos((cragLat * Math.PI) / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2)
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        distance = Math.round(R * c * 10) / 10 // Round to 1 decimal
-      }
-
-      return {
-        id: crag.id.toString(),
-        name: crag.name.toString(),
-        altNames: crag.altNames.toArray(),
-        latitude: cragLat,
-        longitude: cragLon,
-        distance,
-        description: crag.description,
-        numberRoutes: (crag as unknown as { numberRoutes?: number }).numberRoutes ?? null,
-        numberPhotos: crag.numberPhotos,
-        numberTopos: crag.numberTopos,
-        hasTopo: crag.hasTopo,
-        totalFavorites: crag.totalFavorites,
-        urlStub: crag.urlStub,
-      }
+      maxDistanceKm: query.maxDistance ? parseFloat(query.maxDistance) : 100,
+      search: query.search?.trim() || undefined,
+      limit: query.limit ? parseInt(query.limit, 10) : 50,
+      offset: query.offset ? parseInt(query.offset, 10) : 0,
     })
 
     // 🚀 HTTP Cache headers - lista de crags nearby, caché por 10 minutos
     context.set.headers = {
       ...context.set.headers,
       'Cache-Control': 'public, max-age=600', // 10 minutos
-      'Vary': 'Accept-Encoding',
+      Vary: 'Accept-Encoding',
     }
 
     context.set.status = 200
-    return {
-      results,
-      total,
-      filters: {
-        latitude: lat,
-        longitude: lon,
-        maxDistance,
-        search: search || null,
-      },
-      pagination: {
-        limit,
-        offset,
-        hasMore: offset + results.length < total,
-      },
-    }
+    return response
   }
 
   /**

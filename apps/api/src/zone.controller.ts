@@ -7,15 +7,12 @@ import type {
   ZoneFilterDto,
   ZoneSearchDto,
 } from '@zone/domain/dtos/zone-filter.dto'
-import { ZonePrismaRepository } from '@zone/infrastructure/persistence/prisma/zone.repository'
 
 @Controller('/zones')
 export class ZoneController {
   constructor(
     @Inject(ZoneService)
     private readonly zoneService: ZoneService,
-    @Inject(ZonePrismaRepository)
-    private readonly zoneRepository: ZonePrismaRepository,
   ) {}
 
   @Get('/')
@@ -77,7 +74,7 @@ export class ZoneController {
 
   @Get('/countries')
   async getCountries(context: Context) {
-    const countries = await this.zoneRepository.getCountries()
+    const countries = await this.zoneService.getCountries()
     context.set.status = 200
     return countries
   }
@@ -85,7 +82,7 @@ export class ZoneController {
   @Get('/regions')
   async getRegions(context: Context) {
     const query = context.query as Record<string, string | undefined>
-    const regions = await this.zoneRepository.getRegions(query.country)
+    const regions = await this.zoneService.getRegions(query.country)
     context.set.status = 200
     return regions
   }

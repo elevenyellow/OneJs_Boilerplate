@@ -1,4 +1,4 @@
-import { TopoPrismaRepository } from '@climb-zone/topo'
+import { GetToposWithRoutesUseCase } from '@climb-zone/topo'
 import { Inject } from '@OneJs/core'
 import type { Context } from '@OneJs/server'
 import { Controller, Get, Post } from '@OneJs/server'
@@ -21,8 +21,8 @@ export class SectorController {
     private readonly searchSectorsUseCase: SearchSectorsUseCase,
     @Inject(RoutePrismaRepository)
     private readonly routeRepository: RoutePrismaRepository,
-    @Inject(TopoPrismaRepository)
-    private readonly topoRepository: TopoPrismaRepository,
+    @Inject(GetToposWithRoutesUseCase)
+    private readonly getToposWithRoutesUseCase: GetToposWithRoutesUseCase,
   ) {}
 
   /**
@@ -187,53 +187,7 @@ export class SectorController {
     const { id } = context.params as { id: string }
 
     try {
-      const sectorId = SectorId.fromString(id)
-
-      // Get all topo images for this sector
-      const topoImages = await this.topoRepository.findBySectorId(sectorId)
-
-      // For each topo, get the route positions
-      const toposWithRoutes = await Promise.all(
-        topoImages.map(async (topo) => {
-          const positions = await this.topoRepository.findPositionsByTopoId(
-            topo.id,
-          )
-
-          // Get route details for each position
-          const routeIds = positions.map((p) => p.routeId)
-          const routes = await Promise.all(
-            routeIds.map((routeId) => this.routeRepository.findById(routeId)),
-          )
-
-          // Combine position data with route details
-          const routesData = positions.map((position, idx) => {
-            const route = routes[idx]
-            return {
-              routeId: position.routeId.toString(),
-              routeExternalId: route?.externalId.toNumber() ?? 0,
-              topoNumber: position.topoNumber,
-              points: position.points,
-              gradeClass: position.gradeClass,
-              name: route?.name.toString() ?? 'Unknown',
-              grade: route?.gradeString ?? null,
-            }
-          })
-
-          return {
-            id: topo.id.toString(),
-            externalId: topo.externalId,
-            sectorId: topo.sectorId.toString(),
-            thumbnailUrl: topo.getThumbnailUrl(),
-            fullImageUrl: topo.getFullImageUrl(),
-            width: topo.width,
-            height: topo.height,
-            originalWidth: topo.originalWidth,
-            originalHeight: topo.originalHeight,
-            viewScale: topo.viewScale,
-            routes: routesData,
-          }
-        }),
-      )
+      const topos = await this.getToposWithRoutesUseCase.getBySectorId(id)
 
       // 🚀 HTTP Cache headers - topos cambian muy raramente
       context.set.headers = {
@@ -245,7 +199,7 @@ export class SectorController {
       context.set.status = 200
       return {
         sectorId: id,
-        topos: toposWithRoutes,
+        topos,
       }
     } catch {
       context.set.status = 400
