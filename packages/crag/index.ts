@@ -19,6 +19,12 @@ export {
   type SectorSummary,
   type RouteHighlight,
 } from './application/use-cases/get-crag-detail.use-case'
+export {
+  GetNearbyCragsUseCase,
+  type GetNearbyCragsDto,
+  type GetNearbyCragsResponse,
+  type NearbyCragResult,
+} from './application/use-cases/get-nearby-crags.use-case'
 
 // Infrastructure
 export { CragPrismaRepository } from './infrastructure/persistence/prisma/crag.repository'
