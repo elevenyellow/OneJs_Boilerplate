@@ -13,9 +13,9 @@ export class ZonePrismaRepository extends PrismaRepository<'zone'> {
     super(prisma, 'zone')
   }
 
-  async findById(id: string): Promise<ZoneEntity | null> {
+  async findById(id: ZoneId): Promise<ZoneEntity | null> {
     const zone = await this.prisma.zone.findUnique({
-      where: { id },
+      where: { id: id.toString() },
     })
 
     return zone ? this.toEntity(zone) : null
@@ -91,7 +91,7 @@ export class ZonePrismaRepository extends PrismaRepository<'zone'> {
       data: this.toPrismaCreate(zone),
     })
 
-    return (await this.findById(zone.id.toString()))!
+    return (await this.findById(zone.id))!
   }
 
   async updateEntity(zone: ZoneEntity): Promise<void> {
@@ -101,8 +101,8 @@ export class ZonePrismaRepository extends PrismaRepository<'zone'> {
     })
   }
 
-  async deleteEntity(id: string): Promise<void> {
-    await this.prisma.zone.delete({ where: { id } })
+  async deleteEntity(id: ZoneId): Promise<void> {
+    await this.prisma.zone.delete({ where: { id: id.toString() } })
   }
 
   async getCountries(): Promise<string[]> {

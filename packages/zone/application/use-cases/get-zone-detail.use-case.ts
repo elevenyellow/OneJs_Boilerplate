@@ -1,5 +1,6 @@
 import { Inject, Injectable, OneJsError } from '@OneJs/core'
 import { ZonePrismaRepository } from '@zone/infrastructure/persistence/prisma/zone.repository'
+import { ZoneId } from '@zone/domain/value-objects/id'
 import type { ZoneDetailDto } from '../../domain/dtos/zone.dto'
 
 @Injectable()
@@ -10,7 +11,8 @@ export class GetZoneDetailUseCase {
   ) {}
 
   async execute(id: string): Promise<ZoneDetailDto> {
-    const zone = await this.zoneRepository.findById(id)
+    const zoneId = ZoneId.createFrom(id)
+    const zone = await this.zoneRepository.findById(zoneId)
 
     if (!zone) {
       throw new OneJsError('Zone not found', 404, 'ZONE_NOT_FOUND')

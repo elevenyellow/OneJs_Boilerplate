@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
+import { ZoneId } from '@zone/domain/value-objects/id'
 import {
   WeatherForecastEntity,
   type WeatherCondition,
@@ -20,10 +21,10 @@ export class WeatherPrismaRepository extends PrismaRepository<'weatherForecast'>
    * Find forecasts for a zone
    */
   async findByZoneId(
-    zoneId: string,
+    zoneId: ZoneId,
     options?: { startDate?: Date; endDate?: Date; hourly?: boolean },
   ): Promise<WeatherForecastEntity[]> {
-    const where: any = { zoneId }
+    const where: any = { zoneId: zoneId.toString() }
 
     if (options?.startDate || options?.endDate) {
       where.date = {}
@@ -51,7 +52,7 @@ export class WeatherPrismaRepository extends PrismaRepository<'weatherForecast'>
    * Get daily forecasts for a zone for the next N days
    */
   async getDailyForecasts(
-    zoneId: string,
+    zoneId: ZoneId,
     days: number = 7,
   ): Promise<WeatherForecastEntity[]> {
     const startDate = new Date()
@@ -71,7 +72,7 @@ export class WeatherPrismaRepository extends PrismaRepository<'weatherForecast'>
    * Get hourly forecasts for a zone for the next N hours
    */
   async getHourlyForecasts(
-    zoneId: string,
+    zoneId: ZoneId,
     hours: number = 48,
   ): Promise<WeatherForecastEntity[]> {
     const startDate = new Date()
@@ -135,9 +136,9 @@ export class WeatherPrismaRepository extends PrismaRepository<'weatherForecast'>
   /**
    * Get latest fetch time for a zone
    */
-  async getLastFetchTime(zoneId: string): Promise<Date | null> {
+  async getLastFetchTime(zoneId: ZoneId): Promise<Date | null> {
     const latest = await this.prisma.weatherForecast.findFirst({
-      where: { zoneId },
+      where: { zoneId: zoneId.toString() },
       orderBy: { fetchedAt: 'desc' },
       select: { fetchedAt: true },
     })
