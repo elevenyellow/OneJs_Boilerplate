@@ -1,8 +1,0 @@
-export { AscentId } from './ascent-id.vo'
-export { AscentStyle } from './ascent-style.vo'
-export { GradeEvaluation } from './grade-evaluation.vo'
-export { WallType } from './wall-type.vo'
-export { Characteristics } from './characteristics.vo'
-export { SafetyConcerns } from './safety-concerns.vo'
-export { AscentQuality } from './ascent-quality.vo'
-export { Tries } from './tries.vo'

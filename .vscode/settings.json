@@ -3,6 +3,5 @@
         "minimap.background": "#00000000",
         "scrollbar.shadow": "#00000000"
     },
-    "prisma.pinToPrisma6": true,
-    "git.ignoreLimitWarning": true
+    "prisma.pinToPrisma6": true
 }

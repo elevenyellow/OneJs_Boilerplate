@@ -31,9 +31,7 @@
     "type-check": "tsc --noEmit",
     "start:api:prod": "bun run --cwd apps/api start",
     "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev",
-    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev",
-    "start:mobile": "bun run --cwd apps/mobile-app start",
-    "command": "bun run apps/cli/index.ts"
+    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
@@ -49,12 +47,6 @@
     "@OneJs/jobs": "workspace:*",
     "@OneJs/prisma": "workspace:*",
     "@OneJs/server": "workspace:*",
-    "@aws-sdk/s3-request-presigner": "^3.967.0",
-    "@react-native-masked-view/masked-view": "^0.3.2",
-    "cheerio": "^1.1.2",
-    "got": "^14.6.6",
-    "hpagent": "^1.2.0",
-    "sharp": "^0.34.5",
     "typescript": "^5.0.0",
     "uuid": "^13.0.0"
   }
