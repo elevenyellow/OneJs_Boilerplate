@@ -1,0 +1,131 @@
+---
+description: (no description)
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Regla: Paginación eficiente y contrato estándar
+
+## Contexto y objetivo
+
+- Por defecto, todos los listados/tablas deben paginarse. Si no se especifica lo contrario, usa esta regla.
+- Elegimos paginación por cursor (cursor-based) por su eficiencia y consistencia con grandes volúmenes de datos y escrituras concurrentes.
+
+## Decisiones
+
+- Backend: cursor-based con `take`, `cursor`, `orderBy` estable y `hasNextPage`.
+- UI (Admin): paginador numerado; el backend expone `totalCount` opcional para calcular `totalPages`.
+- Contrato API estándar con `limit`, `cursor`, `orderBy`, `order`, `filter` (cuando aplique).
+
+## Contrato API
+
+### Query params
+
+- `limit` (1–100), default 20.
+- `cursor` (`string | null`).
+- `orderBy` (campo único/indexado) o compuesto estable.
+- `order` (`asc | desc`).
+- `filter` cuando aplique (validado y seguro).
+
+### Respuesta JSON
+
+```json
+{
+  "items": [/* ... */],
+  "pageInfo": { "endCursor": "...", "hasNextPage": true },
+  "totalCount": 1234
+}
+```
+
+Notas:
+- `totalCount` puede omitirse si el conteo es costoso; la UI debe tolerarlo y degradar a navegación por cursor (Anterior/Siguiente).
+
+## Backend (apps/api)
+
+### Tipos/utilidades comunes
+
+- `apps/api/src/common/pagination/pagination.types.ts`
+- `apps/api/src/common/pagination/pagination.util.ts` (parseo/validación de query, validación de `limit` y `order`, construcción y serialización de `cursor`).
+
+### Helper para Prisma
+
+- `apps/api/src/common/pagination/prisma.pagination.ts`
+- Función genérica `findManyWithCursor<T>` que recibe: `model, where, orderBy, select/include, limit, cursorField, cursorValue` y retorna `{ items, endCursor, hasNextPage }`.
+- Requiere `orderBy` estable por campo único o compuesto (p.ej. `createdAt` + `id`).
+
+#### Snippet de referencia (Prisma)
+
+```ts
+const items = await prisma.event.findMany({
+  where,
+  take: limit + 1,
+  ...(cursor && { cursor: { [cursorField]: cursor }, skip: 1 }),
+  orderBy: { [orderBy]: order },
+  select,
+});
+const hasNextPage = items.length > limit;
+const pageItems = hasNextPage ? items.slice(0, -1) : items;
+const endCursor = pageItems.at(-1)?.[cursorField] ?? null;
+```
+
+### `totalCount`
+
+- Calcular con `prisma.model.count({ where })` en paralelo al `findMany` cuando se necesite. Permitir desactivar vía flag cuando sea costoso.
+
+### Implementación base (Eventos)
+
+- Editar `apps/api/src/events/infrastructure/persistence/prisma/event.repository.ts` para exponer `findPaginated(args)` usando el helper.
+- Adaptar el controlador/handler para aceptar los params y devolver el contrato estándar de paginación.
+
+### Índices/orden estable
+
+- Asegurar `orderBy` por clave primaria o índice único (`id`, `createdAt+id`). Añadir índice si falta (migración Prisma).
+
+## Frontend Admin (apps/admin)
+
+### Tipos/cliente
+
+- Crear `apps/admin/src/lib/api/pagination.ts` con `PaginatedResponse<T>` y fetcher estándar que mapea `page/pageSize` a `cursor/limit` cuando corresponda.
+
+### Hook reutilizable
+
+- `apps/admin/src/hooks/usePaginatedTable.ts` para sincronizar `page, pageSize, orderBy, order`, mapear a `cursor` vía API y manejar `totalPages` con `totalCount` (si está presente).
+
+### Componente de UI
+
+- `apps/admin/src/components/pagination/Paginator.tsx` (paginador numerado), accesible, con estados de carga/disabled, y soporte para ausencia de `totalCount`.
+
+### Integración en tablas
+
+- Actualizar tablas existentes (p.ej. Eventos) para usar el hook y el paginador, evitando cargas completas.
+
+## Buenas prácticas
+
+- Limitar `limit` a 1–100; default 20.
+- `orderBy` debe ser estable e indexado; preferir clave primaria o compuesto `createdAt + id`.
+- Validar y sanear `filter`/`where` en el backend.
+- Tolerar ausencia de `totalCount` y degradar UX a navegación por cursor.
+- Evitar `offset` en volúmenes grandes.
+
+## Errores comunes
+
+- Usar `offset` en volúmenes grandes (pérdida de rendimiento y consistencia).
+- `orderBy` no estable causando páginas duplicadas/perdidas.
+- Olvidar `skip: 1` al usar `cursor`.
+- No validar `limit` permitiendo valores extremos.
+
+## Checklist de adopción
+
+- [ ] Repositorio usa `findManyWithCursor`.
+- [ ] `orderBy` estable + índice.
+- [ ] `totalCount` controlado por feature flag cuando sea caro.
+- [ ] Handler expone contrato estándar.
+- [ ] UI usa `usePaginatedTable` y `Paginator`.
+
+## Referencias y coherencia
+
+- Ver `.cursor/rules/prisma-repository-pattern.mdc` para el patrón de repositorio con Prisma.
+- Ver `.cursor/rules/frontend.mdc` para pautas de UI y accesibilidad.
+- Ver `.cursor/rules/code-style-and-commands.mdc` para estilo de código y comandos.
+

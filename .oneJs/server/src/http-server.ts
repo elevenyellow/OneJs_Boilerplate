@@ -2,6 +2,7 @@ import { Elysia, type Context } from 'elysia'
 import { type AnyMiddleware, type MiddlewareInterface } from './middlewares'
 import { createErrorResponse, createSuccessResponse } from './types/response'
 import { useClassMiddleware } from './utils/use-class-middleware'
+import { getAllControllers } from './controller-registry'
 import {
   Container,
   Inject,

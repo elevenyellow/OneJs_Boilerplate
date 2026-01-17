@@ -61,6 +61,14 @@ export class WorkerService {
     const worker = new Worker(def.queueName, def.processor, {
       concurrency: def.concurrency,
       connection: this.connection,
+      // Extend lock duration for long-running jobs (30 minutes)
+      lockDuration: 1800000,
+      // Renew the lock every 5 minutes to prevent stalling
+      lockRenewTime: 300000,
+      // Check for stalled jobs every 10 minutes
+      stalledInterval: 600000,
+      // Maximum number of times a job can be stalled before being failed
+      maxStalledCount: 2,
     })
 
     worker.on('completed', (job) => {

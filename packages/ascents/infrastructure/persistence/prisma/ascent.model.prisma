@@ -1,0 +1,38 @@
+model Ascent {
+  id String @id @default(uuid())
+
+  // User reference
+  userId String
+  user   User  @relation(fields: [userId], references: [id])
+
+  // Route reference
+  routeId String
+  route   Route  @relation("userAscents", fields: [routeId], references: [id])
+
+  // Ascent data (numeric for compact payloads)
+  style           Int // 0-4: onsight, flash, redpoint, go, toprope
+  gradeBand       Int // 1-5: beginner to elite
+  gradeEvaluation Int // 0-2: soft, normal, hard
+  wallType        Int? // 0-3: slab, vertical, overhang, roof (nullable)
+  characteristics Int // bitmask: cruxy, athletic, slopers, etc.
+  safetyConcerns  Int // bitmask: looseRock, highFirstBolt, etc.
+  quality         Int // 0-5 stars
+  tries           Int // number of attempts
+  isRepeat        Boolean
+
+  // Content
+  comments String?
+
+  // Date of the ascent (user-selected)
+  ascentDate DateTime
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([routeId])
+  @@index([userId, gradeBand])
+  @@index([userId, style])
+  @@index([userId, ascentDate])
+}

@@ -1,0 +1,73 @@
+model Topo {
+  id              String    @id @default(uuid())
+  externalId      String    @unique
+
+  // === IMÁGENES ===
+  thumbnailUrl    String
+  fullImageUrl    String
+
+  // === DIMENSIONES ===
+  width           Int
+  height          Int
+  originalWidth   Int
+  originalHeight  Int
+  viewScale       Float
+
+  // === TIPO ===
+  isOverview      Boolean   @default(false)
+  hasRoutes       Boolean   @default(false)
+
+  // === JERARQUÍA ===
+  cragId          String?
+  sectorId        String?
+
+  // Metadata
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  crag            Crag?     @relation(fields: [cragId], references: [id])
+  sector          Sector?   @relation(fields: [sectorId], references: [id])
+  annotations     TopoAnnotation[]
+
+  // Índices
+  @@index([cragId])
+  @@index([sectorId])
+  @@index([sectorId, hasRoutes])
+}
+
+model TopoAnnotation {
+  id                  String    @id @default(uuid())
+
+  // === REFERENCIAS ===
+  topoId              String
+  routeId             String?
+  externalRouteId     String?
+
+  // === TIPO ===
+  type                String
+
+  // === VISUALIZACIÓN EN TOPO ===
+  num                 String
+  order               Int
+  zindex              String?
+  points              String
+  color               String?
+
+  // === INFO DE RUTA (desnormalizada para mostrar en topo) ===
+  name                String
+  grade               String?
+  gradeClass          String?
+  stars               String?
+  style               String?
+  url                 String?
+
+  // Relations
+  topo                Topo      @relation(fields: [topoId], references: [id], onDelete: Cascade)
+  route               Route?    @relation(fields: [routeId], references: [id])
+
+  // Índices
+  @@index([topoId])
+  @@index([routeId])
+  @@index([externalRouteId])
+}

@@ -1,0 +1,98 @@
+---
+description: Defines patterns for lazy loading images and components to improve performance using LazyImage component and lazyComponent helper with consistent fallback UIs
+globs:
+  - "apps/**/*.tsx"
+  - "apps/**/*.ts"
+  - "packages/**/*.tsx"
+  - "packages/**/*.ts"
+alwaysApply: true
+---
+# React: Lazy Loading Images and Components
+
+This rule defines how to lazily load images and components to improve performance and interactivity. It provides a shared `LazyImage` component and a `lazyComponent` helper to standardize usage.
+
+## Images
+Always prefer lazy loading for non-critical images.
+
+Minimum standard:
+- Use `<img loading="lazy" decoding="async">` for all non-critical images.
+
+Preferred standard:
+- Use the shared `LazyImage` component which enforces sensible defaults and offers placeholders.
+
+Props suggestions for `LazyImage`:
+- `src`, `alt` (required)
+- `width`, `height` (recommended to avoid CLS)
+- `className`, `style`
+- `placeholder` (optional node or data URI)
+
+## Components
+Use code splitting for heavy or rarely-used components, such as dialogs, charts, and large editors.
+
+Helper: `lazyComponent`
+- Wrap `React.lazy` and `Suspense` with a consistent fallback API.
+- Example:
+  ```tsx
+  const MergeReviewDialog = lazyComponent(
+    () => import('@/components/events/MergeReviewDialog'),
+    { fallback: <div className="p-4">Cargando…</div> }
+  );
+  ```
+
+Guidelines:
+- Route-level code splitting is encouraged for large sections.
+- For small, frequently used components, avoid lazy to reduce Suspense boundaries overhead.
+- Prefer stable `fallback` UIs that match surrounding layout to avoid layout shifts.
+
+## Directory and naming
+- `apps/admin/src/components/LazyImage.tsx`
+- `apps/admin/src/components/lazyComponent.ts`
+
+## Examples in this codebase
+- `MergeReviewDialog` in `apps/admin/src/routes/events/index.tsx` can be lazy-loaded.
+- Replace direct `<img>` usages with `LazyImage` where appropriate.
+
+### Component lazy example
+```tsx
+// apps/admin/src/routes/events/index.tsx (excerpt)
+import { lazyComponent } from '@/components/lazyComponent';
+
+const MergeReviewDialog = lazyComponent(
+  () => import('@/components/events/MergeReviewDialog'),
+  { fallback: <div className="p-4">Cargando…</div> }
+);
+```
+
+### Image lazy example
+```tsx
+// apps/admin/src/components/events/EventsTable.tsx (excerpt)
+import LazyImage from '@/components/LazyImage';
+
+function EventRow({ posterUrl, title }: { posterUrl: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <LazyImage
+        src={posterUrl}
+        alt={title}
+        width={64}
+        height={64}
+        className="rounded"
+        placeholder={<div className="w-16 h-16 bg-muted animate-pulse rounded" />}
+      />
+      <span>{title}</span>
+    </div>
+  );
+}
+```
+
+## PR checklist
+- Non-critical images use `loading="lazy"` and `decoding="async"` (or `LazyImage`).
+- Heavy/rare components are lazy-loaded with `lazyComponent`.
+- Fallback UIs are provided and visually stable.
+- Width/height provided for images where possible.
+
+## Related Rules
+
+- `.cursor/rules/react-performance.mdc` - Performance optimization patterns including lazy loading benefits
+- `.cursor/rules/react-component-decomposition.mdc` - Component size limits that trigger lazy loading needs
+

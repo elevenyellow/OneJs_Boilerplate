@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "Climb App",
+    "slug": "climb-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "climbapp",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.climbapp.mobile",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocationWhenInUseUsageDescription": "We need your location to find climbing crags near you",
+        "NSLocationAlwaysUsageDescription": "We need your location to find climbing crags near you"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
+      "package": "com.climbapp.mobile",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ],
+      "usesCleartextTraffic": true,
+      "statusBar": {
+        "backgroundColor": "#0a0a0a",
+        "translucent": false
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Climb App to use your location to find nearby crags."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-localization",
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

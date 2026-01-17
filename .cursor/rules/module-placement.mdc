@@ -1,0 +1,79 @@
+---
+description: Defines placement rules for modules between packages and app folders in the monorepo
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Module Placement Rules
+
+Clear boundaries between `packages/` and `apps/<app>/` keep the monorepo maintainable, allow reuse, and avoid leaking app-specific concerns into shared code. Use this guide to decide where new modules, services, or adapters belong.
+
+## Guiding Principles
+- Follow DDD: domain and application logic live in bounded contexts, infrastructure adapts to frameworks and data sources.
+- Default to the most reusable location. Shared business logic belongs in `packages/`; app-only orchestration belongs in `apps/<app>/`.
+- Controllers, transport adapters, and request/response shaping stay close to their entry point (API, admin, mobile, etc.).
+- Avoid circular dependencies: `apps/<app>/` may import from `packages/`, never the reverse.
+
+## When to Use `packages/<bounded-context>`
+- **Cross-app scope**: functionality is reused (or expected to be reused) by two or more apps (`api`, `admin`, `next`, `mobile`, workers, scripts).
+- **Pure business logic**: domain entities/value objects, application use cases, services, and event handlers that are UI-agnostic.
+- **Shared infrastructure adapters**: repositories, external provider integrations, and mappers that can be reused by multiple apps (e.g., Prisma repositories, S3 clients).
+- **Shared contracts**: DTOs, constants, events, and aliases that must stay consistent across apps.
+
+### Examples
+- `packages/countries/...` exposes entities, value objects, use cases, and Prisma repositories consumed by REST controllers and admin UI.
+- `packages/one-js/...` provides framework primitives, DI, and decorators used everywhere.
+
+### Avoid placing in `packages/`
+- Code that depends on a specific app’s authentication, routing, request context, or configuration.
+- Controllers, routers, web handlers, HTTP schemas, or UI code.
+- App-specific data flows (e.g., admin-only orchestration, webhook handling for a single app).
+
+## When to Use `apps/<app>/src/<bounded-context>`
+- **Entry-point adapters**: HTTP controllers, background schedulers, CLI handlers, or UI-facing services tied to a single app.
+- **App-specific workflows**: use cases or infrastructure that only make sense for that app (e.g., admin moderation controller, public API rate-limited repository).
+- **Edge-case overrides**: thin wrappers around shared logic that apply app-only concerns like authentication, rate limits, serialization, or feature flags.
+- **Bootstrapping and wiring**: startup scripts, DI module registration, composition roots.
+
+### Examples
+- `apps/api/src/countries/infrastructure/countries.controller.ts` exposes HTTP endpoints for the public API while delegating to shared use cases.
+- `apps/admin/src/lib/api/realApi.ts` shapes client-fetchers only used by the admin SPA.
+
+### Avoid placing in `apps/<app>/`
+- Core domain rules or reusable application services (move to `packages/` and import).
+- Shared repositories or integrations that another app might also need.
+- Value objects, entities, or DTOs needed across multiple apps.
+
+## Handling Duplicate Names Across Packages and Apps
+It is acceptable to have folders with the same bounded-context name in both locations (e.g., `packages/events` and `apps/api/src/events`). When that happens:
+
+- `packages/<context>` holds the canonical domain/application/infrastructure code to be reused across apps.
+- `apps/<app>/src/<context>` should only contain adapters or orchestrations specific to that app (controllers, app-only use cases, or infrastructure variants).
+- Never re-implement domain logic inside `apps/<app>/src/<context>`; import the shared use case or service instead.
+- If an app needs a specialized repository, wrap the shared repository or extend it in-app instead of duplicating logic.
+
+## Decision Checklist
+1. **Will another app or worker likely need this logic?** If yes, put it in `packages/`.
+2. **Does it depend on HTTP, UI state, or app-specific auth?** If yes, keep it under `apps/<app>/`.
+3. **Is it a domain entity/value object/use case?** Place in `packages/<context>/domain|application`.
+4. **Is it wiring or bootstrapping code?** Place next to the app entry point.
+5. **Does it integrate with third-party services?** Prefer `packages/<context>/infrastructure` unless the integration is app-only.
+
+## Layering Expectations Inside Each Location
+- **Domain**: Entities, value objects, domain services; no dependencies on application or infrastructure.
+- **Application**: Use cases, services, handlers; orchestrate domain objects and repositories.
+- **Infrastructure**: Persistence, external APIs, adapters; may depend on frameworks (`@OneJs`, Prisma).
+- **Interface (apps only)**: Controllers, schedulers, presenters, HTTP/network layers.
+
+## Practical Tips
+- Re-export shared modules through `packages/<context>/index.ts` for clean imports (`@countries/application`).
+- Keep aliases and barrel files aligned across apps to prevent divergent APIs.
+- Document app-only behaviors in the app folder README or bootstrap file.
+- When promoting app-specific logic to `packages/`, move tests and update imports everywhere to avoid drift.
+
+## Related Rules
+- `.cursor/rules/ddd-application-use.mdc` for detailed DDD layering guidance.
+- `.cursor/rules/bounded-context-relationships.mdc` for patterns managing relationships between bounded contexts.
+- `.cursor/rules/controller-dependencies.mdc` for controller injection constraints.
+- `.cursor/rules/dependency-injection.mdc` for DI best practices.

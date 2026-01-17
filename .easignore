@@ -1,0 +1,32 @@
+# Excluir directorios que no son parte de la app móvil
+# Las rutas son relativas a la raíz del proyecto
+/data
+/redis-data
+/.oneJs
+/.cursor
+/docs
+/packages
+/apps/api
+/apps/scripts
+/node_modules
+/.git
+/.vscode
+
+# Archivos de configuración del proyecto raíz que no necesita la app móvil
+/docker-compose.yml
+/biome.json
+/tsconfig.json
+/bun.lock
+/all_countries.json
+/init-pgvector.sql
+
+# Archivos temporales y logs
+*.log
+*.tmp
+.DS_Store
+
+# Directorios de build y cache (excepto apps/mobile)
+/.expo
+/.expo-shared
+/dist
+/build

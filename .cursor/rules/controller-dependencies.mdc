@@ -1,0 +1,236 @@
+---
+description: Enforces that controllers follow DDD architecture by only injecting use cases and application services, not repositories or database clients
+globs:
+  - "apps/**/infrastructure/**/*.controller.ts"
+  - "apps/**/controllers/**/*.controller.ts"
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Controller Dependency Rules
+
+Controllers are part of the infrastructure/interface layer and must follow strict dependency rules to maintain clean DDD architecture.
+
+## Allowed Dependencies
+
+Controllers may ONLY inject:
+- **Use Cases** (from `application/use-cases/`)
+- **Application Services** (from `application/services/`)
+- **Framework decorators and utilities** (from `@OneJs`)
+
+## Forbidden Dependencies
+
+Controllers MUST NOT inject:
+- **Repositories** (`*Repository`, `*PrismaRepository`, `*MongoRepository`)
+- **Database Clients** (`PrismaClientEy`, `PrismaClient`, `MongoConnector`)
+- **Domain Services** (use through use cases instead)
+- **Infrastructure services directly** (unless they are explicitly application-layer services)
+
+## Rationale
+
+- Controllers are entry points that delegate to use cases
+- Use cases orchestrate repositories, domain services, and business logic
+- This separation allows:
+  - Business logic reuse across different entry points (REST, GraphQL, CLI, etc.)
+  - Easier testing of business logic without HTTP concerns
+  - Clear separation of concerns
+
+## Controller Response Format
+
+Controllers should return data directly - the framework handles wrapping responses automatically. Map entities to DTOs using entity methods.
+
+### ✅ CORRECT - Return data with entity-to-DTO mapping
+
+```typescript
+@Controller('/tags')
+export class TagsController {
+  constructor(
+    @Inject(GetTagByIdUseCase)
+    private readonly getTagByIdUseCase: GetTagByIdUseCase,
+    @Inject(GetTagsUseCase)
+    private readonly getTagsUseCase: GetTagsUseCase,
+  ) {}
+
+  @Get('/')
+  async getTags() {
+    const tags = await this.getTagsUseCase.execute({})
+    // Map entities to DTOs
+    return { tags: tags.map((tag) => tag.toDto()) }
+  }
+
+  @Get('/:id')
+  async getTagById(ctx: Context) {
+    const { id } = ctx.params as { id: string }
+    // Use case throws OneJsError if not found - no null check needed
+    const tag = await this.getTagByIdUseCase.execute({ id })
+    return { tag: tag.toDto() }
+  }
+}
+```
+
+### ❌ INCORRECT - Manual null checks or error handling
+
+```typescript
+// ❌ WRONG - Don't check for null manually
+@Get('/:id')
+async getTagById(ctx: Context) {
+  const { id } = ctx.params as { id: string }
+  const tag = await this.getTagByIdUseCase.execute({ id })
+  
+  if (!tag) {
+    return { error: 'Tag not found', status: 404 }
+  }
+  
+  return { tag: tag.toDto() }
+}
+```
+
+**Why?** Use cases are responsible for throwing `OneJsError` when resources are not found. Controllers are thin adapters that delegate to use cases.
+
+## Entity to DTO Mapping
+
+Controllers must map domain entities to DTOs before returning:
+
+- Use `entity.toDto()` for general domain DTOs
+- Use `entity.toFrontendDto()` when returning to frontend (optimized fields)
+- Always map collections: `entities.map(e => e.toDto())`
+
+```typescript
+@Get('/')
+async getAll(ctx: Context) {
+  const entities = await this.useCase.execute({})
+  return { items: entities.map((entity) => entity.toDto()) }
+}
+
+@Get('/:id')
+async getById(ctx: Context) {
+  const { id } = ctx.params as { id: string }
+  const entity = await this.useCase.execute({ id })
+  return { item: entity.toDto() }
+}
+```
+
+## Error Handling in Controllers
+
+**Controllers MUST NOT handle errors manually.** Use cases throw `OneJsError` which is caught by framework middleware.
+
+### ✅ CORRECT - Let use cases throw errors
+
+```typescript
+@Get('/:id')
+async getTagById(ctx: Context) {
+  const { id } = ctx.params as { id: string }
+  // Use case throws OneJsError(RESOURCE_NOT_FOUND) if tag doesn't exist
+  // Framework middleware handles the error response automatically
+  const tag = await this.getTagByIdUseCase.execute({ id })
+  return { tag: tag.toDto() }
+}
+```
+
+### ❌ INCORRECT - Manual error handling
+
+```typescript
+// ❌ WRONG - Don't catch errors or return error objects
+@Get('/:id')
+async getTagById(ctx: Context) {
+  try {
+    const tag = await this.getTagByIdUseCase.execute({ id })
+    return { tag: tag.toDto() }
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return { error: 'Not found', status: 404 }
+    }
+    throw error
+  }
+}
+
+// ❌ WRONG - Don't check for null and return error
+@Get('/:id')
+async getTagById(ctx: Context) {
+  const tag = await this.getTagByIdUseCase.execute({ id })
+  if (!tag) {
+    return { error: 'Tag not found', status: 404 }
+  }
+  return { tag: tag.toDto() }
+}
+```
+
+## Examples
+
+### ✅ CORRECT - Controller injecting use case
+
+```typescript
+@Controller('/admin')
+export class AdminController {
+  constructor(
+    @Inject(GetCurrentUserUseCase)
+    private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
+  ) {}
+
+  @Get('/me')
+  async getCurrentUser(ctx: Context) {
+    const { store } = ctx as { store: { user: { userId: string } } }
+    const user = await this.getCurrentUserUseCase.execute({ userId: store.user.userId })
+    return { user: user.toDto() }
+  }
+
+  @Post('/users')
+  async createUser(ctx: Context) {
+    const body = ctx.body as CreateUserDto
+    const user = await this.createUserUseCase.execute(body)
+    ctx.set.status = 201
+    return { user: user.toDto() }
+  }
+}
+```
+
+### ❌ INCORRECT - Controller injecting repository
+
+```typescript
+@Controller('/admin')
+export class AdminController {
+  constructor(
+    @Inject(UserPrismaRepository)
+    private readonly userRepository: UserPrismaRepository, // ❌ NO
+  ) {}
+}
+```
+
+### ❌ INCORRECT - Controller injecting Prisma client
+
+```typescript
+@Controller('/admin')
+export class AdminController {
+  constructor(
+    @Inject(PrismaClientEy)
+    private readonly prisma: PrismaClientEy, // ❌ NO
+  ) {}
+}
+```
+
+## How to Fix Violations
+
+If you find yourself needing to inject a repository or database client in a controller:
+
+1. Create a use case in `packages/<bounded-context>/application/use-cases/` or `apps/<app>/src/<context>/application/use-cases/`
+2. Move the business logic to the use case
+3. Inject the repository/database client in the use case instead
+4. Inject and call the use case from the controller
+
+## Summary
+
+- ✅ Inject only use cases and application services
+- ✅ Map entities to DTOs using `entity.toDto()` or `entity.toFrontendDto()`
+- ✅ Return data directly - framework handles response wrapping
+- ✅ Let use cases throw `OneJsError` - don't handle errors in controllers
+- ✅ Use `ctx.set.status` for custom status codes (201, 204)
+- ❌ Never inject repositories or database clients
+- ❌ Never check for null or handle errors manually
+- ❌ Never return raw entities without mapping to DTOs
+- ❌ Never catch and transform errors - let framework middleware handle it
+
+## See Also
+
+- `.cursor/rules/eyjs-framework.mdc` - Framework decorators and response format
+- `.cursor/rules/ddd-application-use.mdc` - Complete DDD architecture guidelines
+- `.cursor/rules/code-style-and-commands.mdc` - Coding conventions and patterns

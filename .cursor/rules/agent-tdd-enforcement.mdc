@@ -1,0 +1,182 @@
+---
+description: Establece que el agente/IA DEBE seguir obligatoriamente el ciclo TDD en todas las tareas de desarrollo sin excepciones.
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: true
+---
+# Agent TDD Enforcement: Zero Tolerance Policy
+
+## Core Rule
+
+**The AI agent MUST follow Test-Driven Development for ALL code development tasks.**
+
+This is MANDATORY. This is NON-NEGOTIABLE. This has ZERO EXCEPTIONS.
+
+## Quick Reference
+
+When writing ANY code (domain, application, infrastructure):
+
+1. **REASON**: Create test cases list in test file
+2. **RED**: Write failing test first
+3. **GREEN**: Implement minimum to pass
+4. **REFACTOR**: Improve while keeping green
+5. **RE-EVALUATE**: Review and continue cycle
+
+## Agent Workflow
+
+```
+Task Received
+    ↓
+REASON: Create test cases list
+    ↓
+RED: Write failing test
+    ↓
+Verify test fails
+    ↓
+GREEN: Implement minimum code
+    ↓
+Verify test passes
+    ↓
+REFACTOR: Improve code quality
+    ↓
+Run tests (keep green)
+    ↓
+Run Biome
+    ↓
+RE-EVALUATE: Next test case?
+    ↓
+Yes → Return to RED
+    ↓
+No → Task complete
+```
+
+## Full Specification
+
+See `.cursor/rules/tdd-cycle.mdc` for complete TDD cycle specification including:
+- Detailed explanation of each phase
+- Transformation Priority Premise (TPP) guidance
+- Test organization and structure
+- Integration test requirements
+- What to test by layer
+
+## Enforcement Rules
+
+### Agent MUST
+
+- ✅ Create test cases list BEFORE writing any code
+- ✅ Write tests BEFORE writing implementation
+- ✅ Verify test compilation failure (proves feature doesn't exist)
+- ✅ Verify test execution failure (proves test is valid)
+- ✅ Implement simplest code to make test pass
+- ✅ Run tests after implementation to verify GREEN
+- ✅ Run tests after refactoring to keep GREEN
+- ✅ Run Biome after GREEN/REFACTOR phases
+- ✅ Update test cases list with completion status
+
+### Agent MUST NOT
+
+- ❌ Write implementation before tests
+- ❌ Skip REASON phase (test cases list)
+- ❌ Skip verifying test failure
+- ❌ Skip running tests after changes
+- ❌ Delete or modify existing tests to make code pass
+- ❌ Proceed without GREEN state
+- ❌ Claim task complete without following all 5 steps
+
+## Consequences of Violation
+
+**Violating TDD = Delivering incomplete/broken code**
+
+When agent violates TDD:
+- Code quality cannot be verified
+- Business requirements are not tested
+- Regressions are likely to occur
+- Codebase becomes fragile
+- Task is considered INCOMPLETE
+
+**The agent's job is to follow TDD, not to "finish quickly" without tests.**
+
+## Integration with Other Rules
+
+This enforcement policy works with:
+
+- **`.cursor/rules/tdd-cycle.mdc`** - Complete TDD cycle specification with examples
+- **`.cursor/rules/code-completeness.mdc`** - Tests as completeness requirement
+- **`.cursor/rules/biome-format-and-validate.mdc`** - Post-TDD formatting workflow
+- **`.cursor/rules/code-style-and-commands.mdc`** - DDD patterns enforced by tests
+
+## Examples
+
+### ❌ INCORRECT Agent Behavior
+
+```typescript
+// Agent receives task: "Create Tag entity"
+
+// ❌ Agent writes implementation directly (NO TESTS FIRST)
+export class Tag {
+  constructor(private readonly name: string) {}
+  getName(): string { return this.name }
+}
+
+// ❌ VIOLATION: No REASON phase, no RED phase, no tests
+// This is INCOMPLETE CODE regardless of implementation quality
+```
+
+### ✅ CORRECT Agent Behavior
+
+```typescript
+// Agent receives task: "Create Tag entity"
+
+// ✅ Step 0: REASON - Create test cases list
+// File: __tests__/tag.test.ts
+describe('Tag Entity', () => {
+  // TEST CASES LIST (REASON)
+  // 1. ✓ Create tag with valid name (simplest)
+  // 2. ✓ Get tag name
+  // 3. ✓ Reject empty name
+  
+  // ✅ Step 1: RED - Write failing test
+  test('should create tag with valid name', () => {
+    const tag = Tag.create({ name: 'Music' })
+    expect(tag).toBeInstanceOf(Tag)
+  })
+  // Run test: ❌ Fails - Tag.create doesn't exist
+  
+  // ✅ Step 2: GREEN - Implement minimum
+  // File: tag.ts
+  export class Tag {
+    private constructor(private readonly name: string) {}
+    static create(input: { name: string }): Tag {
+      return new Tag(input.name)
+    }
+  }
+  // Run test: ✅ Passes
+  
+  // ✅ Step 3: REFACTOR - Improve if needed
+  // (No changes needed yet)
+  
+  // ✅ Step 4: RE-EVALUATE - Continue to next test case
+})
+```
+
+## Verification Checklist
+
+Before marking any task as complete, verify:
+
+- [ ] Test cases list exists in test file (REASON)
+- [ ] Tests written before implementation (RED)
+- [ ] Test failure verified before implementing
+- [ ] Implementation makes tests pass (GREEN)
+- [ ] Tests pass after refactoring (REFACTOR)
+- [ ] Test cases list updated (RE-EVALUATE)
+- [ ] Biome run on all edited files
+- [ ] All tests passing
+
+## Summary
+
+**TDD is not optional. TDD is not a suggestion. TDD is MANDATORY for the agent.**
+
+Every line of implementation code must be driven by a failing test. No exceptions.
+
+See `.cursor/rules/tdd-cycle.mdc` for complete specification.

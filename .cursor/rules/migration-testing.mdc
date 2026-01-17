@@ -1,0 +1,1298 @@
+---
+description: Mandatory test creation before database migrations following TDD cycle to verify schema changes, data transformations, rollback procedures, and data integrity.
+globs:
+  - "prisma/migrations/**"
+  - "packages/**/infrastructure/persistance/**"
+alwaysApply: true
+---
+# Migration Testing: Mandatory Test-Driven Migrations
+
+This rule establishes a **MANDATORY** requirement that comprehensive tests MUST be written BEFORE creating any database migration file. All schema changes, data transformations, rollback procedures, and data integrity must be verified through tests following the TDD cycle.
+
+## Core Principle: Tests Before Migration Files
+
+**ALL database migrations MUST have tests written FIRST with ZERO exceptions.**
+
+**The workflow is:**
+1. Identify need for schema change
+2. **Write tests first** (following TDD cycle)
+3. Create migration file to make tests pass
+4. Verify all tests pass
+5. Submit PR with both tests and migration
+
+**This is not optional. This is not a guideline. This is MANDATORY.**
+
+## Rationale
+
+- **Prevents data loss**: Tests verify migrations don't corrupt existing data
+- **Validates constraints**: Tests ensure database constraints work as expected
+- **Documents behavior**: Tests serve as specification for schema changes
+- **Enables safe rollback**: Tests verify migrations can be safely reverted
+- **Catches errors early**: Tests find issues before deployment
+- **Ensures compatibility**: Tests verify application code handles new schema
+
+## Test Requirements by Migration Type
+
+### Schema Changes (ADD/ALTER/DROP columns)
+
+**MUST test:**
+- ✅ New columns accept expected data types
+- ✅ Default values apply to existing rows
+- ✅ NOT NULL constraints enforced
+- ✅ Domain entities handle new/modified fields
+- ✅ Value objects validate new fields correctly
+
+**Test types:**
+- Unit tests: Domain entities/value objects handle schema
+- Integration tests: Database operations with new schema
+
+### Constraint Changes (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK)
+
+**MUST test:**
+- ✅ Constraints enforce rules correctly
+- ✅ Constraint violations throw expected errors
+- ✅ Foreign keys maintain referential integrity
+- ✅ Unique constraints prevent duplicates
+- ✅ Check constraints validate data ranges
+
+**Test types:**
+- Integration tests: Constraint enforcement in database
+
+### Index Changes (CREATE/DROP INDEX)
+
+**MUST test:**
+- ✅ Indexes created successfully
+- ✅ Queries use indexes (explain plan)
+- ✅ Index improves query performance
+- ✅ Unique indexes prevent duplicates
+
+**Test types:**
+- Integration tests: Index creation and query performance
+
+### Data Transformations (UPDATE existing data)
+
+**MUST test:**
+- ✅ Data transformation logic is correct
+- ✅ All existing rows updated properly
+- ✅ No data loss during transformation
+- ✅ Transformed data meets new constraints
+- ✅ Edge cases handled (NULL, empty strings, etc.)
+
+**Test types:**
+- Integration tests: Data migration scripts
+
+### Rollback Procedures
+
+**MUST test:**
+- ✅ Migration can be safely reverted
+- ✅ Data preserved after rollback
+- ✅ Application continues working after rollback
+- ✅ No orphaned data or broken references
+
+**Test types:**
+- Integration tests: Rollback migration
+
+## Integration with TDD Cycle
+
+Migration testing follows the mandatory 5-step TDD cycle from `.cursor/rules/tdd-cycle.mdc`:
+
+### Step 0: REASON - Plan Migration
+
+**Before writing any code:**
+
+1. **Identify schema change need**
+   - What business requirement drives this change?
+   - What tables/columns are affected?
+   - What constraints are needed?
+
+2. **List test cases** (write in test file as comments)
+   - Schema application tests
+   - Constraint enforcement tests
+   - Data transformation tests
+   - Rollback tests
+   - Application compatibility tests
+
+3. **Order cases: simple → complex**
+   - Schema changes first
+   - Constraint tests second
+   - Data transformation tests third
+   - Rollback tests last
+
+4. **Consult Technical Lead if uncertain**
+   - Verify migration approach
+   - Confirm test coverage requirements
+   - Review data transformation logic
+
+### Step 1: RED - Write Failing Tests
+
+1. **Write simplest test from list**
+   - Start with schema application test
+   - Follow Arrange-Act-Assert pattern
+   - Use descriptive test names
+
+2. **Verify test fails**
+   - Run test before migration exists
+   - Confirm expected failure (table/column doesn't exist)
+   - Failing test proves feature missing
+
+3. **Write minimum domain code to compile**
+   - Add properties to domain entities
+   - Update value objects to handle new fields
+   - Throw `Error('Not implemented')` if needed
+
+**Example:**
+
+```typescript
+// Step 1: RED - Write failing test
+describe('Event Entity Migration - isVerified field', () => {
+  test('should handle isVerified field on Event entity', () => {
+    // Arrange
+    const event = Event.create({
+      title: Title.create('Concert'),
+      isVerified: false, // New field
+    })
+    
+    // Act
+    const isVerified = event.getIsVerified()
+    
+    // Assert
+    expect(isVerified).toBe(false)
+  })
+})
+
+// Run test: ❌ Compilation error - "isVerified property doesn't exist"
+// This is GOOD - proves migration needed
+```
+
+### Step 2: GREEN - Create Migration File
+
+1. **Create migration file using Prisma**
+   ```bash
+   bunx prisma migrate dev --name add_is_verified_to_event
+   ```
+
+2. **Implement domain code**
+   - Add properties to entities
+   - Update repository mappings
+   - Implement getters/setters
+
+3. **Verify tests pass**
+   - Run all migration tests
+   - Confirm all tests green
+   - GREEN phase complete
+
+**Example:**
+
+```sql
+-- Migration: 20251215_add_is_verified_to_event.sql
+ALTER TABLE "Event" ADD COLUMN "isVerified" BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX "Event_isVerified_idx" ON "Event"("isVerified");
+```
+
+```typescript
+// Domain entity updated
+export class Event {
+  constructor(
+    private readonly id: EventId,
+    private readonly title: Title,
+    private readonly isVerified: boolean, // New field
+  ) {}
+  
+  getIsVerified(): boolean {
+    return this.isVerified
+  }
+}
+
+// Run test: ✅ Test passes
+// GREEN phase complete
+```
+
+### Step 3: REFACTOR - Optimize Migration
+
+1. **Review migration SQL**
+   - Optimize index creation
+   - Add comments for clarity
+   - Verify no redundant operations
+
+2. **Improve domain code**
+   - Extract validation logic
+   - Apply DDD patterns
+   - Improve naming
+
+3. **Keep tests green**
+   - Run tests after each change
+   - Ensure no regressions
+
+### Step 4: RE-EVALUATE - Verify Coverage
+
+1. **Review test cases list**
+   - Mark completed cases as ✓
+   - Verify all scenarios covered
+   - Check coverage ≥80% critical paths
+
+2. **Is next test case still simplest?**
+   - Reorder if needed
+   - Add missing test cases
+
+3. **Return to Step 1 (RED) if needed**
+   - Write next test
+   - Continue cycle
+
+## Test Organization and Location
+
+### Test File Structure
+
+```
+prisma/
+  migrations/
+    __tests__/
+      20251215_add_is_verified_to_event.integration.test.ts
+      20251216_add_profile_url_to_instagram.integration.test.ts
+    20251215_add_is_verified_to_event/
+      migration.sql
+    20251216_add_profile_url_to_instagram/
+      migration.sql
+    migration_lock.toml
+
+packages/<bounded-context>/
+  domain/
+    entities/
+      __tests__/
+        event.test.ts  # Unit tests for new fields
+    value-objects/
+      __tests__/
+        event-verified-status.test.ts
+  application/
+    use-cases/
+      __tests__/
+        create-event.use-case.integration.test.ts  # Tests with new schema
+  infrastructure/
+    persistance/
+      prisma/
+        __tests__/
+          event.repository.integration.test.ts  # Repository with new schema
+```
+
+### Test Naming Conventions
+
+```typescript
+// Migration integration tests
+describe('Migration: 20251215_add_is_verified_to_event', () => {
+  describe('Schema Changes', () => {
+    test('should add isVerified column to Event table')
+    test('should apply default value false to existing events')
+    test('should create index on Event.isVerified')
+  })
+  
+  describe('Constraint Enforcement', () => {
+    test('should enforce NOT NULL constraint on isVerified')
+  })
+  
+  describe('Rollback', () => {
+    test('should rollback migration successfully')
+    test('should preserve data after rollback')
+  })
+})
+
+// Domain unit tests
+describe('Event Entity - isVerified field', () => {
+  test('should create event with isVerified=false by default')
+  test('should create event with isVerified=true')
+  test('should get isVerified value')
+})
+```
+
+## Mandatory Test Scenarios
+
+### ✅ MUST Test: Schema Application
+
+Every migration MUST verify schema changes apply successfully:
+
+```typescript
+test('should apply schema changes to database', async () => {
+  // Arrange
+  const testEventId = `test-event-${Date.now()}`
+  
+  // Act - Create event with new field
+  await prismaClient.event.create({
+    data: {
+      id: testEventId,
+      title: 'Test Event',
+      isVerified: true, // New field
+      // ... other fields
+    }
+  })
+  
+  // Assert - Verify field stored correctly
+  const event = await prismaClient.event.findUnique({
+    where: { id: testEventId }
+  })
+  
+  expect(event).toBeTruthy()
+  expect(event?.isVerified).toBe(true)
+})
+```
+
+### ✅ MUST Test: Default Values
+
+If migration adds columns with default values, MUST test:
+
+```typescript
+test('should apply default value to existing rows', async () => {
+  // Arrange - Create event BEFORE migration (simulated)
+  const existingEventId = `test-event-existing-${Date.now()}`
+  await prismaClient.event.create({
+    data: {
+      id: existingEventId,
+      title: 'Existing Event',
+      // isVerified doesn't exist yet
+    }
+  })
+  
+  // Act - Run migration (in real test, migration already applied)
+  // Migration adds: isVerified BOOLEAN NOT NULL DEFAULT false
+  
+  // Assert - Verify default value applied
+  const event = await prismaClient.event.findUnique({
+    where: { id: existingEventId }
+  })
+  
+  expect(event?.isVerified).toBe(false) // Default value
+})
+```
+
+### ✅ MUST Test: Constraint Enforcement
+
+For NOT NULL, UNIQUE, CHECK, or FOREIGN KEY constraints:
+
+```typescript
+test('should enforce NOT NULL constraint on isVerified', async () => {
+  // Arrange
+  const testEventId = `test-event-${Date.now()}`
+  
+  // Act & Assert - Attempt to create without required field
+  await expect(
+    prismaClient.$executeRaw`
+      INSERT INTO "Event" (id, title, "isVerified")
+      VALUES (${testEventId}, 'Test', NULL)
+    `
+  ).rejects.toThrow(/NOT NULL constraint/)
+})
+
+test('should enforce UNIQUE constraint on email', async () => {
+  // Arrange
+  const email = `test-${Date.now()}@example.com`
+  await prismaClient.user.create({
+    data: { id: 'user1', email }
+  })
+  
+  // Act & Assert - Attempt duplicate
+  await expect(
+    prismaClient.user.create({
+      data: { id: 'user2', email }
+    })
+  ).rejects.toThrow(/UNIQUE constraint/)
+})
+
+test('should enforce FOREIGN KEY constraint', async () => {
+  // Arrange
+  const nonExistentCityId = 'city-does-not-exist'
+  
+  // Act & Assert - Attempt to reference non-existent row
+  await expect(
+    prismaClient.event.create({
+      data: {
+        id: 'event1',
+        title: 'Test Event',
+        cityId: nonExistentCityId, // FK violation
+      }
+    })
+  ).rejects.toThrow(/FOREIGN KEY constraint/)
+})
+```
+
+### ✅ MUST Test: Index Creation
+
+For CREATE INDEX migrations:
+
+```typescript
+test('should create index on Event.isVerified', async () => {
+  // Query database for index information
+  const indexes = await prismaClient.$queryRaw<Array<{ indexname: string }>>`
+    SELECT indexname 
+    FROM pg_indexes 
+    WHERE tablename = 'Event' 
+    AND indexname = 'Event_isVerified_idx'
+  `
+  
+  expect(indexes).toHaveLength(1)
+  expect(indexes[0].indexname).toBe('Event_isVerified_idx')
+})
+
+test('should use index for isVerified queries', async () => {
+  // Get query execution plan
+  const plan = await prismaClient.$queryRaw<Array<{ 'QUERY PLAN': string }>>`
+    EXPLAIN SELECT * FROM "Event" WHERE "isVerified" = true
+  `
+  
+  const planText = plan.map(p => p['QUERY PLAN']).join('\n')
+  
+  // Verify index is used (not sequential scan)
+  expect(planText).toContain('Index Scan')
+  expect(planText).toContain('Event_isVerified_idx')
+})
+```
+
+### ✅ MUST Test: Data Transformations
+
+For migrations that update existing data:
+
+```typescript
+test('should transform existing profile URLs correctly', async () => {
+  // Arrange - Create profiles with old format
+  const profile1Id = `test-profile-1-${Date.now()}`
+  const profile2Id = `test-profile-2-${Date.now()}`
+  
+  await prismaClient.instagramProfile.createMany({
+    data: [
+      { instagramId: profile1Id, username: 'user1', profileUrl: '' },
+      { instagramId: profile2Id, username: 'user2', profileUrl: '' },
+    ]
+  })
+  
+  // Act - Run data transformation (migration script)
+  await prismaClient.$executeRaw`
+    UPDATE "InstagramProfile"
+    SET "profileUrl" = CONCAT('https://instagram.com/', username)
+    WHERE "profileUrl" = ''
+  `
+  
+  // Assert - Verify transformation
+  const profile1 = await prismaClient.instagramProfile.findUnique({
+    where: { instagramId: profile1Id }
+  })
+  const profile2 = await prismaClient.instagramProfile.findUnique({
+    where: { instagramId: profile2Id }
+  })
+  
+  expect(profile1?.profileUrl).toBe('https://instagram.com/user1')
+  expect(profile2?.profileUrl).toBe('https://instagram.com/user2')
+})
+
+test('should handle NULL values in data transformation', async () => {
+  // Arrange - Create row with NULL
+  const profileId = `test-profile-null-${Date.now()}`
+  await prismaClient.$executeRaw`
+    INSERT INTO "InstagramProfile" (instagram_id, username, profile_url)
+    VALUES (${profileId}, NULL, '')
+  `
+  
+  // Act - Run transformation that must handle NULL
+  await prismaClient.$executeRaw`
+    UPDATE "InstagramProfile"
+    SET "profileUrl" = COALESCE(CONCAT('https://instagram.com/', username), 'https://instagram.com/unknown')
+    WHERE "profileUrl" = ''
+  `
+  
+  // Assert
+  const profile = await prismaClient.instagramProfile.findUnique({
+    where: { instagramId: profileId }
+  })
+  
+  expect(profile?.profileUrl).toBe('https://instagram.com/unknown')
+})
+```
+
+### ✅ MUST Test: Rollback Safety
+
+Every migration MUST verify it can be safely rolled back:
+
+```typescript
+test('should rollback migration without data loss', async () => {
+  // Arrange - Create test data with new schema
+  const eventId = `test-event-rollback-${Date.now()}`
+  await prismaClient.event.create({
+    data: {
+      id: eventId,
+      title: 'Test Event',
+      isVerified: true,
+      // ... other fields
+    }
+  })
+  
+  // Act - Simulate rollback by dropping column
+  await prismaClient.$executeRaw`
+    ALTER TABLE "Event" DROP COLUMN IF EXISTS "isVerified"
+  `
+  
+  // Assert - Verify other data preserved
+  const event = await prismaClient.event.findUnique({
+    where: { id: eventId }
+  })
+  
+  expect(event).toBeTruthy()
+  expect(event?.title).toBe('Test Event')
+  // isVerified field should not exist after rollback
+  expect('isVerified' in event!).toBe(false)
+  
+  // Cleanup - Re-apply migration for other tests
+  await prismaClient.$executeRaw`
+    ALTER TABLE "Event" ADD COLUMN "isVerified" BOOLEAN NOT NULL DEFAULT false
+  `
+})
+```
+
+### ✅ MUST Test: Application Compatibility
+
+Verify domain layer handles new schema:
+
+```typescript
+describe('Event Entity - isVerified field compatibility', () => {
+  test('should create event with isVerified field', () => {
+    // Arrange
+    const eventData = {
+      id: EventId.generate(),
+      title: Title.create('Concert'),
+      isVerified: false,
+    }
+    
+    // Act
+    const event = Event.create(eventData)
+    
+    // Assert
+    expect(event).toBeInstanceOf(Event)
+    expect(event.getIsVerified()).toBe(false)
+  })
+  
+  test('should convert event with isVerified to DTO', () => {
+    // Arrange
+    const event = Event.create({
+      id: EventId.generate(),
+      title: Title.create('Festival'),
+      isVerified: true,
+    })
+    
+    // Act
+    const dto = event.toDto()
+    
+    // Assert
+    expect(dto.isVerified).toBe(true)
+  })
+  
+  test('should create event from database with isVerified', () => {
+    // Arrange
+    const dbRow = {
+      id: 'event-123',
+      title: 'Concert',
+      isVerified: false,
+      // ... other fields
+    }
+    
+    // Act
+    const event = Event.fromDatabase(dbRow)
+    
+    // Assert
+    expect(event.getIsVerified()).toBe(false)
+  })
+})
+```
+
+## Migration Testing Workflow
+
+### Complete TDD Workflow for Migrations
+
+```
+1. Identify schema change need
+   ↓
+2. STEP 0: REASON
+   - Plan migration changes
+   - List test cases (in test file as comments)
+   - Order simple → complex
+   ↓
+3. STEP 1: RED
+   - Write failing unit test (domain entities)
+   - Write failing integration test (database operations)
+   - Verify tests fail (migration doesn't exist)
+   ↓
+4. STEP 2: GREEN
+   - Create migration file: bunx prisma migrate dev --name <name>
+   - Update domain entities/repositories
+   - Verify tests pass
+   ↓
+5. STEP 3: REFACTOR
+   - Optimize migration SQL
+   - Improve domain code
+   - Keep tests green
+   ↓
+6. STEP 4: RE-EVALUATE
+   - Review test cases list
+   - Verify 80-90% coverage
+   - Return to RED if gaps exist
+   ↓
+7. Run Biome check on all edited files
+   ↓
+8. Submit PR with tests + migration
+```
+
+### Database Setup for Migration Tests
+
+Migration integration tests MUST use separate test database:
+
+```typescript
+describe('Migration: 20251215_add_is_verified_to_event', () => {
+  let prismaClient: PrismaClientEy
+  const testPrefix = 'test-migration-'
+  
+  beforeEach(async () => {
+    // MANDATORY: Verify TEST_DATABASE_URL exists
+    if (!process.env.TEST_DATABASE_URL) {
+      throw new Error(
+        'TEST_DATABASE_URL is required for migration tests. ' +
+        'Set TEST_DATABASE_URL to separate test database.'
+      )
+    }
+    
+    // Create client with test database
+    prismaClient = new PrismaClientEy({
+      datasources: {
+        db: { url: process.env.TEST_DATABASE_URL }
+      }
+    })
+    
+    // Clean database before test
+    await cleanupTestData()
+  })
+  
+  afterEach(async () => {
+    // Clean database after test
+    await cleanupTestData()
+    await prismaClient.$disconnect()
+  })
+  
+  async function cleanupTestData() {
+    try {
+      // Delete test data by prefix
+      await prismaClient.event.deleteMany({
+        where: { id: { startsWith: testPrefix } }
+      })
+    } catch (error) {
+      console.error('Cleanup failed:', error)
+      throw error
+    }
+  }
+  
+  // Tests here...
+})
+```
+
+## Examples
+
+### Example 1: Recent Migration That Should Have Had Tests
+
+Migration: `prisma/migrations/20251127_add_missing_columns/migration.sql`
+
+```sql
+-- AlterTable Event - Add isVerified column
+ALTER TABLE "Event" ADD COLUMN "isVerified" BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable InstagramProfile - Add profileUrl column  
+ALTER TABLE "InstagramProfile" ADD COLUMN "profileUrl" TEXT NOT NULL DEFAULT '';
+
+-- AlterTable Venue - Add isActive column
+ALTER TABLE "Venue" ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true;
+
+-- CreateIndex
+CREATE INDEX "Venue_isActive_idx" ON "Venue"("isActive");
+```
+
+**Required tests that were missing:**
+
+```typescript
+// prisma/migrations/__tests__/20251127_add_missing_columns.integration.test.ts
+
+describe('Migration: 20251127_add_missing_columns', () => {
+  let prismaClient: PrismaClientEy
+  const testPrefix = 'test-migration-20251127-'
+  
+  beforeEach(async () => {
+    if (!process.env.TEST_DATABASE_URL) {
+      throw new Error('TEST_DATABASE_URL required for migration tests')
+    }
+    
+    prismaClient = new PrismaClientEy({
+      datasources: { db: { url: process.env.TEST_DATABASE_URL } }
+    })
+    
+    await cleanupTestData()
+  })
+  
+  afterEach(async () => {
+    await cleanupTestData()
+    await prismaClient.$disconnect()
+  })
+  
+  async function cleanupTestData() {
+    await prismaClient.event.deleteMany({
+      where: { id: { startsWith: testPrefix } }
+    })
+    await prismaClient.instagramProfile.deleteMany({
+      where: { instagramId: { startsWith: testPrefix } }
+    })
+    await prismaClient.venue.deleteMany({
+      where: { id: { startsWith: testPrefix } }
+    })
+  }
+  
+  describe('Event.isVerified column', () => {
+    test('should add isVerified column with default false', async () => {
+      // Arrange
+      const eventId = `${testPrefix}event-${Date.now()}`
+      
+      // Act
+      const event = await prismaClient.event.create({
+        data: {
+          id: eventId,
+          title: 'Test Event',
+          slug: 'test-event',
+          // isVerified not specified - should default to false
+        }
+      })
+      
+      // Assert
+      expect(event.isVerified).toBe(false)
+    })
+    
+    test('should enforce NOT NULL constraint on isVerified', async () => {
+      // Arrange & Act & Assert
+      await expect(
+        prismaClient.$executeRaw`
+          INSERT INTO "Event" (id, title, slug, "isVerified")
+          VALUES ('test', 'Test', 'test', NULL)
+        `
+      ).rejects.toThrow(/NOT NULL constraint/)
+    })
+    
+    test('should allow setting isVerified to true', async () => {
+      // Arrange
+      const eventId = `${testPrefix}event-verified-${Date.now()}`
+      
+      // Act
+      const event = await prismaClient.event.create({
+        data: {
+          id: eventId,
+          title: 'Verified Event',
+          slug: 'verified-event',
+          isVerified: true,
+        }
+      })
+      
+      // Assert
+      expect(event.isVerified).toBe(true)
+    })
+  })
+  
+  describe('InstagramProfile.profileUrl column', () => {
+    test('should add profileUrl column with default empty string', async () => {
+      // Arrange
+      const profileId = `${testPrefix}profile-${Date.now()}`
+      
+      // Act
+      const profile = await prismaClient.instagramProfile.create({
+        data: {
+          instagramId: profileId,
+          username: 'testuser',
+          // profileUrl not specified - should default to ''
+        }
+      })
+      
+      // Assert
+      expect(profile.profileUrl).toBe('')
+    })
+    
+    test('should allow setting profileUrl', async () => {
+      // Arrange
+      const profileId = `${testPrefix}profile-url-${Date.now()}`
+      const url = 'https://instagram.com/testuser'
+      
+      // Act
+      const profile = await prismaClient.instagramProfile.create({
+        data: {
+          instagramId: profileId,
+          username: 'testuser',
+          profileUrl: url,
+        }
+      })
+      
+      // Assert
+      expect(profile.profileUrl).toBe(url)
+    })
+  })
+  
+  describe('Venue.isActive column', () => {
+    test('should add isActive column with default true', async () => {
+      // Arrange
+      const venueId = `${testPrefix}venue-${Date.now()}`
+      
+      // Act
+      const venue = await prismaClient.venue.create({
+        data: {
+          id: venueId,
+          name: 'Test Venue',
+          slug: 'test-venue',
+          cityId: 'some-city-id',
+          // isActive not specified - should default to true
+        }
+      })
+      
+      // Assert
+      expect(venue.isActive).toBe(true)
+    })
+    
+    test('should create index on Venue.isActive', async () => {
+      // Query for index
+      const indexes = await prismaClient.$queryRaw<Array<{ indexname: string }>>`
+        SELECT indexname 
+        FROM pg_indexes 
+        WHERE tablename = 'Venue' 
+        AND indexname = 'Venue_isActive_idx'
+      `
+      
+      // Assert
+      expect(indexes).toHaveLength(1)
+      expect(indexes[0].indexname).toBe('Venue_isActive_idx')
+    })
+    
+    test('should allow filtering by isActive', async () => {
+      // Arrange - Create active and inactive venues
+      const activeVenueId = `${testPrefix}venue-active-${Date.now()}`
+      const inactiveVenueId = `${testPrefix}venue-inactive-${Date.now()}`
+      
+      await prismaClient.venue.createMany({
+        data: [
+          {
+            id: activeVenueId,
+            name: 'Active Venue',
+            slug: 'active-venue',
+            cityId: 'some-city',
+            isActive: true,
+          },
+          {
+            id: inactiveVenueId,
+            name: 'Inactive Venue',
+            slug: 'inactive-venue',
+            cityId: 'some-city',
+            isActive: false,
+          },
+        ]
+      })
+      
+      // Act - Query only active venues
+      const activeVenues = await prismaClient.venue.findMany({
+        where: { 
+          isActive: true,
+          id: { startsWith: testPrefix }
+        }
+      })
+      
+      // Assert
+      expect(activeVenues).toHaveLength(1)
+      expect(activeVenues[0].id).toBe(activeVenueId)
+    })
+  })
+  
+  describe('Rollback safety', () => {
+    test('should preserve data when rolling back Event.isVerified', async () => {
+      // Arrange - Create event with new schema
+      const eventId = `${testPrefix}event-rollback-${Date.now()}`
+      await prismaClient.event.create({
+        data: {
+          id: eventId,
+          title: 'Test Event',
+          slug: 'test-event',
+          isVerified: true,
+        }
+      })
+      
+      // Act - Simulate rollback
+      await prismaClient.$executeRaw`
+        ALTER TABLE "Event" DROP COLUMN IF EXISTS "isVerified"
+      `
+      
+      // Assert - Other data preserved
+      const event = await prismaClient.event.findUnique({
+        where: { id: eventId }
+      })
+      
+      expect(event).toBeTruthy()
+      expect(event?.title).toBe('Test Event')
+      
+      // Re-apply migration for other tests
+      await prismaClient.$executeRaw`
+        ALTER TABLE "Event" 
+        ADD COLUMN "isVerified" BOOLEAN NOT NULL DEFAULT false
+      `
+    })
+  })
+})
+```
+
+**Unit tests for domain layer:**
+
+```typescript
+// packages/events/domain/entities/__tests__/event.test.ts
+
+describe('Event Entity - isVerified field', () => {
+  test('should create event with isVerified=false by default', () => {
+    // Arrange
+    const eventData = {
+      id: EventId.generate(),
+      title: Title.create('Concert'),
+      // isVerified not specified
+    }
+    
+    // Act
+    const event = Event.create(eventData)
+    
+    // Assert
+    expect(event.getIsVerified()).toBe(false)
+  })
+  
+  test('should create event with isVerified=true', () => {
+    // Arrange
+    const eventData = {
+      id: EventId.generate(),
+      title: Title.create('Verified Concert'),
+      isVerified: true,
+    }
+    
+    // Act
+    const event = Event.create(eventData)
+    
+    // Assert
+    expect(event.getIsVerified()).toBe(true)
+  })
+  
+  test('should include isVerified in DTO', () => {
+    // Arrange
+    const event = Event.create({
+      id: EventId.generate(),
+      title: Title.create('Concert'),
+      isVerified: true,
+    })
+    
+    // Act
+    const dto = event.toDto()
+    
+    // Assert
+    expect(dto.isVerified).toBe(true)
+  })
+  
+  test('should create event from database row with isVerified', () => {
+    // Arrange
+    const dbRow = {
+      id: 'event-123',
+      title: 'Concert',
+      slug: 'concert',
+      isVerified: false,
+      // ... other fields
+    }
+    
+    // Act
+    const event = Event.fromDatabase(dbRow)
+    
+    // Assert
+    expect(event.getIsVerified()).toBe(false)
+  })
+})
+```
+
+### Example 2: Adding Foreign Key Constraint
+
+**Migration SQL:**
+
+```sql
+-- Add cityId foreign key to Event table
+ALTER TABLE "Event" 
+ADD CONSTRAINT "Event_cityId_fkey" 
+FOREIGN KEY ("cityId") 
+REFERENCES "City"("id") 
+ON DELETE RESTRICT 
+ON UPDATE CASCADE;
+```
+
+**Required tests:**
+
+```typescript
+describe('Migration: add_event_city_foreign_key', () => {
+  describe('Foreign key constraint', () => {
+    test('should enforce foreign key constraint on Event.cityId', async () => {
+      // Arrange
+      const eventId = `${testPrefix}event-${Date.now()}`
+      const nonExistentCityId = 'city-does-not-exist'
+      
+      // Act & Assert - Cannot create event with invalid cityId
+      await expect(
+        prismaClient.event.create({
+          data: {
+            id: eventId,
+            title: 'Test Event',
+            slug: 'test-event',
+            cityId: nonExistentCityId,
+          }
+        })
+      ).rejects.toThrow(/FOREIGN KEY constraint/)
+    })
+    
+    test('should allow event creation with valid cityId', async () => {
+      // Arrange - Create city first
+      const cityId = `${testPrefix}city-${Date.now()}`
+      await prismaClient.city.create({
+        data: {
+          id: cityId,
+          name: 'Test City',
+          slug: 'test-city',
+          countryId: 'some-country',
+        }
+      })
+      
+      const eventId = `${testPrefix}event-${Date.now()}`
+      
+      // Act - Create event with valid cityId
+      const event = await prismaClient.event.create({
+        data: {
+          id: eventId,
+          title: 'Test Event',
+          slug: 'test-event',
+          cityId: cityId,
+        }
+      })
+      
+      // Assert
+      expect(event.cityId).toBe(cityId)
+    })
+    
+    test('should prevent city deletion when events reference it', async () => {
+      // Arrange - Create city and event
+      const cityId = `${testPrefix}city-${Date.now()}`
+      const eventId = `${testPrefix}event-${Date.now()}`
+      
+      await prismaClient.city.create({
+        data: {
+          id: cityId,
+          name: 'Test City',
+          slug: 'test-city',
+          countryId: 'some-country',
+        }
+      })
+      
+      await prismaClient.event.create({
+        data: {
+          id: eventId,
+          title: 'Test Event',
+          slug: 'test-event',
+          cityId: cityId,
+        }
+      })
+      
+      // Act & Assert - Cannot delete city with events
+      await expect(
+        prismaClient.city.delete({
+          where: { id: cityId }
+        })
+      ).rejects.toThrow(/FOREIGN KEY constraint/)
+    })
+    
+    test('should cascade update when city ID changes', async () => {
+      // This test verifies ON UPDATE CASCADE behavior
+      // Note: Prisma doesn't expose ID updates, so this would be tested
+      // with raw SQL if city IDs were mutable
+      
+      // For immutable IDs (like in this app), this test is not applicable
+      // Document this in test comments
+    })
+  })
+})
+```
+
+## Coverage Requirements
+
+### Minimum Coverage: 80-90% of Critical Paths
+
+**Critical paths that MUST be tested:**
+1. ✅ Schema changes apply successfully
+2. ✅ Constraints enforce rules correctly
+3. ✅ Default values work as expected
+4. ✅ Indexes improve query performance
+5. ✅ Data transformations preserve integrity
+6. ✅ Rollback preserves data
+7. ✅ Application code handles new schema
+
+**Lower priority (may skip if simple):**
+- Rare edge cases (e.g., extremely long strings if max length validated elsewhere)
+- Performance benchmarks (unless index specifically added for performance)
+- Cosmetic changes (e.g., renaming columns without logic changes)
+
+### Coverage Measurement
+
+Run test coverage to verify:
+
+```bash
+# Run migration tests with coverage
+bun test prisma/migrations/__tests__ --coverage
+
+# Verify coverage ≥80% for:
+# - Schema application functions
+# - Constraint enforcement
+# - Data transformation scripts
+# - Rollback procedures
+```
+
+## PR Checklist
+
+Before submitting a PR with database migrations, verify:
+
+### Migration Testing Checklist
+
+- [ ] **Tests written BEFORE migration file** (TDD cycle followed)
+- [ ] **Unit tests exist** for affected domain entities/value objects
+- [ ] **Integration tests verify** database operations
+- [ ] **Schema application tested** (new columns/tables created)
+- [ ] **Constraint enforcement tested** (NOT NULL, UNIQUE, FK, CHECK)
+- [ ] **Default values tested** (applied to existing rows)
+- [ ] **Indexes tested** (created and used by queries)
+- [ ] **Data transformations tested** (if migration updates existing data)
+- [ ] **Rollback tested** (migration can be safely reverted)
+- [ ] **Application compatibility tested** (domain code handles new schema)
+- [ ] **Test coverage ≥80%** for critical paths
+- [ ] **All tests pass** in TEST_DATABASE_URL
+- [ ] **Biome check passes** for all test files
+- [ ] **Tests in PR** alongside migration files
+
+### Migration File Requirements
+
+- [ ] Migration name is descriptive (`add_is_verified_to_event`, not `migration_123`)
+- [ ] Migration SQL is idempotent where possible
+- [ ] Migration includes comments explaining purpose
+- [ ] Migration handles edge cases (NULL, empty strings, etc.)
+- [ ] Migration optimized (e.g., CREATE INDEX CONCURRENTLY if needed)
+
+### Documentation Requirements
+
+- [ ] Migration purpose documented in commit message
+- [ ] Breaking changes documented (if any)
+- [ ] Data transformation steps documented (if any)
+- [ ] Rollback procedure documented (if complex)
+
+## Exceptions
+
+### When Migration Tests May Be Simplified
+
+**Rare exceptions where full test suite may be reduced:**
+
+1. **Purely additive optional columns** with no constraints
+   - May skip constraint tests if column is nullable with no default
+   - Still MUST test schema application and application compatibility
+
+2. **Cosmetic changes** (column renames without logic changes)
+   - May skip constraint/index tests if unchanged
+   - Still MUST test application compatibility
+
+3. **Index-only changes** with no schema modifications
+   - May skip constraint tests
+   - Still MUST test index creation and query usage
+
+**Even with exceptions:**
+- ❌ NEVER skip all tests
+- ❌ NEVER skip application compatibility tests
+- ❌ NEVER skip rollback tests
+- ✅ ALWAYS write at least basic schema application test
+- ✅ ALWAYS follow TDD cycle (tests first)
+
+### Exceptions Require Approval
+
+If you believe your migration qualifies for simplified testing:
+1. Document reasoning in PR description
+2. Request Technical Lead approval
+3. Still write minimum viable test suite
+4. Document what tests were skipped and why
+
+## Enforcement
+
+### FORBIDDEN Actions
+
+- ❌ **Creating migration file without tests**
+- ❌ **Running `bunx prisma migrate dev` without tests passing**
+- ❌ **Submitting PR with migration but no tests**
+- ❌ **Skipping rollback tests**
+- ❌ **Using production/development database for tests**
+- ❌ **Deleting or modifying tests to make migration "pass"**
+
+### REQUIRED Actions
+
+- ✅ **Write tests FIRST** (TDD cycle)
+- ✅ **Follow REASON-RED-GREEN-REFACTOR-RE-EVALUATE cycle**
+- ✅ **Use TEST_DATABASE_URL for migration tests**
+- ✅ **Achieve 80-90% coverage of critical paths**
+- ✅ **Include tests in PR with migration**
+- ✅ **Run Biome check on all test files**
+- ✅ **Document test coverage in PR description**
+
+## Commands
+
+### Setup Test Database
+
+```bash
+# Create test database (run once)
+createdb mato_test
+
+# Run migrations on test database
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" \
+  bunx prisma migrate deploy
+
+# Reset test database when needed
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" \
+  bunx prisma migrate reset --force
+```
+
+### Run Migration Tests
+
+```bash
+# Run all migration tests
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" \
+  bun test prisma/migrations/__tests__
+
+# Run specific migration test
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" \
+  bun test prisma/migrations/__tests__/20251215_add_is_verified.integration.test.ts
+
+# Run with coverage
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" \
+  bun test prisma/migrations/__tests__ --coverage
+
+# Run with logger output
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" \
+  TEST_LOGGER=1 bun test prisma/migrations/__tests__
+```
+
+### Create Migration (After Tests Pass)
+
+```bash
+# Generate migration with descriptive name
+bunx prisma migrate dev --name add_is_verified_to_event
+
+# Apply migrations to test database
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" \
+  bunx prisma migrate deploy
+
+# Generate Prisma client
+bun db:generate
+```
+
+## Related References
+
+- `.cursor/rules/tdd-cycle.mdc` - Mandatory TDD workflow (REASON-RED-GREEN-REFACTOR-RE-EVALUATE)
+- `.cursor/rules/code-completeness.mdc` - No incomplete code, no TODOs
+- `.cursor/rules/biome-format-and-validate.mdc` - Format and validate after tests
+- `.cursor/rules/prisma-repository-pattern.mdc` - Repository implementation with Prisma
+- `.cursor/rules/prisma-model-editing.mdc` - How to edit Prisma schemas
+- `.cursor/rules/code-style-and-commands.mdc` - DDD patterns and conventions

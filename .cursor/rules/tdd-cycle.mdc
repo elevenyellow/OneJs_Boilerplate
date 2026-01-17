@@ -1,0 +1,1728 @@
+---
+description: Mandatory Test-Driven Development cycle enforcing 5 steps (Reason-Red-Green-Refactor-Re-evaluate) with strict preservation rules and Transformation Priority Premise guidance for DDD architecture.
+globs:
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# TDD Cycle: Mandatory Test-Driven Development
+
+This rule establishes a **MANDATORY** Test-Driven Development workflow that must be followed when writing code. The TDD cycle ensures quality, prevents regressions, and maintains a complete test suite through a structured 5-step process.
+
+## Agent Mandatory Behavior
+
+**The AI agent executing code tasks MUST follow this TDD cycle without exception.**
+
+### Agent Responsibilities
+
+When the agent receives any coding task (feature implementation, bug fix, refactoring):
+
+1. ✅ **Agent MUST create test cases list** (REASON phase) before writing any code
+2. ✅ **Agent MUST write failing tests** (RED phase) before writing implementation
+3. ✅ **Agent MUST verify test compilation failure** to prove feature doesn't exist
+4. ✅ **Agent MUST implement minimum code** to pass tests (GREEN phase)
+5. ✅ **Agent MUST verify tests pass** before moving to refactor
+6. ✅ **Agent MUST run tests after refactoring** to ensure they remain green
+7. ✅ **Agent MUST run Biome** after GREEN/REFACTOR phases
+8. ✅ **Agent MUST re-evaluate progress** and continue cycle until complete
+
+### Agent Prohibitions
+
+The agent is **ABSOLUTELY FORBIDDEN** from:
+
+- ❌ Writing implementation code before writing tests
+- ❌ Skipping the REASON phase (test cases list)
+- ❌ Skipping test execution to "save time"
+- ❌ Writing passing tests for code that doesn't exist yet
+- ❌ Deleting or modifying existing tests to make broken code pass
+- ❌ Proceeding to next phase without verifying current phase complete
+- ❌ Claiming a task is "complete" without following all 5 steps
+
+### Consequences of Violation
+
+**Violating the TDD cycle is equivalent to delivering broken, incomplete, or untested code.**
+
+When the agent violates TDD:
+- Code quality cannot be guaranteed
+- Business requirements are not verified
+- Regressions are likely
+- The codebase becomes fragile and unmaintainable
+- The task is considered INCOMPLETE regardless of implementation
+
+**The agent's PRIMARY responsibility is to follow TDD, not to "finish quickly."**
+
+## Core Principle: Mandatory 5-Step Cycle
+
+**ALL code development MUST follow this 5-step cycle with ZERO exceptions:**
+
+0. **REASON** - Understand and plan before coding
+1. **RED** - Write failing test first
+2. **GREEN** - Implement minimum to pass
+3. **REFACTOR** - Improve while keeping tests green
+4. **RE-EVALUATE** - Review and prepare for next cycle
+
+**This is not optional. This is not a guideline. This is MANDATORY.**
+
+## Strict Preservation Rules
+
+These rules are **ABSOLUTE** and **NON-NEGOTIABLE**:
+
+### NEVER Delete Existing Tests
+
+**Existing tests are SACRED.** They represent verified behavior and business requirements.
+
+- ❌ **FORBIDDEN**: Deleting or commenting out existing tests
+- ❌ **FORBIDDEN**: Changing existing tests to make broken code pass
+- ✅ **REQUIRED**: Add new tests for new behavior
+- ✅ **REQUIRED**: Fix code to make existing tests pass
+- ✅ **ALLOWED**: Update test assertions only when business requirements change (with approval)
+
+```typescript
+// ❌ FORBIDDEN - Deleting existing test
+test('should validate email format', () => {
+  // ... test removed to make code "pass"
+})
+
+// ✅ CORRECT - Keep existing test, fix implementation
+test('should validate email format', () => {
+  const email = Email.create('invalid-email')
+  // Test fails - GOOD! Now fix Email.create() to validate properly
+})
+```
+
+### Prioritize Minimal Modification
+
+**Make the smallest change possible to achieve the goal.**
+
+- ✅ **REQUIRED**: Change only what's necessary
+- ✅ **REQUIRED**: Preserve existing functionality
+- ❌ **FORBIDDEN**: Large refactorings without incremental tests
+- ❌ **FORBIDDEN**: Changing multiple components simultaneously
+
+```typescript
+// ❌ BAD - Large modification affecting multiple areas
+export class EventService {
+  // Rewrote entire service, changed signatures, removed methods
+}
+
+// ✅ GOOD - Minimal addition for new requirement
+export class EventService {
+  // Existing methods unchanged
+  
+  // New method added with tests
+  calculatePopularityScore(event: Event): number {
+    return event.getAttendeeCount() / 100
+  }
+}
+```
+
+### Never Change Public Interfaces Without Approval
+
+**Public interfaces are contracts with consumers.**
+
+- ❌ **FORBIDDEN**: Changing method signatures without approval
+- ❌ **FORBIDDEN**: Removing public methods
+- ❌ **FORBIDDEN**: Changing return types
+- ✅ **REQUIRED**: Add new methods instead of modifying existing ones
+- ✅ **REQUIRED**: Deprecate before removing
+
+```typescript
+// ❌ FORBIDDEN - Breaking change without approval
+export class TagService {
+  // Changed signature from (name: string) to (input: CreateTagInput)
+  async createTag(input: CreateTagInput): Promise<Tag> { }
+}
+
+// ✅ CORRECT - Add new method, keep old one
+export class TagService {
+  // Existing method preserved (deprecated)
+  async createTag(name: string): Promise<Tag> {
+    return this.createTagWithInput({ name })
+  }
+  
+  // New method added
+  async createTagWithInput(input: CreateTagInput): Promise<Tag> { }
+}
+```
+
+### Respect Existing Naming Conventions
+
+**Follow the codebase patterns already established.**
+
+- ✅ **REQUIRED**: Match existing naming patterns
+- ✅ **REQUIRED**: Use established prefixes/suffixes
+- ❌ **FORBIDDEN**: Introducing new naming schemes
+- ❌ **FORBIDDEN**: Renaming without refactoring all references
+
+```typescript
+// Existing codebase uses CreateXUseCase pattern
+
+// ❌ BAD - Different naming convention
+export class TagCreator { }
+export class MakeNewTag { }
+
+// ✅ GOOD - Follows existing convention
+export class CreateTagUseCase { }
+export class UpdateTagUseCase { }
+```
+
+### Maintain Compatibility With Existing Flows
+
+**Don't break existing workflows and integrations.**
+
+- ✅ **REQUIRED**: Test that existing flows still work
+- ✅ **REQUIRED**: Maintain backward compatibility
+- ❌ **FORBIDDEN**: Breaking changes without migration path
+- ❌ **FORBIDDEN**: Removing functionality without replacement
+
+### Respect All Existing Tests
+
+**All tests must continue passing.**
+
+- ✅ **REQUIRED**: Keep all existing tests green
+- ✅ **REQUIRED**: Investigate and fix failing tests
+- ❌ **FORBIDDEN**: Skipping tests with `.skip`
+- ❌ **FORBIDDEN**: Modifying tests to ignore failures
+
+## Step 0: REASON (Before Writing Code)
+
+**Purpose**: Understand requirements and plan test cases before touching code.
+
+### What to Do
+
+1. **Query requirements if unclear**
+   - Ask the Technical Lead for clarification
+   - Verify business rules and acceptance criteria
+   - Confirm expected behavior for edge cases
+
+2. **Create test cases list in test file**
+   - Write test cases as comments in the test file
+   - Start with simplest case (happy path)
+   - Add edge cases and error scenarios
+   - Order from simple to complex
+
+3. **Organize cases: simple → complex**
+   - Happy path first
+   - Simple validation next
+   - Edge cases after
+   - Complex scenarios last
+
+### Example: REASON Phase
+
+```typescript
+// packages/tags/domain/entities/__tests__/tag.test.ts
+
+import { describe, expect, test } from 'bun:test'
+import { Tag } from '../tag'
+import { TagName } from '../../value-objects/tag-name'
+
+describe('Tag Entity', () => {
+  // TEST CASES LIST (Step 0: REASON)
+  // Order: simple → complex, happy path → edge cases
+  // 
+  // 1. ✓ Create tag with valid name (happy path - SIMPLEST)
+  // 2. ✓ Get tag name (basic accessor)
+  // 3. ✓ Create tag with trimmed whitespace (edge case)
+  // 4. ✓ Reject tag with empty name (validation)
+  // 5. ✓ Reject tag with name exceeding max length (validation)
+  // 6. ✓ Compare two tags with same name (equality)
+  // 7. ✓ Compare two tags with different names (inequality)
+  // 8. ✓ Convert tag to DTO (transformation)
+  
+  // Now start with Step 1: RED for case #1 (simplest)
+})
+```
+
+### Agent Behavior in REASON Phase
+
+**The agent MUST**:
+- Confirm understanding of requirements before proceeding
+- Ask questions if requirements are ambiguous
+- Write complete test cases list as comments
+- Present the list to Technical Lead for approval if unsure
+- Only proceed to RED phase after requirements are clear
+
+**The agent MUST NOT**:
+- Start writing tests without understanding requirements
+- Skip creating the test cases list
+- Write code before writing tests
+- Assume requirements without verification
+
+**Critical for Agent**: The REASON phase is NOT optional. Even for "simple" tasks, create the test cases list. This proves you understand what needs to be built and provides a roadmap for the TDD cycle.
+
+## Step 1: RED (Write Failing Test)
+
+**Purpose**: Write a test that fails, proving the feature doesn't exist yet.
+
+### What to Do
+
+1. **Write the simplest test from the list**
+   - Pick the first uncompleted test case
+   - Write test with clear, descriptive name
+   - Use Arrange-Act-Assert pattern
+   - Keep test focused on single behavior
+
+2. **Verify test doesn't compile**
+   - Run compiler/type checker
+   - Confirm expected compilation errors
+   - This proves feature doesn't exist
+
+3. **Write MINIMUM code to compile**
+   - Add only class/function/method signature
+   - Throw `new Error('Not implemented')`
+   - No business logic yet
+
+4. **Verify test fails**
+   - Run the test
+   - Confirm it fails with expected error
+   - Failing test = RED phase complete
+
+### Example: RED Phase
+
+```typescript
+// Step 1: RED - Write simplest test
+describe('Tag Entity', () => {
+  test('should create tag with valid name', () => {
+    // Arrange
+    const name = TagName.create('Music')
+    
+    // Act
+    const tag = Tag.create({ name })
+    
+    // Assert
+    expect(tag).toBeInstanceOf(Tag)
+    expect(tag.getName().toString()).toBe('Music')
+  })
+})
+
+// Run test: ❌ Compilation error - "Tag.create does not exist"
+// This is GOOD - proves feature doesn't exist
+
+// Write MINIMUM to compile
+export class Tag {
+  private constructor(private readonly name: TagName) {}
+  
+  static create(input: { name: TagName }): Tag {
+    throw new Error('Not implemented')
+  }
+  
+  getName(): TagName {
+    throw new Error('Not implemented')
+  }
+}
+
+// Run test again: ❌ Test fails - "Not implemented"
+// This is PERFECT - RED phase complete
+```
+
+### Agent Behavior in RED Phase
+
+**The agent MUST**:
+- Write test first, before any implementation
+- Verify compilation failure
+- Write absolute minimum to compile
+- Verify test failure
+- Never skip directly to GREEN phase
+
+**The agent MUST NOT**:
+- Write implementation before test
+- Write passing code in this phase
+- Add business logic before test passes
+
+**Critical for Agent**: The RED phase proves the test is valid and the feature doesn't exist. If a test passes immediately without implementation, the test is wrong or the feature already exists. Always verify the test FAILS before implementing.
+
+## Step 2: GREEN (Implement Minimum)
+
+**Purpose**: Make the test pass with the simplest possible implementation.
+
+### What to Do
+
+1. **Implement using TPP (Transformation Priority Premise)**
+   - Use simplest transformation that makes test pass
+   - Follow TPP order (see TPP section below)
+   - No premature optimization
+   - No "clever" solutions
+
+2. **Write simplest code to pass test**
+   - Hardcoded values acceptable for first test
+   - Constants before variables
+   - Conditionals before loops
+   - Simplest possible logic
+
+3. **Verify test passes**
+   - Run test
+   - Confirm green (passing)
+   - GREEN phase complete
+
+### Example: GREEN Phase
+
+```typescript
+// Step 2: GREEN - Simplest implementation
+export class Tag {
+  private constructor(private readonly name: TagName) {}
+  
+  static create(input: { name: TagName }): Tag {
+    return new Tag(input.name) // TPP: nil→constant (return new instance)
+  }
+  
+  getName(): TagName {
+    return this.name // TPP: nil→constant (return stored value)
+  }
+}
+
+// Run test: ✅ Test passes
+// GREEN phase complete - move to REFACTOR
+```
+
+### Agent Behavior in GREEN Phase
+
+**The agent MUST**:
+- Use TPP transformations in order
+- Write simplest implementation possible
+- Make test pass before moving to refactor
+- Verify test is green
+
+**The agent MUST NOT**:
+- Write complex logic prematurely
+- Add features not tested
+- Optimize before refactoring phase
+- Skip running tests to verify green
+
+**Critical for Agent**: The GREEN phase is about making the test pass with the SIMPLEST code possible. Resist the urge to write "clever" or "complete" solutions. Add complexity ONLY when driven by additional tests. Follow TPP order strictly.
+
+## Step 3: REFACTOR (Improve While Keeping Green)
+
+**Purpose**: Improve code quality without changing behavior.
+
+### What to Do
+
+1. **Eliminate duplication**
+   - Extract repeated logic
+   - Create helper methods
+   - Extract constants
+   - Apply DRY principle
+
+2. **Improve names**
+   - Use descriptive variable names
+   - Follow naming conventions
+   - Make intent clear
+   - Follow `.cursor/rules/verbose-naming.mdc`
+
+3. **Simplify design**
+   - Extract value objects when appropriate
+   - Apply SOLID principles
+   - Reduce complexity
+   - Improve readability
+
+4. **Keep tests green**
+   - Run tests after each refactoring step
+   - Ensure all tests still pass
+   - Refactor in small steps
+   - Never break existing tests
+
+### Example: REFACTOR Phase
+
+```typescript
+// Step 3: REFACTOR - Check for improvements
+
+// Current code (after GREEN):
+export class Tag {
+  private constructor(private readonly name: TagName) {}
+  
+  static create(input: { name: TagName }): Tag {
+    return new Tag(input.name)
+  }
+  
+  getName(): TagName {
+    return this.name
+  }
+}
+
+// Questions to ask:
+// - Duplication? No repeated code yet
+// - Names clear? Yes, Tag, name are clear
+// - Design simple? Yes, single responsibility
+// - Extract value object? Already using TagName
+// - Need improvements? Not yet, wait for more tests
+
+// Run tests: ✅ All tests pass
+// REFACTOR complete (no changes needed yet)
+// Move to RE-EVALUATE
+```
+
+### When to Extract/Refactor
+
+**Extract after 2-3 tests reveal pattern**, not after first test:
+
+```typescript
+// After first test - DON'T extract yet
+static create(input: { name: TagName }): Tag {
+  return new Tag(input.name)
+}
+
+// After second test adds validation - STILL don't extract
+static create(input: { name: TagName }): Tag {
+  if (!input.name) {
+    throw new Error('Name required')
+  }
+  return new Tag(input.name)
+}
+
+// After third test adds more validation - NOW extract
+static create(input: { name: TagName }): Tag {
+  this.validateInput(input) // Extract validation
+  return new Tag(input.name)
+}
+
+private static validateInput(input: { name: TagName }): void {
+  if (!input.name) {
+    throw new Error('Name required')
+  }
+  if (input.name.toString().length > 50) {
+    throw new Error('Name too long')
+  }
+}
+```
+
+### Agent Behavior in REFACTOR Phase
+
+**The agent MUST**:
+- Run tests after each refactor step
+- Keep all tests green
+- Consult coding standards (`.cursor/rules/code-style-and-commands.mdc`)
+- Wait for patterns before extracting
+- Make small, incremental improvements
+
+**The agent MUST NOT**:
+- Refactor without running tests
+- Break existing tests during refactoring
+- Add new functionality (that belongs in GREEN)
+- Extract after just one test (wait for patterns)
+
+**Critical for Agent**: The REFACTOR phase is about improving CODE QUALITY, not adding features. Run tests after EVERY change. If tests break during refactoring, you're doing it wrong - revert and take smaller steps. After refactoring, run Biome to format and validate.
+
+## Step 4: RE-EVALUATE (Before Next Cycle)
+
+**Purpose**: Review progress and plan next iteration.
+
+### What to Do
+
+1. **Review test cases list**
+   - Mark completed cases as ✓
+   - Review remaining cases
+   - Check if list is still valid
+
+2. **Is next case still simplest?**
+   - Verify test order
+   - Reorder if simpler case discovered
+   - Ensure incremental complexity
+
+3. **Need to reorder cases?**
+   - Adjust list based on what was learned
+   - Move simpler cases earlier
+   - Move complex cases later
+
+4. **Consult Technical Lead if uncertain**
+   - Ask about business rules
+   - Verify approach
+   - Confirm next steps
+
+5. **Return to Step 1 (RED) with next test**
+
+### Example: RE-EVALUATE Phase
+
+```typescript
+describe('Tag Entity', () => {
+  // TEST CASES LIST (Updated in Step 4: RE-EVALUATE)
+  // 
+  // 1. ✅ Create tag with valid name (COMPLETE)
+  // 2. ✅ Get tag name (COMPLETE)
+  // 3. ✓ Reject tag with empty name (NEXT - still simplest)
+  // 4. ✓ Reject tag with name exceeding max length
+  // 5. ✓ Create tag with trimmed whitespace
+  // 6. ✓ Compare two tags with same name
+  // 7. ✓ Compare two tags with different names
+  // 8. ✓ Convert tag to DTO
+  
+  test('should create tag with valid name', () => {
+    // ✅ COMPLETE
+  })
+  
+  test('should get tag name', () => {
+    // ✅ COMPLETE
+  })
+  
+  // Step 4: RE-EVALUATE
+  // - Case #3 "Reject empty name" is still simplest remaining case
+  // - No reordering needed
+  // - Ready to return to Step 1 (RED) for case #3
+  // 
+  // Next: Write failing test for case #3
+})
+```
+
+### Agent Behavior in RE-EVALUATE Phase
+
+**The agent MUST**:
+- Update test cases list with completion status
+- Verify next test is simplest
+- Reorder if necessary
+- Ask Technical Lead if uncertain about priorities
+- Prepare to return to RED phase
+
+**The agent MUST NOT**:
+- Skip re-evaluation
+- Jump to complex cases prematurely
+- Ignore simpler cases
+- Proceed without updating test list
+
+**Critical for Agent**: The RE-EVALUATE phase ensures you're building features incrementally, simplest-to-complex. Don't rush to implement all features at once. Mark completed tests with ✅, review remaining cases, ensure the next test is still the simplest, then return to RED phase.
+
+## Transformation Priority Premise (TPP)
+
+**TPP defines the order of code transformations from simple to complex.**
+
+Use transformations in this order (simplest first):
+
+### 1. `({}→nil)` - No code to literal null/nil
+
+```typescript
+// No code exists
+function getUserName(): string | null {
+  return null // Simplest: return null literal
+}
+```
+
+### 2. `(nil→constant)` - Null to simple constant
+
+```typescript
+function getUserName(): string {
+  return 'John' // Return constant instead of null
+}
+```
+
+### 3. `(constant→constant+)` - Simple constant to complex constant
+
+```typescript
+function getUserName(): string {
+  return 'John Doe' // More complex constant
+}
+```
+
+### 4. `(constant→scalar)` - Constant to variable
+
+```typescript
+function getUserName(user: User): string {
+  return user.name // Use variable instead of constant
+}
+```
+
+### 5. `(statement→statements)` - One statement to many
+
+```typescript
+function getUserName(user: User): string {
+  const firstName = user.firstName
+  const lastName = user.lastName
+  return `${firstName} ${lastName}` // Multiple statements
+}
+```
+
+### 6. `(unconditional→if)` - Add conditional
+
+```typescript
+function getUserName(user: User): string {
+  if (!user) {
+    return 'Anonymous' // Add conditional logic
+  }
+  return user.name
+}
+```
+
+### 7. `(scalar→array)` - Scalar to collection
+
+```typescript
+function getUserNames(users: User[]): string[] {
+  return users.map(u => u.name) // Handle collection
+}
+```
+
+### 8. `(array→container)` - Array to more complex structure
+
+```typescript
+function getUsersByRole(users: User[]): Map<string, User[]> {
+  const userMap = new Map<string, User[]>()
+  // Group users by role (more complex structure)
+  return userMap
+}
+```
+
+### 9. `(statement→tail-recursion)` - Iteration via tail recursion
+
+```typescript
+function sumRange(n: number, acc: number = 0): number {
+  if (n === 0) return acc
+  return sumRange(n - 1, acc + n) // Tail recursion
+}
+```
+
+### 10. `(if→while)` - Conditional to loop
+
+```typescript
+function findFirstActive(users: User[]): User | null {
+  let index = 0
+  while (index < users.length) { // Loop instead of if
+    if (users[index].isActive) {
+      return users[index]
+    }
+    index++
+  }
+  return null
+}
+```
+
+### 11. `(expression→function)` - Expression to function call
+
+```typescript
+function calculateDiscount(price: number, tier: string): number {
+  return applyTierDiscount(price, tier) // Extract to function
+}
+
+function applyTierDiscount(price: number, tier: string): number {
+  // Discount logic
+}
+```
+
+### 12. `(variable→assignment)` - Value to mutation
+
+```typescript
+function processUsers(users: User[]): void {
+  for (const user of users) {
+    user.lastProcessed = new Date() // Mutation
+  }
+}
+```
+
+### TPP in Practice: DDD Examples
+
+```typescript
+// Test 1: Create event with title
+test('should create event with title', () => {
+  const event = Event.create({ title: 'Concert' })
+  expect(event.getTitle()).toBe('Concert')
+})
+
+// TPP #2: nil→constant
+static create(input: { title: string }): Event {
+  return new Event('Concert') // Hardcode constant - simplest!
+}
+
+// Test 2: Create event with any title
+test('should create event with provided title', () => {
+  const event = Event.create({ title: 'Festival' })
+  expect(event.getTitle()).toBe('Festival')
+})
+
+// TPP #4: constant→scalar
+static create(input: { title: string }): Event {
+  return new Event(input.title) // Use variable instead of constant
+}
+
+// Test 3: Reject empty title
+test('should reject empty title', () => {
+  expect(() => Event.create({ title: '' })).toThrow()
+})
+
+// TPP #6: unconditional→if
+static create(input: { title: string }): Event {
+  if (!input.title || input.title.trim() === '') {
+    throw new Error('Title required')
+  }
+  return new Event(input.title)
+}
+
+// Test 4: Validate multiple events
+test('should validate multiple events', () => {
+  const events = [
+    { title: 'Concert' },
+    { title: 'Festival' }
+  ]
+  const created = Event.createMultiple(events)
+  expect(created).toHaveLength(2)
+})
+
+// TPP #7: scalar→array
+static createMultiple(inputs: Array<{ title: string }>): Event[] {
+  return inputs.map(input => this.create(input)) // Handle collection
+}
+```
+
+## Test Organization
+
+### Directory Structure
+
+Tests are located in `__tests__/` directories alongside code:
+
+```
+packages/<bounded-context>/
+  domain/
+    value-objects/
+      tag-name.ts
+      __tests__/
+        tag-name.test.ts          # Unit test
+    entities/
+      tag.ts
+      __tests__/
+        tag.test.ts               # Unit test
+  application/
+    use-cases/
+      create-tag.use-case.ts
+      __tests__/
+        create-tag.use-case.test.ts          # Unit test (mocked)
+        create-tag.use-case.integration.test.ts  # Integration test
+```
+
+### Test Types
+
+**Unit Tests (`*.test.ts`)**:
+- Test isolated units with mocked dependencies
+- Fast execution
+- Domain layer: value objects, entities, domain services
+- Application layer: use cases with mocked repositories
+
+**Integration Tests (`*.integration.test.ts`)**:
+- Test with real infrastructure (database, S3, APIs)
+- Slower execution
+- Application layer: use cases with real repositories
+- Infrastructure layer: adapters with real services
+
+### Test Naming
+
+```typescript
+// ✅ CORRECT - Descriptive test names
+test('should create tag with valid name', () => {})
+test('should throw error when creating tag with empty name', () => {})
+test('should trim whitespace from tag name', () => {})
+
+// ❌ INCORRECT - Vague test names
+test('create tag', () => {})
+test('validation', () => {})
+test('test 1', () => {})
+```
+
+### Arrange-Act-Assert Pattern
+
+**MANDATORY**: All tests MUST follow Arrange-Act-Assert pattern:
+
+```typescript
+test('should create event with valid data', () => {
+  // Arrange - Set up test data and mocks
+  const title = 'Concert'
+  const date = new Date('2024-12-25')
+  const venue = 'Stadium'
+  
+  // Act - Execute the behavior being tested
+  const event = Event.create({ title, date, venue })
+  
+  // Assert - Verify the expected outcome
+  expect(event).toBeInstanceOf(Event)
+  expect(event.getTitle()).toBe(title)
+  expect(event.getDate()).toEqual(date)
+  expect(event.getVenue()).toBe(venue)
+})
+```
+
+## Integration Tests: Mandatory Database Setup
+
+**This section applies to ALL integration tests that interact with a database.**
+
+### Core Principle: Isolated Test Database
+
+**ALL integration tests that use a database MUST use a separate test database with ZERO exceptions.**
+
+- ✅ **REQUIRED**: Use `TEST_DATABASE_URL` environment variable
+- ✅ **REQUIRED**: Test database MUST be separate from development database
+- ✅ **REQUIRED**: Test database MUST exist and be migrated before running tests
+- ✅ **REQUIRED**: Clean database state before AND after each test
+- ❌ **FORBIDDEN**: Using `DATABASE_URL` in integration tests
+- ❌ **FORBIDDEN**: Sharing database state between test cases
+- ❌ **FORBIDDEN**: Relying on execution order or data from previous tests
+
+### Test Database Configuration
+
+**MANDATORY**: All integration tests MUST verify `TEST_DATABASE_URL` exists at runtime.
+
+```typescript
+beforeEach(async () => {
+  // 1. Verify TEST_DATABASE_URL exists
+  if (!process.env.TEST_DATABASE_URL) {
+    throw new Error(
+      'TEST_DATABASE_URL is required for integration tests. ' +
+      'Please set TEST_DATABASE_URL to a separate test database.'
+    )
+  }
+  
+  // 2. Create Prisma client with test database
+  prismaClient = new PrismaClientEy({
+    datasources: {
+      db: { url: process.env.TEST_DATABASE_URL }
+    }
+  })
+  
+  // 3. Clean database BEFORE test (ensure clean state)
+  await cleanupTestData()
+})
+```
+
+### Database Cleanup Patterns
+
+**MANDATORY**: Implement cleanup function that runs before AND after each test.
+
+```typescript
+afterEach(async () => {
+  // 1. Clean database AFTER test (leave database clean)
+  await cleanupTestData()
+  
+  // 2. Disconnect client to free resources
+  await prismaClient.$disconnect()
+})
+```
+
+### Cleanup Implementation Patterns
+
+Choose one of these patterns based on your test needs:
+
+#### Pattern 1: Delete by Test-Specific Identifier (Recommended)
+
+Use unique prefixes/suffixes for test data to enable selective cleanup:
+
+```typescript
+describe('CreateUserUseCase Integration', () => {
+  let prismaClient: PrismaClientEy
+  const testUserPrefix = 'test-user-'
+  
+  beforeEach(async () => {
+    if (!process.env.TEST_DATABASE_URL) {
+      throw new Error('TEST_DATABASE_URL is required for integration tests')
+    }
+    
+    prismaClient = new PrismaClientEy({
+      datasources: { db: { url: process.env.TEST_DATABASE_URL } }
+    })
+    
+    await cleanupTestData()
+  })
+  
+  afterEach(async () => {
+    await cleanupTestData()
+    await prismaClient.$disconnect()
+  })
+  
+  async function cleanupTestData() {
+    try {
+      // Delete in reverse foreign key order to avoid constraint violations
+      await prismaClient.userVenue.deleteMany({
+        where: { userId: { startsWith: testUserPrefix } }
+      })
+      
+      await prismaClient.user.deleteMany({
+        where: { id: { startsWith: testUserPrefix } }
+      })
+    } catch (error) {
+      console.error('Cleanup failed:', error)
+      throw error // Don't hide cleanup failures
+    }
+  }
+  
+  test('should create user successfully in database', async () => {
+    // Arrange
+    const userId = Id.create(`${testUserPrefix}${Date.now()}`)
+    
+    // Act
+    const result = await createUserUseCase.execute(userId)
+    
+    // Assert
+    expect(result.id.toString()).toBe(userId.toString())
+    
+    // Verify in test database
+    const savedUser = await prismaClient.user.findUnique({
+      where: { id: userId.toString() }
+    })
+    expect(savedUser).toBeTruthy()
+  })
+})
+```
+
+**Advantages:**
+- Fast cleanup (only deletes test data)
+- Allows multiple test suites to run in parallel
+- Preserves seed data if needed
+
+**When to use:**
+- Tests with simple foreign key relationships
+- When test data can be easily identified by prefix/suffix
+- When you need to preserve seed/fixture data
+
+#### Pattern 2: Truncate All Tables (For Complex Schemas)
+
+Use database truncation for complex schemas with many foreign keys:
+
+```typescript
+describe('ComplexIntegrationTest', () => {
+  let prismaClient: PrismaClientEy
+  
+  beforeEach(async () => {
+    if (!process.env.TEST_DATABASE_URL) {
+      throw new Error('TEST_DATABASE_URL is required for integration tests')
+    }
+    
+    prismaClient = new PrismaClientEy({
+      datasources: { db: { url: process.env.TEST_DATABASE_URL } }
+    })
+    
+    await cleanupTestData()
+  })
+  
+  afterEach(async () => {
+    await cleanupTestData()
+    await prismaClient.$disconnect()
+  })
+  
+  async function cleanupTestData() {
+    try {
+      // Disable foreign key checks temporarily
+      await prismaClient.$executeRaw`SET session_replication_role = 'replica'`
+      
+      // Truncate all tables (adjust table names for your schema)
+      await prismaClient.$executeRaw`
+        TRUNCATE TABLE 
+          "InstagramPost", 
+          "InstagramProfile", 
+          "InstagramVideo",
+          "User", 
+          "Tag", 
+          "Category",
+          "Event",
+          "EventImage"
+        CASCADE
+      `
+      
+      // Re-enable foreign key checks
+      await prismaClient.$executeRaw`SET session_replication_role = 'origin'`
+    } catch (error) {
+      console.error('Cleanup failed:', error)
+      throw error
+    }
+  }
+  
+  test('should handle complex multi-table operations', async () => {
+    // Test implementation with clean database state
+  })
+})
+```
+
+**Advantages:**
+- Guarantees completely clean state
+- Simpler for complex foreign key relationships
+- No need to track test data identifiers
+
+**Disadvantages:**
+- Slower than selective deletion
+- Cannot preserve seed data
+- Cannot run multiple test suites in parallel safely
+
+**When to use:**
+- Complex schemas with circular foreign keys
+- When you need absolute isolation between tests
+- When test data doesn't need unique identifiers
+
+### Test Isolation Rules
+
+**MANDATORY**: Integration tests MUST be completely isolated from each other.
+
+```typescript
+// ✅ CORRECT - Tests are independent
+describe('TagRepository Integration', () => {
+  test('should create tag', async () => {
+    const tagName = Name.create(`test-tag-${Date.now()}`)
+    const tag = await repository.save(Tag.create({ name: tagName }))
+    expect(tag).toBeTruthy()
+  })
+  
+  test('should find tag by name', async () => {
+    // Create fresh test data - doesn't rely on previous test
+    const tagName = Name.create(`test-tag-find-${Date.now()}`)
+    await repository.save(Tag.create({ name: tagName }))
+    
+    const found = await repository.findByName(tagName)
+    expect(found).toBeTruthy()
+  })
+})
+
+// ❌ INCORRECT - Tests depend on execution order
+describe('TagRepository Integration', () => {
+  let createdTag: Tag
+  
+  test('should create tag', async () => {
+    createdTag = await repository.save(Tag.create({ name: Name.create('test') }))
+  })
+  
+  test('should find tag by name', async () => {
+    // ❌ Relies on createdTag from previous test
+    const found = await repository.findByName(createdTag.name)
+    expect(found).toBeTruthy()
+  })
+})
+```
+
+**Rules:**
+- ✅ Each test creates its own test data
+- ✅ Tests can run in any order
+- ✅ Cleanup runs even if test fails (using afterEach)
+- ❌ Never share data between tests via shared variables
+- ❌ Never assume data exists from previous test
+- ❌ Never skip cleanup to "speed up" tests
+
+### Database Setup Commands
+
+Before running integration tests, the test database must exist and be migrated:
+
+```bash
+# 1. Create test database (run once)
+createdb mato_test
+
+# 2. Run migrations on test database (run once or when schema changes)
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bunx prisma migrate deploy
+
+# 3. Run integration tests
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bun test --grep integration
+
+# 4. Run specific integration test
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bun test packages/user/__tests__/create-user.integration.test.ts
+
+# 5. Reset test database when needed (clears all data and re-runs migrations)
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bunx prisma migrate reset --force
+```
+
+### Common Patterns and Best Practices
+
+#### Use Unique Identifiers for Test Data
+
+```typescript
+// ✅ CORRECT - Unique identifier prevents conflicts
+const testUserPrefix = 'test-user-'
+const userId = Id.create(`${testUserPrefix}${Date.now()}-${Math.random()}`)
+
+// ✅ CORRECT - Descriptive prefix helps debugging
+const testTagPrefix = 'test-tag-create-'
+const tagName = Name.create(`${testTagPrefix}${Date.now()}`)
+
+// ❌ INCORRECT - Hardcoded values cause conflicts
+const userId = Id.create('test-user-1') // Will fail if run multiple times
+```
+
+#### Handle Foreign Key Relationships
+
+```typescript
+async function cleanupTestData() {
+  try {
+    // Delete in correct order: children first, parents last
+    
+    // 1. Delete dependent records (foreign key references)
+    await prismaClient.instagramPost.deleteMany({
+      where: {
+        profile: {
+          instagramId: { startsWith: testPrefix }
+        }
+      }
+    })
+    
+    // 2. Delete parent records
+    await prismaClient.instagramProfile.deleteMany({
+      where: {
+        instagramId: { startsWith: testPrefix }
+      }
+    })
+  } catch (error) {
+    console.error('Cleanup failed:', error)
+    throw error
+  }
+}
+```
+
+#### Create Required Dependencies in Tests
+
+```typescript
+test('should create event with venue', async () => {
+  // Arrange - Create dependencies first
+  const testCityId = 'test-city-integration'
+  const testCountryId = 'test-country-integration'
+  
+  await prismaClient.country.upsert({
+    where: { id: testCountryId },
+    update: {},
+    create: {
+      id: testCountryId,
+      name: 'Test Country',
+      slug: 'test-country'
+    }
+  })
+  
+  await prismaClient.city.upsert({
+    where: { id: testCityId },
+    update: {},
+    create: {
+      id: testCityId,
+      name: 'Test City',
+      slug: 'test-city',
+      countryId: testCountryId
+    }
+  })
+  
+  // Act - Create event with valid city reference
+  const event = await createEventUseCase.execute({
+    title: 'Test Event',
+    cityId: testCityId
+  })
+  
+  // Assert
+  expect(event).toBeTruthy()
+  expect(event.cityId).toBe(testCityId)
+})
+```
+
+### Migration Path for Existing Tests
+
+Existing integration tests need to be updated to use `TEST_DATABASE_URL`:
+
+**Before (using development database):**
+```typescript
+beforeEach(async () => {
+  prismaClient = new PrismaClientEy() // ❌ Uses DATABASE_URL
+  await cleanupTestData()
+})
+```
+
+**After (using test database):**
+```typescript
+beforeEach(async () => {
+  if (!process.env.TEST_DATABASE_URL) {
+    throw new Error('TEST_DATABASE_URL is required for integration tests')
+  }
+  
+  prismaClient = new PrismaClientEy({
+    datasources: { db: { url: process.env.TEST_DATABASE_URL } }
+  })
+  
+  await cleanupTestData()
+})
+```
+
+### PR Checklist for Integration Tests
+
+Before submitting integration tests, verify:
+
+- [ ] Test uses `TEST_DATABASE_URL` (not `DATABASE_URL`)
+- [ ] `beforeEach` validates `TEST_DATABASE_URL` exists
+- [ ] `beforeEach` creates Prisma client with test database URL
+- [ ] `beforeEach` calls cleanup function
+- [ ] `afterEach` calls cleanup function
+- [ ] `afterEach` disconnects Prisma client
+- [ ] `cleanupTestData()` deletes test data in correct order (foreign keys)
+- [ ] `cleanupTestData()` throws errors (doesn't hide failures)
+- [ ] Tests use unique identifiers (timestamps, random values)
+- [ ] Tests are independent (can run in any order)
+- [ ] Test database exists and is migrated before running tests
+
+## What to Test by Layer
+
+### Domain Layer - Value Objects
+
+**MUST test**:
+- Creation with valid input (`create()`, `createFrom()`)
+- Validation rules (all invariants)
+- Comparison methods (`equals()`)
+- Transformation methods (`toString()`, `getValue()`)
+
+**Example**:
+```typescript
+describe('Email Value Object', () => {
+  test('should create email with valid format', () => {
+    const email = Email.create('user@example.com')
+    expect(email).toBeInstanceOf(Email)
+  })
+  
+  test('should reject invalid email format', () => {
+    expect(() => Email.create('invalid')).toThrow('Invalid email')
+  })
+  
+  test('should compare two emails correctly', () => {
+    const email1 = Email.create('user@example.com')
+    const email2 = Email.create('user@example.com')
+    expect(email1.equals(email2)).toBe(true)
+  })
+})
+```
+
+### Domain Layer - Entities
+
+**MUST test**:
+- Entity creation (`create()`, `fromDto()`)
+- Transformation methods (`toDto()`, `toDatabase()`)
+- Business rule enforcement
+- Value object composition
+
+**Example**:
+```typescript
+describe('Tag Entity', () => {
+  test('should create tag with valid name', () => {
+    const name = TagName.create('Music')
+    const tag = Tag.create({ name })
+    expect(tag).toBeInstanceOf(Tag)
+  })
+  
+  test('should convert to DTO correctly', () => {
+    const tag = Tag.create({ name: TagName.create('Music') })
+    const dto = tag.toDto()
+    expect(dto.name).toBe('Music')
+  })
+})
+```
+
+### Application Layer - Use Cases
+
+**MUST test**:
+- Happy path scenarios
+- Error handling (validation, not found, business rules)
+- Dependency interactions (verify mocks called)
+- Input validation
+
+**Example**:
+```typescript
+describe('CreateTagUseCase', () => {
+  test('should create tag successfully', async () => {
+    // Arrange
+    const mockRepository = {
+      findByName: mock(async () => null),
+      save: mock(async (tag: Tag) => tag),
+    }
+    const useCase = new CreateTagUseCase(mockRepository)
+    
+    // Act
+    const result = await useCase.execute({ name: 'Music' })
+    
+    // Assert
+    expect(result).toBeInstanceOf(Tag)
+    expect(mockRepository.save).toHaveBeenCalled()
+  })
+  
+  test('should throw error when tag already exists', async () => {
+    // Arrange
+    const existingTag = Tag.create({ name: TagName.create('Music') })
+    const mockRepository = {
+      findByName: mock(async () => existingTag),
+      save: mock(async () => existingTag),
+    }
+    const useCase = new CreateTagUseCase(mockRepository)
+    
+    // Act & Assert
+    await expect(useCase.execute({ name: 'Music' }))
+      .rejects.toThrow('Tag already exists')
+    expect(mockRepository.save).not.toHaveBeenCalled()
+  })
+})
+```
+
+### Application Layer - Event Handlers
+
+**MUST test**:
+- Event processing logic
+- Delegation to use cases
+- Idempotency (duplicate events)
+- Error handling
+
+### Infrastructure Layer
+
+**MUST test**:
+- Adaptations (domain ↔ external formats)
+- Error handling for external failures
+- Data mapping correctness
+- Critical integration points
+
+## What NOT to Test
+
+**DO NOT write tests for**:
+
+1. **Trivial getters** without logic:
+   ```typescript
+   // ❌ DON'T TEST
+   getId(): Id {
+     return this.id
+   }
+   ```
+
+2. **Mock verification only**:
+   ```typescript
+   // ❌ DON'T TEST - Only testing mock framework
+   test('mock should be called', () => {
+     const mockFn = mock(() => {})
+     mockFn()
+     expect(mockFn).toHaveBeenCalled()
+   })
+   ```
+
+3. **Framework functionality**:
+   ```typescript
+   // ❌ DON'T TEST - Testing Elysia framework
+   test('@Controller decorator works', () => {})
+   ```
+
+4. **Third-party libraries**:
+   ```typescript
+   // ❌ DON'T TEST - Testing Prisma
+   test('Prisma client query works', () => {})
+   ```
+
+5. **Generated code** without business logic
+
+## Test Commands
+
+Run tests using Bun:
+
+```bash
+# Run all tests (unit + integration)
+bun test
+
+# Run tests in specific package
+bun test packages/tags
+
+# Run specific test file
+bun test packages/tags/domain/entities/__tests__/tag.test.ts
+
+# Run with logger output
+TEST_LOGGER=1 bun test packages/tags
+
+# Run only unit tests (exclude integration)
+bun test --grep -v integration
+
+# Run only integration tests (REQUIRES TEST_DATABASE_URL)
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bun test --grep integration
+
+# Run specific integration test file (REQUIRES TEST_DATABASE_URL)
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bun test packages/user/application/use-cases/__tests__/create-user-use-case.integration.test.ts
+
+# Run integration tests with logger
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" TEST_LOGGER=1 bun test --grep integration
+```
+
+**Integration Test Database Setup:**
+
+```bash
+# 1. Create test database (run once)
+createdb mato_test
+
+# 2. Run migrations on test database (run once or when schema changes)
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bunx prisma migrate deploy
+
+# 3. Reset test database when needed (clears all data and re-runs migrations)
+TEST_DATABASE_URL="postgresql://user:pass@localhost:5432/mato_test" bunx prisma migrate reset --force
+```
+
+## Complete TDD Cycle Example
+
+This example demonstrates the full 5-step cycle for creating a Tag entity:
+
+```typescript
+// ============================================
+// STEP 0: REASON
+// ============================================
+
+// packages/tags/domain/entities/__tests__/tag.test.ts
+
+import { describe, expect, test } from 'bun:test'
+import { Tag } from '../tag'
+import { TagName } from '../../value-objects/tag-name'
+import { Id } from '../../value-objects/id'
+
+describe('Tag Entity', () => {
+  // TEST CASES LIST (Step 0: REASON)
+  // Order: simple → complex
+  // 
+  // 1. ✓ Create tag with valid name (happy path - SIMPLEST)
+  // 2. ✓ Get tag ID (basic accessor)
+  // 3. ✓ Get tag name (basic accessor)
+  // 4. ✓ Compare two tags for equality
+  // 5. ✓ Convert tag to DTO
+  // 6. ✓ Create tag from database data
+  
+  // Questions for Technical Lead:
+  // - Should tags have unique names? YES (confirmed)
+  // - Should tag names be case-insensitive? YES (confirmed)
+  // - Maximum tag name length? 50 characters (confirmed)
+  
+  // Ready to proceed to Step 1: RED
+  
+  // ============================================
+  // STEP 1: RED - First test (simplest)
+  // ============================================
+  
+  test('should create tag with valid name', () => {
+    // Arrange
+    const name = TagName.create('Music')
+    const id = Id.generate()
+    
+    // Act
+    const tag = Tag.create({ id, name })
+    
+    // Assert
+    expect(tag).toBeInstanceOf(Tag)
+  })
+  
+  // Run test: ❌ Compilation error - "Tag.create does not exist"
+  // GOOD - proves feature doesn't exist
+  
+  // Write MINIMUM to compile (in tag.ts):
+  // export class Tag {
+  //   static create(input: { id: Id; name: TagName }): Tag {
+  //     throw new Error('Not implemented')
+  //   }
+  // }
+  
+  // Run test again: ❌ Test fails - "Not implemented"
+  // PERFECT - RED phase complete
+  
+  // ============================================
+  // STEP 2: GREEN - Simplest implementation
+  // ============================================
+  
+  // In tag.ts:
+  // export class Tag {
+  //   private constructor(
+  //     private readonly id: Id,
+  //     private readonly name: TagName
+  //   ) {}
+  //   
+  //   static create(input: { id: Id; name: TagName }): Tag {
+  //     return new Tag(input.id, input.name) // TPP: nil→constant
+  //   }
+  // }
+  
+  // Run test: ✅ Test passes
+  // GREEN phase complete
+  
+  // ============================================
+  // STEP 3: REFACTOR
+  // ============================================
+  
+  // Questions:
+  // - Duplication? No
+  // - Names clear? Yes (Tag, id, name)
+  // - Need validation? Not yet, wait for more tests
+  // - Extract anything? Not yet, only one test
+  
+  // Run tests: ✅ Still passing
+  // REFACTOR complete (no changes needed)
+  
+  // ============================================
+  // STEP 4: RE-EVALUATE
+  // ============================================
+  
+  // TEST CASES LIST (Updated)
+  // 1. ✅ Create tag with valid name (COMPLETE)
+  // 2. ✓ Get tag ID (NEXT - still simplest)
+  // 3. ✓ Get tag name
+  // 4. ✓ Compare two tags for equality
+  // 5. ✓ Convert tag to DTO
+  // 6. ✓ Create tag from database data
+  
+  // Next: Write test for case #2
+  // Return to Step 1: RED
+  
+  // ============================================
+  // CYCLE 2: Second test
+  // ============================================
+  
+  // STEP 1: RED
+  test('should get tag ID', () => {
+    const id = Id.generate()
+    const name = TagName.create('Music')
+    const tag = Tag.create({ id, name })
+    
+    expect(tag.getId()).toEqual(id)
+  })
+  
+  // Run test: ❌ "Tag.getId does not exist"
+  // Add method: getId(): Id { throw new Error('Not implemented') }
+  // Run test: ❌ "Not implemented"
+  // RED complete
+  
+  // STEP 2: GREEN
+  // getId(): Id {
+  //   return this.id // TPP: nil→constant
+  // }
+  // Run test: ✅ Passes
+  // GREEN complete
+  
+  // STEP 3: REFACTOR
+  // No changes needed, method is simple
+  // REFACTOR complete
+  
+  // STEP 4: RE-EVALUATE
+  // Move to case #3: Get tag name
+  // Return to RED
+  
+  // ... Continue cycle for remaining test cases
+})
+```
+
+## Integration with Existing Rules
+
+This TDD cycle integrates with and enforces other project rules:
+
+### Code Completeness (`.cursor/rules/code-completeness.mdc`)
+
+- ✅ Tests ensure no TODOs remain (must implement to pass)
+- ✅ Tests prevent empty implementations
+- ✅ Tests verify all code paths work
+- ✅ Tests catch incomplete error handling
+
+### Biome Format and Validate (`.cursor/rules/biome-format-and-validate.mdc`)
+
+**Workflow**:
+1. Write test (RED)
+2. Implement code (GREEN)
+3. Refactor code (REFACTOR)
+4. **Run Biome** on edited files
+5. Fix any Biome errors
+6. Re-run tests to ensure still green
+7. Re-evaluate and continue
+
+```bash
+# After GREEN or REFACTOR phase
+bunx --yes @biomejs/biome check --write <file-path>
+
+# Verify tests still pass
+bun test <test-file-path>
+```
+
+### DDD Patterns (`.cursor/rules/code-style-and-commands.mdc`)
+
+- ✅ Tests enforce DDD patterns (value objects, entities, use cases)
+- ✅ Tests verify domain invariants
+- ✅ Tests ensure proper error handling with OneJsError
+- ✅ Tests validate transformation methods (toDto, etc.)
+
+### Domain Architecture (`.cursor/rules/ddd-application-use.mdc`)
+
+- ✅ Tests respect layer boundaries
+- ✅ Tests mock dependencies appropriately
+- ✅ Tests verify use case patterns
+- ✅ Tests ensure repository isolation
+
+## Rules Summary
+
+### ✅ MANDATORY - Agent MUST
+
+- Follow 5-step cycle (REASON-RED-GREEN-REFACTOR-RE-EVALUATE)
+- Write test before implementation (RED first)
+- Keep existing tests passing (never delete tests)
+- Use TPP transformations in order (simplest first)
+- Write test cases list before coding (REASON phase)
+- Run tests after each phase to verify state
+- Ask Technical Lead when requirements unclear
+- Make minimal modifications to achieve goal
+- Respect existing naming conventions
+- Maintain public interface compatibility
+- Follow Arrange-Act-Assert pattern
+- Use descriptive test names
+- Run Biome after editing files
+- Keep all tests green during refactoring
+- **Use separate TEST_DATABASE_URL for all integration tests**
+- **Verify TEST_DATABASE_URL exists in beforeEach for integration tests**
+- **Clean database before AND after each integration test**
+- **Ensure test database exists and is migrated before running integration tests**
+- **Make integration tests independent (can run in any order)**
+
+### ❌ FORBIDDEN - Agent MUST NOT
+
+- Delete or skip existing tests
+- Write implementation before tests
+- Change public interfaces without approval
+- Skip any of the 5 steps
+- Write complex solutions prematurely
+- Add features without tests
+- Break existing functionality
+- Ignore test failures
+- Use `.skip` to hide failing tests
+- Modify tests to make broken code pass
+- Refactor without running tests
+- Jump to complex transformations (violate TPP order)
+- Proceed with unclear requirements
+- **Use DATABASE_URL in integration tests (must use TEST_DATABASE_URL)**
+- **Share database state between integration test cases**
+- **Skip database cleanup in integration tests**
+- **Rely on test execution order in integration tests**
+- **Run integration tests without TEST_DATABASE_URL environment variable**
+
+### ⚠️ REQUIRED - Agent MUST ASK
+
+When encountering:
+- Unclear business requirements → Ask Technical Lead
+- Ambiguous acceptance criteria → Ask for clarification
+- Uncertain about test priority → Ask for guidance
+- Public interface changes needed → Ask for approval
+- Breaking changes required → Ask for migration strategy
+- Complex refactoring decisions → Consult coding standards
+
+## Test Quality Guidelines
+
+### ✅ DO
+
+- Test business-critical behavior
+- Test error handling and edge cases
+- Use descriptive test names following pattern: "should [expected behavior] when [condition]"
+- Follow Arrange-Act-Assert pattern strictly
+- Mock external dependencies in unit tests
+- Use real infrastructure in integration tests
+- Clean up test data after integration tests
+- Keep tests focused on single behavior
+- Write tests that document requirements
+- Make tests readable and maintainable
+
+### ❌ DON'T DO
+
+- Don't write tests for trivial code
+- Don't test framework functionality
+- Don't test third-party libraries
+- Don't write tests that only verify mocks
+- Don't write tests without clear purpose
+- Don't test implementation details (test behavior)
+- Don't write flaky tests (non-deterministic)
+- Don't write tests that depend on execution order
+- Don't write tests with unclear assertions
+- Don't skip writing tests for "simple" code
+
+## Coverage Philosophy
+
+**Focus on meaningful coverage, not percentage targets:**
+
+- **High coverage (80-100%)**: Domain logic (value objects, entities, domain services)
+- **Medium coverage (60-80%)**: Application layer (use cases, application services)
+- **Low coverage (40-60%)**: Infrastructure (adapters), controllers (thin adapters)
+
+**Don't aim for 100% coverage** - focus on testing behavior that matters.
+
+**Prioritize**:
+1. Business rules and domain invariants
+2. Error handling and edge cases
+3. Complex algorithms and calculations
+4. Critical workflows and integrations
+
+## Related References
+
+- `.cursor/rules/agent-tdd-enforcement.mdc` - Agent-specific TDD enforcement policy and quick reference
+- `.cursor/rules/code-completeness.mdc` - Code completeness requirements enforced by tests
+- `.cursor/rules/biome-format-and-validate.mdc` - Post-test formatting workflow
+- `.cursor/rules/code-style-and-commands.mdc` - DDD patterns and conventions in tests
+- `.cursor/rules/ddd-application-use.mdc` - Layer architecture and what to test per layer
+- `.cursor/rules/verbose-naming.mdc` - Naming conventions for test clarity
+- `.cursor/rules/try-catch-handling.mdc` - Error handling patterns to test

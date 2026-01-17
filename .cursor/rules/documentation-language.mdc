@@ -1,0 +1,32 @@
+---
+description: Establishes English as the canonical language for project documentation and plans
+globs:
+  - ".rules/**"
+  - "docs/**"
+  - "**/*.md"
+  - "**/*.mdx"
+  - "**/*.mdc"
+  - "packages/**"
+  - "apps/**"
+alwaysApply: false
+---
+# Documentation Language
+
+## Canonical Language
+- All project documentation, including rules, plans, roadmaps, and RFCs, MUST be written in English.
+- If a non-English version exists, an English version MUST be the canonical source of truth and kept in sync.
+
+## Scope
+- Applies to `.cursor/rules/`, `docs/`, RFCs/ADRs, product/tech plans, and any Markdown-based documentation within the repository.
+- Complements `.cursor/rules/code-language.mdc` (identifiers) and `.cursor/rules/code-comments.mdc` (comments).
+
+## Authoring Guidance
+- Use clear, simple English.
+- Prefer structured sections: Summary, Context, Goals/Non-goals, Decisions, Open Questions.
+
+## Enforcement
+- PRs introducing documentation MUST include English content.
+- Reviewers MUST block merges when English is missing or incomplete for canonical docs.
+
+## Migration
+- Existing plans or docs in other languages MUST be translated into English. The English version becomes canonical; other languages are optional mirrors.

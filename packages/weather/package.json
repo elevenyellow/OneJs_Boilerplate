@@ -1,0 +1,14 @@
+{
+  "name": "@packages/weather-api",
+  "version": "1.0.0",
+  "description": "Meteoblue weather API client for climbing zones",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@OneJs/core": "workspace:*",
+    "@shared": "workspace:*"
+  }
+}

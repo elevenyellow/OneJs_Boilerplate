@@ -1,0 +1,20 @@
+---
+description: Release and deployment checklist (invoke manually)
+globs:
+  - "**"
+alwaysApply: false
+---
+
+# Pre-release
+- Update CHANGELOG and versions.
+- Ensure CI is green and coverage ok.
+
+# Release
+- Create semantic tag and release notes.
+- Publish packages when applicable.
+
+# Post-release
+- Smoke test in production.
+- Monitor and have rollback plan.
+
+@CHANGELOG.md

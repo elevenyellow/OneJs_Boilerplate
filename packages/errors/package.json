@@ -1,0 +1,13 @@
+{
+  "name": "@climb-zone/errors",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "@OneJs/core": "workspace:*"
+  }
+}

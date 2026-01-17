@@ -1,0 +1,489 @@
+---
+description: Establishes performance optimization patterns for React including when to use React.memo, useMemo, useCallback, and guidelines for preventing unnecessary re-renders
+globs:
+  - "apps/**/*.tsx"
+  - "apps/**/*.ts"
+  - "packages/**/*.tsx"
+  - "packages/**/*.ts"
+alwaysApply: true
+---
+# React: Performance Optimization Patterns
+
+This rule defines when and how to optimize React component performance. The goal is to prevent unnecessary re-renders while avoiding premature optimization.
+
+## Rationale
+
+- Unnecessary re-renders waste CPU cycles and degrade user experience
+- Premature optimization adds complexity without measurable benefit
+- Clear patterns help developers make informed optimization decisions
+- Consistent use of memoization improves codebase predictability
+
+## Core Principle: Profile Before Optimizing
+
+**DO NOT optimize without measuring first**, except for the strict rules below.
+
+Use React DevTools Profiler to identify:
+- Components that re-render frequently
+- Expensive render operations
+- Unnecessary re-renders in child components
+
+## Strict Rules
+
+### MUST use useCallback for event handlers passed as props
+
+When passing event handlers to child components as props, they MUST be wrapped in useCallback to prevent unnecessary child re-renders.
+
+**Exception:** Event handlers used only within the same component don't need useCallback.
+
+### MUST NOT create inline objects or arrays in props
+
+Inline object literals and array literals in props cause child components to re-render on every parent render.
+
+### MUST NOT create functions in render
+
+Functions created during render have new references every time, breaking memoization.
+
+## Performance Patterns
+
+### ✅ CORRECT - useCallback for event handlers passed as props
+
+```tsx
+function EventsPage() {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  
+  // ✅ Stable function reference with useCallback
+  const handleEdit = useCallback((event: Event) => {
+    setSelectedEvent(event)
+    setDialogOpen(true)
+  }, []) // Empty deps - function doesn't depend on external values
+  
+  const handleDelete = useCallback((event: Event) => {
+    setSelectedEvent(event)
+    setDeleteDialogOpen(true)
+  }, [])
+  
+  // ✅ Pass stable references to child
+  return <EventsTable events={events} onEdit={handleEdit} onDelete={handleDelete} />
+}
+
+// Child component can be memoized effectively
+const EventsTable = React.memo(function EventsTable({ 
+  events, 
+  onEdit, 
+  onDelete 
+}: EventsTableProps) {
+  // Won't re-render unless events, onEdit, or onDelete change
+  return <table>{/* render events */}</table>
+})
+```
+
+### ✅ CORRECT - useMemo for expensive computations
+
+```tsx
+function EventsPage() {
+  const { data: events } = useEvents()
+  
+  // ✅ Expensive computation - extract unique venues from large list
+  const uniqueVenues = useMemo(() => {
+    if (!events) return []
+    const venuesSet = new Set<string>()
+    events.forEach((event) => {
+      if (event.venueName?.trim()) {
+        venuesSet.add(event.venueName)
+      }
+    })
+    return Array.from(venuesSet).sort()
+  }, [events])
+  
+  // ✅ Expensive filtering operation
+  const filteredEvents = useMemo(() => {
+    return events?.filter(event => {
+      // Complex filtering logic
+      return matchesFilters(event, filters)
+    }) ?? []
+  }, [events, filters])
+  
+  return <VenueFilter venues={uniqueVenues} />
+}
+```
+
+### ✅ CORRECT - React.memo for expensive components
+
+```tsx
+// ✅ Expensive component with stable props
+const EventRow = React.memo(function EventRow({ 
+  event, 
+  onEdit, 
+  onDelete 
+}: EventRowProps) {
+  // Complex rendering logic
+  return (
+    <tr>
+      <td>
+        <LazyImage src={event.posterUrl} alt={event.title} width={64} height={64} />
+      </td>
+      <td>{event.title}</td>
+      <td>{format(event.startDate, 'PPP')}</td>
+      <td>
+        <Button onClick={() => onEdit(event)}>Edit</Button>
+        <Button onClick={() => onDelete(event)}>Delete</Button>
+      </td>
+    </tr>
+  )
+})
+
+// Usage with stable callbacks
+function EventsTable({ events }: { events: Event[] }) {
+  const handleEdit = useCallback((event: Event) => {
+    // Edit logic
+  }, [])
+  
+  const handleDelete = useCallback((event: Event) => {
+    // Delete logic
+  }, [])
+  
+  return (
+    <table>
+      <tbody>
+        {events.map(event => (
+          <EventRow 
+            key={event.id} 
+            event={event} 
+            onEdit={handleEdit} 
+            onDelete={handleDelete} 
+          />
+        ))}
+      </tbody>
+    </table>
+  )
+}
+```
+
+### ✅ CORRECT - Avoid inline objects in props
+
+```tsx
+// ❌ BAD - Inline object creates new reference every render
+function EventsPage() {
+  return <EventsFilters filters={{ cityId: '123', startDate: Date.now() }} />
+}
+
+// ✅ GOOD - Extract to stable reference
+function EventsPage() {
+  const [filters, setFilters] = useState({ cityId: '123', startDate: Date.now() })
+  return <EventsFilters filters={filters} />
+}
+
+// ✅ GOOD - Use useMemo for computed objects
+function EventsPage() {
+  const filters = useMemo(() => ({
+    cityId: selectedCity?.id,
+    startDate: startDate?.getTime(),
+  }), [selectedCity?.id, startDate])
+  
+  return <EventsFilters filters={filters} />
+}
+```
+
+### ✅ CORRECT - Avoid inline arrays in props
+
+```tsx
+// ❌ BAD - Inline array creates new reference every render
+function EventsPage() {
+  return <TagSelector tags={['music', 'sports', 'food']} />
+}
+
+// ✅ GOOD - Extract to constant outside component
+const DEFAULT_TAGS = ['music', 'sports', 'food']
+
+function EventsPage() {
+  return <TagSelector tags={DEFAULT_TAGS} />
+}
+
+// ✅ GOOD - Use useMemo for computed arrays
+function EventsPage() {
+  const { data: events } = useEvents()
+  
+  const eventIds = useMemo(() => 
+    events?.map(e => e.id) ?? [], 
+    [events]
+  )
+  
+  return <EventSelector eventIds={eventIds} />
+}
+```
+
+### ✅ CORRECT - Stable dependencies in useCallback
+
+```tsx
+function EventsPage() {
+  const [filters, setFilters] = useState<EventFilters>({})
+  const queryClient = useQueryClient()
+  
+  // ✅ Include all dependencies
+  const handleFilterChange = useCallback((newFilters: Partial<EventFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }))
+    queryClient.invalidateQueries({ queryKey: ['events'] })
+  }, [queryClient]) // queryClient is stable from TanStack Query
+  
+  return <EventsFilters filters={filters} onChange={handleFilterChange} />
+}
+```
+
+### ✅ CORRECT - Component composition to avoid prop drilling
+
+```tsx
+// ✅ GOOD - Composition avoids passing callbacks through multiple levels
+function EventsPage() {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  
+  const handleEdit = useCallback((event: Event) => {
+    setSelectedEvent(event)
+  }, [])
+  
+  return (
+    <div>
+      {/* Pass data down, hoist callbacks up */}
+      <EventsTable events={events}>
+        {(event) => (
+          <EventRow event={event} onEdit={handleEdit} />
+        )}
+      </EventsTable>
+    </div>
+  )
+}
+```
+
+### ✅ CORRECT - Lazy loading for heavy components
+
+```tsx
+import { lazyComponent } from '@/components/lazyComponent'
+
+// ✅ Heavy dialog loaded only when needed
+const MergeReviewDialog = lazyComponent(
+  () => import('@/components/events/MergeReviewDialog').then(m => ({
+    default: m.MergeReviewDialog,
+  })),
+  { fallback: <div className="p-4">Loading...</div> }
+)
+
+function EventsPage() {
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
+  
+  return (
+    <>
+      <Button onClick={() => setMergeDialogOpen(true)}>Merge Events</Button>
+      {/* Only loads when dialog opens */}
+      {mergeDialogOpen && <MergeReviewDialog open={mergeDialogOpen} />}
+    </>
+  )
+}
+```
+
+### ❌ INCORRECT - Inline function in props
+
+```tsx
+// ❌ BAD - New function created every render
+function EventsPage() {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  
+  return (
+    <EventsTable 
+      events={events}
+      onEdit={(event) => {
+        setSelectedEvent(event)
+        setDialogOpen(true)
+      }}
+    />
+  )
+}
+
+// ✅ GOOD - useCallback for stable reference
+function EventsPage() {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  
+  const handleEdit = useCallback((event: Event) => {
+    setSelectedEvent(event)
+    setDialogOpen(true)
+  }, [])
+  
+  return <EventsTable events={events} onEdit={handleEdit} />
+}
+```
+
+### ❌ INCORRECT - Unnecessary useMemo
+
+```tsx
+// ❌ BAD - Premature optimization for simple computation
+function EventCard({ event }: { event: Event }) {
+  const title = useMemo(() => event.title.toUpperCase(), [event.title])
+  // ❌ toUpperCase() is cheap, useMemo adds overhead
+  
+  return <h2>{title}</h2>
+}
+
+// ✅ GOOD - Simple computation doesn't need memoization
+function EventCard({ event }: { event: Event }) {
+  const title = event.title.toUpperCase()
+  return <h2>{title}</h2>
+}
+```
+
+### ❌ INCORRECT - Unnecessary React.memo
+
+```tsx
+// ❌ BAD - Simple component with cheap render
+const SimpleButton = React.memo(function SimpleButton({ label }: { label: string }) {
+  return <button>{label}</button>
+})
+// ❌ Memo overhead > render cost
+
+// ✅ GOOD - No memo for simple components
+function SimpleButton({ label }: { label: string }) {
+  return <button>{label}</button>
+}
+
+// ✅ GOOD - Memo for expensive components
+const ComplexEventCard = React.memo(function ComplexEventCard({ event }: { event: Event }) {
+  // Expensive rendering with images, formatting, calculations
+  return (
+    <div>
+      <LazyImage src={event.posterUrl} />
+      {/* Complex layout and calculations */}
+    </div>
+  )
+})
+```
+
+### ❌ INCORRECT - Missing dependencies in useCallback
+
+```tsx
+// ❌ BAD - Missing dependency (filters)
+function EventsPage() {
+  const [filters, setFilters] = useState<EventFilters>({})
+  
+  const handleSearch = useCallback((query: string) => {
+    setFilters({ ...filters, search: query }) // ❌ Uses stale filters
+  }, []) // ❌ Missing filters dependency
+  
+  return <SearchInput onSearch={handleSearch} />
+}
+
+// ✅ GOOD - Include all dependencies
+function EventsPage() {
+  const [filters, setFilters] = useState<EventFilters>({})
+  
+  const handleSearch = useCallback((query: string) => {
+    setFilters(prev => ({ ...prev, search: query })) // ✅ Use updater function
+  }, []) // ✅ No external dependencies needed
+  
+  return <SearchInput onSearch={handleSearch} />
+}
+
+// ✅ ALTERNATIVE - Include dependency
+function EventsPage() {
+  const [filters, setFilters] = useState<EventFilters>({})
+  
+  const handleSearch = useCallback((query: string) => {
+    setFilters({ ...filters, search: query })
+  }, [filters]) // ✅ Include filters (but recreates callback when filters change)
+  
+  return <SearchInput onSearch={handleSearch} />
+}
+```
+
+## When to Use Each Optimization
+
+### Use React.memo when:
+- Component has expensive render logic (complex calculations, many elements)
+- Component receives stable props most of the time
+- Component is rendered frequently with same props
+- Profiling shows unnecessary re-renders
+
+### Use useMemo when:
+- Computation is expensive (filtering large arrays, complex calculations)
+- Result is used in dependency arrays of other hooks
+- Result is passed as prop to memoized child components
+- Profiling shows computation is a bottleneck
+
+### Use useCallback when:
+- Function is passed as prop to child components (REQUIRED)
+- Function is used in dependency arrays of other hooks
+- Function is passed to memoized components
+
+### DON'T optimize when:
+- Component renders are cheap (< 1ms)
+- Props change frequently anyway
+- Component is rarely rendered
+- You haven't profiled to confirm the issue
+
+## Performance Checklist
+
+### ✅ DO
+
+- Profile with React DevTools before optimizing
+- Use useCallback for all event handlers passed as props
+- Avoid inline objects and arrays in props
+- Use useMemo for expensive computations (filtering large lists)
+- Use React.memo for expensive components with stable props
+- Lazy load heavy components (charts, dialogs, editors)
+- Extract constants outside components
+- Use updater functions in setState to avoid dependencies
+
+### ❌ DON'T
+
+- Don't optimize without measuring first
+- Don't use React.memo on every component
+- Don't use useMemo for cheap computations
+- Don't create inline functions in props
+- Don't create inline objects/arrays in props
+- Don't forget dependencies in useCallback/useMemo
+- Don't over-optimize at the expense of readability
+
+## Measuring Performance
+
+### Use React DevTools Profiler
+
+```tsx
+// Wrap component to profile
+import { Profiler } from 'react'
+
+function EventsPage() {
+  return (
+    <Profiler id="EventsPage" onRender={(id, phase, actualDuration) => {
+      console.log(`${id} (${phase}) took ${actualDuration}ms`)
+    }}>
+      {/* component content */}
+    </Profiler>
+  )
+}
+```
+
+### Performance Budgets
+
+- Initial page load: < 3s
+- Time to Interactive: < 5s
+- Component render: < 16ms (60fps)
+- Expensive computation: < 100ms
+
+## PR Checklist
+
+- [ ] All event handlers passed as props use useCallback
+- [ ] No inline objects or arrays in props
+- [ ] No functions created in render
+- [ ] Expensive computations use useMemo
+- [ ] Heavy components are lazy loaded
+- [ ] React.memo used only for expensive components
+- [ ] Performance optimizations are justified by profiling (except strict rules)
+
+## Exceptions
+
+- Prototypes and POCs may skip optimizations temporarily
+- Simple components (< 10 elements) rarely need optimization
+- Components that always re-render (due to changing props) don't benefit from memo
+
+## Related Rules
+
+- `.cursor/rules/react-lazy-loading.mdc` - Lazy loading patterns for components and images
+- `.cursor/rules/react-custom-hooks.mdc` - Stable references in custom hooks
+- `.cursor/rules/react-state-management.mdc` - State management patterns affecting performance
+- `.cursor/rules/react-component-decomposition.mdc` - Component size affects render cost

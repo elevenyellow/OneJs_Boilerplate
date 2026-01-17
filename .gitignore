@@ -37,3 +37,4 @@ yarn.lock
 schema.prisma
 migrations
 data
+redis-data/dump.rdb

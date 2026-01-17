@@ -1,0 +1,148 @@
+---
+description: Add features to the frontend
+globs:
+  - "apps/next/**"
+alwaysApply: false
+---
+# Frontend
+
+- is inside a bun monorepo
+- the frontend folder is /apps/next
+- uses NextJs version 14
+- uses shadcn for frontend components
+
+## Principles (Next 14 server-first)
+- default to Server Components (RSC); use `use client` only when interaction/state is needed
+- avoid Next API routes; prefer backend in apps/api and call via fetch
+- colocate small UI logic with components; move business logic to use-cases in packages
+
+## Structure and Naming
+- app/: routing, layouts, error.tsx, loading.tsx
+- components/: UI components; shadcn components under components/ui
+- lib/: small frontend utilities (formatting, adapters for fetch)
+- components and files: PascalCase for components; use *.client.tsx only when it helps clarity
+
+## Data Fetching and Caching
+- fetch in Server Components by default
+- use revalidate for ISR or noStore() for dynamic data
+- use Suspense/streaming for heavy lists (e.g., event-list) and skeletons for perceived performance
+- avoid global singleton clients in the browser; send serialized data from server
+
+## State and Forms
+- keep local state minimal in Client Components
+- prefer Server Actions when viable; otherwise call apps/api via fetch with typed DTOs
+- handle optimistic updates carefully; reconcile with server responses
+
+## Performance
+- use next/image; avoid dangerouslySetInnerHTML unless sanitized
+- split large components; memoize selectively for stable props
+- avoid unnecessary client hydration; promote server-first rendering
+
+## Accessibility
+- always provide alt text for images
+- use appropriate ARIA roles and associate labels with inputs
+
+## Cheat Sheet
+
+### Server-first vs Client component
+```tsx
+// Server Component (default)
+export default async function Page() {
+  const data = await getData() // fetch on server
+  return <List data={data} />
+}
+
+'use client'
+export function InteractiveWidget() {
+  const [open, setOpen] = useState(false)
+  return <Button onClick={() => setOpen(!open)}>Toggle</Button>
+}
+```
+
+### Data fetching with caching
+```ts
+export const revalidate = 300 // ISR 5 minutes
+// or
+import { unstable_noStore as noStore } from 'next/cache'
+noStore()
+```
+
+### Suspense/streaming for heavy lists
+```tsx
+import { Suspense } from 'react'
+
+export default function Page() {
+  return (
+    <Suspense fallback={<SkeletonRows quantity={10} />}> 
+      <EventList />
+    </Suspense>
+  )
+}
+```
+
+### Typed fetch to apps/api with DTOs
+```ts
+// packages/events/domain/dtos/event.dto.ts
+export type EventDto = {
+  id: string
+  title: string
+  startDate: string
+}
+```
+
+```ts
+// apps/next/lib/http.ts
+export async function getJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, init)
+  if (!res.ok) throw new Error('HTTP error ' + res.status)
+  return await res.json()
+}
+```
+
+```tsx
+// apps/next/app/events/page.tsx (Server Component)
+import type { EventDto } from '@events/domain/dtos'
+import { getJson } from '@/lib/http'
+
+export const revalidate = 300
+
+export default async function EventsPage() {
+  const events = await getJson<EventDto[]>(`${process.env.NEXT_PUBLIC_API_URL}/events`)
+  return <EventList data={events} />
+}
+```
+
+### Server Action: create event with validation
+```tsx
+// apps/next/app/events/new/page.tsx (Server Component)
+import { revalidatePath } from 'next/cache'
+
+export default function NewEventPage() {
+  async function createEvent(formData: FormData) {
+    'use server'
+    const title = String(formData.get('title') || '')
+    const startDate = String(formData.get('startDate') || '')
+    if (!title || !startDate) return { success: false, reason: 'Missing fields' }
+
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title, startDate }),
+      cache: 'no-store',
+    })
+    if (!res.ok) return { success: false, reason: 'API error ' + res.status }
+    revalidatePath('/events')
+    return { success: true }
+  }
+
+  return (
+    <form action={createEvent} className="space-y-4">
+      <input name="title" placeholder="Title" />
+      <input name="startDate" type="datetime-local" />
+      <button type="submit">Create</button>
+    </form>
+  )
+}
+```
+
+

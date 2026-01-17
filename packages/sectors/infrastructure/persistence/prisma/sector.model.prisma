@@ -1,0 +1,161 @@
+model Sector {
+  id         String @id @default(uuid())
+  externalId String @unique
+
+  // Identificación
+  name            String
+  asciiName       String?
+  type            String
+  subType         String
+  urlStub         String?
+  urlAncestorStub String?
+
+  // Imágenes
+  headerImage String?
+  coverImage  String?
+  thumbnail   String?
+
+  // Acceso (importante para guía)
+  approach String?
+
+  // Geometry (para mapas)
+  latitude  Float?
+  longitude Float?
+  geometry  Json?
+
+  // Hierarchy
+  depth            Int
+  parentId         String?
+  cragId           String
+  externalParentId String?
+
+  // Stats (consultables)
+  numberRoutes Int?
+  numberPhotos Int?
+  numberTopos  Int?
+  ascentCount  Int?
+  kudos        Int? // Favorites count
+  maxPop       Int?
+  subAreaCount Int?
+
+  // Altura promedio (filtrable)
+  averageHeight     Float?
+  averageHeightUnit String?
+
+  // Grados (distribución para filtros)
+  gbRoutes Int[]
+
+  // Temporada
+  seasonality Int[]
+
+  // Contenido rico (JSON)
+  beta     Json?
+  styles   Json?
+  altNames Json?
+  tags     Json?
+
+  // Tags atómicos (valores normalizados para filtrado eficiente)
+  tagAspect     String? // N, NE, E, SE, S, SW, W, NW
+  tagWalkInTime String? // UNDER_5_MIN, FROM_5_TO_10_MIN, etc.
+  tagFamily     String? // KID_FRIENDLY, NOT_KID_FRIENDLY
+  tagWeather    String[] // ALL_DAY_SUN, MORNING_SUN, etc.
+  tagCrowds     String? // DESERTED, QUIET, BUSY, CROWDED
+  tagStyle      String? // SLAB, VERTICAL, OVERHANG, etc.
+
+  // Flags
+  hasTopo       Boolean @default(false)
+  hasSubSectors Boolean @default(false)
+
+  // === COMPUTED STATISTICS (for filtering) ===
+
+  // Grade Distribution Stats (use GradeConverter on frontend to display in any system)
+  minGradeIndex           Int     @default(0)
+  maxGradeIndex           Int     @default(0)
+  modeGradeIndex          Int     @default(0) // Most common grade
+  beginnerRoutesCount     Int     @default(0) // Grades <= 22 (up to ~5c/5.9)
+  intermediateRoutesCount Int     @default(0) // Grades 23-34 (~6a-6c+)
+  advancedRoutesCount     Int     @default(0) // Grades 35-44 (~7a-7c+)
+  eliteRoutesCount        Int     @default(0) // Grades 45+ (~8a+)
+  difficultySpread        String  @default("varied") // 'concentrated' | 'varied'
+  concentrationScore      Float   @default(0) // 0-3 (like route stars)
+
+  // Style Distribution Stats
+  sportCount   Int     @default(0)
+  tradCount    Int     @default(0)
+  boulderCount Int     @default(0)
+  aidCount     Int     @default(0)
+  alpineCount  Int     @default(0)
+  primaryStyle String  @default("sport") // 'sport' | 'trad' | 'boulder' | etc.
+  isMultiStyle Boolean @default(false)
+
+  // Quality Stats
+  classicRoutesCount     Int     @default(0) // 3 stars
+  recommendedRoutesCount Int     @default(0) // 2+ stars
+  highQualityRoutesCount Int     @default(0) // Quality score >= 70
+  averageQualityScore    Float   @default(0)
+  averageStars           Float   @default(0)
+  qualityRating          Float   @default(0) // 0-3 (like route stars)
+  isHighQualitySector    Boolean @default(false)
+
+  // Popularity Stats
+  totalAscents           Int     @default(0)
+  popularRoutesCount     Int     @default(0) // 50+ ascents
+  veryPopularRoutesCount Int     @default(0) // 100+ ascents
+  averageAscentsPerRoute Float   @default(0)
+  popularityScore        Float   @default(0) // 0-3 (like route stars)
+  isPopularSector        Boolean @default(false)
+
+  // Height Stats
+  maxHeight            Float   @default(0)
+  totalClimbableMeters Float   @default(0)
+  multiPitchCount      Int     @default(0)
+  singlePitchCount     Int     @default(0)
+  averagePitches       Float   @default(1)
+  isMultiPitchFocused  Boolean @default(false)
+  hasTallRoutes        Boolean @default(false)
+
+  // Equipment Stats
+  averageBolts        Float   @default(0)
+  maxBolts            Int     @default(0)
+  routesWithTopoCount Int     @default(0)
+  isWellDocumented    Boolean @default(false)
+  isWellEquipped      Boolean @default(false)
+
+  // Audience Profile
+  beginnerPercentage     Int     @default(0)
+  intermediatePercentage Int     @default(0)
+  advancedPercentage     Int     @default(0)
+  elitePercentage        Int     @default(0)
+  primaryAudience        String  @default("intermediate") // 'beginner' | 'intermediate' | 'advanced' | 'elite'
+  isBeginnerFriendly     Boolean @default(false)
+  isFamilyFriendly       Boolean @default(false)
+
+  // Overall Scores
+  overallScore Float @default(0) // 0-3 (like route stars)
+  sectorRating Float @default(0) // 0-3 (like route stars)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  crag     Crag     @relation(fields: [cragId], references: [id])
+  parent   Sector?  @relation("SectorHierarchy", fields: [parentId], references: [id])
+  children Sector[] @relation("SectorHierarchy")
+  routes   Route[]
+  topos    Topo[]
+
+  // Índices
+  @@index([cragId])
+  @@index([parentId])
+  @@index([depth])
+  @@index([numberRoutes])
+  @@index([latitude, longitude])
+  @@index([externalParentId])
+  // Índices para filtros de tags atómicos
+  @@index([tagAspect])
+  @@index([tagWalkInTime])
+  @@index([tagFamily])
+  @@index([tagCrowds])
+  @@index([tagStyle])
+}

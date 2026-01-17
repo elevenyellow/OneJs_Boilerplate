@@ -1,0 +1,413 @@
+---
+description: Establishes patterns for React state management including local state limits, derived state, URL state for filters, and when to use Context or external stores
+globs:
+  - "apps/**/*.tsx"
+  - "apps/**/*.ts"
+  - "packages/**/*.tsx"
+  - "packages/**/*.ts"
+alwaysApply: true
+---
+# React: State Management Patterns
+
+This rule defines when and how to use different state management approaches in React applications. The goal is to keep components maintainable by limiting local state complexity and choosing the right state solution for each use case.
+
+## Rationale
+
+- Excessive local state makes components hard to understand and test
+- Derived state should be computed, not stored
+- URL state makes filters and pagination shareable and bookmarkable
+- Context avoids prop drilling for shared concerns
+- Clear patterns reduce decision fatigue and improve consistency
+
+## State Management Hierarchy
+
+Choose the simplest solution that fits the use case:
+
+1. **Derived state** (useMemo, computed values) - for values calculated from props or other state
+2. **Local state** (useState) - for UI-only state (modals, toggles, form inputs)
+3. **URL state** (search params) - for filters, pagination, tabs, search queries
+4. **Lifted state** - for state shared between siblings (lift to common parent)
+5. **Context** - for state shared across a subtree (auth, theme, feature flags)
+6. **Custom hooks** - for complex state machines or reusable stateful logic
+7. **External stores** - for complex global state (TanStack Query, Zustand, etc.)
+
+## Strict Limits
+
+### MUST NOT exceed 5 useState calls per component
+
+If a component needs more than 5 useState calls, it violates Single Responsibility Principle.
+
+**Solutions:**
+- Extract logic into a custom hook
+- Split component into smaller components
+- Use a reducer for related state (useReducer)
+- Move state to URL parameters if it's filter/navigation state
+
+### MUST use URL state for filters and pagination
+
+Filters, search queries, pagination, and tabs MUST be stored in URL search parameters, not local state.
+
+**Benefits:**
+- Shareable URLs
+- Browser back/forward works correctly
+- Bookmarkable state
+- Survives page refresh
+
+## Patterns and Examples
+
+### ✅ CORRECT - Local state for UI-only concerns
+
+```tsx
+// Modal open/closed state
+function EventDialog() {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      {/* dialog content */}
+    </Dialog>
+  )
+}
+
+// Form input state (before submission)
+function CreateEventForm() {
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [date, setDate] = useState<Date>()
+  
+  // 3 useState calls - well within limit
+  return <form>{/* form fields */}</form>
+}
+```
+
+### ✅ CORRECT - Derived state with useMemo
+
+```tsx
+function EventsPage() {
+  const { data: events } = useEvents()
+  
+  // ✅ Derived from events - computed, not stored
+  const uniqueVenues = useMemo(() => {
+    if (!events) return []
+    const venuesSet = new Set<string>()
+    events.forEach((event) => {
+      if (event.venueName?.trim()) {
+        venuesSet.add(event.venueName)
+      }
+    })
+    return Array.from(venuesSet).sort()
+  }, [events])
+  
+  // ✅ Derived - simple computation
+  const hasActiveFilters = filters.cityId || filters.startDate || filters.categoryId
+  
+  return <div>{/* use derived values */}</div>
+}
+```
+
+### ✅ CORRECT - URL state for filters (TanStack Router example)
+
+```tsx
+import { useNavigate, useSearch } from '@tanstack/react-router'
+
+type EventFilters = {
+  cityId?: string
+  startDate?: number
+  endDate?: number
+  categoryId?: string
+  page?: number
+}
+
+function EventsPage() {
+  const navigate = useNavigate()
+  const filters = useSearch() as EventFilters
+  
+  const updateFilters = (newFilters: Partial<EventFilters>) => {
+    navigate({
+      search: (prev) => ({ ...prev, ...newFilters, page: 1 }), // Reset to page 1 on filter change
+    })
+  }
+  
+  const handleCityFilter = (cityId: string) => {
+    updateFilters({ cityId })
+  }
+  
+  return <EventsFilters filters={filters} onCityFilter={handleCityFilter} />
+}
+```
+
+### ✅ CORRECT - Context for shared subtree state
+
+```tsx
+// apps/admin/src/contexts/AuthContext.tsx
+import { createContext, useContext, useState } from 'react'
+
+type AuthContextValue = {
+  user: User | null
+  isAuthenticated: boolean
+  login: (credentials: Credentials) => Promise<void>
+  logout: () => void
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  
+  const login = async (credentials: Credentials) => {
+    const user = await authApi.login(credentials)
+    setUser(user)
+  }
+  
+  const logout = () => setUser(null)
+  
+  return (
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within AuthProvider')
+  return context
+}
+```
+
+### ✅ CORRECT - Extract to custom hook when exceeding limit
+
+```tsx
+// ❌ BAD - Too many useState in component (8 calls)
+function EventsPageBad() {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
+  const [imageDialogOpen, setImageDialogOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([])
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+  const [selectedEventTitle, setSelectedEventTitle] = useState<string>('')
+  
+  // Component logic...
+}
+
+// ✅ GOOD - Extract to custom hook
+function useEventDialogs() {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
+  const [imageDialogOpen, setImageDialogOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([])
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+  const [selectedEventTitle, setSelectedEventTitle] = useState<string>('')
+  
+  const openEditDialog = (event: Event) => {
+    setSelectedEvent(event)
+    setDialogOpen(true)
+  }
+  
+  const openDeleteDialog = (event: Event) => {
+    setSelectedEvent(event)
+    setDeleteDialogOpen(true)
+  }
+  
+  const closeAllDialogs = () => {
+    setDialogOpen(false)
+    setDeleteDialogOpen(false)
+    setMergeDialogOpen(false)
+    setImageDialogOpen(false)
+    setSelectedEvent(null)
+    setSelectedEventIds([])
+  }
+  
+  return {
+    dialogOpen,
+    deleteDialogOpen,
+    mergeDialogOpen,
+    imageDialogOpen,
+    selectedEvent,
+    selectedEventIds,
+    selectedImageUrl,
+    selectedEventTitle,
+    openEditDialog,
+    openDeleteDialog,
+    closeAllDialogs,
+    setMergeDialogOpen,
+    setSelectedEventIds,
+    // ... other helpers
+  }
+}
+
+// Component is now clean
+function EventsPageGood() {
+  const dialogs = useEventDialogs()
+  // Component logic using dialogs.*
+}
+```
+
+### ✅ CORRECT - useReducer for complex related state
+
+```tsx
+type FormState = {
+  title: string
+  description: string
+  date: Date | null
+  venue: string
+  errors: Record<string, string>
+  isSubmitting: boolean
+}
+
+type FormAction =
+  | { type: 'SET_FIELD'; field: keyof FormState; value: any }
+  | { type: 'SET_ERROR'; field: string; error: string }
+  | { type: 'CLEAR_ERRORS' }
+  | { type: 'SUBMIT_START' }
+  | { type: 'SUBMIT_SUCCESS' }
+  | { type: 'SUBMIT_ERROR'; errors: Record<string, string> }
+  | { type: 'RESET' }
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value }
+    case 'SET_ERROR':
+      return { ...state, errors: { ...state.errors, [action.field]: action.error } }
+    case 'CLEAR_ERRORS':
+      return { ...state, errors: {} }
+    case 'SUBMIT_START':
+      return { ...state, isSubmitting: true, errors: {} }
+    case 'SUBMIT_SUCCESS':
+      return initialState
+    case 'SUBMIT_ERROR':
+      return { ...state, isSubmitting: false, errors: action.errors }
+    case 'RESET':
+      return initialState
+    default:
+      return state
+  }
+}
+
+function ComplexForm() {
+  const [state, dispatch] = useReducer(formReducer, initialState)
+  
+  // Much cleaner than 6+ useState calls
+  return <form>{/* form fields */}</form>
+}
+```
+
+### ❌ INCORRECT - Storing derived state
+
+```tsx
+// ❌ BAD - filteredEvents is derived from events and filters
+function EventsPage() {
+  const [events, setEvents] = useState<Event[]>([])
+  const [filters, setFilters] = useState<Filters>({})
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]) // ❌ Unnecessary state
+  
+  useEffect(() => {
+    // ❌ Manually syncing derived state
+    setFilteredEvents(events.filter(e => matchesFilters(e, filters)))
+  }, [events, filters])
+}
+
+// ✅ GOOD - Compute derived state
+function EventsPage() {
+  const [events, setEvents] = useState<Event[]>([])
+  const [filters, setFilters] = useState<Filters>({})
+  
+  // ✅ Derived state - no useState, no useEffect
+  const filteredEvents = useMemo(
+    () => events.filter(e => matchesFilters(e, filters)),
+    [events, filters]
+  )
+}
+```
+
+### ❌ INCORRECT - Local state for filters instead of URL
+
+```tsx
+// ❌ BAD - Filters in local state
+function EventsPage() {
+  const [filters, setFilters] = useState<EventFilters>({})
+  
+  // ❌ Not shareable, not bookmarkable, lost on refresh
+  const { data: events } = useEvents(filters)
+  
+  return <EventsFilters filters={filters} onChange={setFilters} />
+}
+
+// ✅ GOOD - Filters in URL
+function EventsPage() {
+  const navigate = useNavigate()
+  const filters = useSearch() as EventFilters
+  
+  // ✅ Shareable URL, bookmarkable, survives refresh
+  const { data: events } = useEvents(filters)
+  
+  const updateFilters = (newFilters: Partial<EventFilters>) => {
+    navigate({ search: (prev) => ({ ...prev, ...newFilters }) })
+  }
+  
+  return <EventsFilters filters={filters} onChange={updateFilters} />
+}
+```
+
+## When to Use Each Approach
+
+### Use useState when:
+- State is UI-only (modal open/closed, form inputs before submit)
+- State is local to a single component
+- State doesn't need to be shared or persisted
+- You have ≤5 useState calls in the component
+
+### Use useMemo when:
+- Value is computed from props or other state
+- Computation is expensive (filtering large lists, complex calculations)
+- Value is used in dependency arrays
+
+### Use URL state when:
+- Filters, search queries, pagination
+- Tabs or navigation state
+- Any state that should be shareable or bookmarkable
+- State that should survive page refresh
+
+### Use Context when:
+- State is shared across multiple components in a subtree
+- Prop drilling would be excessive (>2 levels)
+- State represents a cross-cutting concern (auth, theme, feature flags)
+- State changes infrequently
+
+### Use custom hooks when:
+- Logic is reusable across components
+- Component has >5 useState calls
+- State machine is complex
+- Side effects need to be encapsulated
+
+### Use external stores when:
+- Server state (use TanStack Query)
+- Complex global state with many subscribers
+- State needs advanced features (persistence, time-travel, devtools)
+
+## PR Checklist
+
+- [ ] No component has >5 useState calls
+- [ ] Filters and pagination use URL state, not local state
+- [ ] Derived values use useMemo, not useState + useEffect
+- [ ] Complex state logic is extracted to custom hooks
+- [ ] Context is used appropriately (not for frequently changing state)
+- [ ] No unnecessary state duplication
+
+## Exceptions
+
+- Prototypes and WIP may temporarily exceed limits with a TODO comment
+- Complex forms with many fields may use useReducer or form libraries (React Hook Form)
+- Animation state may require more useState calls if not extractable
+
+## Related Rules
+
+- `.cursor/rules/react-custom-hooks.mdc` - Guidelines for extracting custom hooks
+- `.cursor/rules/react-performance.mdc` - Performance implications of state management
+- `.cursor/rules/react-component-decomposition.mdc` - Component size and responsibility limits
