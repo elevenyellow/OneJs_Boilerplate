@@ -7,17 +7,8 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: climb_zone         # Database name
-      POSTGRES_USER: admin                 # User (you can change it)
-      POSTGRES_PASSWORD: admin123          # Password (make sure to change in production)
+      POSTGRES_DB: ddd_boilerplate         # Nombre de la base de datos
+      POSTGRES_USER: admin                 # Usuario (puedes cambiarlo)
+      POSTGRES_PASSWORD: admin123          # Contraseña (asegúrate de cambiarla en producción)
     volumes:
-      - ./data:/var/lib/postgresql/data    # Data persistence
-
-  redis:
-    image: docker.io/library/redis:7-alpine
-    container_name: redisdb
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./redis-data:/data
-    command: redis-server --appendonly yes
+      - ./data:/var/lib/postgresql/data    # Persistencia de datos

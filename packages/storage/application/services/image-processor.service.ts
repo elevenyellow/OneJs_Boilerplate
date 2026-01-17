@@ -16,19 +16,19 @@ export interface ImageProcessingConfig {
   fullQuality: number
 }
 
+/** Options for processing and uploading an image */
+export interface ProcessAndUploadOptions {
+  /** URL of the original image or Buffer */
+  source: string | Buffer
+  /** S3 key prefix without extension (e.g., 'images/crags/123/header') */
+  keyPrefix: string
+}
+
 const DEFAULT_CONFIG: ImageProcessingConfig = {
   mobileWidth: 800,
   mobileQuality: 85,
   fullQuality: 90,
 }
-
-/** Types of images we process */
-export type ImageType =
-  | 'crag-header'
-  | 'area-header'
-  | 'sector-header'
-  | 'topo'
-  | 'crag-topo'
 
 /**
  * Service for downloading, processing, and uploading images to S3
@@ -116,52 +116,27 @@ export class ImageProcessorService {
   }
 
   /**
-   * Generate S3 key based on image type and entity ID
-   */
-  private generateKey(
-    type: ImageType,
-    entityId: string,
-    variant: 'mobile' | 'full',
-  ): string {
-    const suffix = variant === 'mobile' ? '800' : 'full'
-
-    switch (type) {
-      case 'crag-header':
-        return `images/crags/${entityId}/header-${suffix}.webp`
-      case 'sector-header':
-        return `images/sectors/${entityId}/header-${suffix}.webp`
-      case 'topo':
-        return `images/topos/${entityId}/${variant === 'mobile' ? 'thumb' : 'full'}.webp`
-      case 'crag-topo':
-        return `images/crag-topos/${entityId}/${variant === 'mobile' ? 'thumb' : 'full'}.webp`
-      default:
-        return `images/misc/${entityId}-${suffix}.webp`
-    }
-  }
-
-  /**
-   * Process and upload an image from a source URL
-   * Downloads the image, creates optimized variants, and uploads to S3
+   * Process and upload an image from a source URL or Buffer
+   * Downloads the image (if URL), creates optimized variants, and uploads to S3
    *
-   * @param sourceUrl - URL of the original image (e.g., from TheCrag)
-   * @param type - Type of image (crag-header, sector-header, topo, crag-topo)
-   * @param entityId - ID of the entity (crag, sector, or topo)
+   * @param options - Processing options with source and keyPrefix
    * @returns Processed images with S3 URLs
    */
   async processAndUpload(
-    sourceUrl: string,
-    type: ImageType,
-    entityId: string,
+    options: ProcessAndUploadOptions,
   ): Promise<ProcessedImages> {
-    // Download original image
-    const originalBuffer = await this.downloadImage(sourceUrl)
+    const { source, keyPrefix } = options
+
+    // Download if source is URL, otherwise use buffer directly
+    const originalBuffer =
+      typeof source === 'string' ? await this.downloadImage(source) : source
 
     // Process into variants
     const processed = await this.processImage(originalBuffer)
 
     // Generate S3 keys
-    const mobileKey = this.generateKey(type, entityId, 'mobile')
-    const fullKey = this.generateKey(type, entityId, 'full')
+    const mobileKey = `${keyPrefix}-800.webp`
+    const fullKey = `${keyPrefix}-full.webp`
 
     // Upload both variants in parallel
     const [mobileResult, fullResult] = await Promise.all([
@@ -190,7 +165,7 @@ export class ImageProcessorService {
     return {
       mobile,
       full,
-      originalUrl: sourceUrl,
+      originalUrl: typeof source === 'string' ? source : undefined,
     }
   }
 
@@ -202,43 +177,30 @@ export class ImageProcessorService {
    * @returns Array of processed image results
    */
   async processAndUploadBatch(
-    images: Array<{
-      sourceUrl: string
-      type: ImageType
-      entityId: string
-    }>,
+    images: ProcessAndUploadOptions[],
   ): Promise<ProcessedImages[]> {
     // Process images sequentially to avoid overwhelming the server
     // Could be parallelized with concurrency limit if needed
     const results: ProcessedImages[] = []
 
     for (const image of images) {
-      try {
-        const result = await this.processAndUpload(
-          image.sourceUrl,
-          image.type,
-          image.entityId,
-        )
-        results.push(result)
-      } catch (error) {
-        console.error(
-          `Failed to process image ${image.sourceUrl}:`,
-          error instanceof Error ? error.message : error,
-        )
-        // Continue with other images even if one fails
-      }
+      const result = await this.processAndUpload(image)
+      results.push(result)
     }
 
     return results
   }
 
   /**
-   * Check if images for an entity already exist in S3
+   * Check if images for a given key prefix already exist in S3
    * Useful to skip re-processing already uploaded images
+   *
+   * @param keyPrefix - S3 key prefix (e.g., 'images/crags/123/header')
+   * @returns True if both mobile and full variants exist
    */
-  async imagesExist(type: ImageType, entityId: string): Promise<boolean> {
-    const mobileKey = this.generateKey(type, entityId, 'mobile')
-    const fullKey = this.generateKey(type, entityId, 'full')
+  async imagesExist(keyPrefix: string): Promise<boolean> {
+    const mobileKey = `${keyPrefix}-800.webp`
+    const fullKey = `${keyPrefix}-full.webp`
 
     const [mobileExists, fullExists] = await Promise.all([
       this.storage.exists(mobileKey),

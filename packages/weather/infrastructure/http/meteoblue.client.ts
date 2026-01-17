@@ -1,11 +1,17 @@
 import { Inject, Injectable, Logger, OneJsError } from '@OneJs/core'
+import got, { HTTPError, TimeoutError } from 'got'
+import { HttpsProxyAgent } from 'hpagent'
 import * as crypto from 'node:crypto'
+import { getProxyUrls, hasProxyUrls } from '@shared'
 import { Coordinates } from '../../domain/value-objects/coordinates.vo'
 import type {
   MeteoblueAPIResponse,
   MeteoblueClientConfig,
   MeteobluePackage,
 } from './meteoblue-api.types'
+
+// Simple round-robin index for proxy rotation
+let currentProxyIndex = 0
 
 /**
  * Injectable HTTP client for Meteoblue API
@@ -83,7 +89,7 @@ export class MeteoblueClient {
           )
         }
 
-        this.logger.info(
+        this.logger.debug(
           'meteoblue:client',
           `Successfully fetched weather for ${coordinates.toString()}`,
         )
@@ -190,58 +196,63 @@ export class MeteoblueClient {
   }
 
   /**
-   * Fetch with timeout
+   * Get next proxy URL using round-robin rotation
+   */
+  private getNextProxy(): string | null {
+    const proxies = getProxyUrls()
+    if (proxies.length === 0) {
+      return null
+    }
+    const proxy = proxies[currentProxyIndex % proxies.length]
+    currentProxyIndex = (currentProxyIndex + 1) % proxies.length
+    return proxy
+  }
+
+  /**
+   * Fetch with timeout using got library
+   * Supports proxy rotation when proxies are configured
    */
   private async fetchWithTimeout(url: string): Promise<MeteoblueAPIResponse> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
-
     try {
-      const response = await fetch(url, {
-        method: 'GET',
+      const useProxy = hasProxyUrls()
+      const proxyUrl = useProxy ? this.getNextProxy() : null
+
+      // Build got options
+      const gotOptions = {
+        timeout: {
+          request: this.timeout,
+          connect: 10000,
+        },
         headers: {
-          'User-Agent': 'MeteoblueDroid/1.40.10 (Android 14; Pixel 4a)', // Exact User-Agent from working code
+          'User-Agent': 'MeteoblueDroid/1.40.10 (Android 14; Pixel 4a)',
           Accept: 'application/json',
         },
-        signal: controller.signal,
-      })
+        retry: {
+          limit: 0, // We handle retries at higher level
+        },
+        responseType: 'json' as const,
+        agent: proxyUrl
+          ? { https: new HttpsProxyAgent({ proxy: proxyUrl }) }
+          : undefined,
+      }
 
-      if (!response.ok) {
-        // Handle specific HTTP errors
-        if (response.status === 401) {
-          throw new OneJsError('UNAUTHORIZED', 401, 'Invalid Meteoblue API key')
-        }
-        if (response.status === 429) {
-          throw new OneJsError(
-            'RATE_LIMITED',
-            429,
-            'Meteoblue API rate limit exceeded',
-          )
-        }
-        if (response.status === 404) {
-          throw new OneJsError(
-            'NOT_FOUND',
-            404,
-            'Location not found in Meteoblue database',
-          )
-        }
+      if (proxyUrl) {
+        this.logger.debug('meteoblue:client', 'Using proxy for request')
+      }
 
-        throw new OneJsError(
-          'HTTP_ERROR',
-          response.status,
-          `Meteoblue API error: ${response.status} ${response.statusText}`,
+      const response = await got.get<MeteoblueAPIResponse>(url, gotOptions)
+
+      return response.body
+    } catch (error: unknown) {
+      // Handle got-specific errors
+      if (error instanceof HTTPError) {
+        this.handleHttpError(
+          error.response.statusCode,
+          error.response.statusMessage || '',
         )
       }
 
-      const data = await response.json()
-      return data as MeteoblueAPIResponse
-    } catch (error) {
-      if (error instanceof OneJsError) {
-        throw error
-      }
-
-      // Handle fetch errors (network, timeout, etc.)
-      if ((error as Error).name === 'AbortError') {
+      if (error instanceof TimeoutError) {
         throw new OneJsError(
           'TIMEOUT',
           408,
@@ -249,14 +260,47 @@ export class MeteoblueClient {
         )
       }
 
+      if (error instanceof OneJsError) {
+        throw error
+      }
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
       throw new OneJsError(
         'NETWORK_ERROR',
         503,
-        `Network error: ${(error as Error).message}`,
+        `Network error: ${errorMessage}`,
       )
-    } finally {
-      clearTimeout(timeoutId)
     }
+  }
+
+  /**
+   * Handle HTTP error responses
+   */
+  private handleHttpError(status: number, statusText: string): never {
+    if (status === 401) {
+      throw new OneJsError('UNAUTHORIZED', 401, 'Invalid Meteoblue API key')
+    }
+    if (status === 429) {
+      throw new OneJsError(
+        'RATE_LIMITED',
+        429,
+        'Meteoblue API rate limit exceeded',
+      )
+    }
+    if (status === 404) {
+      throw new OneJsError(
+        'NOT_FOUND',
+        404,
+        'Location not found in Meteoblue database',
+      )
+    }
+
+    throw new OneJsError(
+      'HTTP_ERROR',
+      status,
+      `Meteoblue API error: ${status} ${statusText}`,
+    )
   }
 
   /**

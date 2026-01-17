@@ -1,16 +1,16 @@
 import { ContainerProvider, logger, OneJs, PluginRegistry } from '@OneJs'
-import { BootstrapLoader } from '@OneJs/core/bootstrap/bootstrap-loader'
+import { EventBusPlugin } from '@OneJs/event-bus'
 import { PrismaPlugin } from '@OneJs/prisma'
 import { Server, ServerPlugin } from '@OneJs/server'
-import cors from '@elysiajs/cors'
-
-// Import bootstrap services to register them
-// import './src/startup/world-scraper.bootstrap' // Disabled: Enable when needed
+import { AuthPlugin } from './src/auth/auth-plugin'
+// import cors from '@elysiajs/cors'
 
 // Register plugins explicitly
+
 PluginRegistry.register(new ServerPlugin())
 PluginRegistry.register(new PrismaPlugin())
-PluginRegistry.register(new BootstrapLoader())
+PluginRegistry.register(new EventBusPlugin())
+PluginRegistry.register(new AuthPlugin())
 
 const oneJs = new OneJs(import.meta.url)
 
@@ -21,7 +21,7 @@ const server = container.get(Server)
 
 server
   .setPrefix('/api')
-  .use(cors({ credentials: true }) as any)
-  .start(Number(process.env.PORT ?? 4000), () => {
+  // .use(cors({ credentials: true }) as any)
+  .start(4000, () => {
     logger.info('api:startup', 'Server started on port 4000')
   })

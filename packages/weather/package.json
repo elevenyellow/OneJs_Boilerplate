@@ -8,6 +8,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@OneJs/core": "workspace:*"
+    "@OneJs/core": "workspace:*",
+    "@shared": "workspace:*"
   }
 }

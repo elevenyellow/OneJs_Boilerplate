@@ -34,8 +34,8 @@ export interface ProcessedImages {
   mobile: ImageVariant
   /** Full-size version (original dimensions, WebP optimized) */
   full: ImageVariant
-  /** Original source URL (TheCrag) for reference */
-  originalUrl: string
+  /** Original source URL for reference (only set if source was a URL) */
+  originalUrl?: string
 }
 
 /**

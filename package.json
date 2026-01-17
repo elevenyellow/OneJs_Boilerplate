@@ -1,5 +1,5 @@
 {
-  "name": "my-eyjs-project",
+  "name": "one-js-boilerplate",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -10,17 +10,18 @@
     ".oneJs/server",
     ".oneJs/prisma",
     ".oneJs/auth",
-    ".oneJs/event-bus"
+    ".oneJs/event-bus",
+    ".oneJs/jobs"
   ],
   "scripts": {
+    "init": "bun scripts/init.ts",
     "create-app": "bun ./.oneJs/create-app/cli.ts",
-    "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb redisdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
+    "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
     "prisma:merge": "bun ./.oneJs/prisma/src/scripts/merge-schema.ts",
     "prisma:validate": "npx prisma validate --schema=./prisma/schema.prisma",
     "prisma:generate:dev": "npx prisma generate --schema=./prisma/schema.prisma",
     "prisma:build": "bun run prisma:merge && bun run prisma:validate && bun run prisma:generate:dev",
     "prisma:migrate:dev": "npx prisma migrate dev --name init --schema=./prisma/schema.prisma",
-    "prisma:migrate:deploy": "npx prisma migrate deploy --schema=./prisma/schema.prisma",
     "prisma:push": "npx prisma db push --schema=./prisma/schema.prisma",
     "prisma:studio": "npx prisma studio --schema=./prisma/schema.prisma",
     "prisma:generate:prod": "npx prisma generate --schema=./prisma/schema.prisma",
@@ -29,10 +30,10 @@
     "test": "bun --test",
     "type-check": "tsc --noEmit",
     "start:api:prod": "bun run --cwd apps/api start",
-    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:deploy && bun run --cwd apps/api start:dev",
-    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:deploy && bun run --cwd apps/admin dev",
-    "start:web:dev": "bun run --cwd apps/web dev",
-    "start:mobile:dev": "bun run --cwd apps/mobile start"
+    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev",
+    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev",
+    "start:mobile": "bun run --cwd apps/mobile-app start",
+    "command": "bun run apps/cli/index.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
@@ -45,11 +46,14 @@
     "@OneJs/auth": "workspace:*",
     "@OneJs/core": "workspace:*",
     "@OneJs/event-bus": "workspace:*",
+    "@OneJs/jobs": "workspace:*",
     "@OneJs/prisma": "workspace:*",
     "@OneJs/server": "workspace:*",
-    "@aws-sdk/s3-request-presigner": "^3.966.0",
+    "@aws-sdk/s3-request-presigner": "^3.967.0",
+    "@react-native-masked-view/masked-view": "^0.3.2",
     "cheerio": "^1.1.2",
-    "moment": "^2.30.1",
+    "got": "^14.6.6",
+    "hpagent": "^1.2.0",
     "sharp": "^0.34.5",
     "typescript": "^5.0.0",
     "uuid": "^13.0.0"

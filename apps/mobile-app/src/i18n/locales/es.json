@@ -1,0 +1,667 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "retry": "Reintentar",
+    "back": "Volver",
+    "apply": "Aplicar",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "dataFromApi": "Datos desde API",
+    "list": "Lista",
+    "map": "Mapa",
+    "comingSoon": "Próximamente"
+  },
+  "auth": {
+    "welcome": "Bienvenido de nuevo",
+    "welcomeSubtitle": "Accede a tus rutas y sectores favoritos",
+    "createAccount": "Crea tu cuenta para comenzar",
+    "signInToContinue": "Inicia sesión para continuar",
+    "email": "Email",
+    "emailPlaceholder": "tu@email.com",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Ingresa tu contraseña",
+    "forgotPassword": "¿Olvidaste la clave?",
+    "signUp": "Registrarse",
+    "signIn": "Iniciar Sesión",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+    "dontHaveAccount": "¿No tienes una cuenta?",
+    "register": "Regístrate",
+    "verifyEmail": "Verifica tu correo",
+    "verificationCodeSent": "Enviamos un código de verificación a {{email}}",
+    "enterVerificationCode": "Ingresa el código de verificación",
+    "verify": "Verificar",
+    "resetPassword": "Restablecer contraseña",
+    "resetPasswordTitle": "¿Olvidaste tu contraseña?",
+    "resetPasswordSubtitle": "Ingresa tu email y te enviaremos un código para restablecer tu contraseña",
+    "resetCodeSent": "Enviamos un código de recuperación a {{email}}",
+    "enterResetCode": "Ingresa el código de recuperación",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "resetPasswordSuccess": "Contraseña restablecida exitosamente",
+    "backToSignIn": "Volver a iniciar sesión",
+    "resendVerificationCode": "Reenviar código de verificación",
+    "twoFactorTitle": "Verificación en dos pasos",
+    "twoFactorSubtitle": "Ingresa el código de tu aplicación de autenticación",
+    "enterTwoFactorCode": "Código de 2FA",
+    "twoFactorEmailTitle": "Código de verificación por email",
+    "twoFactorEmailSubtitle": "Ingresa el código que enviamos a tu email",
+    "enterEmailCode": "Código de verificación",
+    "errors": {
+      "fillAllFields": "Por favor completa todos los campos",
+      "generic": "Ocurrió un error. Por favor intenta de nuevo.",
+      "invalidCredentials": "Email o contraseña incorrectos",
+      "signInIncomplete": "El inicio de sesión requiere pasos adicionales",
+      "sessionCreationFailed": "Error al crear la sesión",
+      "verificationFailed": "Error al verificar el código",
+      "invalidVerificationCode": "Código de verificación inválido",
+      "twoFactorNotAvailable": "Autenticación de dos factores no disponible",
+      "twoFactorFailed": "Error al verificar el código de 2FA",
+      "invalidTwoFactorCode": "Código de 2FA inválido",
+      "tooManyRequests": "Demasiados intentos. Por favor espera unos minutos antes de intentar de nuevo.",
+      "rateLimitExceeded": "Has excedido el límite de intentos. Por favor espera antes de continuar.",
+      "emailInUse": "Este email ya está registrado",
+      "weakPassword": "La contraseña es muy débil"
+    }
+  },
+  "navigation": {
+    "explore": "Explorar",
+    "map": "Mapa",
+    "sessions": "Sesiones",
+    "saved": "Guardado",
+    "profile": "Perfil",
+    "settings": "Ajustes"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "resetToDefaults": "Restablecer valores predeterminados",
+    "resetConfirmTitle": "Restablecer ajustes",
+    "resetConfirmMessage": "Esto restablecerá todas las preferencias a sus valores predeterminados. Esta acción no se puede deshacer.",
+    "reset": "Restablecer",
+    "climbing": {
+      "title": "Escalada",
+      "gradeSystem": "Sistema de grados",
+      "defaultDiscipline": "Disciplina por defecto",
+      "showBoulderGrades": "Mostrar grados de búlder",
+      "showBoulderGradesDesc": "Mostrar grados Font/Hueco junto con grados deportivos",
+      "showAidGrades": "Mostrar grados de artificial",
+      "showAidGradesDesc": "Mostrar grados A0-A5 para vías de escalada artificial"
+    },
+    "units": {
+      "title": "Unidades",
+      "distance": "Distancia",
+      "height": "Altura",
+      "temperature": "Temperatura"
+    },
+    "search": {
+      "title": "Valores de búsqueda",
+      "defaultRadius": "Radio de búsqueda predeterminado",
+      "rememberLastSearch": "Recordar última búsqueda",
+      "rememberLastSearchDesc": "Restaurar parámetros de búsqueda anteriores al iniciar la app"
+    },
+    "display": {
+      "title": "Pantalla",
+      "language": "Idioma",
+      "theme": "Tema",
+      "compactRouteList": "Lista de vías compacta",
+      "compactRouteListDesc": "Usar un diseño más denso para las listas de vías",
+      "showGradeColors": "Mostrar colores de grado",
+      "showGradeColorsDesc": "Colorear grados por dificultad (verde a morado)"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "weatherAlerts": "Alertas meteorológicas",
+      "weatherAlertsDesc": "Recibir alertas sobre el clima en crags guardados",
+      "newRouteAlerts": "Alertas de nuevas vías",
+      "newRouteAlertsDesc": "Notificaciones cuando se añaden nuevas vías",
+      "conditionAlerts": "Actualizaciones de condiciones",
+      "conditionAlertsDesc": "Alertas sobre cambios en las condiciones de escalada"
+    },
+    "offline": {
+      "title": "Offline y almacenamiento",
+      "autoDownloadSaved": "Descargar automáticamente áreas guardadas",
+      "autoDownloadSavedDesc": "Descargar datos automáticamente para áreas favoritas",
+      "downloadQuality": "Calidad de descarga",
+      "wifiOnly": "Solo descargas por WiFi",
+      "wifiOnlyDesc": "Solo descargar datos offline cuando esté conectado a WiFi"
+    },
+    "safety": {
+      "title": "Seguridad",
+      "emergencyContact": "Contacto de emergencia",
+      "emergencyContactDesc": "Número de teléfono para contactar en caso de emergencia",
+      "notSet": "No configurado",
+      "showWarnings": "Mostrar avisos de seguridad",
+      "showWarningsDesc": "Mostrar avisos para áreas y vías peligrosas",
+      "logSessions": "Registrar sesiones de escalada",
+      "logSessionsDesc": "Registrar tu ubicación durante la escalada para compartir por seguridad"
+    },
+    "about": {
+      "title": "Acerca de",
+      "version": "Versión"
+    }
+  },
+  "search": {
+    "searchCrags": "Buscar crags...",
+    "recentSearches": "Búsquedas Recientes",
+    "suggestions": "Sugerencias",
+    "noResults": "Sin resultados",
+    "noResultsMessage": "Ningún crag coincide con \"{{query}}\"",
+    "resultsCount": "{{count}} resultados",
+    "clearHistory": "Limpiar"
+  },
+  "explorer": {
+    "searchingSectors": "Buscando Sectores",
+    "gettingLocation": "Obteniendo ubicación...",
+    "searchingNearbyCrags": "Buscando crags cercanos...",
+    "sectorsFound": "Sectores Encontrados ({{count}})",
+    "noCragsFound": "No se encontraron crags",
+    "adjustFiltersMessage": "Intenta ajustar los filtros de búsqueda o aumentar el radio",
+    "adjustFilters": "Ajustar filtros",
+    "searchAgain": "Buscar de nuevo",
+    "noResults": "Sin Resultados",
+    "searchSummary": "Radio: {{radius}} - Grados: {{minGrade}} - {{maxGrade}}",
+    "loadingMap": "Cargando mapa...",
+    "yourLocation": "Tu ubicación",
+    "viewSector": "Ver sector",
+    "bestMatch": "MEJOR MATCH",
+    "routesCount": "{{count}} vías",
+    "routesWithGradeRange": "{{count}} vías · {{gradeRange}}"
+  },
+  "crag": {
+    "loadingZone": "Cargando zona...",
+    "couldNotGetInfo": "No se pudo obtener la información",
+    "noSectorsAvailable": "No hay sectores disponibles en esta zona",
+    "routesSummary": "{{count}} vías · {{gradeRange}}",
+    "inSeason": "En Temporada",
+    "offSeason": "Fuera de Temporada",
+    "topo": "Topo",
+    "match": "Coincidencia",
+    "sectorStatsAndData": "Estadísticas y Datos del Sector",
+    "userMatch": "User Match",
+    "routesInRange": "{{count}} vías en tu rango",
+    "preferred": "Preferido",
+    "compatibility": "COMPATIBILIDAD",
+    "allGrades": "Todos los grados",
+    "minimum": "MÍNIMO",
+    "maximum": "MÁXIMO",
+    "average": "MEDIA",
+    "currentTemperature": "Temperatura actual",
+    "orientationAndSun": "Orientación & Sol",
+    "unknownAspect": "Cara desconocida",
+    "morning": "MAÑANA",
+    "night": "NOCHE",
+    "fullSun": "PLENO SOL",
+    "accessibility": "ACCESIBILIDAD",
+    "suitability": "SUITABILITY",
+    "hike": "hike",
+    "easyFlat": "Fácil / Llano",
+    "kidsFriendly": "Apto niños",
+    "notKidsFriendly": "No apto niños",
+    "dogFriendly": "Apto perros",
+    "zoneImage": "Imagen de la zona",
+    "routes": "vías",
+    "reviews": "opiniones",
+    "conditions": {
+      "sunShade": "Sol/Sombra",
+      "temp": "Temp.",
+      "wind": "Viento"
+    },
+    "tabs": {
+      "routes": "Vías",
+      "info": "Información",
+      "directions": "Cómo llegar"
+    }
+  },
+  "sector": {
+    "loadingSector": "Cargando sector...",
+    "errorLoadingSector": "Error al cargar sector",
+    "somethingWentWrong": "Algo salió mal. Inténtalo de nuevo.",
+    "routes": "vías",
+    "noInfoAvailable": "No hay información disponible",
+    "loadingRoutes": "Cargando vías...",
+    "routeCount_one": "{{count}} Vía",
+    "routeCount_other": "{{count}} Vías",
+    "filtered": "(filtradas)",
+    "quality": "CALIDAD",
+    "notRated": "SIN VALORAR",
+    "hasTopo": "Tiene topo",
+    "withPhoto": "Con foto",
+    "noPhotosAvailable": "No hay fotos disponibles para estos sectores",
+    "sectorsCount": "Sectores ({{count}})",
+    "withPhotoCount": "{{count}} con foto",
+    "routesSummary": "{{count}} vías · {{gradeRange}}",
+    "subsectorsCount": "{{count}} subsectores",
+    "sectorsWithLocation": "Sectores con ubicación",
+    "subsectors": "Subsectores",
+    "routesTab": "Vías",
+    "noRoutesWithFilter": "No hay vías con este filtro en la foto actual",
+    "viewAllRoutes": "Ver todas las vías",
+    "generalSectorPhoto": "Foto general del sector",
+    "noTopoAvailable": "No hay topo disponible con vías marcadas",
+    "routesCount": "{{count}} vías",
+    "labels": {
+      "orientation": "ORIENTACIÓN",
+      "approach": "APROXIMACIÓN",
+      "height": "ALTURA",
+      "difficulty": "DIFICULTAD"
+    }
+  },
+  "route": {
+    "closed": "CERRADA",
+    "danger": "Peligro",
+    "yearsOld": "{{years}} años"
+  },
+  "conditions": {
+    "sun": "SOL",
+    "shade": "SOMBRA",
+    "partial": "PARCIAL",
+    "cloudy": "NUBLADO"
+  },
+  "topo": {
+    "legendTitle": "Leyenda de símbolos",
+    "legend": {
+      "classicRoute": {
+        "title": "Vía clásica",
+        "description": "Vía destacada o muy popular"
+      },
+      "height": {
+        "title": "Altura",
+        "description": "Metros de la vía"
+      },
+      "bolts": {
+        "title": "Chapas",
+        "description": "Número de seguros fijos"
+      },
+      "style": {
+        "title": "Estilo",
+        "description": "Tipo de escalada (placa, desplome, etc.)"
+      },
+      "multipitch": {
+        "title": "Multilargo",
+        "description": "Vía con varios largos"
+      },
+      "wellProtected": {
+        "title": "Bien protegida",
+        "description": "Chapas cercanas, caídas seguras"
+      },
+      "spacedProtection": {
+        "title": "Protección espaciada",
+        "description": "Distancia entre seguros mayor de lo normal"
+      },
+      "runout": {
+        "title": "Runout",
+        "description": "Tramos largos sin protección, riesgo de caída peligrosa"
+      },
+      "warning": {
+        "title": "Advertencia",
+        "description": "La vía tiene algún aviso de seguridad"
+      },
+      "maintenance": {
+        "title": "Mantenimiento",
+        "description": "El equipamiento puede necesitar revisión"
+      }
+    }
+  },
+  "options": {
+    "gradeSystem": {
+      "french": {
+        "label": "Francés",
+        "description": "6a, 7b+, 8c"
+      },
+      "yds": {
+        "label": "YDS (USA)",
+        "description": "5.10a, 5.12d"
+      },
+      "uiaa": {
+        "label": "UIAA",
+        "description": "VI, VII+, IX"
+      },
+      "british": {
+        "label": "Británico",
+        "description": "E1, E5, HVS"
+      },
+      "font": {
+        "label": "Font (Búlder)",
+        "description": "6A, 7C+"
+      },
+      "hueco": {
+        "label": "V-Scale (Búlder)",
+        "description": "V0, V5, V10"
+      }
+    },
+    "discipline": {
+      "all": "Todas las disciplinas",
+      "sport": "Escalada deportiva",
+      "boulder": "Búlder",
+      "trad": "Tradicional",
+      "multipitch": "Multilargo"
+    },
+    "distance": {
+      "metric": {
+        "label": "Métrico",
+        "description": "Kilómetros, metros"
+      },
+      "imperial": {
+        "label": "Imperial",
+        "description": "Millas, pies"
+      }
+    },
+    "height": {
+      "meters": "Metros",
+      "feet": "Pies"
+    },
+    "temperature": {
+      "celsius": "Celsius (°C)",
+      "fahrenheit": "Fahrenheit (°F)"
+    },
+    "language": {
+      "es": "Español",
+      "en": "English"
+    },
+    "theme": {
+      "dark": "Oscuro",
+      "light": "Claro",
+      "system": "Sistema"
+    },
+    "downloadQuality": {
+      "low": {
+        "label": "Baja",
+        "description": "Descargas más rápidas, menos almacenamiento"
+      },
+      "medium": {
+        "label": "Media",
+        "description": "Calidad equilibrada"
+      },
+      "high": {
+        "label": "Alta",
+        "description": "Mejor calidad, más almacenamiento"
+      }
+    }
+  },
+  "filters": {
+    "searchFilters": "Filtros de Búsqueda",
+    "searchRadius": "Radio de Búsqueda",
+    "gradeRange": "Rango de grados",
+    "minGrade": "Grado Mínimo",
+    "maxGrade": "Grado Máximo",
+    "minimum": "Mínimo",
+    "maximum": "Máximo",
+    "preferences": "Preferencias",
+    "applyFilters": "Aplicar Filtros",
+    "clearAll": "Limpiar Todo",
+    "exposure": {
+      "title": "Exposición",
+      "description": "Filtra sectores según su exposición solar",
+      "any": "Cualquiera",
+      "sun": "Sectores al sol",
+      "shade": "Sectores a la sombra",
+      "sunShort": "Sol",
+      "shadeShort": "Sombra"
+    },
+    "style": {
+      "title": "Estilo de Escalada",
+      "sport": "Deportiva",
+      "trad": "Clásica",
+      "boulder": "Búlder",
+      "aid": "Artificial",
+      "alpine": "Alpina",
+      "mixed": "Mixta",
+      "ice": "Hielo",
+      "topRope": "Top Rope"
+    },
+    "quality": {
+      "title": "Calidad Mínima",
+      "anyQuality": "Cualquier Calidad",
+      "stars": "{{count}} Estrellas"
+    },
+    "familyFriendly": {
+      "title": "Apto Familias",
+      "enabled": "Solo sectores familiares"
+    },
+    "walkInTime": {
+      "title": "Aproximación Máxima",
+      "under5": "Menos de 5 min",
+      "5to10": "5-10 min",
+      "10to20": "10-20 min",
+      "20to30": "20-30 min",
+      "30to45": "30-45 min",
+      "45to60": "45-60 min",
+      "over60": "Más de 60 min"
+    }
+  },
+  "location": {
+    "locationRequired": "Se necesita activar la ubicación GPS para buscar sectores cercanos",
+    "permissionDenied": "Necesitas dar permisos de ubicación para buscar sectores cercanos",
+    "servicesDisabled": "Activa los servicios de ubicación en tu dispositivo para buscar sectores",
+    "locationTimeout": "No se pudo obtener tu ubicación. Asegúrate de tener GPS activado e intenta de nuevo"
+  },
+  "directions": {
+    "location": "Ubicación",
+    "navigate": "Navegar",
+    "walkTime": "Tiempo de aproximación",
+    "accessDescription": "Descripción del acceso"
+  },
+  "approach": {
+    "title": "Info Aproximación",
+    "route": "Ruta",
+    "distance": "DISTANCIA",
+    "time": "TIEMPO",
+    "elevation": "DESNIVEL",
+    "trailDescription": "DESCRIPCIÓN DEL SENDERO",
+    "warnings": "ADVERTENCIAS",
+    "tips": "CONSEJOS",
+    "openInMaps": "Abrir en Google Maps",
+    "directions": "Direcciones",
+    "difficultyLabel": "DIFICULTAD",
+    "difficulty": {
+      "easy": "Fácil",
+      "moderate": "Moderada",
+      "hard": "Difícil"
+    }
+  },
+  "legend": {
+    "iconLegend": "Leyenda de iconos",
+    "familyFriendly": "Apto para familias",
+    "kidFriendly": "Apto para niños",
+    "kidFriendlyDescription": "Sector seguro para escalar con niños",
+    "notKidFriendly": "No apto para niños",
+    "notKidFriendlyDescription": "Sector con exposición o peligros",
+    "crowdLevel": "Afluencia de gente",
+    "deserted": "Desierto",
+    "desertedDescription": "Muy poca gente",
+    "quiet": "Tranquilo",
+    "quietDescription": "Poca afluencia",
+    "crowded": "Concurrido",
+    "crowdedDescription": "Afluencia moderada",
+    "veryBusy": "Muy lleno",
+    "veryBusyDescription": "Alta afluencia",
+    "orientation": "Orientación",
+    "orientationDescription": "Dirección de la pared (N, S, E, W...)",
+    "temperatureRecommendation": "Recomendación por temperatura",
+    "idealTemperature": "Temperatura ideal",
+    "idealTemperatureDescription": "Condiciones óptimas para escalar hoy",
+    "moderateTemperature": "Temperatura moderada",
+    "moderateTemperatureDescription": "Condiciones aceptables",
+    "notRecommendedTemperature": "Temperatura no recomendada",
+    "notRecommendedTemperatureDescription": "Muy frío o muy caliente",
+    "currentWeather": "Clima actual",
+    "sunny": "Soleado",
+    "sunnyDescription": "Día despejado",
+    "partlyCloudy": "Parcialmente nublado",
+    "partlyCloudyDescription": "Sol con nubes",
+    "cloudy": "Nublado",
+    "cloudyDescription": "Día cubierto",
+    "seasonality": "Temporada",
+    "inSeason": "En Temporada",
+    "inSeasonDescription": "El mes actual es óptimo para escalar aquí",
+    "offSeason": "Fuera de Temporada",
+    "offSeasonDescription": "No es la mejor época para visitar esta zona",
+    "ascents": "Ascensos",
+    "ascentSingle": "Subida una vez",
+    "ascentSingleDescription": "Ruta que has subido una vez",
+    "ascentMultiple": "Subida varias veces",
+    "ascentMultipleDescription": "El número indica cuántas veces has subido esta ruta",
+    "other": "Otros",
+    "topoAvailable": "Topo disponible",
+    "topoAvailableDescription": "El sector tiene croquis de vías",
+    "title": "Leyenda de Iconos",
+    "hasTopo": "Topo Disponible - Diagramas de vías incluidos",
+    "distance": "Distancia desde tu ubicación",
+    "matchScore": "Match - Ajuste según distancia, vías, clima",
+    "qualityRating": "Calidad - Basado en valoraciones de vías",
+    "sportClimbing": "Escalada Deportiva",
+    "bouldering": "Boulder"
+  },
+  "weather": {
+    "conditions": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "fair": "Regular",
+      "poor": "Malo"
+    },
+    "sectorsWithGoodConditions": "{{count}} de {{total}} sectores con buenas condiciones",
+    "overallScore": "Condiciones de escalada: {{score}}/4"
+  },
+  "sorting": {
+    "bestMatch": "Mejor Resultado",
+    "distance": "Distancia",
+    "quality": "Calidad",
+    "popularity": "Popular",
+    "routeCount": "Más Vías",
+    "name": "A-Z"
+  },
+  "performance": {
+    "title": "Sesiones",
+    "selectMonth": "SELECCIONAR MES",
+    "noData": "No hay datos para {{month}}",
+    "months": {
+      "0": "Enero",
+      "1": "Febrero",
+      "2": "Marzo",
+      "3": "Abril",
+      "4": "Mayo",
+      "5": "Junio",
+      "6": "Julio",
+      "7": "Agosto",
+      "8": "Septiembre",
+      "9": "Octubre",
+      "10": "Noviembre",
+      "11": "Diciembre",
+      "short": {
+        "0": "ENE",
+        "1": "FEB",
+        "2": "MAR",
+        "3": "ABR",
+        "4": "MAY",
+        "5": "JUN",
+        "6": "JUL",
+        "7": "AGO",
+        "8": "SEP",
+        "9": "OCT",
+        "10": "NOV",
+        "11": "DIC"
+      }
+    },
+    "stats": {
+      "title": "Estadísticas de {{month}}",
+      "totalRoutes": "Vías Totales",
+      "maxGrade": "Grado\nMáximo",
+      "daysOutdoor": "Días Roca"
+    },
+    "distribution": {
+      "title": "Distribución de Grados",
+      "footer": "Volumen de rutas por banda de grado ({{month}})"
+    },
+    "activity": {
+      "title": "Actividad Reciente",
+      "viewAll": "Ver Todo",
+      "today": "HOY",
+      "yesterday": "AYER"
+    },
+    "activityHistoryComingSoon": "El historial completo de actividad estará disponible en una futura actualización.",
+    "sync": {
+      "syncedWith": "Datos sincronizados con {{source}}",
+      "updated": "Actualizado",
+      "minutesAgo": "hace {{count}}m"
+    }
+  },
+  "grades": {
+    "all": "Todas",
+    "systems": {
+      "french": "Francés",
+      "yds": "YDS (USA)",
+      "uiaa": "UIAA",
+      "british": "Británico",
+      "font": "Font (Boulder)",
+      "hueco": "V-Scale (Boulder)"
+    },
+    "systemsLong": {
+      "french": "Francés (6a, 7b+, 8c)",
+      "yds": "YDS (5.10a, 5.12d)",
+      "uiaa": "UIAA (VI, VII+, IX)",
+      "british": "Británico (E1, E5, HVS)",
+      "font": "Font Boulder (6A, 7C+)",
+      "hueco": "V-Scale Boulder (V0, V5)"
+    }
+  },
+  "logAscent": {
+    "title": "Log de Ascenso",
+    "success": "¡Ascenso registrado con éxito!",
+    "error": "Error",
+    "errorMessage": "Error al registrar el ascenso. Por favor, inténtalo de nuevo.",
+    "missingGradeBand": "Se requiere la banda de grado de la ruta",
+    "sections": {
+      "style": "Estilo",
+      "tries": "Intentos",
+      "gradeEvaluation": "Evaluación del Grado",
+      "wallType": "Tipo de Pared",
+      "character": "Carácter",
+      "safety": "Seguridad",
+      "quality": "Calidad",
+      "comments": "Comentarios"
+    },
+    "ascentStyles": {
+      "onsight": "A Vista",
+      "flash": "Flash",
+      "redpoint": "Rojo",
+      "go": "Intento",
+      "toprope": "Top Rope"
+    },
+    "gradeEvaluations": {
+      "soft": "Blanda",
+      "normal": "Normal",
+      "hard": "Dura"
+    },
+    "wallTypes": {
+      "slab": "Placa",
+      "vertical": "Vertical",
+      "overhang": "Desplome",
+      "roof": "Techo"
+    },
+    "characteristics": {
+      "cruxy": "Paso Duro",
+      "athletic": "Atlético",
+      "slopers": "Romos",
+      "endurance": "Resistencia",
+      "technical": "Técnico",
+      "crimpy": "Regletas"
+    },
+    "safetyConcerns": {
+      "looseRock": "Roca Suelta",
+      "highFirstBolt": "1er Seguro Alto",
+      "badBolts": "Seguros Malos",
+      "badAnchor": "Reunión Mala"
+    },
+    "isRepeat": "¿Repetición?",
+    "commentsPlaceholder": "Añade tu beta, condiciones o pensamientos...",
+    "logButton": "Registrar Ascenso",
+    "selectDate": "Seleccionar Fecha",
+    "dateOptions": {
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "oneWeekAgo": "Hace 1 semana",
+      "daysAgo": "días atrás"
+    }
+  }
+}

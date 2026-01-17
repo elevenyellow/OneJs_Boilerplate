@@ -1,7 +1,5 @@
-/**
- * Value Object representing geographical coordinates (latitude/longitude)
- * Immutable and validated
- */
+import { OneJsError, ErrorCodes } from '@OneJs/core'
+
 export class Coordinates {
   private readonly _latitude: number
   private readonly _longitude: number
@@ -13,13 +11,21 @@ export class Coordinates {
 
   static create(latitude: number, longitude: number): Coordinates {
     if (!Coordinates.isValidLatitude(latitude)) {
-      throw new Error(
-        `Invalid latitude: ${latitude}. Must be between -90 and 90.`,
+      throw new OneJsError(
+        'Invalid latitude',
+        400,
+        `Latitude ${latitude} must be between -90 and 90`,
+        { latitude },
+        ErrorCodes.VALIDATION_FAILED,
       )
     }
     if (!Coordinates.isValidLongitude(longitude)) {
-      throw new Error(
-        `Invalid longitude: ${longitude}. Must be between -180 and 180.`,
+      throw new OneJsError(
+        'Invalid longitude',
+        400,
+        `Longitude ${longitude} must be between -180 and 180`,
+        { longitude },
+        ErrorCodes.VALIDATION_FAILED,
       )
     }
     return new Coordinates(latitude, longitude)
@@ -41,10 +47,6 @@ export class Coordinates {
     return this._longitude
   }
 
-  /**
-   * Format for meteoblue URL: latitude with N/S suffix, longitude with E/W suffix
-   * Example: 39.47N0.38W
-   */
   toMeteoblueFormat(): string {
     const latSuffix = this._latitude >= 0 ? 'N' : 'S'
     const lonSuffix = this._longitude >= 0 ? 'E' : 'W'
@@ -53,9 +55,6 @@ export class Coordinates {
     return `${absLat}${latSuffix}${absLon}${lonSuffix}`
   }
 
-  /**
-   * Create a unique cache key for this coordinate
-   */
   toCacheKey(): string {
     return `${this._latitude.toFixed(4)}_${this._longitude.toFixed(4)}`
   }

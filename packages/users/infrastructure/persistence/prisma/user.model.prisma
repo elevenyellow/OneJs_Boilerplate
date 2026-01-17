@@ -1,0 +1,16 @@
+model User {
+  id          String   @id @default(uuid())
+  clerkId     String   @unique
+  email       String
+  name        String?
+  avatar      String?
+  preferences Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ascents Ascent[]
+
+  @@index([clerkId])
+  @@index([email])
+}

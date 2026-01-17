@@ -7,8 +7,7 @@ import type {
 
 @Injectable()
 export class CleanTextPreserveCoordsPrompt
-  implements PromptBuilder<string, CleanTextResult>
-{
+  implements PromptBuilder<string, CleanTextResult> {
   build(inputText: string): ChatMessage[] {
     return [
       {

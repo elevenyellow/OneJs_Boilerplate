@@ -123,6 +123,24 @@ export class WeatherDataParser {
   private static parseMetadata(
     raw: MeteoblueAPIResponse,
   ): WeatherData['metadata'] {
+    // Safely parse lastUpdate with fallback to current time
+    const updateTimeUtc = raw.metadata.modelrun_updatetime_utc
+    let lastUpdate: Date
+
+    if (
+      typeof updateTimeUtc === 'number' &&
+      !Number.isNaN(updateTimeUtc) &&
+      updateTimeUtc > 0
+    ) {
+      lastUpdate = new Date(updateTimeUtc * 1000)
+      // Validate the resulting date is valid
+      if (Number.isNaN(lastUpdate.getTime())) {
+        lastUpdate = new Date()
+      }
+    } else {
+      lastUpdate = new Date()
+    }
+
     return {
       location: raw.metadata.name,
       coordinates: {
@@ -130,7 +148,7 @@ export class WeatherDataParser {
         lon: raw.metadata.longitude,
       },
       timezone: raw.metadata.timezone_abbrevation,
-      lastUpdate: new Date(raw.metadata.modelrun_updatetime_utc * 1000),
+      lastUpdate,
       generationTimeMs: raw.metadata.generation_time_ms,
     }
   }
@@ -173,7 +191,7 @@ export class WeatherDataParser {
     return Array.from({ length }, (_, i) => {
       const timeValue = hourlyData.time[i]
       const timestamp = this.parseTimestamp(timeValue)
-      
+
       return {
         timestamp,
         temperature: hourlyData.temperature[i],
@@ -194,7 +212,7 @@ export class WeatherDataParser {
   /**
    * Parse a timestamp value that could be:
    * - Unix timestamp in seconds
-   * - Unix timestamp in milliseconds  
+   * - Unix timestamp in milliseconds
    * - ISO string
    * - Invalid/null
    */
@@ -202,7 +220,7 @@ export class WeatherDataParser {
     if (!value) {
       return new Date().toISOString()
     }
-    
+
     // If it's already a string (ISO format), validate and return
     if (typeof value === 'string') {
       const date = new Date(value)
@@ -211,7 +229,7 @@ export class WeatherDataParser {
       }
       return new Date().toISOString()
     }
-    
+
     // If it's a number, determine if it's seconds or milliseconds
     if (typeof value === 'number') {
       // If the number is less than ~10 billion, it's likely seconds (timestamps before year 2286)
@@ -222,7 +240,7 @@ export class WeatherDataParser {
         return date.toISOString()
       }
     }
-    
+
     return new Date().toISOString()
   }
 

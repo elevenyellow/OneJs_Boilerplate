@@ -44,27 +44,27 @@ export class WeatherQuery {
 
 /**
  * Main Injectable Weather Service
- * 
+ *
  * Provides two entry points:
  * 1. getByCoordinates({ latitude, longitude }) - Direct coordinates
  * 2. getByCity(cityName) - City name (geocoded to coordinates)
- * 
+ *
  * Each returns a WeatherQuery that can call:
  * - .raw() - Get full JSON response
  * - .parsed() - Get parsed TypeScript entities
- * 
+ *
  * @example
  * ```typescript
  * // By coordinates - raw JSON
  * const raw = await weatherService
  *   .getByCoordinates({ latitude: 39.47, longitude: -0.38 })
  *   .raw()
- * 
+ *
  * // By city - parsed entities
  * const parsed = await weatherService
  *   .getByCity('Valencia')
  *   .parsed()
- * 
+ *
  * console.log(parsed.current.temperature)
  * console.log(parsed.hourly[0].windSpeed)
  * ```
@@ -74,10 +74,10 @@ export class WeatherService {
   constructor(
     @Inject(MeteoblueClient)
     private readonly meteoblueClient: MeteoblueClient,
-    
+
     @Inject(GeocodingService)
     private readonly geocodingService: GeocodingService,
-    
+
     @Inject(Logger)
     private readonly logger: Logger,
   ) {
@@ -86,17 +86,17 @@ export class WeatherService {
 
   /**
    * Get weather data by coordinates
-   * 
+   *
    * @param coords - Object with latitude and longitude
    * @returns WeatherQuery object with .raw() and .parsed() methods
-   * 
+   *
    * @example
    * ```typescript
    * const weather = weatherService.getByCoordinates({
    *   latitude: 39.4739,
    *   longitude: -0.37966
    * })
-   * 
+   *
    * const data = await weather.parsed()
    * ```
    */
@@ -105,7 +105,7 @@ export class WeatherService {
     longitude: number
   }): WeatherQuery {
     const coordinates = Coordinates.create(coords.latitude, coords.longitude)
-    
+
     this.logger.debug(
       'weather:service',
       `Creating query for coordinates: ${coordinates.toString()}`,
@@ -116,10 +116,10 @@ export class WeatherService {
 
   /**
    * Get weather data by city name
-   * 
+   *
    * @param cityName - Name of the city (e.g., "Valencia", "Madrid")
    * @returns Promise<WeatherQuery> - Resolves after geocoding the city
-   * 
+   *
    * @example
    * ```typescript
    * const weather = await weatherService.getByCity('Valencia')
@@ -127,7 +127,10 @@ export class WeatherService {
    * ```
    */
   async getByCity(cityName: string): Promise<WeatherQuery> {
-    this.logger.debug('weather:service', `Creating query for city: "${cityName}"`)
+    this.logger.debug(
+      'weather:service',
+      `Creating query for city: "${cityName}"`,
+    )
 
     // Geocode city to coordinates
     const coordinates = await this.geocodingService.cityToCoordinates(cityName)
@@ -149,7 +152,7 @@ export class WeatherService {
     overall: boolean
   }> {
     const meteoblueOk = await this.meteoblueClient.isAccessible()
-    
+
     // Test geocoding with a simple query
     let geocodingOk = false
     try {

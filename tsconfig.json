@@ -52,6 +52,12 @@
       "@OneJs/event-bus/*": [
         "./.oneJs/event-bus/src/*"
       ],
+      "@OneJs/jobs": [
+        "./.oneJs/jobs/src"
+      ],
+      "@OneJs/jobs/*": [
+        "./.oneJs/jobs/src/*"
+      ],
       "@OneJs/prisma": [
         "./.oneJs/prisma/src"
       ],
@@ -63,84 +69,6 @@
       ],
       "@OneJs/auth/*": [
         "./.oneJs/auth/src/*"
-      ],
-      "@zone/*": [
-        "./packages/zone/*"
-      ],
-      "@weather/*": [
-        "./packages/weather/*"
-      ],
-      "@scraper/meteoblue": [
-        "./packages/scraper-meteoblue"
-      ],
-      "@scraper/meteoblue/*": [
-        "./packages/scraper-meteoblue/*"
-      ],
-      "@scraper-thecrag": [
-        "./packages/scraper-thecrag"
-      ],
-      "@scraper-thecrag/*": [
-        "./packages/scraper-thecrag/*"
-      ],
-      "@climb-zone/shared": [
-        "./packages/shared"
-      ],
-      "@climb-zone/shared/*": [
-        "./packages/shared/*"
-      ],
-      "@climb-zone/crag": [
-        "./packages/crag"
-      ],
-      "@crag/*": [
-        "./packages/crag/*"
-      ],
-      "@climb-zone/area": [
-        "./packages/area"
-      ],
-      "@area/*": [
-        "./packages/area/*"
-      ],
-      "@climb-zone/sector": [
-        "./packages/sector"
-      ],
-      "@sector/*": [
-        "./packages/sector/*"
-      ],
-      "@climb-zone/route": [
-        "./packages/route"
-      ],
-      "@route/*": [
-        "./packages/route/*"
-      ],
-      "@user/*": [
-        "./packages/user/*"
-      ],
-      "@post/*": [
-        "./packages/post/*"
-      ],
-      "@climb-zone/continent": [
-        "./packages/continent"
-      ],
-      "@continent/*": [
-        "./packages/continent/*"
-      ],
-      "@climb-zone/country": [
-        "./packages/country"
-      ],
-      "@country/*": [
-        "./packages/country/*"
-      ],
-      "@climb-zone/region": [
-        "./packages/region"
-      ],
-      "@region/*": [
-        "./packages/region/*"
-      ],
-      "@climb-zone/topo": [
-        "./packages/topo"
-      ],
-      "@topo/*": [
-        "./packages/topo/*"
       ]
     }
   }

@@ -54,37 +54,28 @@ export class TextCleanerService {
   async cleanText(text: string): Promise<string> {
     if (!text || text.trim().length === 0) return text
 
-    try {
-      const messages = this.prompt.build(text)
-      const response = await this.openai.chat(messages, {
-        jsonResponse: true,
-        temperature: TextCleanerService.TEMPERATURE,
-      })
-      const parsed = this.prompt.parseResponse(response)
-      const result = parsed.result || text
+    const messages = this.prompt.build(text)
+    const response = await this.openai.chat(messages, {
+      jsonResponse: true,
+      temperature: TextCleanerService.TEMPERATURE,
+    })
+    const parsed = this.prompt.parseResponse(response)
+    const result = parsed.result || text
 
-      // Validate that all languages were preserved
-      if (!validateLanguagesPreserved(text, result)) {
-        logger.warn(
-          'ai:text-cleaner',
-          'Language markers not preserved in AI response, returning original text',
-          {
-            originalLangs: extractLanguageMarkers(text),
-            resultLangs: extractLanguageMarkers(result),
-          },
-        )
-        return text
-      }
-
-      return result
-    } catch (error) {
+    // Validate that all languages were preserved
+    if (!validateLanguagesPreserved(text, result)) {
       logger.warn(
         'ai:text-cleaner',
-        'Error cleaning text, returning original',
-        error as Record<string, unknown>,
+        'Language markers not preserved in AI response, returning original text',
+        {
+          originalLangs: extractLanguageMarkers(text),
+          resultLangs: extractLanguageMarkers(result),
+        },
       )
       return text
     }
+
+    return result
   }
 
   /**
