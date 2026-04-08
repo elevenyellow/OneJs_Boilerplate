@@ -1,0 +1,13 @@
+{
+  "name": "api",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "start:dev": "bun --watch index.ts",
+    "start:build": "bun build ./index.ts --outdir ./dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
