@@ -1,0 +1,65 @@
+import type { PrismaClient } from '@prisma/client'
+
+export abstract class PrismaRepository<TModel extends keyof PrismaClient> {
+  protected model: PrismaClient[TModel]
+
+  constructor(
+    protected prisma: PrismaClient,
+    modelName: TModel,
+  ) {
+    this.model = prisma[modelName]
+  }
+
+  findAll(args: Parameters<PrismaClient[TModel]['findMany']>[0] = {}) {
+    return this.model.findMany(args)
+  }
+
+  findOne(args: { where: any; select?: any; include?: any }) {
+    const { where, select, include } = args
+    return this.model.findFirst({ where, select, include })
+  }
+
+  create(args: Parameters<PrismaClient[TModel]['create']>[0]) {
+    return this.model.create(args)
+  }
+
+  update(args: Parameters<PrismaClient[TModel]['update']>[0]) {
+    return this.model.update(args)
+  }
+
+  delete(args: Parameters<PrismaClient[TModel]['delete']>[0]) {
+    return this.model.delete(args)
+  }
+
+  async findWithPagination(args: {
+    where?: any
+    limit?: number
+    skip?: number
+    orderBy?: any
+    select?: any
+    include?: any
+  }): Promise<{ data: unknown[]; total: number }> {
+    const {
+      where = {},
+      limit = 10,
+      skip = 0,
+      orderBy = { createdAt: 'desc' },
+      select,
+      include,
+    } = args
+
+    const [data, total] = await Promise.all([
+      this.model.findMany({
+        where,
+        take: limit,
+        skip,
+        orderBy,
+        select,
+        include,
+      }),
+      this.model.count({ where }),
+    ])
+
+    return { data, total }
+  }
+}

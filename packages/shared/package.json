@@ -1,0 +1,11 @@
+{
+  "name": "@shared",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@OneJs/core": "workspace:*",
+    "@OneJs/event-bus": "workspace:*",
+    "@task": "workspace:*"
+  }
+}

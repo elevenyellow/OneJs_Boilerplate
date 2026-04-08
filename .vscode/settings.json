@@ -1,0 +1,19 @@
+{
+  "workbench.colorCustomizations": {
+    "minimap.background": "#00000000",
+    "scrollbar.shadow": "#00000000"
+  },
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "quickfix.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
+  },
+  "prisma.pinToPrisma6": true,
+  "chat.tools.terminal.autoApprove": {
+    "/^bun test packages/task/__tests__/application/task-event-bus\\.unit\\.test\\.ts packages/task/__tests__/integration/task-event-bus\\.integration\\.test\\.ts packages/task/__tests__/e2e/task-event-bus\\.e2e\\.test\\.ts$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
+}

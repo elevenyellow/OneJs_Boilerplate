@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: docker.io/library/postgres:18
+    container_name: postgresdb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: example_db         # Nombre de la base de datos
+      POSTGRES_USER: admin                 # Usuario (puedes cambiarlo)
+      POSTGRES_PASSWORD: admin123          # Contraseña (asegúrate de cambiarla en producción)
+    volumes:
+      - ./data:/var/lib/postgresql           # Persistencia de datos (PG 18+ usa /var/lib/postgresql/18/docker)
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: redisdb
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis-data:/data
+    command: redis-server --appendonly yes

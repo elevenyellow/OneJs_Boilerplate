@@ -1,0 +1,16 @@
+{
+  "name": "api",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "start:dev": "bun --watch index.ts",
+    "start": "bun run index.ts",
+    "start:build": "bun build ./index.ts --outdir ./dist"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.4.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
