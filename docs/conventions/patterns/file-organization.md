@@ -164,7 +164,7 @@ Configure TypeScript path mapping in `tsconfig.json`:
 {
   "compilerOptions": {
     "paths": {
-      "@dfs/*": ["./packages/*/index.ts"],
+      "@smoke/*": ["./packages/*/index.ts"],
       "@/domain/*": ["./domain/*"],
       "@/application/*": ["./application/*"],
       "@/infrastructure/*": ["./infrastructure/*"]
@@ -307,7 +307,7 @@ The subtree under `tests/unit/`, `tests/integration/`, and `tests/e2e/` should m
 - **Integration Tests**: `[file-name].integration.test.ts`
 - **End-to-End Tests**: `[feature].e2e.test.ts`
 
-See [testing.md](./testing.md) for the full testing standard (pyramid, FIRST, AAA, mocks policy).
+See [testing.md](./testing.md) for the full testing standard (pyramid, FIRST, AAA, test doubles policy).
 
 ## Documentation Organization
 
