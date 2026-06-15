@@ -44,6 +44,7 @@ Short checklist. Canonical rules live in `docs/conventions/` — go there for fu
 
 - Domain failures throw `OneJsError` from `@OneJs/core` with a `ErrorCodes` value — never `new Error()`.
 - Signature: `new OneJsError(type, statusCode, message, details, ErrorCodes.CODE)`.
+- **No magic strings**: every error type label, error message, and log scope is a named constant per bounded context — never inline. See [ddd-principles.md — No Magic Strings](../../../../docs/conventions/architecture/ddd-principles.md#no-magic-strings).
 - Infrastructure failures propagate; wrap with context only when it adds value.
 - Never `catch (e) {}`. Never `@ts-ignore` or `as any` to mask a type problem.
 

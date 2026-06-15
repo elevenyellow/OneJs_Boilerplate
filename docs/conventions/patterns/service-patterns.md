@@ -117,6 +117,8 @@ class UserFinder {
 
 The VO is created and validated at the **system boundary** (controller / API handler), not inside the service.
 
+> **Authoritative reference**: The [No Primitives Rule](../architecture/ddd-principles.md#no-primitives-rule) in `ddd-principles.md` is the canonical source for this rule across the codebase.
+
 ### 3. Constructor-Based Dependency Injection
 
 Use `@Injectable()` on the class and `@Inject(Token)` on constructor params:
@@ -302,28 +304,33 @@ throw new OneJsError('Unauthorized', 401, 'Invalid credentials', {}, ErrorCodes.
 
 ## Testing Patterns
 
-Use **InMemory repository fakes**, not mocks. InMemory repositories live in `infrastructure/` next to production adapters.
+Use **InMemory fakes** — never mocks or stubs. InMemory repositories live in `infrastructure/` next to production adapters. For EventBus and Logger, use the framework's `InMemoryEventBus` and `SilentLogger`.
 
 ```typescript
 // user-creator.service.test.ts
 import { describe, beforeEach, it, expect } from 'bun:test'
+import { InMemoryEventBus } from '@OneJs/event-bus'
+import { SilentLogger } from '@OneJs/core'
 import { UserCreator } from './user-creator.service'
 import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
 import { Email } from '../domain/value-objects/email'
 import { PasswordHash } from '../domain/value-objects/password-hash'
 
-describe('UserCreator', () => {
+describe('The UserCreator', () => {
   let service: UserCreator
   let repository: InMemoryUserRepository
+  let eventBus: InMemoryEventBus
+  let logger: SilentLogger
 
   beforeEach(() => {
     repository = new InMemoryUserRepository()
-    // Inject stubs for EventBus and Logger
-    service = new UserCreator(repository, stubEventBus(), stubLogger())
+    eventBus = new InMemoryEventBus()
+    logger = new SilentLogger()
+    service = new UserCreator(repository, eventBus, logger)
   })
 
   describe('run', () => {
-    it('should create user successfully', async () => {
+    it('creates a user with valid email', async () => {
       const email = Email.create('user@example.com')
       const hash = PasswordHash.create('hashed_pw')
 
@@ -333,7 +340,7 @@ describe('UserCreator', () => {
       expect(await repository.findByEmail(email)).not.toBeNull()
     })
 
-    it('should throw when email already in use', async () => {
+    it('rejects a duplicate email', async () => {
       const email = Email.create('user@example.com')
       const hash = PasswordHash.create('hashed_pw')
       await service.run(email, hash)

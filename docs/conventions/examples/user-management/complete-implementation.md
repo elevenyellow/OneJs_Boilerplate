@@ -15,6 +15,10 @@ packages/user/
 │   │   ├── password-hash.ts               # PasswordHash VO
 │   │   ├── user-role.ts                   # UserRole VO
 │   │   └── reset-token.ts                 # ResetToken VO
+│   ├── constants/
+│   │   ├── error-types.ts                 # Error type label constants
+│   │   ├── error-messages.ts              # Error message constants
+│   │   └── log-scopes.ts                  # Logger scope constants
 │   ├── repositories/
 │   │   └── user.repository.interface.ts   # Port (interface)
 │   └── events/
@@ -104,6 +108,34 @@ export class UserRole extends ValueObjectBase<string> {
       throw new OneJsError('Validation failed', 400, `Invalid role: ${value}`, {}, ErrorCodes.VALIDATION_FAILED)
     return new UserRole(value)
   }
+}
+```
+
+### Domain Constants (No Magic Strings)
+
+```typescript
+// packages/user/domain/constants/error-types.ts
+export class UserErrorTypes {
+  static readonly CONFLICT = 'Conflict'
+  static readonly VALIDATION_FAILED = 'Validation failed'
+  static readonly NOT_FOUND = 'Not Found'
+  static readonly UNAUTHORIZED = 'Unauthorized'
+  static readonly BAD_REQUEST = 'Bad Request'
+}
+
+// packages/user/domain/constants/error-messages.ts
+export class UserErrorMessages {
+  static readonly EMAIL_IN_USE = 'Email already in use'
+  static readonly USER_NOT_FOUND = 'User not found'
+  static readonly INVALID_EMAIL = 'Invalid email format'
+  static readonly EMAIL_REQUIRED = 'Email is required'
+}
+
+// packages/user/domain/constants/log-scopes.ts
+export class UserLogScopes {
+  static readonly SERVICE = 'user:service'
+  static readonly CONTROLLER = 'user:controller'
+  static readonly REPOSITORY = 'user:repository'
 }
 ```
 
@@ -401,30 +433,33 @@ describe('User', () => {
 })
 ```
 
-### Application Service Test (with InMemory adapter)
+### Application Service Test (with InMemory fakes — no mocks)
 
 ```typescript
 // packages/user/tests/unit/application/user.service.test.ts
 import { describe, beforeEach, it, expect } from 'bun:test'
+import { InMemoryEventBus } from '@OneJs/event-bus'
+import { SilentLogger } from '@OneJs/core'
 import { UserService } from '../../../application/user.service'
 import { InMemoryUserRepository } from '../../../infrastructure/repositories/in-memory-user.repository'
 import { Email } from '../../../domain/value-objects/email'
 import { PasswordHash } from '../../../domain/value-objects/password-hash'
 
-const stubEventBus = () => ({ publish: async () => {} })
-const stubLogger = () => ({ debug: () => {}, info: () => {}, error: () => {} } as any)
-
-describe('UserService', () => {
+describe('The UserService', () => {
   let service: UserService
   let repository: InMemoryUserRepository
+  let eventBus: InMemoryEventBus
+  let logger: SilentLogger
 
   beforeEach(() => {
     repository = new InMemoryUserRepository()
-    service = new UserService(repository, stubEventBus() as any, stubLogger())
+    eventBus = new InMemoryEventBus()
+    logger = new SilentLogger()
+    service = new UserService(repository, eventBus, logger)
   })
 
   describe('register', () => {
-    it('should register user successfully', async () => {
+    it('creates a user successfully', async () => {
       const email = Email.create('user@example.com')
       const hash = PasswordHash.create('hashed_pw')
 
@@ -434,7 +469,7 @@ describe('UserService', () => {
       expect(await repository.findByEmail(email)).not.toBeNull()
     })
 
-    it('should throw on duplicate email', async () => {
+    it('rejects a duplicate email', async () => {
       const email = Email.create('user@example.com')
       const hash = PasswordHash.create('hashed_pw')
       await service.register(email, hash)

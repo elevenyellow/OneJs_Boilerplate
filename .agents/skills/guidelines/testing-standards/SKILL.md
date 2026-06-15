@@ -40,10 +40,13 @@ Tests live in a dedicated `tests/` folder inside each package, organized by type
 
 ## Test doubles policy
 
-**Prefer real implementations and InMemory fakes over mocks.**
+**Unit tests (`tests/unit/`) MUST NOT use mocks, stubs, or spies of any kind.** All dependencies must be real implementations or InMemory fakes.
 
 - InMemory adapters live in `infrastructure/` next to the production adapter (e.g. `infrastructure/repositories/user-in-memory.repository.ts`).
-- Use `mock()` only for external boundaries that cannot run in-process (third-party HTTP, push notifications).
+- Use `InMemoryEventBus` (from `@OneJs/event-bus`) instead of `{ publish: async () => {} }` stubs.
+- Use `SilentLogger` (from `@OneJs/core`) instead of `{ debug: () => {} }` stubs.
+- Use InMemory repositories instead of `mock(IRepository)`.
+- **If a test requires mocks** (external HTTP, push notifications) → it MUST be in `tests/integration/` with `*.integration.test.ts` suffix.
 - Never mock a type you own when you can write an InMemory implementation — owned fakes stay in sync at compile time.
 
 ## FIRST
@@ -56,6 +59,19 @@ Tests live in a dedicated `tests/` folder inside each package, organized by type
 - Real Postgres via `bun run dbs` (docker-compose) only for full e2e tests if needed.
 - `bun run db:sync` before running against a fresh schema.
 - Reset state with `beforeEach` cleanup (e.g., `await prisma.user.deleteMany()`).
+
+## No magic strings in tests
+
+Test assertions MUST reuse production constants rather than duplicating error messages or domain values as inline literals.
+
+```typescript
+// ✅ Correct
+import { UserErrorMessages } from '../../../domain/constants/error-messages'
+expect(() => service.run(email)).toThrow(UserErrorMessages.EMAIL_IN_USE)
+
+// ❌ Wrong
+expect(() => service.run(email)).toThrow('Email already in use')
+```
 
 ## What not to do
 

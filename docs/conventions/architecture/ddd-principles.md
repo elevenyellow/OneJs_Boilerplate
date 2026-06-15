@@ -340,10 +340,12 @@ The single most important convention in this codebase:
 
 | Boundary | Rule | Example |
 |---|---|---|
-| Domain layer | VOs everywhere | `findByEmail(email: Email)` |
+| Domain layer — entity constructor | VOs as params | `constructor(id: UserId, email: Email)` |
+| Domain layer — repository interface | VOs everywhere | `findByEmail(email: Email)` |
 | Application service `run()` | VOs or entities as params | `run(email: Email, hash: PasswordHash)` |
 | Entity `register()` | VOs as params | `User.register(email: Email, hash: PasswordHash)` |
-| Entity `reconstitute()` | Primitives allowed (persistence boundary) | `User.reconstitute(id: string, ...)` |
+| Entity `with*()` | VOs as params | `user.withPasswordHash(hash: PasswordHash)` |
+| Entity `reconstitute()` | Primitives allowed **only here** (persistence boundary) | `User.reconstitute(id: string, ...)` |
 | `toDto()` | Extracts primitives via `.getValue()` | `this.email.getValue()` |
 | Controller / API handler | Creates VOs from request primitives | `Email.create(req.body.email)` |
 
@@ -353,6 +355,72 @@ Primitives only cross the domain boundary in two places:
 3. **Controllers** — creating VOs from raw HTTP/RPC input
 
 Everywhere else, pass VOs and entities.
+
+> **This document is the authoritative source** for the "No Primitives Rule" across the codebase. All other docs, agent prompts, and skill files reference this section rather than re-stating the full rule.
+
+## No Magic Strings
+
+Every string literal used as an error type label, error message, log scope, or domain concept value MUST be defined as a named constant — never an inline string literal.
+
+### Pattern per bounded context
+
+Each bounded context defines its own constants in `domain/constants/`:
+
+```
+packages/<context>/
+└── domain/
+    └── constants/
+        ├── error-types.ts       # OneJsError type labels
+        ├── error-messages.ts    # OneJsError messages
+        └── log-scopes.ts        # Logger scope identifiers
+```
+
+### Example
+
+```typescript
+// packages/user/domain/constants/error-types.ts
+export class UserErrorTypes {
+  static readonly CONFLICT = 'Conflict'
+  static readonly VALIDATION_FAILED = 'Validation failed'
+  static readonly NOT_FOUND = 'Not Found'
+  static readonly UNAUTHORIZED = 'Unauthorized'
+  static readonly BAD_REQUEST = 'Bad Request'
+}
+
+// packages/user/domain/constants/error-messages.ts
+export class UserErrorMessages {
+  static readonly EMAIL_IN_USE = 'Email already in use'
+  static readonly USER_NOT_FOUND = 'User not found'
+  static readonly INVALID_EMAIL = 'Invalid email format'
+  static readonly EMAIL_REQUIRED = 'Email is required'
+}
+
+// packages/user/domain/constants/log-scopes.ts
+export class UserLogScopes {
+  static readonly SERVICE = 'user:service'
+  static readonly CONTROLLER = 'user:controller'
+  static readonly REPOSITORY = 'user:repository'
+}
+```
+
+### Usage
+
+```typescript
+// ✅ Correct — named constants
+throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
+this.logger.debug(UserLogScopes.SERVICE, `User created: ${user.getId().getValue()}`)
+
+// ❌ Wrong — magic strings
+throw new OneJsError('Conflict', 409, 'Email already in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+this.logger.debug('user:service', `User created: ${user.getId().getValue()}`)
+```
+
+### Key Rules
+
+- Error type labels, messages, and log scopes are ALWAYS named constants
+- Each bounded context owns its own constants (aligned with DDD ubiquitous language)
+- Constants files live in `domain/constants/` within each context
+- Reviewer agents flag inline magic strings in error construction and log calls
 
 ## Anti-Corruption Layer
 
@@ -377,7 +445,11 @@ export class ExternalUserAdapter {
 
 1. **Rich domain models**: Business logic lives in entities and domain services — not in services or controllers
 2. **VO-first**: Model every concept as a VO before using a primitive
-3. **Consistency boundaries**: Aggregates maintain invariants; only reference other aggregates by VO id
-4. **Domain events**: Use events for cross-aggregate consistency and side effects
-5. **Layered dependencies**: Domain ← Application ← Infrastructure (never reversed)
-6. **Ubiquitous language**: Class names, method names, and concepts match business terminology
+3. **No magic strings**: All error type labels, messages, and log scopes are named constants per bounded context — see [No Magic Strings](#no-magic-strings) above
+4. **No primitives as parameters**: Entity constructors, `register()`, `with*()`, and `run()` receive VOs — see [No Primitives Rule](#no-primitives-rule) above
+5. **Consistency boundaries**: Aggregates maintain invariants; only reference other aggregates by VO id
+6. **Domain events**: Use events for cross-aggregate consistency and side effects
+7. **Layered dependencies**: Domain ← Application ← Infrastructure (never reversed)
+8. **Ubiquitous language**: Class names, method names, and concepts match business terminology
+
+> ⚠️ This document is the **canonical source** for DDD/hexagonal rules. All agent prompts, skill files, and other convention docs reference this file. When in doubt, consult this document.

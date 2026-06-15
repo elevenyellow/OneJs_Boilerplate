@@ -30,8 +30,9 @@ Build the file list from that scope, keep only relevant code files in the reposi
 
 - **Dependency direction**: Domain has no external dependencies; Application depends on Domain; Infrastructure depends on both.
 - **Layer responsibilities**: domain logic stays in entities or domain services; application services orchestrate through `run()`; infrastructure owns adapters and wiring.
+- **No magic strings**: flag inline string literals in `OneJsError` type/message args and `logger.*` scope args. See [ddd-principles.md — No Magic Strings](../../docs/conventions/architecture/ddd-principles.md#no-magic-strings).
 - **Repository pattern**: interface (port) in domain, adapter in infrastructure; all methods use VO/entity params — never primitives.
-- **No primitives as parameters**: `run()` and repository interface methods receive VOs, entities, or aggregates — flag any violation.
+- **No primitives as parameters**: `run()` and repository interface methods receive VOs, entities, or aggregates — flag any violation. Entity constructors and `register()`/`with*()` must receive VOs; `reconstitute()` is the sole exception. See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
 - **Cross-context boundaries**: communicate through application services or domain ports, never through direct adapter coupling.
 - **Service shape**: single public `run()` method, `@Injectable()` + `@Inject(ConcreteClass)` constructor injection, no `UseCase` suffix.
 - **Entity immutability**: properties `readonly`, state transitions via `with*()` returning new instances.

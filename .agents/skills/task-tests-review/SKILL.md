@@ -30,7 +30,9 @@ Include the production files related to the scoped tests. Exclude generated file
 
 - **Structure & naming**: AAA (Arrange-Act-Assert) with business-oriented names.
 - **Imports**: `bun:test` only; `mock()` from `bun:test`, not Jest.
-- **Test doubles policy**: InMemory implementations or lightweight fakes over mocks.
+- **Test doubles policy — unit tests**: Zero mocks, stubs, or spies in `tests/unit/` files. Flag any `mock()`, `spyOn()`, hand-rolled stubs. Dependencies must use `InMemoryEventBus`, `SilentLogger`, or InMemory repositories.
+- **Test doubles policy — integration**: If a test requires mocks, it must be in `tests/integration/` with `*.integration.test.ts` suffix. Flag unit test files that use mocks and suggest reclassification.
+- **No magic strings in tests**: Flag inline string literals used as error messages or domain values in assertions. Tests should reuse production constants (e.g., `UserErrorMessages.EMAIL_IN_USE`) instead of duplicating strings.
 - **Coverage gaps** on affected production paths (report broad gaps instead of inventing large suites).
 
 ## Rules

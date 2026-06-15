@@ -92,16 +92,16 @@ If you reach for `while` on the second test, you jumped too far — step back an
 
 ## Inside-Out Development
 
-Work from the center of the hexagon outward:
+Work from the center of the hexagon outward — **no mocks at any layer**:
 
-1. **Domain** — entities, value objects, domain services. Pure logic, no IO.
-2. **Application** — the `run()` service, driven by an InMemory repository fake.
-3. **Infrastructure** — real adapters (Prisma repo, tRPC procedure, UI component) once the application layer is stable.
+1. **Domain** — entities, value objects, domain services. Pure logic, no IO. Test with real instances only.
+2. **Application** — the `run()` service, driven by InMemory fakes (repositories, EventBus, Logger). Zero mocks or stubs.
+3. **Infrastructure** — real adapters (Prisma repo, tRPC procedure, UI component) once the application layer is stable. Mocks allowed only here and only for external boundaries.
 
 ### Why Inside-Out
 
 - **Domain tests are the fastest feedback loop** — you catch design problems before wiring.
-- **Application tests with InMemory adapters** keep the service honest without DB flakiness.
+- **Application tests with InMemory adapters** keep the service honest without DB flakiness. Use `InMemoryEventBus` and `SilentLogger` (from the framework) instead of stubs — see the [Test Doubles Policy](./testing.md#test-doubles-policy).
 - **Infrastructure tests are the slowest**; by the time you reach them, the behavior is already locked in.
 
 ```

@@ -42,11 +42,12 @@ packages/<context>/
 
 ## No primitives as parameters
 
-This is the most critical rule in the codebase:
+This is the most critical rule in the codebase. The canonical source is [ddd-principles.md — No Primitives Rule](../../../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
 
 - `run()` params: always VOs or entities — never `string`, `number`, `boolean`
+- Entity constructors: always VOs — never primitives
 - Repository interface methods: always VO params — `findById(id: UserId)`, `findByEmail(email: Email)`
-- Entity `register()` factory: accepts VOs
+- Entity `register()` and `with*()`: accept VOs
 - Entity `reconstitute()`: the ONLY place that accepts primitives (persistence boundary)
 
 ## Repository port/adapter
@@ -97,6 +98,6 @@ export class User extends EntityBase<UserId> {
 throw new OneJsError('Not Found', 404, 'User not found', {}, ErrorCodes.USER_NOT_FOUND)
 ```
 
-Never `new Error()`.
+Never `new Error()`. **No magic strings**: every type label and message must be a named constant per bounded context (see [ddd-principles.md — No Magic Strings](../../../../docs/conventions/architecture/ddd-principles.md#no-magic-strings)).
 
 → Full guide: [patterns/error-handling.md](../../../../docs/conventions/patterns/error-handling.md)

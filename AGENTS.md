@@ -50,12 +50,13 @@ packages/<context>/
 
 ## Operational Defaults
 
-- **No primitives as parameters**: service `run()` methods and repository interface methods receive VOs, entities, or aggregates — never `string`, `number`, `boolean`. VOs are created at the system boundary (controller/handler).
-- **Entities are built from VOs**: constructors receive VOs; `register()` factory accepts VOs; `reconstitute()` accepts primitives only at the persistence boundary.
+- **No magic strings**: every error type label, error message, and log scope is a named constant per bounded context — never inline string literals. See [ddd-principles.md — No Magic Strings](docs/conventions/architecture/ddd-principles.md#no-magic-strings).
+- **No primitives as parameters**: service `run()` methods and repository interface methods receive VOs, entities, or aggregates — never `string`, `number`, `boolean`. VOs are created at the system boundary (controller/handler). Entity constructors and `register()` receive VOs; `reconstitute()` is the sole exception. See [ddd-principles.md — No Primitives Rule](docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
 - **Immutable entities**: all properties `readonly`; state transitions use `with*()` methods that return new instances.
 - **VOs validate in `create()`**: private constructor + static `create()` factory; throws `OneJsError` on invalid input.
-- **`OneJsError` for all errors**: `new OneJsError(type, statusCode, message, details, ErrorCodes.CODE)` — never `new Error()`.
+- **`OneJsError` for all errors**: `new OneJsError(type, statusCode, message, details, ErrorCodes.CODE)` — never `new Error()`. Type labels and messages MUST be named constants, not magic strings.
 - **InMemory fakes in tests**: never mock repositories; use the InMemory adapter as a real dependency.
+- **Unit tests have zero mocks**: unit tests (`tests/unit/`) MUST NOT use mocks, stubs, or spies. Use InMemoryEventBus, SilentLogger, and InMemory repositories. If a test requires mocks → it's an integration test (`tests/integration/`, `*.integration.test.ts`).
 - **`reconstitute()` for hydration**: map DB records to entities via `Entity.reconstitute()`; use `entity.toDto()` to write back.
 - Application services orchestrate through `run()` and delegate business rules to entities or domain services.
 - No getters/setters in domain classes — expose behavior through named methods.

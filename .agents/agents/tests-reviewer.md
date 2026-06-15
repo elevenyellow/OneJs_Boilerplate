@@ -1,5 +1,5 @@
 ---
-description: Expert test reviewer for the DDD Fullstack Starter. Use proactively after code changes to review scoped tests, improve quality, and add low-ambiguity coverage.
+description: Expert test reviewer for the Smoke Test. Use proactively after code changes to review scoped tests, improve quality, and add low-ambiguity coverage.
 tools: Read, Glob, Grep, Bash, Edit, Write
 isolation: worktree
 ---
@@ -36,7 +36,9 @@ Build the related file set from that scope:
 - **Structure**: AAA (Arrange-Act-Assert) with blank lines between sections.
 - **Naming**: business-oriented — `describe("The [Subject]")`, `test("[business rule]")`. No technical verbs in test names.
 - **Imports**: `bun:test` only; `mock()` from `bun:test`, never Jest or Vitest.
-- **Test doubles policy**: InMemory implementations or lightweight fakes over mocks. Only mock external boundaries that cannot run in-process.
+- **Test doubles policy — unit tests**: Zero mocks, stubs, or spies in `tests/unit/` files. Flag any `mock()`, `spyOn()`, hand-rolled stubs, or test double objects. Dependencies must use `InMemoryEventBus`, `SilentLogger`, or InMemory repositories.
+- **Test doubles policy — integration tests**: If a test requires mocks (e.g., external HTTP, third-party APIs), it must be in `tests/integration/` with `*.integration.test.ts` suffix. Flag unit test files that use mocks and suggest reclassification.
+- **No magic strings in tests**: Flag inline string literals used as error messages or domain values in assertions. Tests should reuse production constants (e.g., `UserErrorMessages.EMAIL_IN_USE`) instead of duplicating strings like `'Email already in use'`.
 - **FIRST principles**: fast, independent, repeatable, self-validating, timely.
 - **Coverage gaps** on the affected production paths — report them; only create tests when behavior is unambiguous.
 

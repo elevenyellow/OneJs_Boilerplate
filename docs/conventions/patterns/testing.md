@@ -16,8 +16,8 @@
                    - UseCases with InMemoryRepositories
 ```
 
-- **More unit tests**: Fast, isolated, cover all edge cases
-- **Some integration tests**: Real DB, real sandboxes
+- **More unit tests**: Fast, isolated, cover all edge cases. Zero mocks/stubs/spies — use real implementations or InMemory fakes only.
+- **Some integration tests**: Real DB, real sandboxes, or tests requiring mocks
 - **Few E2E tests**: Critical user journeys only
 
 ## Test Location
@@ -80,6 +80,22 @@ describe('The Invoice Calculator', () => {
 });
 ```
 
+## No Magic Strings in Tests
+
+Test assertions and test data MUST NOT use inline magic strings that represent business concepts. Use the same named constants that production code uses.
+
+```typescript
+// ✅ Correct — reuse production constants
+import { UserErrorMessages } from '../../../domain/constants/error-messages'
+
+expect(() => service.run(email, hash)).toThrow(UserErrorMessages.EMAIL_IN_USE)
+
+// ❌ Wrong — magic string duplicates production logic
+expect(() => service.run(email, hash)).toThrow('Email already in use')
+```
+
+Exceptions: test-specific data (email addresses, names) that are purely for test setup are fine as local literals.
+
 ## AAA Structure (Arrange-Act-Assert)
 
 - **Arrange**: Prepare context and necessary data
@@ -87,13 +103,24 @@ describe('The Invoice Calculator', () => {
 - **Assert**: Verify the expected result
 - Visually separate the three sections (blank line between them)
 
-## Mocks Policy
+## Test Doubles Policy
 
-- Use InMemoryRepositories for application service tests (see `guidelines/hexagonal-architecture`)
-- InMemory repository fakes live in `infrastructure/` next to production adapters for reusability across packages
-- Stubs and spies are allowed on application ports (EmailSender, TokenGenerator, OTPGenerator)
-- Never use mocks on repositories — always use InMemory implementations
-- Before proposing any other mock: consult the Tech Lead first
+**Unit tests (`tests/unit/`) MUST NOT use mocks, stubs, or spies of any kind.** All dependencies must be real implementations or InMemory fakes (InMemoryEventBus, SilentLogger, InMemory repositories).
+
+If a test requires mocks, stubs, or spies → it MUST be classified as an integration test: placed in `tests/integration/` and named `*.integration.test.ts`.
+
+| Test type | Allowed doubles | Real implementations |
+|---|---|---|
+| Unit (`tests/unit/`) | None | InMemory repositories, InMemoryEventBus, SilentLogger |
+| Integration (`tests/integration/`) | `mock()` for external APIs | DB adapters, full service wiring |
+| E2E (`tests/e2e/`) | Full system | Real HTTP, real DB |
+
+**Concrete rules:**
+- Use `InMemoryEventBus` (from `@OneJs/event-bus`) instead of `{ publish: async () => {} }`
+- Use `SilentLogger` (from `@OneJs/core`) instead of `{ debug: () => {} }`
+- Use InMemory repositories (from `infrastructure/repositories/`) instead of `mock(IRepo)`
+- Never mock a type you own — write an InMemory implementation that stays in sync at compile time
+- Tests-reviewer agents flag any mock, stub, spy, or hand-rolled test double in `tests/unit/` files
 
 ## InMemory Repository Fakes
 
@@ -133,27 +160,34 @@ export class UserInMemoryRepository implements UserRepository {
 }
 ```
 
-Used in application service tests:
+Used in application service tests (no mocks — real implementations only):
 ```typescript
 // tests/unit/application/user-creator.service.test.ts
+import { InMemoryEventBus } from '@OneJs/event-bus'
+import { SilentLogger } from '@OneJs/core'
 import { UserInMemoryRepository } from '../../../infrastructure/repositories/user-in-memory.repository';
 
 describe('The UserCreator', () => {
   let repository: UserInMemoryRepository;
+  let eventBus: InMemoryEventBus;
+  let logger: SilentLogger;
   let service: UserCreator;
 
   beforeEach(() => {
     repository = new UserInMemoryRepository();
-    service = new UserCreator(repository);
+    eventBus = new InMemoryEventBus();
+    logger = new SilentLogger();
+    service = new UserCreator(repository, eventBus, logger);
   });
 
   it('creates a user with valid email', async () => {
-    const dto = { email: 'test@example.com' };
+    const email = Email.create('user@example.com');
+    const hash = PasswordHash.create('hashed_pw');
 
-    await service.run(dto);
+    const user = await service.run(email, hash);
 
-    const saved = await repository.findByEmail(Email.create(dto.email));
-    expect(saved).toBeDefined();
+    expect(user.email.getValue()).toBe('user@example.com');
+    expect(await repository.findByEmail(email)).not.toBeNull();
   });
 });
 ```

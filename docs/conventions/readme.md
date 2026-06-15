@@ -61,13 +61,15 @@ packages/{context}/
 
 ## Core Rules
 
+- **No magic strings**: every error type label, error message, and log scope is a named constant per bounded context — never inline string literals. See [ddd-principles.md — No Magic Strings](./architecture/ddd-principles.md#no-magic-strings).
 - **No primitives as parameters**: `run()` and repository interface methods receive VOs, entities, or aggregates — never `string`, `number`, `boolean`. VOs are created at the system boundary (controller).
-- **Entities built from VOs**: constructors and `register()` receive VOs; `reconstitute()` is the only place accepting primitives (persistence boundary).
+- **Entities built from VOs**: constructors and `register()` receive VOs; `reconstitute()` is the only place accepting primitives (persistence boundary). See [ddd-principles.md — No Primitives Rule](./architecture/ddd-principles.md#no-primitives-rule).
 - **Immutable entities**: all properties `readonly`; state transitions via `with*()` returning new instances.
 - **`run()` entry point**: every application and domain service exposes a public `run()` method.
 - **`@Injectable()` + `@Inject()`**: all DI via decorators — no factory classes.
-- **`OneJsError`**: all errors use `new OneJsError(type, statusCode, message, details, ErrorCodes.CODE)`.
+- **`OneJsError`**: all errors use `new OneJsError(type, statusCode, message, details, ErrorCodes.CODE)` with named constants for type and message.
 - **InMemory fakes in tests**: never mock repositories — use the InMemory adapter.
+- **Unit tests without mocks**: unit tests (`tests/unit/`) use zero mocks/stubs/spies; if a test requires mocks, it's an integration test (`*.integration.test.ts`).
 - **`reconstitute()` for hydration**: entity from DB record; `toDto()` to write back.
 
 ## Dependency Direction

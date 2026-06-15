@@ -28,10 +28,11 @@ Keep only production code files. Exclude tests (`*.test.ts`, `*.integration.test
 
 ## What the agent checks
 
+- **No magic strings**: flag inline string literals in `OneJsError` type/message args and `logger.*` scope args. See [ddd-principles.md — No Magic Strings](../../docs/conventions/architecture/ddd-principles.md#no-magic-strings).
 - **Service patterns**: single responsibility, `run()` entry point, constructor injection.
 - **Naming conventions**: `kebab-case.type.ts`, pronounceable, no redundant suffixes.
-- **No primitives as parameters**: `run()` and repository interface methods receive VOs/entities — never `string`, `number`, `boolean`.
-- **Error handling**: always `OneJsError` from `@OneJs/core` with `ErrorCodes` — never `new Error()`.
+- **No primitives as parameters**: `run()` and repository interface methods receive VOs/entities — never `string`, `number`, `boolean`. Entity constructors and `register()`/`with*()` receive VOs; `reconstitute()` is the sole exception. See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
+- **Error handling**: always `OneJsError` from `@OneJs/core` with `ErrorCodes` — never `new Error()`. Type labels and messages must be named constants.
 - **Entity hydration**: `Entity.reconstitute()` — not `Entity.fromDto()`.
 
 ## Rules
