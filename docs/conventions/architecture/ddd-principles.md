@@ -34,6 +34,7 @@ packages/
 
 ```typescript
 import { ValueObject, ValueObjectBase, OneJsError, ErrorCodes } from '@OneJs/core'
+import { UserErrorTypes, UserErrorMessages } from '../constants/error-types'
 
 @ValueObject()
 export class Email extends ValueObjectBase<string> {
@@ -43,10 +44,10 @@ export class Email extends ValueObjectBase<string> {
 
   static create(value: string): Email {
     if (!value?.trim())
-      throw new OneJsError('Validation failed', 400, 'Email is required', {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.EMAIL_REQUIRED, {}, ErrorCodes.VALIDATION_FAILED)
     const normalized = value.trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
-      throw new OneJsError('Validation failed', 400, `Invalid email: ${normalized}`, {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, `Invalid email: ${normalized}`, {}, ErrorCodes.VALIDATION_FAILED)
     return new Email(normalized)
   }
 }
@@ -73,6 +74,8 @@ email.equals(Email.create('user@example.com'))  // → true
 ### Common VOs
 
 ```typescript
+import { UserErrorTypes } from '../constants/error-types'
+
 // ID with auto-generation
 @ValueObject()
 export class UserId extends ValueObjectBase<string> {
@@ -83,7 +86,7 @@ export class UserId extends ValueObjectBase<string> {
   }
 
   static fromString(value: string): UserId {
-    if (!value) throw new OneJsError('Validation failed', 400, 'Invalid UserId', {}, ErrorCodes.VALIDATION_FAILED)
+    if (!value) throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, 'Invalid UserId', {}, ErrorCodes.VALIDATION_FAILED)
     return new UserId(value)
   }
 }
@@ -98,7 +101,7 @@ export class UserRole extends ValueObjectBase<string> {
 
   static create(value: string): UserRole {
     if (!['user', 'admin'].includes(value))
-      throw new OneJsError('Validation failed', 400, `Invalid role: ${value}`, {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, `Invalid role: ${value}`, {}, ErrorCodes.VALIDATION_FAILED)
     return new UserRole(value)
   }
 }
@@ -220,12 +223,14 @@ const updated = user.withPasswordHash('raw_hash')
 **Domain Services** contain business logic that doesn't belong to a specific entity:
 
 ```typescript
+import { UserLogScopes } from '../constants/log-scopes'
+
 @Injectable()
 export class PricingService {
   constructor(@Inject(Logger) private readonly logger: Logger) {}
 
   run(order: Order, customer: Customer): OrderTotal {
-    this.logger.debug('pricing-service', `Calculating for order ${order.getId().getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Calculating for order ${order.getId().getValue()}`)
     const subtotal = this.calculateSubtotal(order)
     const discount = this.calculateDiscount(customer, subtotal)
     return new OrderTotal(subtotal, discount)
@@ -249,6 +254,8 @@ Application services orchestrate domain objects. They:
 - Never contain business rules themselves
 
 ```typescript
+import { UserErrorTypes } from '../constants/error-types'
+
 @Injectable()
 export class OrderCreator {
   constructor(
@@ -262,7 +269,7 @@ export class OrderCreator {
   async run(customerId: CustomerId, items: OrderItem[]): Promise<Order> {
     const customer = await this.customerRepo.findById(customerId)
     if (!customer)
-      throw new OneJsError('Not Found', 404, 'Customer not found', {}, ErrorCodes.NOT_FOUND)
+      throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, 'Customer not found', {}, ErrorCodes.NOT_FOUND)
 
     const order = Order.create(customerId, items)
     const total = this.pricingService.run(order, customer)

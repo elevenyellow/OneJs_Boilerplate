@@ -43,6 +43,7 @@ packages/user/
 ```typescript
 // packages/user/domain/value-objects/user-id.ts
 import { ValueObject, ValueObjectBase, OneJsError, ErrorCodes } from '@OneJs/core'
+import { UserErrorTypes } from '../constants/error-types'
 import { v4 as uuidv4 } from 'uuid'
 
 @ValueObject()
@@ -57,7 +58,7 @@ export class UserId extends ValueObjectBase<string> {
 
   static fromString(value: string): UserId {
     if (!value)
-      throw new OneJsError('Validation failed', 400, 'Invalid UserId', {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, 'Invalid UserId', {}, ErrorCodes.VALIDATION_FAILED)
     return new UserId(value)
   }
 }
@@ -68,6 +69,7 @@ export class UserId extends ValueObjectBase<string> {
 ```typescript
 // packages/user/domain/value-objects/email.ts
 import { ValueObject, ValueObjectBase, OneJsError, ErrorCodes } from '@OneJs/core'
+import { UserErrorTypes, UserErrorMessages } from '../constants/error-types'
 
 @ValueObject()
 export class Email extends ValueObjectBase<string> {
@@ -77,10 +79,10 @@ export class Email extends ValueObjectBase<string> {
 
   static create(value: string): Email {
     if (!value?.trim())
-      throw new OneJsError('Validation failed', 400, 'Email is required', {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.EMAIL_REQUIRED, {}, ErrorCodes.VALIDATION_FAILED)
     const normalized = value.trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
-      throw new OneJsError('Validation failed', 400, `Invalid email format: ${normalized}`, {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, `Invalid email format: ${normalized}`, {}, ErrorCodes.VALIDATION_FAILED)
     return new Email(normalized)
   }
 }
@@ -91,6 +93,7 @@ export class Email extends ValueObjectBase<string> {
 ```typescript
 // packages/user/domain/value-objects/user-role.ts
 import { ValueObject, ValueObjectBase, OneJsError, ErrorCodes } from '@OneJs/core'
+import { UserErrorTypes } from '../constants/error-types'
 
 const VALID_ROLES = ['user', 'admin'] as const
 
@@ -105,7 +108,7 @@ export class UserRole extends ValueObjectBase<string> {
 
   static create(value: string): UserRole {
     if (!VALID_ROLES.includes(value as any))
-      throw new OneJsError('Validation failed', 400, `Invalid role: ${value}`, {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, `Invalid role: ${value}`, {}, ErrorCodes.VALIDATION_FAILED)
     return new UserRole(value)
   }
 }
@@ -274,6 +277,7 @@ import { PasswordHash } from '../domain/value-objects/password-hash'
 import { ResetToken } from '../domain/value-objects/reset-token'
 import { UserId } from '../domain/value-objects/user-id'
 import { PasswordChangedEvent } from '../domain/events/password-changed.event'
+import { UserErrorTypes, UserErrorMessages, UserLogScopes } from '../domain/constants'
 import { UserRegisteredEvent } from '../domain/events/user-registered.event'
 import type { IUserRepository } from '../domain/repositories/user.repository.interface'
 import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
@@ -289,13 +293,13 @@ export class UserService {
   async register(email: Email, passwordHash: PasswordHash): Promise<User> {
     const existing = await this.repository.findByEmail(email)
     if (existing)
-      throw new OneJsError('Conflict', 409, 'Email already in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+      throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
 
     const user = User.register(email, passwordHash)
     await this.repository.save(user)
     await this.eventBus.publish(new UserRegisteredEvent(user))
 
-    this.logger.debug('user:service', `Registered: ${user.getId().getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Registered: ${user.getId().getValue()}`)
     return user
   }
 
@@ -306,13 +310,13 @@ export class UserService {
   async updatePassword(id: UserId, currentPasswordHash: PasswordHash, newPasswordHash: PasswordHash): Promise<void> {
     const user = await this.repository.findById(id)
     if (!user)
-      throw new OneJsError('Not Found', 404, 'User not found', {}, ErrorCodes.USER_NOT_FOUND)
+      throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, 'User not found', {}, ErrorCodes.USER_NOT_FOUND)
 
     const updated = user.withPasswordHash(newPasswordHash)
     await this.repository.save(updated)
     await this.eventBus.publish(new PasswordChangedEvent(updated))
 
-    this.logger.debug('user:service', `Password updated: ${id.getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Password updated: ${id.getValue()}`)
   }
 }
 ```

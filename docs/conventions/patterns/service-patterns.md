@@ -33,6 +33,7 @@ Application services represent complete use cases and orchestrate domain objects
 // user-creator.service.ts
 import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
 import { EventBus } from '@OneJs/event-bus'
+import { UserErrorTypes, UserErrorMessages, UserLogScopes } from '../../domain/constants'
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface'
 import { InMemoryUserRepository } from '../../infrastructure/repositories/in-memory-user.repository'
 import type { Email } from '../../domain/value-objects/email'
@@ -48,17 +49,17 @@ export class UserCreator {
   ) {}
 
   async run(email: Email, passwordHash: PasswordHash): Promise<User> {
-    this.logger.debug('user-creator', `Creating user: ${email.getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Creating user: ${email.getValue()}`)
 
     const existing = await this.userRepository.findByEmail(email)
     if (existing)
-      throw new OneJsError('Conflict', 409, 'Email already in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+      throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
 
     const user = User.register(email, passwordHash)
     await this.userRepository.save(user)
     await this.eventBus.publish(new UserRegisteredEvent(user))
 
-    this.logger.debug('user-creator', `User created: ${user.getId().getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `User created: ${user.getId().getValue()}`)
     return user
   }
 }
@@ -146,14 +147,16 @@ Always inject against the **interface** (port), bind to the **implementation** (
 
 ### 4. Structured Execution Flow
 
+*(Imports omitted for brevity — all error type labels, messages, and log scopes are named constants per context.)*
+
 ```typescript
 async run(param: SomeVO): Promise<Result> {
   // 1. Log entry
-  this.logger.debug('service-name', `Starting: ${param.getValue()}`)
+  this.logger.debug(UserLogScopes.SERVICE, `Starting: ${param.getValue()}`)
 
   // 2. Load/validate domain objects
   const entity = await this.repository.findById(id)
-  if (!entity) throw new OneJsError('Not Found', 404, '...', {}, ErrorCodes.NOT_FOUND)
+  if (!entity) throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, '...', {}, ErrorCodes.NOT_FOUND)
 
   // 3. Business logic (delegates to entities/domain services)
   const updated = entity.performAction()
@@ -165,7 +168,7 @@ async run(param: SomeVO): Promise<Result> {
   await this.eventBus.publish(new SomethingHappenedEvent(updated))
 
   // 6. Log completion
-  this.logger.debug('service-name', `Done: ${updated.getId().getValue()}`)
+  this.logger.debug(UserLogScopes.SERVICE, `Done: ${updated.getId().getValue()}`)
   return updated
 }
 ```
@@ -175,6 +178,8 @@ async run(param: SomeVO): Promise<Result> {
 Break down complex logic into well-named private methods:
 
 ```typescript
+import { UserErrorTypes, UserLogScopes } from '../domain/constants'
+
 @Injectable()
 export class PasswordResetter {
   constructor(
@@ -192,7 +197,7 @@ export class PasswordResetter {
   private async findUserByToken(token: ResetToken): Promise<User> {
     const user = await this.repo.findByResetToken(token)
     if (!user)
-      throw new OneJsError('Bad Request', 400, 'Invalid or expired token', {}, ErrorCodes.AUTH_INVALID)
+      throw new OneJsError(UserErrorTypes.BAD_REQUEST, 400, 'Invalid or expired token', {}, ErrorCodes.AUTH_INVALID)
     return user
   }
 
@@ -203,7 +208,7 @@ export class PasswordResetter {
   private async persist(user: User): Promise<void> {
     await this.repo.save(user)
     await this.eventBus.publish(new PasswordChangedEvent(user))
-    this.logger.debug('password-resetter', `Password reset for ${user.getId().getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Password reset for ${user.getId().getValue()}`)
   }
 }
 ```
@@ -215,6 +220,7 @@ export class PasswordResetter {
 ```typescript
 // packages/user/domain/services/user-validator.service.ts
 import { Injectable, Inject, Logger } from '@OneJs/core'
+import { UserLogScopes } from '../constants/log-scopes'
 import type { User } from '../entities/user'
 
 @Injectable()
@@ -222,7 +228,7 @@ export class UserValidator {
   constructor(@Inject(Logger) private readonly logger: Logger) {}
 
   run(user: User): ValidationResult {
-    this.logger.debug('user-validator', `Validating: ${user.getId().getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Validating: ${user.getId().getValue()}`)
 
     const errors: string[] = []
 
@@ -248,6 +254,7 @@ export class UserValidator {
 // packages/user/application/user-creator.service.ts
 import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
 import { EventBus } from '@OneJs/event-bus'
+import { UserErrorTypes, UserErrorMessages, UserLogScopes } from '../domain/constants'
 import type { IUserRepository } from '../domain/repositories/user.repository.interface'
 import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
 import { User } from '../domain/entities/user'
@@ -264,17 +271,17 @@ export class UserCreator {
   ) {}
 
   async run(email: Email, passwordHash: PasswordHash): Promise<User> {
-    this.logger.debug('user-creator', `Registering: ${email.getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Registering: ${email.getValue()}`)
 
     const existing = await this.repository.findByEmail(email)
     if (existing)
-      throw new OneJsError('Conflict', 409, 'Email already in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+      throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
 
     const user = User.register(email, passwordHash)
     await this.repository.save(user)
     await this.eventBus.publish(new UserRegisteredEvent(user))
 
-    this.logger.debug('user-creator', `Registered: ${user.getId().getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `Registered: ${user.getId().getValue()}`)
     return user
   }
 }
@@ -282,25 +289,28 @@ export class UserCreator {
 
 ## Error Handling
 
-Services use `OneJsError` from `@OneJs/core`:
+Services use `OneJsError` from `@OneJs/core` with named constants:
 
 ```typescript
 import { OneJsError, ErrorCodes } from '@OneJs/core'
+import { UserErrorTypes, UserErrorMessages } from '../domain/constants/error-types'
 
 // Validation
-throw new OneJsError('Validation failed', 400, 'Password too short', {}, ErrorCodes.VALIDATION_FAILED)
+throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, 'Password too short', {}, ErrorCodes.VALIDATION_FAILED)
 
 // Not found
-throw new OneJsError('Not Found', 404, `User not found`, {}, ErrorCodes.USER_NOT_FOUND)
+throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, 'User not found', {}, ErrorCodes.USER_NOT_FOUND)
 
 // Conflict
-throw new OneJsError('Conflict', 409, 'Email already in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
 
 // Unauthorized
-throw new OneJsError('Unauthorized', 401, 'Invalid credentials', {}, ErrorCodes.AUTH_INVALID)
+throw new OneJsError(UserErrorTypes.UNAUTHORIZED, 401, 'Invalid credentials', {}, ErrorCodes.AUTH_INVALID)
 ```
 
 `OneJsError` signature: `new OneJsError(type, statusCode, message, details, errorCode)`
+
+> **No magic strings**: Every error type label and message MUST be a named constant per bounded context. See [ddd-principles.md — No Magic Strings](../architecture/ddd-principles.md#no-magic-strings) for the canonical rule.
 
 ## Testing Patterns
 

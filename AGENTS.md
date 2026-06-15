@@ -66,15 +66,18 @@ packages/<context>/
 ## Value Object Pattern
 
 ```typescript
+import { UserErrorTypes, UserErrorMessages } from '../constants/error-types'
+
 @ValueObject()
 export class Email extends ValueObjectBase<string> {
   private constructor(value: string) { super(value) }
 
   static create(value: string): Email {
-    if (!value?.trim()) throw new OneJsError('Validation failed', 400, 'Email required', {}, ErrorCodes.VALIDATION_FAILED)
+    if (!value?.trim())
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.EMAIL_REQUIRED, {}, ErrorCodes.VALIDATION_FAILED)
     const normalized = value.trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
-      throw new OneJsError('Validation failed', 400, 'Invalid email', {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.INVALID_EMAIL, {}, ErrorCodes.VALIDATION_FAILED)
     return new Email(normalized)
   }
 }
@@ -104,6 +107,8 @@ export class User extends EntityBase<UserId> {
 ## Service Pattern
 
 ```typescript
+import { UserErrorTypes, UserErrorMessages } from '../constants/error-types'
+
 @Injectable()
 export class UserCreator {
   constructor(
@@ -114,7 +119,8 @@ export class UserCreator {
 
   async run(email: Email, passwordHash: PasswordHash): Promise<User> {
     const existing = await this.repo.findByEmail(email)
-    if (existing) throw new OneJsError('Conflict', 409, 'Email in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+    if (existing)
+      throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
     const user = User.register(email, passwordHash)
     await this.repo.save(user)
     await this.eventBus.publish(new UserRegisteredEvent(user))
