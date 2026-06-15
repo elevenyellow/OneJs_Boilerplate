@@ -1,0 +1,87 @@
+---
+description: Repository patterns for the OneJs framework
+globs: packages/**/repositories/**
+alwaysApply: false
+---
+
+# Repository Patterns (PORTS & ADAPTERS)
+
+**📚 Complete Guide**: `docs/conventions/patterns/repository-patterns.md`
+**📖 Examples**: `docs/conventions/examples/user-management/complete-implementation.md`
+
+## Critical Rules
+
+- **Interface**: Domain layer — `packages/<context>/domain/repositories/[entity].repository.interface.ts`
+- **Implementation**: Infrastructure layer — `packages/<context>/infrastructure/repositories/`
+- **VO params**: ALL interface methods use VOs/entities — never `string`, `number`, `boolean`
+- **Returns**: `Promise<Entity | null>` for single lookups — NOT `undefined`
+- **`@Injectable()`**: Required on ALL concrete implementations
+- **Hydration**: Use `Entity.reconstitute()` — NOT `Entity.fromDto()`
+
+## Interface Template
+
+```typescript
+export interface IUserRepository {
+  findAll(): Promise<User[]>
+  findById(id: UserId): Promise<User | null>
+  findByEmail(email: Email): Promise<User | null>
+  save(user: User): Promise<void>
+  delete(id: UserId): Promise<void>
+}
+```
+
+## InMemory Implementation Template
+
+```typescript
+@Injectable()
+export class InMemoryUserRepository implements IUserRepository {
+  private readonly store = new Map<string, User>()
+
+  async findById(id: UserId): Promise<User | null> {
+    return this.store.get(id.getValue()) ?? null
+  }
+
+  async findByEmail(email: Email): Promise<User | null> {
+    for (const u of this.store.values())
+      if (u.email.getValue() === email.getValue()) return u
+    return null
+  }
+
+  async save(user: User): Promise<void> {
+    this.store.set(user.getId().getValue(), user)
+  }
+
+  async delete(id: UserId): Promise<void> {
+    this.store.delete(id.getValue())
+  }
+
+  async findAll(): Promise<User[]> {
+    return Array.from(this.store.values())
+  }
+}
+```
+
+## Entity Transformation
+
+```typescript
+// ✅ Reconstitute from persistence
+User.reconstitute(record.id, record.email, record.passwordHash, record.role, record.createdAt, record.resetToken)
+
+// ✅ Serialize to persistence
+const dto = user.toDto()   // uses .getValue() internally
+
+// ❌ Never use fromDto()
+User.fromDto(record)
+```
+
+## DI Binding
+
+```typescript
+@Injectable()
+export class SomeService {
+  constructor(
+    @Inject(InMemoryUserRepository)      // concrete token
+    private readonly repo: IUserRepository,  // interface type
+  ) {}
+}
+```

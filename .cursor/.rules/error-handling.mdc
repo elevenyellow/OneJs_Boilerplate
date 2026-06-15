@@ -1,0 +1,61 @@
+---
+description: Error handling patterns for the OneJs framework
+globs: packages/**/errors/**, packages/**/services/**, packages/**/application/**
+alwaysApply: false
+---
+
+# Error Handling
+
+**📚 Complete Guide**: `docs/conventions/patterns/error-handling.md`
+
+## Critical Rules
+
+- **Always use `OneJsError`** from `@OneJs/core` — never `new Error()`
+- **Always include an `ErrorCode`** from `ErrorCodes` enum
+- **Never expose infrastructure errors** to the domain layer
+
+## Import
+
+```typescript
+import { OneJsError, ErrorCodes } from '@OneJs/core'
+```
+
+## OneJsError Signature
+
+```typescript
+new OneJsError(type: string, statusCode: number, message: string, details: object, errorCode: ErrorCodes)
+```
+
+## Common Patterns
+
+```typescript
+// Validation
+throw new OneJsError('Validation failed', 400, 'Password too short', {}, ErrorCodes.VALIDATION_FAILED)
+
+// Not found
+throw new OneJsError('Not Found', 404, `User not found: ${id}`, {}, ErrorCodes.USER_NOT_FOUND)
+
+// Conflict / duplicate
+throw new OneJsError('Conflict', 409, 'Email already in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+
+// Unauthorized
+throw new OneJsError('Unauthorized', 401, 'Invalid credentials', {}, ErrorCodes.AUTH_INVALID)
+
+// Bad request / expired token
+throw new OneJsError('Bad Request', 400, 'Invalid or expired reset token', {}, ErrorCodes.AUTH_INVALID)
+```
+
+## Status Code Reference
+
+| Situation | Status | Type |
+|---|---|---|
+| Invalid input / format | 400 | `'Validation failed'` |
+| Invalid/expired token | 400 | `'Bad Request'` |
+| Missing/invalid auth | 401 | `'Unauthorized'` |
+| Insufficient permissions | 403 | `'Forbidden'` |
+| Resource not found | 404 | `'Not Found'` |
+| Duplicate resource | 409 | `'Conflict'` |
+
+## Domain-Specific Error Codes
+
+Extend `ErrorCodes` for bounded-context-specific codes. Follow the pattern in `.oneJs/core/src/` for registration.

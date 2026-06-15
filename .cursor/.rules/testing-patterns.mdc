@@ -1,0 +1,108 @@
+---
+description: Testing patterns for the OneJs boilerplate
+globs: packages/**/*.test.ts
+alwaysApply: false
+---
+
+# Testing with Bun
+
+**📚 Complete Guide**: `docs/conventions/patterns/testing.md`
+**📖 Examples**: `docs/conventions/examples/user-management/complete-implementation.md`
+
+## Critical Rules
+
+- **Framework**: ALWAYS use Bun test — never Jest
+- **Imports**: `import { describe, it, expect, beforeEach } from 'bun:test'`
+- **Pattern**: AAA (Arrange, Act, Assert)
+- **No mocks for repositories**: Use the InMemory adapter as a real dependency
+- **VOs in tests**: Create VOs via their `create()` factory, never pass raw strings to domain code
+
+## Running Tests
+
+```bash
+bun test                    # All tests
+bun test <file_path>        # Specific file
+bun test --watch            # Watch mode
+```
+
+## Service Test Template
+
+```typescript
+import { describe, beforeEach, it, expect } from 'bun:test'
+import { UserCreator } from './user-creator.service'
+import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
+import { Email } from '../domain/value-objects/email'
+import { PasswordHash } from '../domain/value-objects/password-hash'
+
+describe('UserCreator', () => {
+  let service: UserCreator
+  let repository: InMemoryUserRepository
+
+  beforeEach(() => {
+    repository = new InMemoryUserRepository()
+    service = new UserCreator(
+      repository,
+      { publish: async () => {} },  // stub EventBus
+      { debug: () => {} } as any,   // stub Logger
+    )
+  })
+
+  it('should register user successfully', async () => {
+    const email = Email.create('user@example.com')
+    const hash = PasswordHash.create('hashed_pw')
+
+    const user = await service.run(email, hash)
+
+    expect(user.email.getValue()).toBe('user@example.com')
+    expect(await repository.findByEmail(email)).not.toBeNull()
+  })
+
+  it('should throw when email already in use', async () => {
+    const email = Email.create('user@example.com')
+    const hash = PasswordHash.create('hashed_pw')
+    await service.run(email, hash)
+
+    await expect(service.run(email, hash)).rejects.toThrow()
+  })
+})
+```
+
+## Repository Test Template
+
+```typescript
+import { describe, beforeEach, it, expect } from 'bun:test'
+import { InMemoryUserRepository } from './in-memory-user.repository'
+import { User } from '../../domain/entities/user'
+import { Email } from '../../domain/value-objects/email'
+import { PasswordHash } from '../../domain/value-objects/password-hash'
+import { UserId } from '../../domain/value-objects/user-id'
+
+describe('InMemoryUserRepository', () => {
+  let repository: InMemoryUserRepository
+
+  beforeEach(() => {
+    repository = new InMemoryUserRepository()
+  })
+
+  it('should return null when not found', async () => {
+    const result = await repository.findById(UserId.generateUniqueId())
+    expect(result).toBeNull()
+  })
+
+  it('should find user after save', async () => {
+    const email = Email.create('test@example.com')
+    const user = User.register(email, PasswordHash.create('hash'))
+    await repository.save(user)
+
+    const found = await repository.findByEmail(email)
+    expect(found).not.toBeNull()
+    expect(found!.email.getValue()).toBe('test@example.com')
+  })
+})
+```
+
+## NEVER Use
+
+- Jest imports or syntax
+- Mock functions for repositories — use InMemory adapters
+- Raw primitives where a VO is expected — call `VO.create()` first

@@ -1,0 +1,49 @@
+---
+description: Project information and documentation structure
+alwaysApply: true
+---
+
+# Project Information
+
+- **Project Name**: OneJs DDD Boilerplate
+- **Framework**: OneJs (`.oneJs/`) — custom DDD framework with DI, EntityBase, ValueObjectBase, EventBus, Logger, plugin system
+- **Description**: Monorepo boilerplate following DDD principles with Hexagonal Architecture (Ports & Adapters)
+
+## Framework Imports
+
+```typescript
+import { Entity, EntityBase, ValueObject, ValueObjectBase } from '@OneJs/core'
+import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
+import { EventBus } from '@OneJs/event-bus'
+```
+
+## Documentation Structure
+
+All patterns, conventions, and examples live in `docs/conventions/`:
+
+- **Naming conventions**: `docs/conventions/naming-conventions.md`
+- **Service patterns**: `docs/conventions/patterns/service-patterns.md`
+- **Repository patterns**: `docs/conventions/patterns/repository-patterns.md`
+- **Error handling**: `docs/conventions/patterns/error-handling.md`
+- **Testing**: `docs/conventions/patterns/testing.md`
+- **DDD principles**: `docs/conventions/architecture/ddd-principles.md`
+- **Complete example**: `docs/conventions/examples/user-management/complete-implementation.md`
+
+## Core Conventions (summary)
+
+- **No primitives as parameters**: service `run()` and repository interface methods receive VOs, entities, or aggregates — never `string`, `number`, `boolean`
+- **Entities built from VOs**: constructor receives VOs; `register()` factory accepts VOs; `reconstitute()` is the only place that accepts primitives (at persistence boundary)
+- **`run()` entry point**: every application and domain service exposes a public `run()` method
+- **`@Injectable()` + `@Inject()`**: all DI is via decorators — no factory classes
+- **`OneJsError`**: all domain errors use `new OneJsError(type, statusCode, message, details, ErrorCodes.CODE)`
+- **InMemory fakes**: never mock repositories — use the InMemory adapter as a real dependency in tests
+
+## MCP Tools (Context7)
+
+Always use Context7 MCP tools automatically (without explicit user request) when:
+
+- **Code generation**: creating new services, repositories, entities, or any implementation code
+- **Setup/Configuration**: setting up libraries, frameworks, build tools, or project configuration
+- **Library/API documentation**: looking up usage patterns, APIs, or best practices for external libraries
+
+Workflow: first resolve the library ID with `resolve-library-id`, then fetch documentation with `get-library-docs`. Prefer Context7 over web search for library docs.

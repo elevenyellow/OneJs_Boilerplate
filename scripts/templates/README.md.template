@@ -1,0 +1,65 @@
+# {{PROJECT_NAME}}
+
+> Generated from [ddd-fullstack-starter](https://github.com/elevenyellow/ddd-fullstack-starter)
+
+## Quick Start
+
+### Prerequisites
+
+- [Bun](https://bun.sh) >= 1.3.13{{#HAS_DATABASE}}
+- Docker or Podman (for PostgreSQL{{#HAS_REDIS}} and Redis{{/HAS_REDIS}}){{/HAS_DATABASE}}
+
+### Installation
+
+```bash
+bun install
+```
+
+### Development
+
+{{#HAS_DATABASE}}
+```bash
+# Start database services
+bun run dbs
+
+# Sync database schema
+bun run db:sync
+```
+{{/HAS_DATABASE}}
+
+{{#HAS_WEBAPP}}
+```bash
+# Start web application (localhost:3000)
+bun run webapp
+```
+{{/HAS_WEBAPP}}
+
+{{#HAS_MOBILE}}
+```bash
+# Start mobile app
+bun run mobile
+```
+{{/HAS_MOBILE}}
+
+{{#HAS_API}}
+```bash
+# Start API server (localhost:4000)
+bun run api
+```
+{{/HAS_API}}
+
+### Code Quality
+
+```bash
+bun run lint:fix    # Auto-fix linting issues
+bun run typecheck   # TypeScript type checking
+bun test            # Run tests
+```
+
+## Documentation
+
+See [docs/](./docs/) for architecture, conventions, and development guides.
+
+## License
+
+[MIT](./LICENSE)

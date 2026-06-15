@@ -1,0 +1,74 @@
+---
+description: Naming conventions for the OneJs boilerplate
+alwaysApply: true
+---
+
+# Naming Conventions
+
+**📚 Complete Guide**: `docs/conventions/naming-conventions.md`
+
+## Critical Rules (STRICTLY ENFORCED)
+
+### Files — `kebab-case.type.ts`
+
+| Type | Pattern | Example |
+|---|---|---|
+| Entity | `*.ts` | `user.ts` |
+| Value Object | `*.ts` | `email.ts`, `user-id.ts` |
+| Repository interface | `*.repository.interface.ts` | `user.repository.interface.ts` |
+| Repository impl | `*.repository.ts` | `in-memory-user.repository.ts` |
+| Service | `*.service.ts` | `user-creator.service.ts` |
+| Event | `*.event.ts` | `user-registered.event.ts` |
+| DTO | `*.dto.ts` | `user.dto.ts` |
+| Controller | `*.controller.ts` | `auth.controller.ts` |
+
+### Classes — `PascalCase`
+
+```typescript
+UserCreator, InMemoryUserRepository, Email, UserId, UserRole
+```
+
+### Methods — `camelCase`
+
+```typescript
+run(), findById(), getValue(), withPasswordHash()
+```
+
+### Packages — `@OneJs/package-name`
+
+```typescript
+import { Injectable } from '@OneJs/core'
+import { EventBus } from '@OneJs/event-bus'
+```
+
+### Local packages — `@[scope]/package-name`
+
+Define the scope in your workspace (e.g., `@dfs/`, `@myapp/`) in `package.json`.
+
+## Layer Directory Structure
+
+```
+packages/<context>/
+├── domain/
+│   ├── entities/           # EntityBase<TId> subclasses
+│   ├── value-objects/      # ValueObjectBase<T> subclasses
+│   ├── repositories/       # Interface (port) definitions
+│   ├── events/             # Domain event classes
+│   └── services/           # Domain service classes
+├── application/
+│   ├── *.service.ts        # Use case services (run() entry point)
+│   └── dtos/               # DTO classes for persistence boundaries
+└── infrastructure/
+    ├── repositories/       # Concrete adapters (InMemory, Prisma)
+    └── controllers/        # HTTP/RPC controllers
+```
+
+## Services Must Have `run()`
+
+```typescript
+✅ Correct
+class UserCreator { async run(email: Email, hash: PasswordHash): Promise<User> {} }
+
+❌ Wrong
+class UserCreator { async create(email: string): Promise<User> {} }
+```

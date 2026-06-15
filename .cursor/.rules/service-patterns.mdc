@@ -1,0 +1,78 @@
+---
+description: Service patterns for the OneJs framework
+globs: packages/**/services/**, packages/**/application/**
+alwaysApply: false
+---
+
+# Service Patterns
+
+**📚 Complete Guide**: `docs/conventions/patterns/service-patterns.md`
+**📖 Examples**: `docs/conventions/examples/user-management/complete-implementation.md`
+
+## Critical Rules
+
+- **Entry Point**: Services ALWAYS expose a public `run()` method
+- **No Primitives**: `run()` params are ALWAYS VOs, entities, or aggregates — never `string`, `number`, `boolean`
+- **Constructor Injection**: `@Injectable()` on class, `@Inject(ConcreteClass)` on constructor params
+- **Inject interface, bind implementation**: type as the port interface, inject the adapter class
+- **Logger**: inject `Logger` directly from `@OneJs/core` — no LoggerFactory
+
+## Imports
+
+```typescript
+import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
+import { EventBus } from '@OneJs/event-bus'
+```
+
+## Service Template
+
+```typescript
+@Injectable()
+export class UserCreator {
+  constructor(
+    @Inject(InMemoryUserRepository) private readonly repo: IUserRepository,
+    @Inject(EventBus) private readonly eventBus: EventBus,
+    @Inject(Logger) private readonly logger: Logger,
+  ) {}
+
+  async run(email: Email, passwordHash: PasswordHash): Promise<User> {
+    this.logger.debug('user-creator', `Registering: ${email.getValue()}`)
+    const existing = await this.repo.findByEmail(email)
+    if (existing)
+      throw new OneJsError('Conflict', 409, 'Email already in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+    const user = User.register(email, passwordHash)
+    await this.repo.save(user)
+    await this.eventBus.publish(new UserRegisteredEvent(user))
+    return user
+  }
+}
+```
+
+## Error Handling
+
+```typescript
+throw new OneJsError(type, statusCode, message, details, ErrorCodes.SOME_CODE)
+// e.g.
+throw new OneJsError('Not Found', 404, 'User not found', {}, ErrorCodes.USER_NOT_FOUND)
+throw new OneJsError('Conflict', 409, 'Email in use', {}, ErrorCodes.USER_ALREADY_EXISTS)
+throw new OneJsError('Validation failed', 400, 'Invalid input', {}, ErrorCodes.VALIDATION_FAILED)
+```
+
+## Service Types
+
+### Domain Services
+- **Location**: `packages/<context>/domain/services/`
+- **Dependencies**: Only domain objects (entities, VOs)
+
+### Application Services
+- **Location**: `packages/<context>/application/`
+- **Dependencies**: Repositories, domain services, EventBus, Logger
+
+## Testing
+
+Use InMemory repository fakes — never mock repositories:
+
+```typescript
+repository = new InMemoryUserRepository()
+service = new UserCreator(repository, stubEventBus(), stubLogger())
+```

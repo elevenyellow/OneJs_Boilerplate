@@ -1,17 +1,8 @@
 {
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/ddd-check.sh",
-            "timeout": 5,
-            "statusMessage": "Checking DDD compliance..."
-          }
-        ]
-      }
+  "permissions": {
+    "allow": [
+      "Bash(rtk ls *)",
+      "Bash(rtk find *)"
     ]
   }
 }
