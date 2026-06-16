@@ -2,23 +2,6 @@
   "$schema": "https://opencode.ai/config.json",
   "model": "github-copilot/claude-opus-4.7",
   "agent": {
-    "init": {
-      "description": "Initialize a new project from the DDD fullstack starter. Gathers project name, components, identifier, db config, SaaS toggle, and email provider, then runs the init CLI.",
-      "mode": "primary",
-      "model": "github-copilot/claude-sonnet-4.5",
-      "temperature": 0.2,
-      "reasoningEffort": "medium",
-      "permission": {
-        "edit": "deny",
-        "bash": "allow",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "webfetch": "deny",
-        "task": "deny"
-      },
-      "prompt": "{file:./.agents/skills/init/SKILL.md}"
-    },
     "explore": {
       "description": "Thinking partner. Investigates the codebase, clarifies requirements, and prepares the ground for a proposal. Does NOT write code or final specs.",
       "mode": "primary",
