@@ -1,6 +1,0 @@
-{
-  "name": "smoke-test",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Minimal fixture for testing init script"
-}
