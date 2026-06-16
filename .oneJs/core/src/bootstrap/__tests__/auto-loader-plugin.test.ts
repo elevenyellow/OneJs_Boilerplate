@@ -1,6 +1,6 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { AutoLoaderPlugin } from '../auto-loader-plugin'
-import type { IModuleLoader, AutoLoaderOptions } from '../ports/IModuleLoader'
+import type { AutoLoaderOptions, IModuleLoader } from '../ports/IModuleLoader'
 
 function makeLoader(): IModuleLoader & { load: ReturnType<typeof mock> } {
   return { load: mock(async (_options: AutoLoaderOptions) => {}) }

@@ -1,5 +1,4 @@
-import { Inject, Injectable, Logger } from '@OneJs/core'
-import { BootstrapBase } from '@OneJs/core'
+import { BootstrapBase, Inject, Injectable, Logger } from '@OneJs/core'
 import { Task } from '../../domain/entities/task'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
 

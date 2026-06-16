@@ -22,7 +22,9 @@ function loadDotenv(): void {
 export function getConfigFromEnv(): Partial<LoggerConfig> {
   loadDotenv()
 
-  const level = (process.env['LOG_LEVEL'] as any) as LoggerConfig['level'] | undefined
+  const level = process.env['LOG_LEVEL'] as any as
+    | LoggerConfig['level']
+    | undefined
   const enableDebug = process.env['LOG_DEBUG'] === 'true' ? true : undefined
   const debugKeys = process.env['LOG_DEBUG_KEYS']
     ? process.env['LOG_DEBUG_KEYS']!.split(',').filter(Boolean)
@@ -30,9 +32,10 @@ export function getConfigFromEnv(): Partial<LoggerConfig> {
   const serverUrl = process.env['LOG_SERVER_URL'] || undefined
   const serviceName = process.env['SERVICE_NAME'] || undefined
   const theme = (process.env['LOG_THEME'] as any) || undefined
-  const colorsEnabled = process.env['LOG_COLORS'] === undefined
-    ? undefined
-    : process.env['LOG_COLORS'] !== 'false'
+  const colorsEnabled =
+    process.env['LOG_COLORS'] === undefined
+      ? undefined
+      : process.env['LOG_COLORS'] !== 'false'
 
   return {
     level,
@@ -53,7 +56,10 @@ export function mergeConfig(
 ): LoggerConfig {
   return {
     level: userConfig.level ?? envConfig.level!,
-    enableDebug: userConfig.enableDebug ?? (envConfig.enableDebug as boolean | undefined) ?? true,
+    enableDebug:
+      userConfig.enableDebug ??
+      (envConfig.enableDebug as boolean | undefined) ??
+      true,
     debugKeys: userConfig.debugKeys ?? envConfig.debugKeys ?? [],
     serverUrl: userConfig.serverUrl ?? envConfig.serverUrl,
     serviceName: userConfig.serviceName ?? envConfig.serviceName,

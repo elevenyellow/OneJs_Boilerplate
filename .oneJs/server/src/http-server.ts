@@ -1,20 +1,20 @@
-import { Elysia, type Context } from 'elysia'
+import {
+  type ClassConstructor,
+  Container,
+  container,
+  Inject,
+  Injectable,
+  Logger,
+  OneJsError,
+} from '@OneJs/core'
+import { type Context, Elysia } from 'elysia'
+import { getAllControllers } from './controller-registry'
 import {
   type AnyMiddleware,
   type MiddlewareClass,
   type MiddlewareInterface,
 } from './middlewares'
 import { createErrorResponse, createSuccessResponse } from './types/response'
-import { getAllControllers } from './controller-registry'
-import {
-  Container,
-  Inject,
-  Injectable,
-  Logger,
-  type ClassConstructor,
-  OneJsError,
-  container,
-} from '@OneJs/core'
 
 const HTTP_METHOD_GET = 'get'
 const HTTP_METHOD_POST = 'post'

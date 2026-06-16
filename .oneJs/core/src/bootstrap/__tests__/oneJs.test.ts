@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { OneJs } from '../oneJs'
-import { PluginRegistry, type BootstrapPlugin } from '../plugin-registry'
+import { type BootstrapPlugin, PluginRegistry } from '../plugin-registry'
 
 function makePlugin(
   name: string,

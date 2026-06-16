@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
   "formatter": {
     "enabled": true,
     "formatWithErrors": true,
@@ -110,26 +110,17 @@
       "quoteStyle": "single",
       "attributePosition": "auto"
     },
-    "globals": [
-      "exports"
-    ],
+    "globals": ["exports"],
     "parser": {
       "unsafeParameterDecoratorsEnabled": true
     }
   },
   "overrides": [
     {
-      "includes": [
-        "**/*.{js,mjs,cjs,ts,jsx,tsx}"
-      ]
+      "includes": ["**/*.{js,mjs,cjs,ts,jsx,tsx}"]
     },
     {
-      "includes": [
-        "**/*.ts",
-        "**/*.tsx",
-        "**/*.mts",
-        "**/*.cts"
-      ],
+      "includes": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       "linter": {
         "rules": {
           "correctness": {
@@ -158,6 +149,24 @@
           },
           "complexity": {
             "noArguments": "error"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.integration.test.ts",
+        "**/*.e2e.test.ts",
+        "**/*.spec.ts"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "warn",
+            "noEmptyBlockStatements": "warn"
           }
         }
       }

@@ -1,9 +1,9 @@
-import type { ClassConstructor } from '../types'
-import { logger } from '../logger'
 import type { BootstrapPlugin, Container } from '../bootstrap'
-import type { AuthStrategy } from './types'
-import { LocalJwtStrategy } from './strategies/local-jwt.strategy'
+import { logger } from '../logger'
+import type { ClassConstructor } from '../types'
 import { AUTH_STRATEGY_TOKEN } from './auth-strategy-token'
+import { LocalJwtStrategy } from './strategies/local-jwt.strategy'
+import type { AuthStrategy } from './types'
 
 export class AuthPlugin implements BootstrapPlugin {
   name = 'auth-plugin'

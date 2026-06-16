@@ -10,13 +10,15 @@
  *   GET  /protected  → Clerk JWT required, returns ctx.store.user
  *   GET  /admin      → Clerk JWT + admin role required
  */
-import { mock, beforeEach, describe, test, expect } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { Elysia } from 'elysia'
 import { UserRoles } from '../types'
 
 // ── Mock @clerk/backend before importing strategy ─────────────────────────────
 
-const mockVerifyToken = mock(async (_token: string, _opts: unknown) => ({} as Record<string, unknown>))
+const mockVerifyToken = mock(
+  async (_token: string, _opts: unknown) => ({}) as Record<string, unknown>,
+)
 mock.module('@clerk/backend', () => ({ verifyToken: mockVerifyToken }))
 
 const { ClerkStrategy } = await import('../strategies/clerk.strategy')
@@ -62,35 +64,52 @@ function createApp() {
   // biome-ignore lint/suspicious/noExplicitAny: mocks for DI-injected deps
   const strategy = new ClerkStrategy(makeConfig() as any)
   // biome-ignore lint/suspicious/noExplicitAny: mocks for DI-injected deps
-  const authMiddleware = new AuthMiddleware(strategy as any, makeLogger() as any)
+  const authMiddleware = new AuthMiddleware(
+    strategy as any,
+    makeLogger() as any,
+  )
 
   async function requireAuth(ctx: AnyCtx, requiredRoles?: string[]) {
     await authMiddleware.handle(ctx, requiredRoles)
   }
 
-  return new Elysia()
-    .onError(({ error, set }) => {
-      // biome-ignore lint/suspicious/noExplicitAny: error shape from OneJsError
-      const err = error as any
-      if (typeof err.statusCode === 'number') {
-        set.status = err.statusCode
-        return {
-          success: false,
-          error: { statusCode: err.statusCode, code: err.code, message: err.explanatoryMessage },
+  return (
+    new Elysia()
+      .onError(({ error, set }) => {
+        // biome-ignore lint/suspicious/noExplicitAny: error shape from OneJsError
+        const err = error as any
+        if (typeof err.statusCode === 'number') {
+          set.status = err.statusCode
+          return {
+            success: false,
+            error: {
+              statusCode: err.statusCode,
+              code: err.code,
+              message: err.explanatoryMessage,
+            },
+          }
         }
-      }
-      set.status = 500
-      return { success: false, error: { statusCode: 500 } }
-    })
-    .get('/public', () => ({ success: true, data: 'public content' }))
-    // biome-ignore lint/suspicious/noExplicitAny: ctx.store shape set by authMiddleware
-    .get('/protected', (ctx) => ({ success: true, data: (ctx.store as any).user }), {
-      beforeHandle: (ctx) => requireAuth(ctx),
-    })
-    // biome-ignore lint/suspicious/noExplicitAny: ctx.store shape set by authMiddleware
-    .get('/admin', (ctx) => ({ success: true, data: (ctx.store as any).user }), {
-      beforeHandle: (ctx) => requireAuth(ctx, ['admin']),
-    })
+        set.status = 500
+        return { success: false, error: { statusCode: 500 } }
+      })
+      .get('/public', () => ({ success: true, data: 'public content' }))
+      // biome-ignore lint/suspicious/noExplicitAny: ctx.store shape set by authMiddleware
+      .get(
+        '/protected',
+        (ctx) => ({ success: true, data: (ctx.store as any).user }),
+        {
+          beforeHandle: (ctx) => requireAuth(ctx),
+        },
+      )
+      // biome-ignore lint/suspicious/noExplicitAny: ctx.store shape set by authMiddleware
+      .get(
+        '/admin',
+        (ctx) => ({ success: true, data: (ctx.store as any).user }),
+        {
+          beforeHandle: (ctx) => requireAuth(ctx, ['admin']),
+        },
+      )
+  )
 }
 
 function getReq(path: string, token?: string) {
@@ -189,7 +208,9 @@ describe('Clerk Auth — E2E (Elysia handle)', () => {
 
     test('propagates email from Clerk payload', async () => {
       mockVerifyToken.mockImplementation(async () =>
-        makeClerkPayload('user_abc', UserRoles.USER, { email: 'clerk@example.com' }),
+        makeClerkPayload('user_abc', UserRoles.USER, {
+          email: 'clerk@example.com',
+        }),
       )
 
       const res = await app.handle(getReq('/protected', 'token'))

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
-import { TaskController } from '../../infrastructure/controllers/task.controller'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskService } from '../../application/task.service'
+import { TaskController } from '../../infrastructure/controllers/task.controller'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
 
 function makeEventBus() {
@@ -44,7 +44,9 @@ describe('Task API — integration (no mocks)', () => {
   })
 
   it('creates a task and returns 201', async () => {
-    const ctx = makeCtx({ body: { title: 'Integration task', description: 'Created in test' } })
+    const ctx = makeCtx({
+      body: { title: 'Integration task', description: 'Created in test' },
+    })
     const result = await controller.create(ctx)
 
     expect(ctx.set.status).toBe(201)
@@ -56,16 +58,20 @@ describe('Task API — integration (no mocks)', () => {
 
   it('retrieves the created task by id', async () => {
     const createCtx = makeCtx({ body: { title: 'Find me', description: '' } })
-    const created = await controller.create(createCtx) as any
+    const created = (await controller.create(createCtx)) as any
 
-    const found = await controller.getById(makeCtx({ params: { id: created.id } }))
+    const found = await controller.getById(
+      makeCtx({ params: { id: created.id } }),
+    )
     expect((found as any).id).toBe(created.id)
     expect((found as any).title).toBe('Find me')
   })
 
   it('throws 404 when task does not exist', async () => {
     try {
-      await controller.getById(makeCtx({ params: { id: '550e8400-e29b-41d4-a716-446655440099' } }))
+      await controller.getById(
+        makeCtx({ params: { id: '550e8400-e29b-41d4-a716-446655440099' } }),
+      )
       expect.unreachable('should have thrown')
     } catch (err) {
       expect(err).toBeInstanceOf(OneJsError)
@@ -74,17 +80,23 @@ describe('Task API — integration (no mocks)', () => {
   })
 
   it('completes a task', async () => {
-    const createCtx = makeCtx({ body: { title: 'Complete me', description: '' } })
-    const created = await controller.create(createCtx) as any
+    const createCtx = makeCtx({
+      body: { title: 'Complete me', description: '' },
+    })
+    const created = (await controller.create(createCtx)) as any
 
-    const completed = await controller.complete(makeCtx({ params: { id: created.id } }))
+    const completed = await controller.complete(
+      makeCtx({ params: { id: created.id } }),
+    )
     expect((completed as any).done).toBe(true)
     expect((completed as any).id).toBe(created.id)
   })
 
   it('throws 404 when completing non-existent task', async () => {
     try {
-      await controller.complete(makeCtx({ params: { id: '550e8400-e29b-41d4-a716-446655440099' } }))
+      await controller.complete(
+        makeCtx({ params: { id: '550e8400-e29b-41d4-a716-446655440099' } }),
+      )
       expect.unreachable('should have thrown')
     } catch (err) {
       expect(err).toBeInstanceOf(OneJsError)
@@ -94,7 +106,7 @@ describe('Task API — integration (no mocks)', () => {
 
   it('deletes a task', async () => {
     const createCtx = makeCtx({ body: { title: 'Delete me', description: '' } })
-    const created = await controller.create(createCtx) as any
+    const created = (await controller.create(createCtx)) as any
 
     const deleteCtx = makeCtx({ params: { id: created.id } })
     await controller.delete(deleteCtx)
@@ -111,7 +123,9 @@ describe('Task API — integration (no mocks)', () => {
 
   it('throws 404 when deleting non-existent task', async () => {
     try {
-      await controller.delete(makeCtx({ params: { id: '550e8400-e29b-41d4-a716-446655440099' } }))
+      await controller.delete(
+        makeCtx({ params: { id: '550e8400-e29b-41d4-a716-446655440099' } }),
+      )
       expect.unreachable('should have thrown')
     } catch (err) {
       expect(err).toBeInstanceOf(OneJsError)
@@ -120,9 +134,15 @@ describe('Task API — integration (no mocks)', () => {
   })
 
   it('lists all created tasks', async () => {
-    await controller.create(makeCtx({ body: { title: 'Task A', description: '' } }))
-    await controller.create(makeCtx({ body: { title: 'Task B', description: '' } }))
-    await controller.create(makeCtx({ body: { title: 'Task C', description: '' } }))
+    await controller.create(
+      makeCtx({ body: { title: 'Task A', description: '' } }),
+    )
+    await controller.create(
+      makeCtx({ body: { title: 'Task B', description: '' } }),
+    )
+    await controller.create(
+      makeCtx({ body: { title: 'Task C', description: '' } }),
+    )
 
     const result = await controller.getAll(makeCtx())
     expect(Array.isArray(result)).toBe(true)

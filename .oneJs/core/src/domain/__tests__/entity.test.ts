@@ -5,15 +5,22 @@ import { ValueObject as ValueObjectBase } from '.././value-object'
 
 @ValueObject()
 class UserId extends ValueObjectBase<string> {
-  static create(v: string) { return new UserId(v) }
+  static create(v: string) {
+    return new UserId(v)
+  }
 }
 
 @Entity()
 class User extends EntityBase<UserId> {
-  constructor(id: UserId, readonly name: string) {
+  constructor(
+    id: UserId,
+    readonly name: string,
+  ) {
     super(id)
   }
-  toDto() { return { id: this.getId().getValue(), name: this.name } }
+  toDto() {
+    return { id: this.getId().getValue(), name: this.name }
+  }
 }
 
 describe('EntityBase', () => {
@@ -51,7 +58,9 @@ describe('@Entity()', () => {
     expect(() => {
       @Entity()
       class NoDto extends EntityBase<UserId> {
-        constructor() { super(UserId.create('1')) }
+        constructor() {
+          super(UserId.create('1'))
+        }
       }
       return NoDto
     }).toThrow('@Entity() — NoDto must implement toDto()')

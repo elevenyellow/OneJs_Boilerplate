@@ -21,7 +21,9 @@ describe('User', () => {
   describe('withPasswordHash()', () => {
     it('returns a new instance with updated hash and clears resetToken', () => {
       const user = User.register(EMAIL, HASH)
-      const withToken = user.withResetToken('550e8400-e29b-41d4-a716-446655440000')
+      const withToken = user.withResetToken(
+        '550e8400-e29b-41d4-a716-446655440000',
+      )
       const updated = withToken.withPasswordHash('$2b$10$newhash')
 
       expect(updated.passwordHash.getValue()).toBe('$2b$10$newhash')

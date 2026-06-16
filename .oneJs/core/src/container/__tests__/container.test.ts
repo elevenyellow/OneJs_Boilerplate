@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { Container } from '.././container'
 import type { ParamInfo } from '.././metadata-registry'
 
@@ -48,7 +48,9 @@ describe('Container', () => {
     })
 
     test('throws when resolving an unregistered service', () => {
-      expect(() => container.get(ServiceA)).toThrow('No service registered for type: ServiceA')
+      expect(() => container.get(ServiceA)).toThrow(
+        'No service registered for type: ServiceA',
+      )
     })
   })
 
@@ -120,7 +122,9 @@ describe('Container', () => {
       class OptionalConsumer {
         constructor(public readonly dep: ServiceA | null) {}
       }
-      const params: ParamInfo[] = [{ index: 0, type: ServiceA, optional: true, fallback: null }]
+      const params: ParamInfo[] = [
+        { index: 0, type: ServiceA, optional: true, fallback: null },
+      ]
       container.register(OptionalConsumer, 'singleton', false, params)
 
       const instance = container.get(OptionalConsumer)
@@ -160,7 +164,9 @@ describe('Container', () => {
       const params: ParamInfo[] = [{ index: 0, type: SelfRef }]
       container.register(SelfRef, 'singleton', false, params)
 
-      expect(() => container.get(SelfRef)).toThrow('Cyclic dependency detected for type: SelfRef')
+      expect(() => container.get(SelfRef)).toThrow(
+        'Cyclic dependency detected for type: SelfRef',
+      )
     })
 
     test('throws on indirect cyclic dependency', () => {
@@ -209,7 +215,9 @@ describe('Container', () => {
       container.get(ServiceA)
       container.clear()
 
-      expect(() => container.get(ServiceA)).toThrow('No service registered for type: ServiceA')
+      expect(() => container.get(ServiceA)).toThrow(
+        'No service registered for type: ServiceA',
+      )
       expect(container.getAllServices()).toHaveLength(0)
     })
   })

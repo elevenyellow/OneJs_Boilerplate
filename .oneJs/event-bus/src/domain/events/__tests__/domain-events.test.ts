@@ -2,7 +2,10 @@ import { describe, expect, it } from 'bun:test'
 import { DomainEvent } from '.././domain-events'
 
 class TestEvent extends DomainEvent {
-  constructor(public readonly data: string, occurredOn?: Date) {
+  constructor(
+    public readonly data: string,
+    occurredOn?: Date,
+  ) {
     super(occurredOn)
   }
 }

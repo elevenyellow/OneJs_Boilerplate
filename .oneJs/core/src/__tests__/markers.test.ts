@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
-import { markAs, hasRole, getRoles, clearMarkers } from '.././markers'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import { clearMarkers, getRoles, hasRole, markAs } from '.././markers'
 
 beforeEach(() => clearMarkers())
 

@@ -1,5 +1,5 @@
-import { describe, test, expect } from 'bun:test'
-import { AuthMiddleware, UseAuth, Roles } from '@OneJs/core'
+import { AuthMiddleware, Roles, UseAuth } from '@OneJs/core'
+import { describe, expect, test } from 'bun:test'
 
 describe('@UseAuth()', () => {
   test('adds AuthMiddleware to route middlewares metadata', () => {

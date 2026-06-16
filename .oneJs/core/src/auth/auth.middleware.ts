@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '../container'
-import { OneJsError, ErrorCodes, type ErrorCode } from '../errors'
+import { type ErrorCode, ErrorCodes, OneJsError } from '../errors'
 import { Logger } from '../logger'
-import { type AuthStrategy, type UserRole } from './types'
 import { AUTH_STRATEGY_TOKEN } from './auth-strategy-token'
+import { type AuthStrategy, type UserRole } from './types'
 
 @Injectable()
 export class AuthMiddleware {
@@ -11,13 +11,16 @@ export class AuthMiddleware {
     @Inject(Logger) private readonly logger: Logger,
   ) {}
 
-  async handle(context: {
-    request: { headers: { get: (arg0: string) => any } }
-    set: { status: number }
-    store: {
-      user?: any
-    }
-  }, requiredRoles?: (UserRole | string)[]) {
+  async handle(
+    context: {
+      request: { headers: { get: (arg0: string) => any } }
+      set: { status: number }
+      store: {
+        user?: any
+      }
+    },
+    requiredRoles?: (UserRole | string)[],
+  ) {
     const header = context.request.headers.get('authorization')
 
     if (!header?.startsWith('Bearer ')) {

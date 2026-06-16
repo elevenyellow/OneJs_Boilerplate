@@ -1,4 +1,9 @@
-export type ModuleRole = 'controller' | 'handler' | 'provider' | 'middleware' | 'repository'
+export type ModuleRole =
+  | 'controller'
+  | 'handler'
+  | 'provider'
+  | 'middleware'
+  | 'repository'
 
 const roles = new Map<Function, Set<ModuleRole>>()
 

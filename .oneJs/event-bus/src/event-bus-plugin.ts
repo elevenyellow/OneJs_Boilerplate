@@ -1,9 +1,9 @@
-import { logger, type BootstrapPlugin, type Container } from '@OneJs/core'
+import { type BootstrapPlugin, type Container, logger } from '@OneJs/core'
 import { EventBus } from './application/event-bus'
 import { InMemoryEventPublisher } from './application/publishers/in-memory-event-publisher'
 import { PUBLISHER_TOKEN } from './application/publishers/publisher-token'
-import type { EventBusBridge } from './domain/interfaces/event-bus-bridge'
 import type { DomainEvent } from './domain/events/domain-events'
+import type { EventBusBridge } from './domain/interfaces/event-bus-bridge'
 import { getAllEventHandlers } from './domain/store'
 
 export class EventBusPlugin implements BootstrapPlugin {

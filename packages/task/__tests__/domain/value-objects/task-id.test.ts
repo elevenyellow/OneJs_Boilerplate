@@ -13,7 +13,9 @@ describe('TaskId', () => {
     })
 
     it('each call produces a unique id', () => {
-      expect(TaskId.generateUniqueId().getValue()).not.toBe(TaskId.generateUniqueId().getValue())
+      expect(TaskId.generateUniqueId().getValue()).not.toBe(
+        TaskId.generateUniqueId().getValue(),
+      )
     })
   })
 
@@ -28,23 +30,29 @@ describe('TaskId', () => {
     })
 
     it('throws when value is not a valid UUID v4', () => {
-      expect(() => TaskId.fromString('not-a-uuid')).toThrow('Invalid TaskId format')
+      expect(() => TaskId.fromString('not-a-uuid')).toThrow(
+        'Invalid TaskId format',
+      )
     })
 
     it('throws for UUID v1 (wrong version digit)', () => {
-      expect(() => TaskId.fromString('550e8400-e29b-11d4-a716-446655440000')).toThrow(
-        'Invalid TaskId format',
-      )
+      expect(() =>
+        TaskId.fromString('550e8400-e29b-11d4-a716-446655440000'),
+      ).toThrow('Invalid TaskId format')
     })
   })
 
   describe('equals()', () => {
     it('returns true for the same value', () => {
-      expect(TaskId.fromString(VALID_UUID).equals(TaskId.fromString(VALID_UUID))).toBe(true)
+      expect(
+        TaskId.fromString(VALID_UUID).equals(TaskId.fromString(VALID_UUID)),
+      ).toBe(true)
     })
 
     it('returns false for different values', () => {
-      expect(TaskId.generateUniqueId().equals(TaskId.generateUniqueId())).toBe(false)
+      expect(TaskId.generateUniqueId().equals(TaskId.generateUniqueId())).toBe(
+        false,
+      )
     })
   })
 

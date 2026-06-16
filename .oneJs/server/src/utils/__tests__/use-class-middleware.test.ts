@@ -1,4 +1,4 @@
-import { describe, test, expect, mock, afterEach } from 'bun:test'
+import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { ContainerProvider } from '../../../../core/src/container/container-provider'
 import { useClassMiddleware } from '../use-class-middleware'
 

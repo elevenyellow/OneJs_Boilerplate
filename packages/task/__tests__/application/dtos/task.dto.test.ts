@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { TaskDto, CreateTaskDto } from '../../../application/dtos/task.dto'
+import { CreateTaskDto, TaskDto } from '../../../application/dtos/task.dto'
 
 describe('TaskDto', () => {
   it('stores all fields as readonly properties', () => {

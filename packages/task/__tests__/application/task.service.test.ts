@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
+import { TaskService } from '../../application/task.service'
 import { Task } from '../../domain/entities/task'
 import type { ITaskRepository } from '../../domain/repositories/task.repository.interface'
-import { TaskService } from '../../application/task.service'
 
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
 const UUID_REGEX =

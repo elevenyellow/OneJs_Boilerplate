@@ -18,4 +18,3 @@ export function ensureRouteMeta(target: any, propertyKey: string): RouteMeta {
 
   return meta.routes[propertyKey]
 }
-

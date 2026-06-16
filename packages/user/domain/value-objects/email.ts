@@ -12,7 +12,11 @@ export class Email extends ValueObjectBase<string> {
 
   static create(value: string): Email {
     if (!value?.trim())
-      throw new OneJsError('Email cannot be empty', 400, 'Invalid email address')
+      throw new OneJsError(
+        'Email cannot be empty',
+        400,
+        'Invalid email address',
+      )
 
     const normalized = value.trim().toLowerCase()
 

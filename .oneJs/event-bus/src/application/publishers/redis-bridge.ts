@@ -1,6 +1,6 @@
-import IORedis from 'ioredis'
 import type { Container } from '@OneJs/core'
 import { ConfigService, logger } from '@OneJs/core'
+import IORedis from 'ioredis'
 import type { DomainEvent } from '../../domain/events/domain-events'
 import type { EventBusBridge } from '../../domain/interfaces/event-bus-bridge'
 import { getAllEventHandlers } from '../../domain/store'

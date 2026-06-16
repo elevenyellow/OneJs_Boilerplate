@@ -1,4 +1,4 @@
-import { ContainerProvider, type ClassConstructor } from '@OneJs/core'
+import { type ClassConstructor, ContainerProvider } from '@OneJs/core'
 import type { AnyMiddleware } from '../middlewares/middleware.interface'
 
 export function useClassMiddleware(ClassRef: ClassConstructor) {

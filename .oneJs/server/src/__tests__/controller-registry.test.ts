@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import { registerController, getAllControllers, clearControllers } from '.././controller-registry'
+import {
+  clearControllers,
+  getAllControllers,
+  registerController,
+} from '.././controller-registry'
 
 class FakeController {}
 class AnotherController {}

@@ -26,9 +26,14 @@ const VALIDATION_RULES: Record<string, { role: ModuleRole; label: string }> = {
   repositories: { role: 'provider', label: '@Injectable' },
 }
 
-function validateModuleOptions(moduleName: string, options: ModuleOptions): void {
+function validateModuleOptions(
+  moduleName: string,
+  options: ModuleOptions,
+): void {
   for (const [key, rule] of Object.entries(VALIDATION_RULES)) {
-    const classes = options[key as keyof ModuleOptions] as ClassConstructor[] | undefined
+    const classes = options[key as keyof ModuleOptions] as
+      | ClassConstructor[]
+      | undefined
     if (!classes) continue
 
     for (const ctor of classes) {

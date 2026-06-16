@@ -26,7 +26,9 @@ describe('TaskTitle', () => {
   })
 
   it('throws when value exceeds max length', () => {
-    expect(() => TaskTitle.create('a'.repeat(101))).toThrow('TaskTitle cannot exceed 100 characters')
+    expect(() => TaskTitle.create('a'.repeat(101))).toThrow(
+      'TaskTitle cannot exceed 100 characters',
+    )
   })
 
   it('equals returns true for same value', () => {

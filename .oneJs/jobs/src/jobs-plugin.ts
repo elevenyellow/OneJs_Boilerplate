@@ -1,4 +1,4 @@
-import { logger, type BootstrapPlugin, type Container } from '@OneJs/core'
+import { type BootstrapPlugin, type Container, logger } from '@OneJs/core'
 import { WorkerService } from './application/worker.service'
 import { getAllWorkerHandlers } from './domain/store'
 

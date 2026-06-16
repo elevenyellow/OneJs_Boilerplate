@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
-import { User } from '../../domain/entities/user'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { UserService } from '../../application/user.service'
+import { User } from '../../domain/entities/user'
 
 const HASH = '$2b$10$fakehashvalue'
 const EMAIL = 'test@example.com'
@@ -31,7 +31,12 @@ function makeConfigService() {
 }
 
 function makeLogger() {
-  return { debug: mock(() => {}), info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}) }
+  return {
+    debug: mock(() => {}),
+    info: mock(() => {}),
+    warn: mock(() => {}),
+    error: mock(() => {}),
+  }
 }
 
 describe('UserService', () => {

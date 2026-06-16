@@ -5,8 +5,9 @@
  * BullMQ (Worker class) is mocked to avoid requiring a real Redis connection.
  */
 /** biome-ignore-all lint/suspicious/noEmptyBlockStatements: <explanation> */
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
+
 import { Container, OneJs, PluginRegistry } from '@OneJs/core'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 // Mock BullMQ Worker and Queue to avoid Redis connections
 const mockWorkerOn = mock(() => {})

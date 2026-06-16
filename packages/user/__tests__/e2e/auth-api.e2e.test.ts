@@ -13,13 +13,14 @@
  *   PATCH  /auth/password          → any authenticated user
  *   GET    /auth/me                → any authenticated user
  */
+
+import { ErrorCodes, OneJsError } from '@OneJs/core'
+import { createSuccessResponse } from '@OneJs/server/types/response'
 import { beforeEach, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { OneJsError, ErrorCodes } from '@OneJs/core'
-import { AuthController } from '../../infrastructure/controllers/auth.controller'
 import { UserService } from '../../application/user.service'
+import { AuthController } from '../../infrastructure/controllers/auth.controller'
 import { InMemoryUserRepository } from '../../infrastructure/repositories/in-memory-user.repository'
-import { createSuccessResponse } from '@OneJs/server/types/response'
 
 const BASE = 'http://test'
 
@@ -29,8 +30,11 @@ function authGuard() {
     const header = ctx.request.headers.get('authorization')
     if (!header?.startsWith('Bearer ')) {
       throw new OneJsError(
-        'Unauthorized', 401, 'Bearer token is required',
-        { header }, ErrorCodes.AUTH_MISSING,
+        'Unauthorized',
+        401,
+        'Bearer token is required',
+        { header },
+        ErrorCodes.AUTH_MISSING,
       )
     }
     // In real usage, LocalJwtStrategy.validate() decodes the JWT.
@@ -38,8 +42,11 @@ function authGuard() {
     const token = header.replace('Bearer ', '')
     if (!token) {
       throw new OneJsError(
-        'Unauthorized', 401, 'Token is invalid',
-        { token }, ErrorCodes.AUTH_INVALID,
+        'Unauthorized',
+        401,
+        'Token is invalid',
+        { token },
+        ErrorCodes.AUTH_INVALID,
       )
     }
     ctx.store = ctx.store ?? {}
@@ -54,7 +61,8 @@ function createE2EApp() {
     publish: async () => {},
   }
   const configService = {
-    get: (key: string) => (key === 'JWT_SECRET' ? 'e2e_test_secret' : undefined),
+    get: (key: string) =>
+      key === 'JWT_SECRET' ? 'e2e_test_secret' : undefined,
   }
   const logger = {
     debug: () => {},
@@ -63,7 +71,12 @@ function createE2EApp() {
     error: () => {},
   }
 
-  const service = new UserService(repo as any, eventBus as any, configService as any, logger as any)
+  const service = new UserService(
+    repo as any,
+    eventBus as any,
+    configService as any,
+    logger as any,
+  )
   const controller = new AuthController(service as any)
 
   const app = new Elysia({ prefix: '/api' })
@@ -111,24 +124,32 @@ function createE2EApp() {
     })
     // Authenticated routes — beforeHandle injects store.__token; controller reads ctx.store.user
     // We do a second pass here to resolve the actual user after registration
-    .patch('/auth/password', async (ctx) => {
-      const result = await controller.updatePassword(ctx as any)
-      return createSuccessResponse(result)
-    }, {
-      beforeHandle: async (ctx: any) => {
-        await authGuard()(ctx)
-        ctx.store.user = { userId: ctx.store.__token }
+    .patch(
+      '/auth/password',
+      async (ctx) => {
+        const result = await controller.updatePassword(ctx as any)
+        return createSuccessResponse(result)
       },
-    })
-    .get('/auth/me', async (ctx) => {
-      const result = await controller.me(ctx as any)
-      return createSuccessResponse(result)
-    }, {
-      beforeHandle: async (ctx: any) => {
-        await authGuard()(ctx)
-        ctx.store.user = { userId: ctx.store.__token }
+      {
+        beforeHandle: async (ctx: any) => {
+          await authGuard()(ctx)
+          ctx.store.user = { userId: ctx.store.__token }
+        },
       },
-    })
+    )
+    .get(
+      '/auth/me',
+      async (ctx) => {
+        const result = await controller.me(ctx as any)
+        return createSuccessResponse(result)
+      },
+      {
+        beforeHandle: async (ctx: any) => {
+          await authGuard()(ctx)
+          ctx.store.user = { userId: ctx.store.__token }
+        },
+      },
+    )
 
   return { app, service, repo }
 }
@@ -179,7 +200,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
   describe('POST /api/auth/register (public)', () => {
     it('returns 201 with the user DTO on valid input', async () => {
       const res = await app.handle(
-        post('/api/auth/register', { email: 'new@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'new@example.com',
+          password: 'password123',
+        }),
       )
 
       expect(res.status).toBe(201)
@@ -192,10 +216,16 @@ describe('Auth API — E2E (Elysia handle)', () => {
 
     it('returns 409 when email is already registered', async () => {
       await app.handle(
-        post('/api/auth/register', { email: 'dup@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'dup@example.com',
+          password: 'password123',
+        }),
       )
       const res = await app.handle(
-        post('/api/auth/register', { email: 'dup@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'dup@example.com',
+          password: 'password123',
+        }),
       )
 
       expect(res.status).toBe(409)
@@ -221,10 +251,16 @@ describe('Auth API — E2E (Elysia handle)', () => {
   describe('POST /api/auth/login (public)', () => {
     it('returns token and user DTO on valid credentials', async () => {
       await app.handle(
-        post('/api/auth/register', { email: 'login@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'login@example.com',
+          password: 'password123',
+        }),
       )
       const res = await app.handle(
-        post('/api/auth/login', { email: 'login@example.com', password: 'password123' }),
+        post('/api/auth/login', {
+          email: 'login@example.com',
+          password: 'password123',
+        }),
       )
 
       expect(res.status).toBe(200)
@@ -235,10 +271,16 @@ describe('Auth API — E2E (Elysia handle)', () => {
 
     it('returns 401 on wrong password', async () => {
       await app.handle(
-        post('/api/auth/register', { email: 'fail@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'fail@example.com',
+          password: 'password123',
+        }),
       )
       const res = await app.handle(
-        post('/api/auth/login', { email: 'fail@example.com', password: 'wrongpassword' }),
+        post('/api/auth/login', {
+          email: 'fail@example.com',
+          password: 'wrongpassword',
+        }),
       )
 
       expect(res.status).toBe(401)
@@ -246,7 +288,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
 
     it('returns 401 when user does not exist', async () => {
       const res = await app.handle(
-        post('/api/auth/login', { email: 'ghost@example.com', password: 'password123' }),
+        post('/api/auth/login', {
+          email: 'ghost@example.com',
+          password: 'password123',
+        }),
       )
       expect(res.status).toBe(401)
     })
@@ -257,7 +302,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
   describe('POST /api/auth/forgot-password (public)', () => {
     it('returns 200 with a resetToken when user exists', async () => {
       await app.handle(
-        post('/api/auth/register', { email: 'reset@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'reset@example.com',
+          password: 'password123',
+        }),
       )
       const res = await app.handle(
         post('/api/auth/forgot-password', { email: 'reset@example.com' }),
@@ -291,7 +339,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
   describe('POST /api/auth/reset-password (public)', () => {
     it('resets the password with a valid token', async () => {
       await app.handle(
-        post('/api/auth/register', { email: 'r@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'r@example.com',
+          password: 'password123',
+        }),
       )
       const forgotRes = await app.handle(
         post('/api/auth/forgot-password', { email: 'r@example.com' }),
@@ -299,7 +350,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
       const { resetToken } = (await forgotRes.json()).data
 
       const res = await app.handle(
-        post('/api/auth/reset-password', { token: resetToken, newPassword: 'brandnew123' }),
+        post('/api/auth/reset-password', {
+          token: resetToken,
+          newPassword: 'brandnew123',
+        }),
       )
 
       expect(res.status).toBe(200)
@@ -319,7 +373,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
 
     it('allows login with the new password after reset', async () => {
       await app.handle(
-        post('/api/auth/register', { email: 'flow@example.com', password: 'oldpass123' }),
+        post('/api/auth/register', {
+          email: 'flow@example.com',
+          password: 'oldpass123',
+        }),
       )
       const forgotRes = await app.handle(
         post('/api/auth/forgot-password', { email: 'flow@example.com' }),
@@ -327,11 +384,17 @@ describe('Auth API — E2E (Elysia handle)', () => {
       const { resetToken } = (await forgotRes.json()).data
 
       await app.handle(
-        post('/api/auth/reset-password', { token: resetToken, newPassword: 'newpass456' }),
+        post('/api/auth/reset-password', {
+          token: resetToken,
+          newPassword: 'newpass456',
+        }),
       )
 
       const loginRes = await app.handle(
-        post('/api/auth/login', { email: 'flow@example.com', password: 'newpass456' }),
+        post('/api/auth/login', {
+          email: 'flow@example.com',
+          password: 'newpass456',
+        }),
       )
       expect(loginRes.status).toBe(200)
     })
@@ -342,7 +405,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
   describe('PATCH /api/auth/password (authenticated)', () => {
     it('returns 401 without token', async () => {
       const res = await app.handle(
-        patch('/api/auth/password', { currentPassword: 'old', newPassword: 'new123456' }),
+        patch('/api/auth/password', {
+          currentPassword: 'old',
+          newPassword: 'new123456',
+        }),
       )
       expect(res.status).toBe(401)
       const body = await res.json()
@@ -352,7 +418,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
     it('updates the password and allows login with new password', async () => {
       // Register
       const regRes = await app.handle(
-        post('/api/auth/register', { email: 'update@example.com', password: 'oldpass123' }),
+        post('/api/auth/register', {
+          email: 'update@example.com',
+          password: 'oldpass123',
+        }),
       )
       const userId = (await regRes.json()).data.id
 
@@ -368,14 +437,20 @@ describe('Auth API — E2E (Elysia handle)', () => {
 
       // Confirm new password works
       const loginRes = await app.handle(
-        post('/api/auth/login', { email: 'update@example.com', password: 'newpass456' }),
+        post('/api/auth/login', {
+          email: 'update@example.com',
+          password: 'newpass456',
+        }),
       )
       expect(loginRes.status).toBe(200)
     })
 
     it('returns 401 when current password is wrong', async () => {
       const regRes = await app.handle(
-        post('/api/auth/register', { email: 'wrong@example.com', password: 'correct123' }),
+        post('/api/auth/register', {
+          email: 'wrong@example.com',
+          password: 'correct123',
+        }),
       )
       const userId = (await regRes.json()).data.id
 
@@ -400,7 +475,10 @@ describe('Auth API — E2E (Elysia handle)', () => {
 
     it('returns the user profile for an authenticated user', async () => {
       const regRes = await app.handle(
-        post('/api/auth/register', { email: 'me@example.com', password: 'password123' }),
+        post('/api/auth/register', {
+          email: 'me@example.com',
+          password: 'password123',
+        }),
       )
       const userId = (await regRes.json()).data.id
 
@@ -426,13 +504,19 @@ describe('Auth API — E2E (Elysia handle)', () => {
     it('register → login → forgot → reset → login with new pass', async () => {
       // 1. Register
       const regRes = await app.handle(
-        post('/api/auth/register', { email: 'life@example.com', password: 'pass1234' }),
+        post('/api/auth/register', {
+          email: 'life@example.com',
+          password: 'pass1234',
+        }),
       )
       expect(regRes.status).toBe(201)
 
       // 2. Login
       const loginRes = await app.handle(
-        post('/api/auth/login', { email: 'life@example.com', password: 'pass1234' }),
+        post('/api/auth/login', {
+          email: 'life@example.com',
+          password: 'pass1234',
+        }),
       )
       expect(loginRes.status).toBe(200)
       expect(typeof (await loginRes.json()).data.token).toBe('string')
@@ -445,19 +529,28 @@ describe('Auth API — E2E (Elysia handle)', () => {
 
       // 4. Reset password
       const resetRes = await app.handle(
-        post('/api/auth/reset-password', { token: resetToken, newPassword: 'newpass5678' }),
+        post('/api/auth/reset-password', {
+          token: resetToken,
+          newPassword: 'newpass5678',
+        }),
       )
       expect(resetRes.status).toBe(200)
 
       // 5. Old password rejected
       const oldLoginRes = await app.handle(
-        post('/api/auth/login', { email: 'life@example.com', password: 'pass1234' }),
+        post('/api/auth/login', {
+          email: 'life@example.com',
+          password: 'pass1234',
+        }),
       )
       expect(oldLoginRes.status).toBe(401)
 
       // 6. New password works
       const newLoginRes = await app.handle(
-        post('/api/auth/login', { email: 'life@example.com', password: 'newpass5678' }),
+        post('/api/auth/login', {
+          email: 'life@example.com',
+          password: 'newpass5678',
+        }),
       )
       expect(newLoginRes.status).toBe(200)
     })

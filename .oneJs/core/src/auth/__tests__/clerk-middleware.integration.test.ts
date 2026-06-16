@@ -4,13 +4,15 @@
  * Tests the full middleware → strategy pipeline without a running server.
  * `verifyToken` from @clerk/backend is mocked; everything else is real.
  */
-import { mock, beforeEach, describe, test, expect } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { OneJsError } from '../../errors'
 import { UserRoles } from '../types'
 
 // ── Mock @clerk/backend before importing strategy ─────────────────────────────
 
-const mockVerifyToken = mock(async (_token: string, _opts: unknown) => ({} as Record<string, unknown>))
+const mockVerifyToken = mock(
+  async (_token: string, _opts: unknown) => ({}) as Record<string, unknown>,
+)
 mock.module('@clerk/backend', () => ({ verifyToken: mockVerifyToken }))
 
 const { ClerkStrategy } = await import('../strategies/clerk.strategy')
@@ -37,14 +39,22 @@ function makeConfig() {
 }
 
 function makeLogger() {
-  const noop = () => { return }
+  const noop = () => {
+    return
+  }
   return { debug: noop, info: noop, warn: noop, error: noop }
 }
 
-function makeContext(authHeader?: string, store: Record<string, unknown> = {}): MiddlewareCtx {
+function makeContext(
+  authHeader?: string,
+  store: Record<string, unknown> = {},
+): MiddlewareCtx {
   return {
     request: {
-      headers: { get: (key: string) => (key === 'authorization' ? (authHeader ?? null) : null) },
+      headers: {
+        get: (key: string) =>
+          key === 'authorization' ? (authHeader ?? null) : null,
+      },
     },
     set: { status: 200 },
     store,
@@ -61,7 +71,9 @@ function makeClerkPayload(overrides: Record<string, unknown> = {}) {
 }
 
 function makeMiddleware() {
-  const strategy = new ClerkStrategy(makeConfig() as unknown as InstanceType<typeof ClerkStrategy>)
+  const strategy = new ClerkStrategy(
+    makeConfig() as unknown as InstanceType<typeof ClerkStrategy>,
+  )
   return new AuthMiddleware(
     strategy as unknown as ConstructorParameters<typeof AuthMiddleware>[0],
     makeLogger() as unknown as ConstructorParameters<typeof AuthMiddleware>[1],
@@ -91,7 +103,10 @@ describe('AuthMiddleware + ClerkStrategy (integration)', () => {
 
       await middleware.handle(ctx)
 
-      expect(ctx.store.user).toMatchObject({ userId: 'u1', email: 'u@test.com' })
+      expect(ctx.store.user).toMatchObject({
+        userId: 'u1',
+        email: 'u@test.com',
+      })
     })
 
     test('strips Bearer prefix before passing to ClerkStrategy', async () => {
@@ -100,7 +115,10 @@ describe('AuthMiddleware + ClerkStrategy (integration)', () => {
 
       await middleware.handle(ctx)
 
-      expect(mockVerifyToken).toHaveBeenCalledWith('my-clerk-jwt', expect.any(Object))
+      expect(mockVerifyToken).toHaveBeenCalledWith(
+        'my-clerk-jwt',
+        expect.any(Object),
+      )
     })
 
     test('throws 401 when no Authorization header is present', async () => {
@@ -223,7 +241,9 @@ describe('AuthMiddleware + ClerkStrategy (integration)', () => {
       )
       const ctx = makeContext('Bearer staff-token')
 
-      await expect(middleware.handle(ctx, [UserRoles.STAFF])).resolves.toBeUndefined()
+      await expect(
+        middleware.handle(ctx, [UserRoles.STAFF]),
+      ).resolves.toBeUndefined()
     })
   })
 
@@ -238,7 +258,9 @@ describe('AuthMiddleware + ClerkStrategy (integration)', () => {
 
       await middleware.handle(ctx)
 
-      expect((ctx.store.user as Record<string, unknown>)?.userId).toBe('clerk_specific_id')
+      expect((ctx.store.user as Record<string, unknown>)?.userId).toBe(
+        'clerk_specific_id',
+      )
     })
 
     test('sets correct role on context.store.user', async () => {
@@ -260,7 +282,9 @@ describe('AuthMiddleware + ClerkStrategy (integration)', () => {
 
       await middleware.handle(ctx)
 
-      expect((ctx.store.user as Record<string, unknown>)?.role).toBe(UserRoles.USER)
+      expect((ctx.store.user as Record<string, unknown>)?.role).toBe(
+        UserRoles.USER,
+      )
     })
   })
 })

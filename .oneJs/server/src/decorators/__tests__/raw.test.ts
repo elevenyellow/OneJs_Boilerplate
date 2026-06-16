@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { Raw } from '.././raw'
 import { getControllerMeta } from '../../utils/route-metadata'
+import { Raw } from '.././raw'
 
 describe('@Raw() decorator', () => {
   it('sets raw: true on the handler metadata', () => {

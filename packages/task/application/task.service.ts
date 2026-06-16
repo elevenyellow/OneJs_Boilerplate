@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
+import { ErrorCodes, Inject, Injectable, Logger, OneJsError } from '@OneJs/core'
 import { EventBus } from '@OneJs/event-bus'
 import {
   TaskCompletedIntegrationEvent,

@@ -1,8 +1,8 @@
-import { describe, test, expect, beforeEach, mock } from 'bun:test'
-import { BootstrapLoader } from '../bootstrap-loader'
-import { BootstrapBase } from '../bootstrap-base'
-import { clearBootstraps, registerBootstrap } from '../store'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { Container } from '../../container'
+import { BootstrapBase } from '../bootstrap-base'
+import { BootstrapLoader } from '../bootstrap-loader'
+import { clearBootstraps, registerBootstrap } from '../store'
 
 function makeContainer(instances: Map<any, any>): Container {
   const container = new Container() as any

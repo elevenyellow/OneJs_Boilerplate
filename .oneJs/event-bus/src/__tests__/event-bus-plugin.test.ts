@@ -1,9 +1,9 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
-import { EventBusPlugin } from '../event-bus-plugin'
-import { clearEventHandlers, registerEventHandler } from '../domain/store'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { EventBus } from '../application/event-bus'
 import { DomainEvent } from '../domain/events/domain-events'
 import type { EventBusBridge } from '../domain/interfaces/event-bus-bridge'
+import { clearEventHandlers, registerEventHandler } from '../domain/store'
+import { EventBusPlugin } from '../event-bus-plugin'
 
 class TestEvent extends DomainEvent {}
 

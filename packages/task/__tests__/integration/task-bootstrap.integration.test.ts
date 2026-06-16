@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
 import {
   Container,
+  clearMarkers,
+  Module,
   OneJs,
   PluginRegistry,
-  Module,
-  clearMarkers,
 } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
 import { clearModules } from '@OneJs/core/bootstrap/module'
 import { clearBootstraps } from '@OneJs/core/bootstrap/store'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import { TaskSeeder } from '../../application/bootstrap/task-seeder'
 import { Task } from '../../domain/entities/task'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
-import { TaskSeeder } from '../../application/bootstrap/task-seeder'
 
 describe('TaskSeeder — integration (OneJs bootstrap)', () => {
   beforeEach(() => {

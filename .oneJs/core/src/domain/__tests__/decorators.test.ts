@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'bun:test'
+import { Entity, ValueObject } from '.././decorators'
 import { Entity as EntityBase } from '.././entity'
 import { ValueObject as ValueObjectBase } from '.././value-object'
-import { Entity, ValueObject } from '.././decorators'
 
 describe('@ValueObject() decorator', () => {
   it('accepts a class that extends ValueObjectBase', () => {
     expect(() => {
       @ValueObject()
       class Price extends ValueObjectBase<number> {
-        constructor(v: number) { super(v) }
+        constructor(v: number) {
+          super(v)
+        }
       }
       return Price
     }).not.toThrow()
@@ -30,7 +32,9 @@ describe('@Entity() decorator', () => {
     expect(() => {
       @Entity()
       class Order extends EntityBase<ValueObjectBase<string>> {
-        toDto() { return { id: this.getId().getValue() } }
+        toDto() {
+          return { id: this.getId().getValue() }
+        }
       }
       return Order
     }).not.toThrow()
@@ -40,7 +44,9 @@ describe('@Entity() decorator', () => {
     expect(() => {
       @Entity()
       class FakeEntity {
-        toDto() { return {} }
+        toDto() {
+          return {}
+        }
       }
       return FakeEntity
     }).toThrow('@Entity()')

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { Task } from '../../../domain/entities/task'
 import { InMemoryTaskRepository } from '../../../infrastructure/repositories/in-memory-task.repository'
 
-const uuid = (n: number) => `550e8400-e29b-41d4-a716-4466554400${String(n).padStart(2, '0')}`
+const uuid = (n: number) =>
+  `550e8400-e29b-41d4-a716-4466554400${String(n).padStart(2, '0')}`
 const task = (n: number, title = 'Test', done = false) =>
   Task.reconstitute(uuid(n), title, '', done, new Date())
 

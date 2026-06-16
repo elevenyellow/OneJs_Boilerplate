@@ -1,4 +1,4 @@
-import { metadataRegistry, markAs, type ClassConstructor } from '@OneJs/core'
+import { type ClassConstructor, markAs, metadataRegistry } from '@OneJs/core'
 import { registerController } from '../controller-registry'
 import { getControllerMeta } from '../utils/route-metadata'
 

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { User } from '../../../domain/entities/user'
 import { AuthController } from '../../../infrastructure/controllers/auth.controller'
 
@@ -12,7 +12,10 @@ const user = () => User.register(EMAIL, HASH)
 function makeService() {
   return {
     register: mock(async (_email: string, _pass: string) => user()),
-    login: mock(async (_email: string, _pass: string) => ({ token: 'jwt.token.here', user: user() })),
+    login: mock(async (_email: string, _pass: string) => ({
+      token: 'jwt.token.here',
+      user: user(),
+    })),
     forgotPassword: mock(async (_email: string) => UUID as string | null),
     resetPassword: mock(async (_token: string, _pass: string) => {}),
     updatePassword: mock(async (_id: string, _cur: string, _new: string) => {}),
@@ -46,7 +49,9 @@ describe('AuthController', () => {
 
     it('throws 400 when email is missing', async () => {
       try {
-        await controller.register(makeCtx({ body: { password: 'password123' } }))
+        await controller.register(
+          makeCtx({ body: { password: 'password123' } }),
+        )
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -70,7 +75,7 @@ describe('AuthController', () => {
   describe('login()', () => {
     it('returns token and user DTO', async () => {
       const ctx = makeCtx({ body: { email: EMAIL, password: 'password123' } })
-      const result = await controller.login(ctx) as any
+      const result = (await controller.login(ctx)) as any
 
       expect(typeof result.token).toBe('string')
       expect(result.user.email).toBe(EMAIL)
@@ -92,7 +97,7 @@ describe('AuthController', () => {
   describe('forgotPassword()', () => {
     it('returns message and resetToken', async () => {
       const ctx = makeCtx({ body: { email: EMAIL } })
-      const result = await controller.forgotPassword(ctx) as any
+      const result = (await controller.forgotPassword(ctx)) as any
 
       expect(result.message).toBeDefined()
       expect(result.resetToken).toBe(UUID)
@@ -101,7 +106,7 @@ describe('AuthController', () => {
     it('returns message without resetToken when user does not exist', async () => {
       service.forgotPassword = mock(async () => null)
       const ctx = makeCtx({ body: { email: 'nobody@example.com' } })
-      const result = await controller.forgotPassword(ctx) as any
+      const result = (await controller.forgotPassword(ctx)) as any
 
       expect(result.message).toBeDefined()
       expect(result.resetToken).toBeUndefined()
@@ -123,14 +128,16 @@ describe('AuthController', () => {
   describe('resetPassword()', () => {
     it('returns success message', async () => {
       const ctx = makeCtx({ body: { token: UUID, newPassword: 'newpass123' } })
-      const result = await controller.resetPassword(ctx) as any
+      const result = (await controller.resetPassword(ctx)) as any
 
       expect(result.message).toBeDefined()
     })
 
     it('throws 400 when token is missing', async () => {
       try {
-        await controller.resetPassword(makeCtx({ body: { newPassword: 'newpass123' } }))
+        await controller.resetPassword(
+          makeCtx({ body: { newPassword: 'newpass123' } }),
+        )
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -147,17 +154,19 @@ describe('AuthController', () => {
         body: { currentPassword: 'old123456', newPassword: 'new123456' },
         store: { user: { userId: UUID } },
       })
-      const result = await controller.updatePassword(ctx) as any
+      const result = (await controller.updatePassword(ctx)) as any
 
       expect(result.message).toBeDefined()
     })
 
     it('throws 400 when currentPassword is missing', async () => {
       try {
-        await controller.updatePassword(makeCtx({
-          body: { newPassword: 'new123456' },
-          store: { user: { userId: UUID } },
-        }))
+        await controller.updatePassword(
+          makeCtx({
+            body: { newPassword: 'new123456' },
+            store: { user: { userId: UUID } },
+          }),
+        )
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -171,7 +180,7 @@ describe('AuthController', () => {
   describe('me()', () => {
     it('returns the authenticated user DTO', async () => {
       const ctx = makeCtx({ store: { user: { userId: UUID } } })
-      const result = await controller.me(ctx) as any
+      const result = (await controller.me(ctx)) as any
 
       expect(result.email).toBe(EMAIL)
     })

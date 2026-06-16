@@ -7,21 +7,15 @@
  *
  * Uses Elysia's internal handle() so no real TCP server is needed.
  */
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
+
 import {
   Container,
   Injectable,
   Logger,
+  metadataRegistry,
   OneJs,
   PluginRegistry,
-  metadataRegistry,
 } from '@OneJs/core'
-import { ServerPlugin } from '@OneJs/server'
-import { Server } from '@OneJs/server/http-server'
-import {
-  clearControllers,
-  registerController,
-} from '@OneJs/server/controller-registry'
 import {
   DomainEvent,
   EventBus,
@@ -29,6 +23,13 @@ import {
   EventHandler,
 } from '@OneJs/event-bus'
 import { clearEventHandlers } from '@OneJs/event-bus/domain/store'
+import { ServerPlugin } from '@OneJs/server'
+import {
+  clearControllers,
+  registerController,
+} from '@OneJs/server/controller-registry'
+import { Server } from '@OneJs/server/http-server'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 function restoreServerMetadata() {
   metadataRegistry.registerService(Server, 'singleton', false)

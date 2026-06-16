@@ -1,7 +1,7 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
-import { PluginRegistry } from '../plugin-registry'
-import type { BootstrapPlugin } from '../plugin-registry'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import type { Container } from '../../container'
+import type { BootstrapPlugin } from '../plugin-registry'
+import { PluginRegistry } from '../plugin-registry'
 
 function makePlugin(name: string, priority?: number): BootstrapPlugin {
   return {

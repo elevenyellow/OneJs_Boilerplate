@@ -1,5 +1,5 @@
-import { AuthMiddleware } from "../auth.middleware"
-import { ensureRouteMeta } from "../utils/metadata"
+import { AuthMiddleware } from '../auth.middleware'
+import { ensureRouteMeta } from '../utils/metadata'
 
 export function UseAuth() {
   return function (target: any, propertyKey: string) {

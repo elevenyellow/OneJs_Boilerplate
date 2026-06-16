@@ -1,10 +1,12 @@
-import { mock, beforeEach, describe, test, expect } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { OneJsError } from '../../errors'
 import { UserRoles } from '../types'
 
 // ── Mock @clerk/backend before importing ClerkStrategy ────────────────────────
 
-const mockVerifyToken = mock(async (_token: string, _opts: unknown) => ({} as any))
+const mockVerifyToken = mock(
+  async (_token: string, _opts: unknown) => ({}) as any,
+)
 mock.module('@clerk/backend', () => ({ verifyToken: mockVerifyToken }))
 
 const { ClerkStrategy } = await import('../strategies/clerk.strategy')
@@ -48,7 +50,9 @@ describe('ClerkStrategy', () => {
 
   describe('validate() — success', () => {
     test('returns AuthUser with correct userId from sub', async () => {
-      mockVerifyToken.mockImplementation(async () => makePayload({ sub: 'user_abc' }))
+      mockVerifyToken.mockImplementation(async () =>
+        makePayload({ sub: 'user_abc' }),
+      )
 
       const result = await strategy.validate('valid-token')
 
@@ -174,7 +178,9 @@ describe('ClerkStrategy', () => {
         throw new TypeError('unexpected shape')
       })
 
-      await expect(strategy.validate('token')).rejects.toBeInstanceOf(OneJsError)
+      await expect(strategy.validate('token')).rejects.toBeInstanceOf(
+        OneJsError,
+      )
     })
 
     test('does not expose internal verifyToken error message directly', async () => {

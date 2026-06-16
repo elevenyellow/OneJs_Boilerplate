@@ -47,11 +47,17 @@ export class UserService {
     await this.repository.save(user)
     await this.eventBus.publish(new UserRegisteredEvent(user))
 
-    this.logger.debug('user:service', `User registered: ${user.getId().getValue()}`)
+    this.logger.debug(
+      'user:service',
+      `User registered: ${user.getId().getValue()}`,
+    )
     return user
   }
 
-  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ token: string; user: User }> {
     const user = await this.repository.findByEmail(email)
     if (!user)
       throw new OneJsError(
@@ -62,7 +68,10 @@ export class UserService {
         ErrorCodes.AUTH_INVALID,
       )
 
-    const valid = await Bun.password.verify(password, user.passwordHash.getValue())
+    const valid = await Bun.password.verify(
+      password,
+      user.passwordHash.getValue(),
+    )
     if (!valid)
       throw new OneJsError(
         'Unauthorized',
@@ -73,7 +82,10 @@ export class UserService {
       )
 
     const token = this.signToken(user)
-    this.logger.debug('user:service', `User logged in: ${user.getId().getValue()}`)
+    this.logger.debug(
+      'user:service',
+      `User logged in: ${user.getId().getValue()}`,
+    )
     return { token, user }
   }
 
@@ -87,7 +99,9 @@ export class UserService {
     const resetToken = uuidv4()
     const updated = user.withResetToken(resetToken)
     await this.repository.save(updated)
-    await this.eventBus.publish(new PasswordResetRequestedEvent(updated, resetToken))
+    await this.eventBus.publish(
+      new PasswordResetRequestedEvent(updated, resetToken),
+    )
 
     this.logger.debug('user:service', `Reset token issued for ${email}`)
     return resetToken
@@ -111,7 +125,10 @@ export class UserService {
     await this.repository.save(updated)
     await this.eventBus.publish(new PasswordChangedEvent(updated))
 
-    this.logger.debug('user:service', `Password reset for user ${user.getId().getValue()}`)
+    this.logger.debug(
+      'user:service',
+      `Password reset for user ${user.getId().getValue()}`,
+    )
   }
 
   async updatePassword(
@@ -131,7 +148,10 @@ export class UserService {
         ErrorCodes.USER_NOT_FOUND,
       )
 
-    const valid = await Bun.password.verify(currentPassword, user.passwordHash.getValue())
+    const valid = await Bun.password.verify(
+      currentPassword,
+      user.passwordHash.getValue(),
+    )
     if (!valid)
       throw new OneJsError(
         'Unauthorized',

@@ -1,17 +1,17 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import {
   Container,
+  clearMarkers,
   Injectable,
   Module,
   OneJs,
   PluginRegistry,
-  clearMarkers,
 } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
+import { clearModules } from '@OneJs/core/bootstrap/module'
 import { EventBus, EventBusPlugin, EventHandler } from '@OneJs/event-bus'
 import { clearEventHandlers } from '@OneJs/event-bus/domain/store'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
-import { clearModules } from '@OneJs/core/bootstrap/module'
 import { TaskService } from '../../application/task.service'
 import { TaskCreatedEvent } from '../../domain/events/task-created.event'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'

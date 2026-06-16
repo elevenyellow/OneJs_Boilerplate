@@ -2,11 +2,15 @@ import { describe, expect, it } from 'bun:test'
 import { ValueObject } from '.././value-object'
 
 class Amount extends ValueObject<number> {
-  static create(n: number) { return new Amount(n) }
+  static create(n: number) {
+    return new Amount(n)
+  }
 }
 
 class Name extends ValueObject<string> {
-  static create(s: string) { return new Name(s) }
+  static create(s: string) {
+    return new Name(s)
+  }
 }
 
 describe('ValueObject', () => {
@@ -27,7 +31,9 @@ describe('ValueObject', () => {
 
     it('compares objects by deep equality', () => {
       class Point extends ValueObject<{ x: number; y: number }> {
-        static create(x: number, y: number) { return new Point({ x, y }) }
+        static create(x: number, y: number) {
+          return new Point({ x, y })
+        }
       }
       expect(Point.create(1, 2).equals(Point.create(1, 2))).toBe(true)
       expect(Point.create(1, 2).equals(Point.create(1, 3))).toBe(false)

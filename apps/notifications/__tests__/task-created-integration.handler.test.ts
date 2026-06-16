@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
-import { TaskCreatedIntegrationHandler } from '../../../packages/task/application/handlers/task-created-integration.handler'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
 import { Task } from '@task/domain/entities/task'
+import { TaskCreatedIntegrationHandler } from '../../../packages/task/application/handlers/task-created-integration.handler'
 
 function makeNotificationService() {
   return {
