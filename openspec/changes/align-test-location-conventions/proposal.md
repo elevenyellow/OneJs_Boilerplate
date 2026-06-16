@@ -13,7 +13,7 @@ There is a **critical contradiction** in the template's testing guidelines that 
 The SKILL file (which agents load automatically) directly contradicts both AGENTS.md and the canonical testing.md documentation. This causes agents to co-locate tests next to source files instead of organizing them in a dedicated `tests/` folder structure.
 
 Additionally, `docs/conventions/patterns/testing.md` is **outdated**:
-- References MongoDB and `mongodb-memory-server` when the actual stack uses **Prisma + PGlite** (`createTestPrisma()` from `@dfs/database/testing`)
+- References MongoDB and `mongodb-memory-server` when the actual stack uses **Prisma + PGlite** (`createTestPrisma()` from `@smoke/database/testing`)
 - No examples exist in `packages/users` to serve as a canonical reference
 
 ## Solution

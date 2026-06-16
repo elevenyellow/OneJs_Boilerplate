@@ -5,7 +5,7 @@
 The `scripts/init-project.ts` script currently only works **inside** an already-cloned template directory. It modifies the current working directory (or resolves to `../` from `scripts/`). This forces a manual three-step workflow:
 
 ```bash
-git clone git@github.com:elevenyellow/ddd-fullstack-starter.git foo
+git clone git@github.com:elevenyellow/smoke-test.git foo
 cd foo
 bun run init -n foo -i @foo --components webapp --skip-git-check
 ```
@@ -35,7 +35,7 @@ bun run init \
 Or via `bunx` without cloning the template first:
 
 ```bash
-bunx github:elevenyellow/ddd-fullstack-starter init \
+bunx github:elevenyellow/smoke-test init \
   -n my-project -i @mp --target-dir ~/projects/my-project \
   --components webapp --skip-git-check --quiet
 ```
@@ -68,7 +68,7 @@ bunx github:elevenyellow/ddd-fullstack-starter init \
 
 1. From a clean machine with only `bun` and `git`:
    ```bash
-   bunx github:elevenyellow/ddd-fullstack-starter init \
+   bunx github:elevenyellow/smoke-test init \
      -n foo -i @foo --target-dir ~/projects/foo \
      --components webapp --skip-git-check --quiet
    ```

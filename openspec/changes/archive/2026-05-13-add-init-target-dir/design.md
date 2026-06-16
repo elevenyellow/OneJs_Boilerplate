@@ -23,7 +23,7 @@ The init script will support two modes:
 interface Config {
   // ... existing fields ...
   targetDir?: string        // --target-dir, -t
-  templateUrl?: string      // --template-url (default: github.com/elevenyellow/ddd-fullstack-starter.git)
+  templateUrl?: string      // --template-url (default: github.com/elevenyellow/smoke-test.git)
   ref?: string              // --ref (default: main)
   force?: boolean           // --force (allow non-empty target-dir)
   quiet?: boolean           // --quiet (JSON output only)
@@ -150,7 +150,7 @@ async function resetGitHistory(targetDir: string): Promise<void> {
   await addProc.exited
   
   const commitProc = Bun.spawn([
-    'git', 'commit', '-m', 'chore: initialize from ddd-fullstack-starter'
+    'git', 'commit', '-m', 'chore: initialize from smoke-test'
   ], {
     cwd: targetDir,
     stdout: 'pipe',
@@ -251,7 +251,7 @@ Current script creates `.init-backup/<timestamp>/` for safety. In target-dir mod
 
 ### Template URL configuration
 
-Default: `git@github.com:elevenyellow/ddd-fullstack-starter.git`
+Default: `git@github.com:elevenyellow/smoke-test.git`
 
 Override via:
 1. `--template-url` flag (highest priority)
@@ -259,7 +259,7 @@ Override via:
 3. Hardcoded default
 
 ```typescript
-const DEFAULT_TEMPLATE_URL = 'git@github.com:elevenyellow/ddd-fullstack-starter.git'
+const DEFAULT_TEMPLATE_URL = 'git@github.com:elevenyellow/smoke-test.git'
 
 function getTemplateUrl(cliValue?: string): string {
   return cliValue 
@@ -344,7 +344,7 @@ No new unit tests needed — existing functions already tested. New functions (`
 
 - `README.md`
   - Add section documenting `--target-dir` usage
-  - Add example with `bunx github:elevenyellow/ddd-fullstack-starter init`
+  - Add example with `bunx github:elevenyellow/smoke-test init`
 
 ### No changes to
 

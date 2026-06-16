@@ -28,10 +28,10 @@ Exclude tests, generated files, `node_modules`, and `public/` assets.
 
 ## What the agent checks
 
-- **Components**: composition with `components/ui/` primitives (which consume `@dfs/ui/variants/*`), no business rules, accessibility, loading/empty/error states.
+- **Components**: composition with `components/ui/` primitives (which consume `@smoke/ui/variants/*`), no business rules, accessibility, loading/empty/error states.
 - **Routing**: TanStack Router guards in `beforeLoad` (not component body); `loader` for data the page needs to paint.
 - **Hooks**: single responsibility, TanStack Query usage through the tRPC client, complete dependency arrays, clean API (object, not tuple).
-- **Data layer**: all reads/writes through `@dfs/api` tRPC procedures; client points at `env.VITE_API_URL` with `credentials: 'include'`; correct query invalidation on mutations; no direct Prisma imports.
+- **Data layer**: all reads/writes through `@smoke/api` tRPC procedures; client points at `env.VITE_API_URL` with `credentials: 'include'`; correct query invalidation on mutations; no direct Prisma imports.
 - **Styles**: Tailwind v4 + shadcn tokens, no hardcoded colors, `rem` for sizing, responsive below 900px.
 - **Mobile**: `expo-router` for navigation, NativeWind `className` for styling (shared with web where possible), safe-area via providers, `Platform.OS` only when necessary.
 

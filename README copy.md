@@ -2,7 +2,7 @@
 
 > A production-ready TypeScript monorepo template following **Domain-Driven Design (DDD)** principles with **Hexagonal Architecture** (Ports & Adapters). Perfect for building scalable applications with clean architecture and maintainable code.
 
-[![Use this template](https://img.shields.io/badge/Use_this_template-2ea44f?style=for-the-badge)](https://github.com/elevenyellow/ddd-fullstack-starter/generate)
+[![Use this template](https://img.shields.io/badge/Use_this_template-2ea44f?style=for-the-badge)](https://github.com/elevenyellow/smoke-test/generate)
 
 ## 🚀 Quick Start
 
@@ -61,7 +61,7 @@ Create a new project directly from the template without cloning manually:
 
 ```bash
 # Using bunx (no local clone needed)
-bunx github:elevenyellow/ddd-fullstack-starter init \
+bunx github:elevenyellow/smoke-test init \
   -n my-project \
   -i @mp \
   --target-dir ~/projects/my-project \
@@ -86,7 +86,7 @@ This will:
 **Quiet mode for automation** (e.g., n8n workflows):
 
 ```bash
-bunx github:elevenyellow/ddd-fullstack-starter init \
+bunx github:elevenyellow/smoke-test init \
   -n my-project -i @mp \
   --target-dir ~/projects/my-project \
   --components webapp \
@@ -120,7 +120,7 @@ bunx github:elevenyellow/ddd-fullstack-starter init \
 - **Backend**: Bun + Elysia (`apps/api`) hosting tRPC and better-auth handlers
 - **Web**: Vite + React 19 + TanStack Router + shadcn/ui + Tailwind v4
 - **Mobile**: Expo 54 + React Native + NativeWind
-- **Shared UI**: `@dfs/ui` package — design tokens, CVA variants, and `cn()` utility
+- **Shared UI**: `@smoke/ui` package — design tokens, CVA variants, and `cn()` utility
 - **API contract**: tRPC (type-safe end-to-end)
 - **Database**: PostgreSQL with Prisma ORM
 - **Auth**: better-auth for authentication
@@ -198,7 +198,7 @@ packages/[context]/
 - **Files**: `kebab-case.type.ts` (e.g., `user-creator.service.ts`)
 - **Classes**: `PascalCase` (e.g., `UserCreator`)
 - **Methods**: `camelCase` with `run()` as main entry point for services
-- **Packages**: `@[identifier]/package-name` (e.g., `@dfs/common`, `@dfs/users`)
+- **Packages**: `@[identifier]/package-name` (e.g., `@smoke/common`, `@smoke/users`)
 
 ### Service Patterns
 - All services have a **single responsibility**
@@ -264,7 +264,7 @@ Check `packages/users/` and the [complete implementation guide](./docs/conventio
 
 The `bun run init` script will:
 
-- Replace `@dfs` with your project identifier throughout the codebase
+- Replace `@smoke` with your project identifier throughout the codebase
 - Update project name in all configuration files (including `docker-compose.yml`)
 - Update project description in documentation
 - **Select components**: Choose Admin only, Mobile only, or both

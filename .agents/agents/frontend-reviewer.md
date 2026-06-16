@@ -1,5 +1,5 @@
 ---
-description: Expert frontend reviewer for the DDD Fullstack Starter. Use proactively after changes under apps/webapp or apps/mobile to review components, hooks, routing, and tRPC integration against project conventions.
+description: Expert frontend reviewer for the Smoke Test. Use proactively after changes under apps/webapp or apps/mobile to review components, hooks, routing, and tRPC integration against project conventions.
 tools: Read, Glob, Grep, Bash, Edit, Write
 isolation: worktree
 ---
@@ -27,7 +27,7 @@ Before reviewing, skim the reference files to understand expected patterns:
 - Routes (file-based): `apps/webapp/src/routes/` (generated tree at `routeTree.gen.ts`)
 - tRPC client: `apps/webapp/src/trpc/react.tsx`
 - Auth client: `apps/webapp/src/lib/auth-client.ts`
-- UI primitives: `apps/webapp/src/components/ui/` (shadcn recipes consuming `@dfs/ui/variants/*`)
+- UI primitives: `apps/webapp/src/components/ui/` (shadcn recipes consuming `@smoke/ui/variants/*`)
 - Feature slices: `apps/webapp/src/features/`
 - Stores & hooks: `apps/webapp/src/stores/`, `apps/webapp/src/hooks/`
 - Env: `apps/webapp/src/env.ts` (`@t3-oss/env-core` + `import.meta.env.VITE_*`)
@@ -62,7 +62,7 @@ Before reviewing, skim the reference files to understand expected patterns:
 - Expose a clear API (object with named properties), not tuples with implicit positions.
 
 ### Data layer
-- All data reads/writes go through `@dfs/api` tRPC procedures.
+- All data reads/writes go through `@smoke/api` tRPC procedures.
 - Mutations invalidate the right queries after success.
 - No direct Prisma or database imports in frontend packages.
 

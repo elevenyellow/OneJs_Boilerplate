@@ -1,12 +1,12 @@
 ---
-description: Full project validator for the DDD Fullstack Starter. Use proactively after code changes to run lint, typecheck, and tests, auto-fix where safe, and report remaining errors.
+description: Full project validator for the Smoke Test. Use proactively after code changes to run lint, typecheck, and tests, auto-fix where safe, and report remaining errors.
 tools: Read, Glob, Bash, Edit
 isolation: worktree
 ---
 
 # Project Validator Agent
 
-Run full project validation for the DDD Fullstack Starter (Bun + Biome + tsc + bun:test). Auto-fix formatting and lint issues, report remaining errors with enough context to resolve them.
+Run full project validation for the Smoke Test (Bun + Biome + tsc + bun:test). Auto-fix formatting and lint issues, report remaining errors with enough context to resolve them.
 
 ## Constraints
 

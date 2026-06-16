@@ -9,9 +9,9 @@ Short checklist. Full structure, examples, and rationale live in [docs/conventio
 
 ## Stay on the tRPC boundary
 
-- Every data read/write goes through `@dfs/api` procedures via the tRPC client.
+- Every data read/write goes through `@smoke/api` procedures via the tRPC client.
 - Mutations must invalidate the relevant queries on success.
-- No direct Prisma, repository, or `@dfs/<context>/domain` imports from frontend code.
+- No direct Prisma, repository, or `@smoke/<context>/domain` imports from frontend code.
 - No business invariants in the UI — call an application service; let it enforce the rule and surface the `DomainError`.
 - Never use raw `fetch()` — it bypasses tracing, auth, and error translation.
 - Both web and mobile point at `apps/api` via `VITE_API_URL` / `EXPO_PUBLIC_API_URL` with `credentials: 'include'`.
@@ -21,7 +21,7 @@ Short checklist. Full structure, examples, and rationale live in [docs/conventio
 - File-based routing under `src/routes/` via `@tanstack/router-plugin/vite` (autoCodeSplitting).
 - Auth guards live in `beforeLoad` and `throw redirect(...)` — not in the component body.
 - Data needed before paint: put it in `loader`. Otherwise `useQuery` inside the component.
-- Compose with primitives from `components/ui/` (shadcn recipes that consume `@dfs/ui/variants/*`); don't fork them.
+- Compose with primitives from `components/ui/` (shadcn recipes that consume `@smoke/ui/variants/*`); don't fork them.
 - Every query-backed section has loading / empty / error states.
 - Tailwind v4 theme tokens only — no hardcoded colors. `rem` for sizing; `px` only for hairlines.
 - Theme (light/dark) via Zustand `persist` + `localStorage`; inline `<script>` in `index.html` prevents FOUC.
@@ -31,14 +31,14 @@ Short checklist. Full structure, examples, and rationale live in [docs/conventio
 
 - `expo-router` conventions — `<Link>`, `useRouter`, route groups `(name)`. No manual stacks.
 - NativeWind `className` on `View`/`Text`/`Pressable`. Share class strings with web where possible.
-- Shared tokens via `@dfs/ui/tokens.tailwind` consumed in `tailwind.config.js`.
+- Shared tokens via `@smoke/ui/tokens.tailwind` consumed in `tailwind.config.js`.
 - Safe-area via `SafeAreaProvider` / `useSafeAreaInsets`. Never hardcode insets.
 - `Platform.OS` only when behavior genuinely diverges.
 - RN-only concerns (gestures, animations) keep using `StyleSheet` or `react-native-reanimated`.
 
 ## Backend host — `apps/api`
 
-- Bun + Elysia mounting `@dfs/api` router via `fetchRequestHandler` at `/api/trpc/*`.
+- Bun + Elysia mounting `@smoke/api` router via `fetchRequestHandler` at `/api/trpc/*`.
 - better-auth fetch handler at `/api/auth/*` — `auth.handler(request)`.
 - CORS list must include the webapp origin (`http://localhost:3000` in dev, app domain in prod) with `credentials: true`.
 - No domain logic here — this is a thin HTTP shell around already-framework-agnostic packages.
@@ -47,7 +47,7 @@ Short checklist. Full structure, examples, and rationale live in [docs/conventio
 
 - Tokens in `tokens.ts`; CSS vars generated via `scripts/build-css-vars.ts`; mobile consumes `tokens.tailwind` helper.
 - CVA variants in `variants/*.variants.ts` — classNames only, platform-agnostic.
-- No rendered components in `@dfs/ui`. Each app renders its own `<button>` / `<Pressable>` wrapping the shared variant.
+- No rendered components in `@smoke/ui`. Each app renders its own `<button>` / `<Pressable>` wrapping the shared variant.
 - Icons not shared: web uses `lucide-react`, mobile uses `lucide-react-native`.
 
 ## Hooks
@@ -59,7 +59,7 @@ Short checklist. Full structure, examples, and rationale live in [docs/conventio
 ## What to avoid
 
 - Hosting the tRPC router or better-auth handler inside `apps/webapp` — they belong in `apps/api`.
-- Rendered components inside `@dfs/ui` that couple to DOM or RN primitives — only variants and tokens cross the boundary.
+- Rendered components inside `@smoke/ui` that couple to DOM or RN primitives — only variants and tokens cross the boundary.
 - Business rules in components or hooks.
 - `any` in props or hook returns.
 - Conditional hooks or hooks inside loops.

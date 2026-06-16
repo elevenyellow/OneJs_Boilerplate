@@ -181,8 +181,8 @@ async function rewriteReadme(destRoot: string, dryRun: boolean): Promise<Rewrite
     missed.push('slack-subscribe')
   }
 
-  // 4) Replace bunx github:elevenyellow/ddd-fullstack-starter references.
-  const bunxRegex = /bunx github:elevenyellow\/ddd-fullstack-starter/g
+  // 4) Replace bunx github:elevenyellow/smoke-test references.
+  const bunxRegex = /bunx github:elevenyellow\/smoke-test/g
   if (bunxRegex.test(updated)) {
     updated = updated.replace(bunxRegex, 'bunx github:<your-org>/<your-repo>')
     applied.push('bunx-github')
@@ -227,7 +227,7 @@ async function initGitRepo(destRoot: string, noCommit: boolean, dryRun: boolean)
   // Configure git user for the commit (required in CI environments)
   const configName = await runGit(
     destRoot,
-    ['config', 'user.name', 'DDD Fullstack Starter'],
+    ['config', 'user.name', 'Smoke Test'],
     dryRun
   )
   if (configName.exitCode !== 0) {
@@ -250,7 +250,7 @@ async function initGitRepo(destRoot: string, noCommit: boolean, dryRun: boolean)
 
   const commit = await runGit(
     destRoot,
-    ['commit', '-m', 'chore: scaffold from ddd-fullstack-starter template'],
+    ['commit', '-m', 'chore: scaffold from smoke-test template'],
     dryRun
   )
   if (commit.exitCode !== 0) {

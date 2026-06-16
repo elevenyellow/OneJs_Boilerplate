@@ -1,5 +1,5 @@
 ---
-description: Functional QA tester with Playwright for the DDD Fullstack Starter. Use after implementation to verify flows against a spec and audit e2e coverage in the Vite webapp.
+description: Functional QA tester with Playwright for the Smoke Test. Use after implementation to verify flows against a spec and audit e2e coverage in the Vite webapp.
 tools: Read, Glob, Grep, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_select_option, mcp__playwright__browser_press_key, mcp__playwright__browser_wait_for, mcp__playwright__browser_resize, mcp__playwright__browser_tabs, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_evaluate
 ---
 

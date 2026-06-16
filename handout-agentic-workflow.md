@@ -34,7 +34,7 @@ style: |
 
 **Resumen de la sesión** · 8 páginas · 10 min de lectura
 
-Template de referencia: `ddd-fullstack-starter`
+Template de referencia: `smoke-test`
 
 ---
 
@@ -324,7 +324,7 @@ Spec Driven Development con OpenSpec, y modos por fase en vuestra herramienta de
 
 ### Para profundizar
 
-- **Template de referencia**: `ddd-fullstack-starter` *(repo público)*
+- **Template de referencia**: `smoke-test` *(repo público)*
 - **Documentación de convenciones**: `docs/conventions/`
 - **OpenSpec**: github.com/Fission-AI/OpenSpec
 - **OpenCode**: opencode.ai

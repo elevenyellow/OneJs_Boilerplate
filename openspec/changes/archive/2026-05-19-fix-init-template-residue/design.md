@@ -52,9 +52,9 @@ When walker starts processing these dirs, replacements will reach:
 
 | Directory | File count | Extensions | Contains |
 |---|---|---|---|
-| `.github/workflows/` | 3 | `.yml` | `@dfs/database` in typecheck/tests workflows |
-| `.cursor/.rules/` | 7 | `.mdc` | `@dfs/...` imports, project name, identifier |
-| `.agents/skills/` | ~15 | `.md` | `@dfs/api`, `@dfs/ui`, template name in descriptions |
+| `.github/workflows/` | 3 | `.yml` | `@smoke/database` in typecheck/tests workflows |
+| `.cursor/.rules/` | 7 | `.mdc` | `@smoke/...` imports, project name, identifier |
+| `.agents/skills/` | ~15 | `.md` | `@smoke/api`, `@smoke/ui`, template name in descriptions |
 | `.agents/agents/` | 7 | `.md` | Template name in frontmatter |
 | `.vscode/` | 0-2 | `.json` | (Optional, user-created; safe to process) |
 
@@ -66,10 +66,10 @@ All these extensions are already in `EXTENSIONS_TO_UPDATE` (line 19), so no chan
 
 ```ts
 const replacements: Array<{ old: string; new: string }> = [
-  { old: CURRENT_IDENTIFIER, new: config.identifier },        // @dfs → @foo
-  { old: CURRENT_NAME, new: config.projectName },             // ddd-fullstack-starter → foo
+  { old: CURRENT_IDENTIFIER, new: config.identifier },        // @smoke → @foo
+  { old: CURRENT_NAME, new: config.projectName },             // smoke-test → foo
   { old: CURRENT_DESCRIPTION, new: config.projectDescription }, // (optional)
-  { old: CURRENT_APP_SCHEME, new: config.appScheme },         // dfs → foo
+  { old: CURRENT_APP_SCHEME, new: config.appScheme },         // smoke-test → foo
 ]
 ```
 
@@ -78,15 +78,15 @@ const replacements: Array<{ old: string; new: string }> = [
 ```ts
 const replacements: Array<{ old: string; new: string }> = [
   // Title Case variant (must come before slug to avoid partial match)
-  { old: 'DDD Fullstack Starter', new: toTitleCase(config.projectName) },
+  { old: 'Smoke Test', new: toTitleCase(config.projectName) },
   
   // Slug variants (order matters: longest first)
-  { old: CURRENT_NAME, new: config.projectName },             // ddd-fullstack-starter → foo
-  { old: 'fullstack-starter', new: config.projectName },      // fullstack-starter → foo
+  { old: CURRENT_NAME, new: config.projectName },             // smoke-test → foo
+  { old: 'smoke-test', new: config.projectName },      // smoke-test → foo
   
   // Identifier variants
-  { old: CURRENT_IDENTIFIER, new: config.identifier },        // @dfs → @foo
-  { old: CURRENT_APP_SCHEME, new: config.appScheme },         // dfs → foo (Expo scheme)
+  { old: CURRENT_IDENTIFIER, new: config.identifier },        // @smoke → @foo
+  { old: CURRENT_APP_SCHEME, new: config.appScheme },         // smoke-test → foo (Expo scheme)
   
   // Optional description
   ...(config.projectDescription 
@@ -100,13 +100,13 @@ const replacements: Array<{ old: string; new: string }> = [
 ```ts
 // After string replacements, apply regex for bare identifier variants
 const idWithoutAt = config.identifier.replace(/^@/, '')
-content = content.replace(/\bdfs([-_])/g, `${idWithoutAt}$1`)
+content = content.replace(/\bsmoke-test([-_])/g, `${idWithoutAt}$1`)
 ```
 
 This handles:
-- `dfs-webapp` → `foo-webapp`
-- `dfs_user` → `foo_user`
-- `databaseName: ddd_fullstack_starter` → `databaseName: foo` (via slug replacement above)
+- `smoke-test-webapp` → `foo-webapp`
+- `smoke-test_user` → `foo_user`
+- `databaseName: smoke_test` → `databaseName: foo` (via slug replacement above)
 
 ### Why separate regex pass?
 
@@ -129,18 +129,18 @@ function toTitleCase(slug: string): string {
 
 ### Order matters
 
-Replacements run in array order. `DDD Fullstack Starter` must come before `ddd-fullstack-starter` because the latter is a substring. If we did it reversed:
+Replacements run in array order. `Smoke Test` must come before `smoke-test` because the latter is a substring. If we did it reversed:
 
 ```
-"DDD Fullstack Starter" 
-→ (replace ddd-fullstack-starter with foo) 
+"Smoke Test" 
+→ (replace smoke-test with foo) 
 → "DDD foo Starter"  ❌ wrong
 ```
 
 Correct order:
 ```
-"DDD Fullstack Starter" 
-→ (replace DDD Fullstack Starter with Dermoscan) 
+"Smoke Test" 
+→ (replace Smoke Test with Dermoscan) 
 → "Dermoscan"  ✓
 ```
 
@@ -152,7 +152,7 @@ Correct order:
 function isTemplateReadme(content: string): boolean {
   return content.includes('What the Init Script Does') ||
          content.includes('use this template') ||
-         content.includes('github.com/elevenyellow/ddd-fullstack-starter/generate')
+         content.includes('github.com/elevenyellow/smoke-test/generate')
 }
 ```
 
@@ -188,7 +188,7 @@ Lives in `scripts/templates/README.md.template`:
 ```markdown
 # {{PROJECT_NAME}}
 
-> Generated from [ddd-fullstack-starter](https://github.com/elevenyellow/ddd-fullstack-starter)
+> Generated from [smoke-test](https://github.com/elevenyellow/smoke-test)
 
 ## Quick Start
 
@@ -281,7 +281,7 @@ async function removeInitScript(rootDir: string): Promise<void> {
 
 Auto-uninstall runs **after** all replacements and README handling, but **before** post-flight verification. This ensures:
 
-1. Wizard files don't interfere with post-flight grep (they contain legitimate `@dfs`)
+1. Wizard files don't interfere with post-flight grep (they contain legitimate `@smoke`)
 2. If post-flight fails, wizard files are already gone (user can't re-run init to fix it; must report bug)
 
 ### Dry-run behavior
@@ -311,11 +311,11 @@ The script deletes itself (`scripts/init-project.ts`) while running. This is saf
 
 ```ts
 const RESIDUE_PATTERNS = [
-  '@dfs',
-  'ddd-fullstack-starter',
-  'DDD Fullstack Starter',
-  'fullstack-starter',
-  '\\bdfs[-_]',  // regex: word boundary + dfs + hyphen or underscore
+  '@smoke',
+  'smoke-test',
+  'Smoke Test',
+  'smoke-test',
+  '\\bsmoke-test[-_]',  // regex: word boundary + smoke-test + hyphen or underscore
 ]
 ```
 
@@ -343,7 +343,7 @@ async function postflightVerify(rootDir: string): Promise<void> {
       console.error(`   - ${file}`)
     }
     console.error('\nThis is a bug in the init script.')
-    console.error('Please report to: https://github.com/elevenyellow/ddd-fullstack-starter/issues')
+    console.error('Please report to: https://github.com/elevenyellow/smoke-test/issues')
     process.exit(1)
   }
   
@@ -382,7 +382,7 @@ async function postflightVerifyFallback(rootDir: string): Promise<void> {
       console.error(`   - ${file}`)
     }
     console.error('\nThis is a bug in the init script.')
-    console.error('Please report to: https://github.com/elevenyellow/ddd-fullstack-starter/issues')
+    console.error('Please report to: https://github.com/elevenyellow/smoke-test/issues')
     process.exit(1)
   }
   
@@ -448,31 +448,31 @@ Extend `scripts/init-project.smoke.test.ts` with new test cases:
 ```ts
 describe('Init script residue fixes', () => {
   test('processes .github workflows', async () => {
-    // Create fixture with .github/workflows/test.yml containing @dfs
+    // Create fixture with .github/workflows/test.yml containing @smoke
     // Run init
     // Assert .github/workflows/test.yml contains new identifier
   })
   
   test('processes .cursor rules', async () => {
-    // Create fixture with .cursor/.rules/test.mdc containing @dfs
+    // Create fixture with .cursor/.rules/test.mdc containing @smoke
     // Run init
     // Assert .cursor/.rules/test.mdc contains new identifier
   })
   
   test('processes .agents skills and agents', async () => {
-    // Create fixture with .agents/skills/test/SKILL.md containing @dfs
+    // Create fixture with .agents/skills/test/SKILL.md containing @smoke
     // Run init
     // Assert .agents/skills/test/SKILL.md contains new identifier
   })
   
   test('replaces Title Case template name', async () => {
-    // Create fixture with "DDD Fullstack Starter" in AGENTS.md
+    // Create fixture with "Smoke Test" in AGENTS.md
     // Run init with project name "my-project"
     // Assert AGENTS.md contains "My Project"
   })
   
   test('replaces bare identifier variants', async () => {
-    // Create fixture with dfs-webapp, dfs_user in render.yaml
+    // Create fixture with smoke-test-webapp, smoke-test_user in render.yaml
     // Run init with identifier @foo
     // Assert render.yaml contains foo-webapp, foo_user
   })
@@ -497,7 +497,7 @@ describe('Init script residue fixes', () => {
   })
   
   test('post-flight fails on residue', async () => {
-    // Create fixture with artificial residue (@dfs in a random file)
+    // Create fixture with artificial residue (@smoke in a random file)
     // Run init
     // Assert exit code 1
     // Assert error message mentions the file
@@ -521,7 +521,7 @@ bun run init -n test-project -i @test --components webapp --skip-git-check --tar
 
 # Verify
 cd /tmp/test-init
-rg '@dfs|ddd-fullstack-starter|DDD Fullstack Starter|fullstack-starter|\bdfs[-_]' \
+rg '@smoke|smoke-test|Smoke Test|smoke-test|\bsmoke-test[-_]' \
    --glob '!node_modules' --glob '!.git' || echo "✓ No residue"
 
 bun install

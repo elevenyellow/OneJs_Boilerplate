@@ -39,7 +39,7 @@ Tasks follow documentation updates first, then canonical examples, then validati
 **Steps**:
 1. Read current testing.md
 2. Replace all MongoDB/mongodb-memory-server references with Prisma/PGlite
-3. Update integration test example to use `createTestPrisma()` from `@dfs/database/testing`
+3. Update integration test example to use `createTestPrisma()` from `@smoke/database/testing`
 4. Add new section "InMemory Repository Fakes" explaining location and rationale
 5. Update "Rules" section to mention InMemory fakes and PGlite
 6. Ensure structure diagram matches `tests/{unit,integration,e2e}/` convention
@@ -166,7 +166,7 @@ Tasks follow documentation updates first, then canonical examples, then validati
 **Steps**:
 1. Create directory structure: `packages/users/tests/integration/infrastructure/repositories/`
 2. Create `user-prisma.repository.integration.test.ts`
-3. Import `createTestPrisma` from `@dfs/database/testing`
+3. Import `createTestPrisma` from `@smoke/database/testing`
 4. Write tests:
    - Persists and retrieves a user
    - Returns undefined when user not found
@@ -177,7 +177,7 @@ Tasks follow documentation updates first, then canonical examples, then validati
 
 **Acceptance**:
 - File at `packages/users/tests/integration/infrastructure/repositories/user-prisma.repository.integration.test.ts`
-- Uses `createTestPrisma()` from `@dfs/database/testing`
+- Uses `createTestPrisma()` from `@smoke/database/testing`
 - Tests pass with `bun test`
 - Cleans data between tests
 - No TypeScript errors

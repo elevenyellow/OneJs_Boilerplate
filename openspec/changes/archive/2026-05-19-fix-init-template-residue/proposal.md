@@ -17,24 +17,24 @@ if (!entry.name.startsWith('.') && !IGNORED_DIRS.has(entry.name)) {
 ```
 
 This means replacements **never reach**:
-- `.github/workflows/*.yml` → CI fails with `@dfs/database` not found
-- `.cursor/.rules/*.mdc` → IDE rules reference `@dfs/...` imports
-- `.agents/skills/**/*.md` → AI agents recommend `@dfs/api`, `@dfs/ui/variants`
-- `.agents/agents/*.md` → Agent frontmatter says "for the DDD Fullstack Starter"
+- `.github/workflows/*.yml` → CI fails with `@smoke/database` not found
+- `.cursor/.rules/*.mdc` → IDE rules reference `@smoke/...` imports
+- `.agents/skills/**/*.md` → AI agents recommend `@smoke/api`, `@smoke/ui/variants`
+- `.agents/agents/*.md` → Agent frontmatter says "for the Smoke Test"
 
 **Impact**: GitHub Actions typecheck and test workflows fail immediately on first push. Cursor and Claude agents generate broken imports.
 
 ### 2. Replacement list doesn't cover all template identifier variants
 
 Current replacements only handle:
-- `@dfs` → new identifier
-- `ddd-fullstack-starter` → new project name
+- `@smoke` → new identifier
+- `smoke-test` → new project name
 
 **Missing variants** found in production:
-- `DDD Fullstack Starter` (Title Case) in `AGENTS.md`, `docs/conventions/readme.md`, agent frontmatter
-- `fullstack-starter` (slug without prefix) in skill descriptions
-- `dfs-` (bare, with hyphen) in `render.yaml` service names: `dfs-webapp`, `dfs-db`
-- `dfs_` (bare, with underscore) in `render.yaml` database config: `dfs_user`, `ddd_fullstack_starter`
+- `Smoke Test` (Title Case) in `AGENTS.md`, `docs/conventions/readme.md`, agent frontmatter
+- `smoke-test` (slug without prefix) in skill descriptions
+- `smoke-test-` (bare, with hyphen) in `render.yaml` service names: `smoke-test-webapp`, `smoke-test-db`
+- `smoke-test_` (bare, with underscore) in `render.yaml` database config: `smoke-test_user`, `smoke_test`
 
 **Impact**: `render.yaml` deploys with wrong service names. Documentation still references the template. Grep-based verification finds dozens of false positives.
 
@@ -51,7 +51,7 @@ The init script doesn't touch `README.md`, leaving:
 ### 4. Wizard files survive initialization
 
 After running `bun run init`, the project still contains:
-- `.agents/skills/init/SKILL.md` and `checklist.md` (full of legitimate `@dfs` references)
+- `.agents/skills/init/SKILL.md` and `checklist.md` (full of legitimate `@smoke` references)
 - `scripts/init-project.ts` and `scripts/init-project.smoke.test.ts`
 - `package.json` script `"init": "bun run scripts/init-project.ts"`
 
@@ -87,13 +87,13 @@ Add missing variants, **ordered by length** (longest first to avoid partial matc
 
 | Pattern | Replacement | Example |
 |---|---|---|
-| `DDD Fullstack Starter` | `titleCase(projectName)` | `Dermoscan` |
-| `ddd-fullstack-starter` | `projectName` | `dermoscan` |
-| `fullstack-starter` | `projectName` | `dermoscan` |
-| `@dfs` | `identifier` | `@ds` |
-| `\bdfs([-_])` (regex) | `idWithoutAt + "$1"` | `ds-webapp`, `ds_user` |
+| `Smoke Test` | `titleCase(projectName)` | `Dermoscan` |
+| `smoke-test` | `projectName` | `dermoscan` |
+| `smoke-test` | `projectName` | `dermoscan` |
+| `@smoke` | `identifier` | `@ds` |
+| `\bsmoke-test([-_])` (regex) | `idWithoutAt + "$1"` | `ds-webapp`, `ds_user` |
 
-The regex pattern `\bdfs([-_])` with word boundary ensures we only match `dfs-` and `dfs_` when they appear as standalone prefixes, not inside other words.
+The regex pattern `\bsmoke-test([-_])` with word boundary ensures we only match `smoke-test-` and `smoke-test_` when they appear as standalone prefixes, not inside other words.
 
 ### 3. README handling
 
@@ -115,7 +115,7 @@ After successful initialization, remove:
 After all replacements, run:
 
 ```bash
-rg '@dfs|ddd-fullstack-starter|DDD Fullstack Starter|fullstack-starter|\bdfs[-_]' \
+rg '@smoke|smoke-test|Smoke Test|smoke-test|\bsmoke-test[-_]' \
    --glob '!node_modules' --glob '!.git'
 ```
 
@@ -155,8 +155,8 @@ This guarantees zero false negatives. If a new variant slips through, the init f
 ## Success criteria
 
 1. After `bun run init -n foo -i @foo --components webapp,mobile --skip-git-check`:
-   - `rg '@dfs|ddd-fullstack-starter|DDD Fullstack Starter|fullstack-starter|\bdfs[-_]' --glob '!node_modules' --glob '!.git'` returns **0 matches**
-   - `.github/workflows/typecheck.yml` and `tests.yml` reference `@foo/database`, not `@dfs/database`
+   - `rg '@smoke|smoke-test|Smoke Test|smoke-test|\bsmoke-test[-_]' --glob '!node_modules' --glob '!.git'` returns **0 matches**
+   - `.github/workflows/typecheck.yml` and `tests.yml` reference `@foo/database`, not `@smoke/database`
    - `.cursor/.rules/project-info.mdc` says `Project Name: foo` and `Project Identifier: @foo`
    - `scripts/init-project.ts`, `scripts/init-project.smoke.test.ts`, `.agents/skills/init/` **do not exist**
    - `package.json` has no `"init"` script
@@ -173,7 +173,7 @@ This guarantees zero false negatives. If a new variant slips through, the init f
 | Risk | Mitigation |
 |---|---|
 | Allowlist forgets a future `.*` dir (`.opencode`, `.idea`) | Post-flight grep will detect it and init will fail → clear signal to add to allowlist |
-| Replacement of `dfs-` bare matches unintended strings | Use regex with word boundary `\b` and validate with smoke test; pattern only appears in config files |
+| Replacement of `smoke-test-` bare matches unintended strings | Use regex with word boundary `\b` and validate with smoke test; pattern only appears in config files |
 | Deleting `scripts/init-project.ts` during its own execution causes self-modification | Auto-uninstall runs as last phase after script loaded everything into memory; explicit `process.exit(0)` after unlink |
 | README skeleton doesn't fit user's needs | User rewrites it; at least it's not contaminated with template content. Document in template CHANGELOG |
 | Smoke test is slow (clones/initializes real project) | Reuse existing `init-project.smoke.test.ts` harness instead of creating new one |

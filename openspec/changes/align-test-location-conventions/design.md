@@ -36,7 +36,7 @@ packages/<context>/
     │   └── infrastructure/
     │       └── repositories/
     │           └── user-prisma.repository.integration.test.ts
-    │               (uses createTestPrisma() from @dfs/database/testing)
+    │               (uses createTestPrisma() from @smoke/database/testing)
     │
     └── e2e/
         └── user-creation.e2e.test.ts
@@ -68,7 +68,7 @@ packages/<context>/
 ```diff
   - Tests live in `tests/{unit,integration,e2e}/` inside each package, mirroring the source layout
 + - InMemory repository fakes live in `infrastructure/` next to production adapters for reusability
-+ - Integration tests use PGlite in-memory via `createTestPrisma()` from `@dfs/database/testing`
++ - Integration tests use PGlite in-memory via `createTestPrisma()` from `@smoke/database/testing`
 ```
 
 ### 2. .agents/skills/guidelines/testing-standards/SKILL.md
@@ -133,7 +133,7 @@ describe('The MongoOrderRepository', () => {
 
 **After**:
 ```typescript
-import { createTestPrisma } from '@dfs/database/testing';
+import { createTestPrisma } from '@smoke/database/testing';
 import type { PrismaClient } from '@prisma/client';
 
 describe('The UserPrismaRepository', () => {
@@ -250,7 +250,7 @@ Add three reference tests to serve as living documentation:
 import { describe, test, expect, beforeEach } from 'bun:test';
 import { User } from '../../../src/domain/user.entity';
 import { Email } from '../../../src/domain/email.vo';
-import { Id } from '@dfs/common';
+import { Id } from '@smoke/common';
 
 describe('The User entity', () => {
   test('creates a user with valid email', () => {
@@ -282,7 +282,7 @@ import { describe, test, expect, beforeEach } from 'bun:test';
 import { UserCreator } from '../../../src/application/user-creator.service';
 import { UserInMemoryRepository } from '../../../src/infrastructure/user-in-memory.repository';
 import { Email } from '../../../src/domain/email.vo';
-import { ConflictError } from '@dfs/common';
+import { ConflictError } from '@smoke/common';
 
 describe('The UserCreator', () => {
   let repository: UserInMemoryRepository;
@@ -318,7 +318,7 @@ describe('The UserCreator', () => {
 
 ```typescript
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { createTestPrisma } from '@dfs/database/testing';
+import { createTestPrisma } from '@smoke/database/testing';
 import type { PrismaClient } from '@prisma/client';
 import { UserPrismaRepository } from '../../../src/infrastructure/user-prisma.repository';
 import { User } from '../../../src/domain/user.entity';
@@ -391,7 +391,7 @@ If `UserInMemoryRepository` doesn't exist yet, create it:
 ```typescript
 import type { UserRepository } from '../../domain/repositories/user-repository';
 import type { User } from '../../domain/entities/user.entity';
-import type { Email, Uuid } from '@dfs/common/domain';
+import type { Email, Uuid } from '@smoke/common/domain';
 
 export class UserInMemoryRepository implements UserRepository {
   private users = new Map<string, User>();
@@ -436,7 +436,7 @@ If `User`, `Email`, `UserCreator` don't exist or are incomplete, implement minim
 | Frontend component tests | Document as exception: can stay co-located per React conventions |
 | Shared test utilities | Live in `tests/helpers/` or `tests/fixtures/` |
 | Test setup files | `tests/setup.ts` for global test configuration |
-| Cross-package InMemory imports | Allowed and encouraged (e.g., `@dfs/users/infrastructure/repositories/user-in-memory.repository`) |
+| Cross-package InMemory imports | Allowed and encouraged (e.g., `@smoke/users/infrastructure/repositories/user-in-memory.repository`) |
 | Existing tests in wrong location | Not migrated automatically; convention applies to new tests only |
 
 ## Validation

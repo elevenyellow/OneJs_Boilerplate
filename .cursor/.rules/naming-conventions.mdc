@@ -43,7 +43,7 @@ import { EventBus } from '@OneJs/event-bus'
 
 ### Local packages — `@[scope]/package-name`
 
-Define the scope in your workspace (e.g., `@dfs/`, `@myapp/`) in `package.json`.
+Define the scope in your workspace (e.g., `@smoke/`, `@myapp/`) in `package.json`.
 
 ## Layer Directory Structure
 

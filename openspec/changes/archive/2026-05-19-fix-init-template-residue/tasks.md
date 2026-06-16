@@ -17,38 +17,38 @@ Add test case:
 ```ts
 test('processes .github workflows', async () => {
   const fixture = await createFixture({
-    '.github/workflows/test.yml': 'filter: @dfs/database',
+    '.github/workflows/test.yml': 'filter: @smoke/database',
   })
   
   await runInit(fixture, { name: 'foo', identifier: '@foo' })
   
   const result = await readFile(join(fixture, '.github/workflows/test.yml'), 'utf-8')
   expect(result).toContain('@foo/database')
-  expect(result).not.toContain('@dfs')
+  expect(result).not.toContain('@smoke')
 })
 
 test('processes .cursor rules', async () => {
   const fixture = await createFixture({
-    '.cursor/.rules/test.mdc': 'import { Foo } from "@dfs/common"',
+    '.cursor/.rules/test.mdc': 'import { Foo } from "@smoke/common"',
   })
   
   await runInit(fixture, { name: 'foo', identifier: '@foo' })
   
   const result = await readFile(join(fixture, '.cursor/.rules/test.mdc'), 'utf-8')
   expect(result).toContain('@foo/common')
-  expect(result).not.toContain('@dfs')
+  expect(result).not.toContain('@smoke')
 })
 
 test('processes .agents skills', async () => {
   const fixture = await createFixture({
-    '.agents/skills/test/SKILL.md': 'Use `@dfs/api` for tRPC',
+    '.agents/skills/test/SKILL.md': 'Use `@smoke/api` for tRPC',
   })
   
   await runInit(fixture, { name: 'foo', identifier: '@foo' })
   
   const result = await readFile(join(fixture, '.agents/skills/test/SKILL.md'), 'utf-8')
   expect(result).toContain('@foo/api')
-  expect(result).not.toContain('@dfs')
+  expect(result).not.toContain('@smoke')
 })
 ```
 
@@ -119,31 +119,31 @@ Run: `bun test scripts/init-project.smoke.test.ts`
 ```ts
 test('replaces Title Case template name', async () => {
   const fixture = await createFixture({
-    'AGENTS.md': '# DDD Fullstack Starter\n\nTemplate description.',
+    'AGENTS.md': '# Smoke Test\n\nTemplate description.',
   })
   
   await runInit(fixture, { name: 'my-project', identifier: '@mp' })
   
   const result = await readFile(join(fixture, 'AGENTS.md'), 'utf-8')
   expect(result).toContain('# My Project')
-  expect(result).not.toContain('DDD Fullstack Starter')
+  expect(result).not.toContain('Smoke Test')
 })
 
-test('replaces fullstack-starter slug', async () => {
+test('replaces smoke-test slug', async () => {
   const fixture = await createFixture({
-    'docs/test.md': 'Based on fullstack-starter template.',
+    'docs/test.md': 'Based on smoke-test template.',
   })
   
   await runInit(fixture, { name: 'foo', identifier: '@foo' })
   
   const result = await readFile(join(fixture, 'docs/test.md'), 'utf-8')
   expect(result).toContain('Based on foo template')
-  expect(result).not.toContain('fullstack-starter')
+  expect(result).not.toContain('smoke-test')
 })
 
 test('replaces bare identifier with hyphen', async () => {
   const fixture = await createFixture({
-    'render.yaml': 'name: dfs-webapp\n  databaseName: ddd_fullstack_starter',
+    'render.yaml': 'name: smoke-test-webapp\n  databaseName: smoke_test',
   })
   
   await runInit(fixture, { name: 'foo', identifier: '@foo' })
@@ -151,20 +151,20 @@ test('replaces bare identifier with hyphen', async () => {
   const result = await readFile(join(fixture, 'render.yaml'), 'utf-8')
   expect(result).toContain('name: foo-webapp')
   expect(result).toContain('databaseName: foo')
-  expect(result).not.toContain('dfs-')
-  expect(result).not.toContain('ddd_fullstack_starter')
+  expect(result).not.toContain('smoke-test-')
+  expect(result).not.toContain('smoke_test')
 })
 
 test('replaces bare identifier with underscore', async () => {
   const fixture = await createFixture({
-    'render.yaml': 'user: dfs_user',
+    'render.yaml': 'user: smoke-test_user',
   })
   
   await runInit(fixture, { name: 'foo', identifier: '@foo' })
   
   const result = await readFile(join(fixture, 'render.yaml'), 'utf-8')
   expect(result).toContain('user: foo_user')
-  expect(result).not.toContain('dfs_')
+  expect(result).not.toContain('smoke-test_')
 })
 ```
 
@@ -193,11 +193,11 @@ Update `replaceInFiles()` function (line ~676):
 // Build replacement list (order matters: longest first)
 const replacements: Array<{ old: string; new: string }> = [
   // Title Case variant (must come before slug)
-  { old: 'DDD Fullstack Starter', new: toTitleCase(config.projectName) },
+  { old: 'Smoke Test', new: toTitleCase(config.projectName) },
   
   // Slug variants (longest first)
   { old: CURRENT_NAME, new: config.projectName },
-  { old: 'fullstack-starter', new: config.projectName },
+  { old: 'smoke-test', new: config.projectName },
   
   // Identifier variants
   { old: CURRENT_IDENTIFIER, new: config.identifier },
@@ -237,7 +237,7 @@ async function replaceInFile(
 
     // Regex replacement for bare identifier with separators
     const idWithoutAt = identifier.replace(/^@/, '')
-    const bareIdRegex = /\bdfs([-_])/g
+    const bareIdRegex = /\bsmoke-test([-_])/g
     if (bareIdRegex.test(content)) {
       content = content.replace(bareIdRegex, `${idWithoutAt}$1`)
       changed = true
@@ -271,9 +271,9 @@ Extract replacement list construction to separate function:
 ```ts
 function buildReplacements(config: InitConfig): Array<{ old: string; new: string }> {
   const replacements: Array<{ old: string; new: string }> = [
-    { old: 'DDD Fullstack Starter', new: toTitleCase(config.projectName) },
+    { old: 'Smoke Test', new: toTitleCase(config.projectName) },
     { old: CURRENT_NAME, new: config.projectName },
-    { old: 'fullstack-starter', new: config.projectName },
+    { old: 'smoke-test', new: config.projectName },
     { old: CURRENT_IDENTIFIER, new: config.identifier },
     { old: CURRENT_APP_SCHEME, new: config.appScheme },
   ]
@@ -306,9 +306,9 @@ Run: `bun test scripts/init-project.smoke.test.ts`
 ```ts
 test('replaces template README with skeleton', async () => {
   const fixture = await createFixture({
-    'README.md': `# DDD Fullstack Starter
+    'README.md': `# Smoke Test
 
-[![Use this template](https://img.shields.io/badge/use%20this-template-blue)](https://github.com/elevenyellow/ddd-fullstack-starter/generate)
+[![Use this template](https://img.shields.io/badge/use%20this-template-blue)](https://github.com/elevenyellow/smoke-test/generate)
 
 ## What the Init Script Does
 
@@ -339,7 +339,7 @@ test('preserves custom README', async () => {
 
 test('README skeleton adapts to components', async () => {
   const fixture = await createFixture({
-    'README.md': '# DDD Fullstack Starter\n\n## What the Init Script Does',
+    'README.md': '# Smoke Test\n\n## What the Init Script Does',
   })
   
   await runInit(fixture, { name: 'foo', identifier: '@foo', components: 'mobile' })
@@ -361,7 +361,7 @@ Run: `bun test scripts/init-project.smoke.test.ts`
 ```markdown
 # {{PROJECT_NAME}}
 
-> Generated from [ddd-fullstack-starter](https://github.com/elevenyellow/ddd-fullstack-starter)
+> Generated from [smoke-test](https://github.com/elevenyellow/smoke-test)
 
 ## Quick Start
 
@@ -435,7 +435,7 @@ function isTemplateReadme(content: string): boolean {
   return (
     content.includes('What the Init Script Does') ||
     content.includes('use this template') ||
-    content.includes('github.com/elevenyellow/ddd-fullstack-starter/generate')
+    content.includes('github.com/elevenyellow/smoke-test/generate')
   )
 }
 
@@ -619,7 +619,7 @@ Run: `bun test scripts/init-project.smoke.test.ts`
 **Status**: Completed
 
 **Implementation summary**:
-- Added `CURRENT_NAME_TITLE` constant to detect "DDD Fullstack Starter" (Title Case)
+- Added `CURRENT_NAME_TITLE` constant to detect "Smoke Test" (Title Case)
 - Updated `FileChange` interface with `hasNameTitle` field
 - Updated `analyzeFile()` to detect Title Case template name
 - Implemented `postflightVerify()` with ripgrep fallback to JS scan
@@ -639,7 +639,7 @@ Run: `bun test scripts/init-project.smoke.test.ts`
 ```ts
 test('post-flight fails on residue', async () => {
   const fixture = await createFixture({
-    'src/test.ts': 'import { Foo } from "@dfs/common"',
+    'src/test.ts': 'import { Foo } from "@smoke/common"',
   })
   
   const result = await runInitExpectFail(fixture, { name: 'foo', identifier: '@foo' })
@@ -673,11 +673,11 @@ Add helper functions:
 
 ```ts
 const RESIDUE_PATTERNS = [
-  '@dfs',
-  'ddd-fullstack-starter',
-  'DDD Fullstack Starter',
-  'fullstack-starter',
-  '\\bdfs[-_]',
+  '@smoke',
+  'smoke-test',
+  'Smoke Test',
+  'smoke-test',
+  '\\bsmoke-test[-_]',
 ]
 
 async function postflightVerify(config: InitConfig): Promise<void> {
@@ -705,7 +705,7 @@ async function postflightVerify(config: InitConfig): Promise<void> {
         console.error(`   - ${file}`)
       }
       console.error('\nThis is a bug in the init script.')
-      console.error('Please report to: https://github.com/elevenyellow/ddd-fullstack-starter/issues')
+      console.error('Please report to: https://github.com/elevenyellow/smoke-test/issues')
       process.exit(1)
     }
 
@@ -745,7 +745,7 @@ async function postflightVerifyFallback(config: InitConfig): Promise<void> {
       console.error(`   - ${file}`)
     }
     console.error('\nThis is a bug in the init script.')
-    console.error('Please report to: https://github.com/elevenyellow/ddd-fullstack-starter/issues')
+    console.error('Please report to: https://github.com/elevenyellow/smoke-test/issues')
     process.exit(1)
   }
 
@@ -808,7 +808,7 @@ test('dry-run does not remove wizard files', async () => {
 
 test('dry-run does not fail on residue', async () => {
   const fixture = await createFixture({
-    'src/test.ts': 'import { Foo } from "@dfs/common"',
+    'src/test.ts': 'import { Foo } from "@smoke/common"',
   })
   
   const result = await runInit(fixture, { name: 'foo', identifier: '@foo', dryRun: true })
@@ -831,14 +831,14 @@ Run: `bun test scripts/init-project.smoke.test.ts`
 ```bash
 # From template root
 cd /tmp
-git clone git@github.com:elevenyellow/ddd-fullstack-starter.git test-init-residue
+git clone git@github.com:elevenyellow/smoke-test.git test-init-residue
 cd test-init-residue
 
 # Run init
 bun run init -n test-project -i @test --components webapp --skip-git-check
 
 # Verify no residue
-rg '@dfs|ddd-fullstack-starter|DDD Fullstack Starter|fullstack-starter|\bdfs[-_]' \
+rg '@smoke|smoke-test|Smoke Test|smoke-test|\bsmoke-test[-_]' \
    --glob '!node_modules' --glob '!.git'
 
 # Should output: (no matches)

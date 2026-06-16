@@ -3,7 +3,7 @@ name: openspec-review
 description: Run the full review gate for an implemented OpenSpec change before archive. Invokes code/tests/architecture/frontend reviewers in parallel, consolidates findings, applies fixes, and validates until green. Use after `apply` completes all tasks and before `archive`.
 license: MIT
 metadata:
-  author: ddd-fullstack-starter
+  author: smoke-test
   version: "1.0"
 ---
 

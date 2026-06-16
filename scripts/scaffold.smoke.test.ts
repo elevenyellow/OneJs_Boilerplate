@@ -47,7 +47,7 @@ describe('scaffold smoke test', () => {
       expect(existsSync(join(dest, '.git'))).toBe(true)
       const log = spawnSync('git', ['log', '--oneline'], { cwd: dest, encoding: 'utf-8' })
       expect(log.status, `git log failed:\n${log.stderr}`).toBe(0)
-      expect(log.stdout).toContain('chore: scaffold from ddd-fullstack-starter template')
+      expect(log.stdout).toContain('chore: scaffold from smoke-test template')
 
       const branch = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
         cwd: dest,

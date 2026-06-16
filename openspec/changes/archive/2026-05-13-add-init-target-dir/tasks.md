@@ -16,7 +16,7 @@ Tasks follow inside-out TDD where applicable. For pure infrastructure tasks (CLI
 
 **Steps**:
 1. Create `scripts/fixtures/template-minimal/` directory
-2. Add minimal `package.json` with `name: "ddd-fullstack-starter"`
+2. Add minimal `package.json` with `name: "smoke-test"`
 3. Add `.gitkeep` files to represent template structure
 4. This fixture will be used by tests to mock `git clone`
 
@@ -80,7 +80,7 @@ describe('init with --target-dir', () => {
   test('resets git history after clone', async () => {
     // Given: successful clone
     // When: check .git in target-dir
-    // Then: git log shows only 1 commit: "chore: initialize from ddd-fullstack-starter"
+    // Then: git log shows only 1 commit: "chore: initialize from smoke-test"
   })
   
   test('backward compat: no target-dir works as before', async () => {
@@ -222,7 +222,7 @@ async function resetGitHistory(targetDir: string, verbose: boolean): Promise<voi
   
   // Create initial commit
   const commitProc = Bun.spawn([
-    'git', 'commit', '-m', 'chore: initialize from ddd-fullstack-starter'
+    'git', 'commit', '-m', 'chore: initialize from smoke-test'
   ], {
     cwd: targetDir,
     stdout: 'pipe',
@@ -383,7 +383,7 @@ async function resetGitHistory(targetDir: string, verbose: boolean): Promise<voi
 **What**: Support `--template-url` flag and `DFS_TEMPLATE_URL` env var
 
 **Steps**:
-1. Add constant: `const DEFAULT_TEMPLATE_URL = 'git@github.com:elevenyellow/ddd-fullstack-starter.git'`
+1. Add constant: `const DEFAULT_TEMPLATE_URL = 'git@github.com:elevenyellow/smoke-test.git'`
 2. Create helper:
    ```typescript
    function getTemplateUrl(cliValue?: string): string {
@@ -514,7 +514,7 @@ async function resetGitHistory(targetDir: string, verbose: boolean): Promise<voi
    - Project structure correct
    - Git history has only 1 commit
    - `package.json` has `name: "test-init"`
-   - `@dfs` replaced with `@ti`
+   - `@smoke` replaced with `@ti`
 
 **Acceptance**:
 - Manual test succeeds
@@ -529,12 +529,12 @@ async function resetGitHistory(targetDir: string, verbose: boolean): Promise<voi
 
 **Type**: Validation
 
-**What**: Verify `bunx github:elevenyellow/ddd-fullstack-starter init` works
+**What**: Verify `bunx github:elevenyellow/smoke-test init` works
 
 **Steps**:
 1. From outside the template repo:
    ```bash
-   bunx github:elevenyellow/ddd-fullstack-starter init \
+   bunx github:elevenyellow/smoke-test init \
      -n bunx-test -i @bt \
      --target-dir /tmp/bunx-test \
      --components webapp \

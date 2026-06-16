@@ -1,5 +1,5 @@
 ---
-description: Visual UX reviewer for the DDD Fullstack Starter using Playwright. Use after implementation to evaluate the Vite webapp against UX best practices.
+description: Visual UX reviewer for the Smoke Test using Playwright. Use after implementation to evaluate the Vite webapp against UX best practices.
 tools: Read, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, mcp__playwright__browser_resize, mcp__playwright__browser_tabs
 ---
 
