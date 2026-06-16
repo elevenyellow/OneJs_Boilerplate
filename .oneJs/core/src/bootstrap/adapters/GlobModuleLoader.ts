@@ -1,8 +1,8 @@
-import { fileURLToPath } from 'url'
-import path from 'path'
 import { glob } from 'glob'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { logger } from '../../logger'
-import type { IModuleLoader, AutoLoaderOptions } from '../ports/IModuleLoader'
+import type { AutoLoaderOptions, IModuleLoader } from '../ports/IModuleLoader'
 
 const ignorePatterns = [
   '**/*.spec.{ts,js}',
@@ -11,7 +11,6 @@ const ignorePatterns = [
   '**/__tests__/**',
   '**/node_modules/**',
   '**/auto-load/**',
-  '**/create-app/**',
 ]
 
 function isInsideAllowedDirs(filePath: string, allowedDirs: string[]): boolean {

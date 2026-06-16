@@ -14,7 +14,6 @@
     ".oneJs/jobs"
   ],
   "scripts": {
-    "create-app": "bun ./.oneJs/create-app/cli.ts",
     "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb redisdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
     "prisma:merge": "bun ./.oneJs/prisma/src/scripts/merge-schema.ts",
     "prisma:validate": "npx prisma validate --schema=./prisma/schema.prisma",

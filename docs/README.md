@@ -13,7 +13,6 @@ OneJs is designed with **Hexagonal Architecture** and **Domain-Driven Design (DD
 5.  [**Database & Persistence**](database.md) - Working with Prisma and the Repository pattern.
 6.  [**Events & Background Jobs**](events-jobs.md) - Event-driven architecture and BullMQ integration.
 7.  [**Authentication & Security**](auth.md) - JWT, Clerk, and Role-Based Access Control.
-8.  [**CLI Tool**](cli.md) - Scaffolding new applications and modules.
 
 ## Why OneJs?
 

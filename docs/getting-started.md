@@ -57,13 +57,3 @@ To build and start the application for production:
 bun start:api:prod
 ```
 
-## Creating Your First App
-
-OneJs allows you to scaffold new applications or modules within the `apps/` directory using the built-in CLI:
-
-```bash
-bun create-app my-new-api
-```
-
-Follow the prompts to set up your new application structure.
-

@@ -32,7 +32,6 @@ OneJs is a high-performance boilerplate built on top of **Elysia.js** and **Bun*
 - 👷 **Background Processing** - Managed background tasks with BullMQ & Redis.
 - 🛡️ **Built-in Security** - JWT and Clerk authentication strategies out of the box.
 - 🗄️ **Schema Harmony** - Automated Prisma schema merging for multi-module projects.
-- 📝 **Smart CLI** - Instant scaffolding of apps and domain modules.
 
 ## 🛠️ Tech Stack
 
@@ -102,13 +101,6 @@ OneJs supports different application types that you can choose during `bun run i
 - **Admin**: Modern dashboard built with Next.js and Shadcn UI.
 - **Worker**: Background task processor using BullMQ and Redis.
 
-### Scaffolding New Modules
-To create new business logic modules following hexagonal architecture:
-```bash
-bun create-app <module-name>
-```
-This generates a complete folder structure including Domain, Application, and Infrastructure layers.
-
 ## 📖 Documentation
 
 Explore our comprehensive guides to master OneJs:
@@ -120,7 +112,6 @@ Explore our comprehensive guides to master OneJs:
 - [**Database & Persistence**](docs/database.md)
 - [**Events & Background Jobs**](docs/events-jobs.md)
 - [**Authentication & Security**](docs/auth.md)
-- [**CLI Tool Usage**](docs/cli.md)
 
 ## 🤝 Contributing
 
