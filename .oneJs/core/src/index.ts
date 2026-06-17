@@ -1,19 +1,5 @@
 // Core exports only
 
-export { AuthMiddleware } from './auth/auth.middleware'
-// Auth exports (core feature)
-export { AuthPlugin } from './auth/auth-plugin'
-export { AUTH_STRATEGY_TOKEN } from './auth/auth-strategy-token'
-export { UseAuth } from './auth/decorators/auth-middleware'
-export { Roles } from './auth/decorators/roles'
-export { ClerkStrategy } from './auth/strategies/clerk.strategy'
-export { LocalJwtStrategy } from './auth/strategies/local-jwt.strategy'
-export {
-  type AuthStrategy,
-  type AuthUser,
-  type UserRole,
-  UserRoles,
-} from './auth/types'
 export {
   BootstrapBase,
   type BootstrapPlugin,

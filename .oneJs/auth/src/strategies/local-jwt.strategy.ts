@@ -1,7 +1,11 @@
+import {
+  ConfigService,
+  ErrorCodes,
+  Inject,
+  Injectable,
+  OneJsError,
+} from '@OneJs/core'
 import jwt from 'jsonwebtoken'
-import { ConfigService } from '../../config'
-import { Inject, Injectable } from '../../container'
-import { ErrorCodes, OneJsError } from '../../errors'
 import { type AuthStrategy, type AuthUser, UserRoles } from '../types'
 
 @Injectable()

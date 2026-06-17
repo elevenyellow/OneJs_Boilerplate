@@ -13,12 +13,24 @@ Production-ready TypeScript monorepo built on the **OneJs framework**, following
 ## Framework Imports
 
 ```typescript
-// Core — entities, VOs, DI, errors
+// Core — entities, VOs, DI, errors, logger
 import { Entity, EntityBase, ValueObject, ValueObjectBase } from '@OneJs/core'
 import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
 
+// HTTP routing
+import { Controller, Get, Post, type Context } from '@OneJs/server'
+
+// Authentication
+import { UseAuth, Roles, AuthPlugin, ClerkStrategy, LocalJwtStrategy } from '@OneJs/auth'
+
 // Events
-import { EventBus } from '@OneJs/event-bus'
+import { EventBus, EventHandler, DomainEvent } from '@OneJs/event-bus'
+
+// Background jobs
+import { QueueService, WorkerJob } from '@OneJs/jobs'
+
+// Testing (unit tests only — never in production code)
+import { InMemoryEventBus, SilentLogger, TestHelpers } from '@OneJs/testing'
 ```
 
 ## Architecture
@@ -210,3 +222,14 @@ See [docs/conventions/](docs/conventions/readme.md) for complete documentation:
 - [DDD Principles](docs/conventions/architecture/ddd-principles.md)
 - [Agentic Workflow](docs/conventions/agentic/readme.md)
 - [Complete Example: User Management](docs/conventions/examples/user-management/complete-implementation.md)
+
+## Framework Package Docs
+
+- [`@OneJs/core`](docs/core-features.md) — DI, bootstrap, plugins, domain primitives
+- [`@OneJs/server`](docs/routing.md) — HTTP routing, middleware, error handling
+- [`@OneJs/auth`](docs/auth.md) — strategies (Local JWT, Clerk), `@UseAuth`, `@Roles`
+- [`@OneJs/event-bus` + `@OneJs/jobs`](docs/events-jobs.md) — events, handlers, BullMQ
+- [`@OneJs/prisma`](docs/database.md) — Prisma + repository pattern
+- [`@OneJs/testing`](docs/testing-package.md) — InMemory fakes for unit tests
+- [Health & Observability](docs/health-and-observability.md) — health checks, request-id
+- [Feature Walkthrough](docs/feature-walkthrough.md) — build a new bounded context end-to-end

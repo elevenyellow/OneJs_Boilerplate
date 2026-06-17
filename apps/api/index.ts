@@ -1,4 +1,5 @@
-import { AuthPlugin, ClerkStrategy, logger, OneJs } from '@OneJs/core'
+import { AuthPlugin, ClerkStrategy } from '@OneJs/auth'
+import { logger, OneJs } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
 import { EventBusPlugin, RedisBridge } from '@OneJs/event-bus'
 import { type AnyMiddleware, Server, ServerPlugin } from '@OneJs/server'

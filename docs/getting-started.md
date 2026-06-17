@@ -15,7 +15,7 @@ Before you begin, ensure you have the following installed on your system:
 1.  **Clone the repository:**
     ```bash
     git clone <your-repository-url>
-    cd eyjs-boilerplate
+    cd one-js-boilerplate
     ```
 
 2.  **Install dependencies:**
@@ -56,4 +56,26 @@ To build and start the application for production:
 ```bash
 bun start:api:prod
 ```
+
+## What's in the box
+
+This boilerplate ships these workspace packages:
+
+| Package | Purpose |
+|---------|---------|
+| `@OneJs/core` | DI container, bootstrap, plugins, domain primitives, errors, logger |
+| `@OneJs/server` | Elysia HTTP server, controller decorators, health checks, request-id |
+| `@OneJs/auth` | Authentication (Local JWT, Clerk), `@UseAuth`, `@Roles` |
+| `@OneJs/event-bus` | In-process + Redis-bridged event bus, `@EventHandler` decorator |
+| `@OneJs/jobs` | BullMQ-backed durable job queues, `@WorkerJob` decorator |
+| `@OneJs/prisma` | Prisma integration, repository base classes |
+| `@OneJs/testing` | InMemory fakes for tests (EventBus, Logger, helpers) |
+
+Example bounded contexts in `packages/`: `user/`, `task/`, `shared/`. Example apps in `apps/`: `api/`, `notifications/`.
+
+## Next steps
+
+- [Architecture](architecture.md) — Hexagonal layers and dependency rules
+- [Core Features](core-features.md) — DI, bootstrap, domain primitives
+- [Feature walkthrough](feature-walkthrough.md) — build a new bounded context end-to-end
 

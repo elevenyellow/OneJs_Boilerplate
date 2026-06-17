@@ -15,9 +15,21 @@ TypeScript monorepo built with Domain-Driven Design (DDD) and Hexagonal Architec
 ## Framework Imports
 
 ```typescript
+// Core — DI, primitives, errors, logger
 import { Entity, EntityBase, ValueObject, ValueObjectBase } from '@OneJs/core'
 import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
-import { EventBus } from '@OneJs/event-bus'
+
+// HTTP
+import { Controller, Get, Post, type Context } from '@OneJs/server'
+
+// Auth
+import { UseAuth, Roles, AuthPlugin, ClerkStrategy } from '@OneJs/auth'
+
+// Events
+import { EventBus, EventHandler, DomainEvent } from '@OneJs/event-bus'
+
+// Testing (unit tests only)
+import { InMemoryEventBus, SilentLogger, TestHelpers } from '@OneJs/testing'
 ```
 
 ## Project Structure

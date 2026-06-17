@@ -1,7 +1,7 @@
 {
-  "name": "@OneJs/auth",
+  "name": "@OneJs/testing",
   "version": "1.0.0",
-  "description": "Authentication middleware for OneJs framework",
+  "description": "Testing utilities and InMemory fakes for OneJs framework",
   "module": "src/index.ts",
   "type": "module",
   "main": "src/index.ts",
@@ -18,25 +18,21 @@
     "test": "bun --test"
   },
   "keywords": [
-    "auth",
-    "authentication",
-    "middleware",
+    "testing",
+    "test-utilities",
     "framework",
     "typescript"
   ],
   "author": "OneJs Team",
   "license": "MIT",
-  "dependencies": {
-    "@clerk/backend": "^1.0.0",
-    "jsonwebtoken": "^9.0.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "@OneJs/core": "workspace:*",
-    "@OneJs/server": "workspace:*",
+    "@OneJs/event-bus": "workspace:*",
     "typescript": "^5"
   }
 }

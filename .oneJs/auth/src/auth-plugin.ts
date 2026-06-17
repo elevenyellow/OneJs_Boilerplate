@@ -1,6 +1,5 @@
-import type { BootstrapPlugin, Container } from '../bootstrap'
-import { logger } from '../logger'
-import type { ClassConstructor } from '../types'
+import type { BootstrapPlugin, ClassConstructor, Container } from '@OneJs/core'
+import { logger } from '@OneJs/core'
 import { AUTH_STRATEGY_TOKEN } from './auth-strategy-token'
 import { LocalJwtStrategy } from './strategies/local-jwt.strategy'
 import type { AuthStrategy } from './types'

@@ -1,6 +1,11 @@
-import { Inject, Injectable } from '../container'
-import { type ErrorCode, ErrorCodes, OneJsError } from '../errors'
-import { Logger } from '../logger'
+import {
+  type ErrorCode,
+  ErrorCodes,
+  Inject,
+  Injectable,
+  Logger,
+  OneJsError,
+} from '@OneJs/core'
 import { AUTH_STRATEGY_TOKEN } from './auth-strategy-token'
 import { type AuthStrategy, type UserRole } from './types'
 

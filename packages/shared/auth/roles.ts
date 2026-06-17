@@ -1,4 +1,4 @@
-import { UserRoles } from '@OneJs/core'
+import { UserRoles } from '@OneJs/auth'
 
 export const AppRoles = {
   ...UserRoles,

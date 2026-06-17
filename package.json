@@ -11,7 +11,8 @@
     ".oneJs/prisma",
     ".oneJs/auth",
     ".oneJs/event-bus",
-    ".oneJs/jobs"
+    ".oneJs/jobs",
+    ".oneJs/testing"
   ],
   "scripts": {
     "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb redisdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
@@ -44,6 +45,8 @@
     "@biomejs/biome": "^2.3.10",
     "@prisma/client": "^6.1.0",
     "@types/bun": "latest",
+    "@types/debug": "^4.1.12",
+    "@types/jsonwebtoken": "^9.0.6",
     "glob": "^13.0.0",
     "prisma": "^6.1.0"
   },

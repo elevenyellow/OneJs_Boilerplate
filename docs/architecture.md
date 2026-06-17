@@ -6,9 +6,9 @@ OneJs is built on the principles of **Hexagonal Architecture** (also known as Po
 
 The boilerplate is organized into three main areas:
 
--   `apps/`: Contains the entry points for your applications (e.g., `api`, `admin`).
--   `packages/`: Contains domain-specific modules (e.g., `user`, `post`). This is where the core logic lives.
--   `.oneJs/`: The framework core, containing the DI container, server setup, and plugin system.
+-   `apps/`: Entry points for runnable applications (e.g., `api`, `notifications`).
+-   `packages/`: Bounded contexts holding domain logic (e.g., `user`, `task`, `shared`).
+-   `.oneJs/`: The framework workspace — DI container, server, auth, event bus, jobs, prisma, testing.
 
 ## Hexagonal Layers
 

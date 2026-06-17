@@ -1,4 +1,5 @@
-import { ErrorCodes, Inject, OneJsError, UseAuth } from '@OneJs/core'
+import { UseAuth } from '@OneJs/auth'
+import { ErrorCodes, Inject, OneJsError } from '@OneJs/core'
 import { Controller, Get, Patch, Post } from '@OneJs/server'
 import type { Context } from 'elysia'
 import {
