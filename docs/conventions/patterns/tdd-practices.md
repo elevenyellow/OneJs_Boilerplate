@@ -96,7 +96,7 @@ Work from the center of the hexagon outward — **no mocks at any layer**:
 
 1. **Domain** — entities, value objects, domain services. Pure logic, no IO. Test with real instances only.
 2. **Application** — the `run()` service, driven by InMemory fakes (repositories, EventBus, Logger). Zero mocks or stubs.
-3. **Infrastructure** — real adapters (Prisma repo, tRPC procedure, UI component) once the application layer is stable. Mocks allowed only here and only for external boundaries.
+3. **Infrastructure** — real adapters (Prisma repo, Elysia controller) once the application layer is stable. Mocks allowed only here and only for external boundaries (e.g. third-party HTTP, push notifications).
 
 ### Why Inside-Out
 
@@ -109,7 +109,7 @@ Red → Green → Refactor  (Domain layer)
        ↓
 Red → Green → Refactor  (Application layer, uses InMemory repo)
        ↓
-Red → Green → Refactor  (Infrastructure, wires Prisma / tRPC / UI)
+Red → Green → Refactor  (Infrastructure, wires Prisma / Elysia)
 ```
 
 Each layer has its own TDD cycle. You don't mix them.

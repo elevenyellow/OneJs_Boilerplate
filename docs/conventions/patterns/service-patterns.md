@@ -156,7 +156,7 @@ async run(param: SomeVO): Promise<Result> {
 
   // 2. Load/validate domain objects
   const entity = await this.repository.findById(id)
-  if (!entity) throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, '...', {}, ErrorCodes.NOT_FOUND)
+  if (!entity) throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, UserErrorMessages.USER_NOT_FOUND, {}, ErrorCodes.NOT_FOUND)
 
   // 3. Business logic (delegates to entities/domain services)
   const updated = entity.performAction()
@@ -197,7 +197,7 @@ export class PasswordResetter {
   private async findUserByToken(token: ResetToken): Promise<User> {
     const user = await this.repo.findByResetToken(token)
     if (!user)
-      throw new OneJsError(UserErrorTypes.BAD_REQUEST, 400, 'Invalid or expired token', {}, ErrorCodes.AUTH_INVALID)
+      throw new OneJsError(UserErrorTypes.BAD_REQUEST, 400, UserErrorMessages.INVALID_OR_EXPIRED_TOKEN, {}, ErrorCodes.AUTH_INVALID)
     return user
   }
 
@@ -296,16 +296,16 @@ import { OneJsError, ErrorCodes } from '@OneJs/core'
 import { UserErrorTypes, UserErrorMessages } from '../domain/constants/error-types'
 
 // Validation
-throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, 'Password too short', {}, ErrorCodes.VALIDATION_FAILED)
+throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.PASSWORD_TOO_SHORT, {}, ErrorCodes.VALIDATION_FAILED)
 
 // Not found
-throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, 'User not found', {}, ErrorCodes.USER_NOT_FOUND)
+throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, UserErrorMessages.USER_NOT_FOUND, {}, ErrorCodes.USER_NOT_FOUND)
 
 // Conflict
 throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
 
 // Unauthorized
-throw new OneJsError(UserErrorTypes.UNAUTHORIZED, 401, 'Invalid credentials', {}, ErrorCodes.AUTH_INVALID)
+throw new OneJsError(UserErrorTypes.UNAUTHORIZED, 401, UserErrorMessages.INVALID_CREDENTIALS, {}, ErrorCodes.AUTH_INVALID)
 ```
 
 `OneJsError` signature: `new OneJsError(type, statusCode, message, details, errorCode)`
@@ -339,7 +339,7 @@ describe('The UserCreator', () => {
     service = new UserCreator(repository, eventBus, logger)
   })
 
-  describe('run', () => {
+  describe('when registering a user', () => {
     it('creates a user with valid email', async () => {
       const email = Email.create('user@example.com')
       const hash = PasswordHash.create('hashed_pw')
@@ -355,7 +355,7 @@ describe('The UserCreator', () => {
       const hash = PasswordHash.create('hashed_pw')
       await service.run(email, hash)
 
-      expect(service.run(email, hash)).rejects.toThrow('Email already in use')
+      await expect(service.run(email, hash)).rejects.toThrow(UserErrorMessages.EMAIL_IN_USE)
     })
   })
 })

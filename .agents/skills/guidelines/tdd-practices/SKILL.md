@@ -31,7 +31,7 @@ Work from the center of the hexagon outward:
 
 1. **Domain** — pure logic, no IO.
 2. **Application** — the `run()` service, driven by an InMemory repository fake.
-3. **Infrastructure** — real adapters (Prisma, tRPC, UI) once the application layer is stable.
+3. **Infrastructure** — real adapters (Prisma, Elysia HTTP) once the application layer is stable.
 
 Each layer has its own TDD cycle. Don't mix them.
 

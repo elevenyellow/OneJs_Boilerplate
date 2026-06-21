@@ -3,6 +3,10 @@
     "playwright": {
       "command": "bunx",
       "args": ["@playwright/mcp@latest"]
+    },
+    "openspec": {
+      "command": "npx",
+      "args": ["-y", "openspec-mcp", "--with-dashboard"]
     }
   }
 }

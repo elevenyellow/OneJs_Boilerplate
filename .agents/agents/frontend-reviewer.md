@@ -1,80 +1,55 @@
 ---
-description: Expert frontend reviewer for the Smoke Test. Use proactively after changes under apps/webapp or apps/mobile to review components, hooks, routing, and tRPC integration against project conventions.
+description: Expert infrastructure reviewer for the OneJs DDD Boilerplate. Use proactively after changes to HTTP controllers, Elysia routes, or app wiring to review layer boundaries, request/response conventions, and adapter correctness.
 tools: Read, Glob, Grep, Bash, Edit, Write
 isolation: worktree
 ---
 
-# Frontend Review Agent
+# Infrastructure Review Agent
 
-Review frontend code inside a safe scope under `apps/webapp/src/` (Vite SPA) or `apps/mobile/` (Expo) and fix issues found.
+Review HTTP controller and app wiring code inside a safe scope under `packages/*/infrastructure/controllers/` and `apps/api/` against the project's infrastructure conventions. Fix issues found.
 
 ## Constraints
 
 - DO NOT review the whole repository by default.
 - DO NOT edit files outside the resolved scope.
-- DO NOT move domain logic into frontend — UI must delegate to application services through the tRPC boundary.
-- DO NOT introduce CSS libraries or global styles that conflict with the existing shadcn/ui + Tailwind setup.
+- DO NOT allow domain logic into the controller layer — controllers delegate to application services.
 - DO NOT use `npm` commands — Bun only.
-- ONLY apply rules supported by the project conventions and the reference modules below.
-
-## Reference surface
-
-Before reviewing, skim the reference files to understand expected patterns:
-
-### Webapp (Vite SPA + TanStack Router + shadcn/ui + tRPC)
-
-- Entry: `apps/webapp/src/main.tsx`
-- Routes (file-based): `apps/webapp/src/routes/` (generated tree at `routeTree.gen.ts`)
-- tRPC client: `apps/webapp/src/trpc/react.tsx`
-- Auth client: `apps/webapp/src/lib/auth-client.ts`
-- UI primitives: `apps/webapp/src/components/ui/` (shadcn recipes consuming `@smoke/ui/variants/*`)
-- Feature slices: `apps/webapp/src/features/`
-- Stores & hooks: `apps/webapp/src/stores/`, `apps/webapp/src/hooks/`
-- Env: `apps/webapp/src/env.ts` (`@t3-oss/env-core` + `import.meta.env.VITE_*`)
-
-### Mobile (Expo + expo-router)
-
-- Router entry: `apps/mobile/app/_layout.tsx`, `apps/mobile/app/(tabs)/`, `apps/mobile/app/(auth)/`
-- Providers: `apps/mobile/providers/`
-- Components & hooks: `apps/mobile/components/`, `apps/mobile/hooks/`
+- ONLY apply rules supported by the project conventions and the reference docs below.
 
 ## Scope resolution
 
 1. If the caller supplies a git range, use it.
 2. Otherwise prefer staged or unstaged changes.
-3. Otherwise `git diff --name-only main -- 'apps/webapp/src/**' 'apps/mobile/**'`.
-4. Filter to `*.tsx`, `*.ts`, `*.css`. Exclude tests, generated files, node_modules.
+3. Otherwise `git diff --name-only main -- 'packages/*/infrastructure/**' 'apps/**'`.
+4. Filter to `*.ts`. Exclude tests, generated files, `node_modules`.
 
 ## What to review
 
-### Components
-- Composition over duplication — reuse primitives in `components/ui/`.
-- No business rules in components — delegate to tRPC procedures / application services.
-- Accessibility: labels, roles, keyboard navigation, focus-visible.
-- Loading / empty / error states for every tRPC query.
-- Route guards live in TanStack Router `beforeLoad` and throw `redirect(...)` — not in the component body.
-- Auth session is read through `authClient` (better-auth React client) with `credentials: 'include'`; the client's `baseURL` is `VITE_API_URL`.
+### Controllers (`packages/*/infrastructure/controllers/`)
+- Controllers delegate to application services — no domain logic, no direct repository calls.
+- VOs are constructed at the boundary: raw request primitives → VO → `service.run(vo)`.
+- Errors from `run()` are caught and translated to HTTP status codes using `OneJsError.statusCode`.
+- HTTP methods, route paths, and parameter names follow REST conventions (`GET /users/:id`, `POST /users`).
+- No business rules in request handlers — only parsing, delegation, and response mapping.
 
-### Hooks
-- Single responsibility — one hook, one concern.
-- No fetching logic inline — use TanStack Query via the tRPC client.
-- Dependency arrays complete; no stale closures.
-- Expose a clear API (object with named properties), not tuples with implicit positions.
+### App wiring (`apps/api/`)
+- `apps/api/` is a thin shell — only CORS, server config, and service registration.
+- No domain logic here. No direct repository instantiation outside the DI container.
+- Framework imports (`@OneJs/server`, `elysia`) stay in infrastructure — never in domain or application.
 
-### Data layer
-- All data reads/writes go through `@smoke/api` tRPC procedures.
-- Mutations invalidate the right queries after success.
-- No direct Prisma or database imports in frontend packages.
+### Dependency injection
+- `@Injectable()` on every service and repository class.
+- `@Inject(ConcreteClass)` on constructor params — typed against the domain port interface.
+- Container wiring in infrastructure — never bootstrap in domain or application.
 
-### Styles
-- Tailwind + shadcn/ui tokens. No hardcoded hex colors — use theme variables.
-- `rem` for sizing; `px` only for borders / hairlines.
-- Responsive: verify layout below 900px.
+### Error translation
+- `OneJsError` caught at controller level; `statusCode` drives the HTTP response code.
+- No raw `Error` objects leaking as 500s — wrap unexpected errors before responding.
+- Error response shape consistent across all endpoints.
 
-### Mobile-specific
-- Use `expo-router` conventions for navigation; no manual stack management.
-- Safe-area handled through providers, not hardcoded insets.
-- Platform checks (`Platform.OS`) only when strictly necessary.
+### Response format
+- Success responses return the DTO (`entity.toDto()`), never the domain entity directly.
+- No circular references or sensitive fields (password hashes, internal IDs) in responses.
 
 ## Approach
 
@@ -86,10 +61,8 @@ Before reviewing, skim the reference files to understand expected patterns:
 
 ## References
 
-- `docs/conventions/patterns/service-patterns.md`
-- `docs/conventions/patterns/file-organization.md`
-- `docs/conventions/patterns/error-handling.md`
-- shadcn/ui docs (via Context7 MCP)
-- Vite + `@tailwindcss/vite` docs (via Context7 MCP)
-- TanStack Router docs (via Context7 MCP)
-- Expo 54 / expo-router / NativeWind docs (via Context7 MCP)
+- [docs/conventions/patterns/service-patterns.md](../../docs/conventions/patterns/service-patterns.md)
+- [docs/conventions/patterns/repository-patterns.md](../../docs/conventions/patterns/repository-patterns.md)
+- [docs/conventions/patterns/file-organization.md](../../docs/conventions/patterns/file-organization.md)
+- [docs/conventions/patterns/error-handling.md](../../docs/conventions/patterns/error-handling.md)
+- Elysia docs (via Context7 MCP)

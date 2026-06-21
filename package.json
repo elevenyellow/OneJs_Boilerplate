@@ -32,14 +32,17 @@
     "test:e2e": "bun test ./packages/task/__tests__/e2e/",
     "type-check": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "typecheck:incremental": "tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc-incremental.tsbuildinfo",
+    "typecheck:watch": "tsc --noEmit --watch",
     "lint": "biome lint .",
-    "lint:fix": "biome check --write .",
+    "lint:fix": "biome check --write --max-diagnostics=20000 .",
+    "lint:errors": "biome lint --max-diagnostics=20000 .",
     "format": "biome format --write .",
+    "opencode": "bun run scripts/opencode.ts",
+    "loop": "bash scripts/loop.sh",
+    "loop:once": "bash scripts/loop-once.sh",
     "start:api:prod": "bun run --cwd apps/api start",
-    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev",
-    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev",
-    "start:web:dev": "bun run --cwd apps/web dev",
-    "start:mobile:dev": "bun run --cwd apps/mobile start"
+    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",

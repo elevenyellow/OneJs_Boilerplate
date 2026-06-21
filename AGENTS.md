@@ -166,7 +166,14 @@ export class InMemoryUserRepository implements IUserRepository {
 
 ## Mandatory Validation Gate
 
-After every completed task during `apply`, you MUST run `lint:fix` + `typecheck` + `test`. The task MUST NOT be marked complete until all three pass.
+After every completed task during interactive `apply`, you MUST invoke `@project-validator-fast` (scoped lint + scoped tests + incremental typecheck). The task MUST NOT be marked complete until it returns green.
+
+Escalate to the full `@project-validator` (whole-monorepo) when:
+- The change touches `packages/shared`, shared config, or generated Prisma artifacts
+- A schema change occurred
+- This is the last task of a block, a `spec-review` run, or an unattended `spec-loop` iteration
+
+The `spec-loop` (unattended) always uses the full `@project-validator` on every task — no fast gate.
 
 ## Agent tooling layout
 
@@ -188,7 +195,7 @@ To understand how the agentic system works or to extend it, see [docs/convention
 
 ```text
 bun install          # Install dependencies
-bun run api          # Start Elysia backend (localhost:4000)
+bun run start:api:dev  # Start Elysia backend (localhost:4000)
 bun test             # Run tests
 bun run typecheck    # TypeScript type check
 bun run lint         # Biome lint check

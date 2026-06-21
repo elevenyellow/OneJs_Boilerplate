@@ -46,7 +46,7 @@ Apply the naming rules from `docs/conventions/naming-conventions.md`:
 
 1. Identify the symbol and its new name.
 2. Apply naming conventions:
-   - Files: `kebab-case.type.ts` (e.g. `user-creator.service.ts`, `email.vo.ts`).
+   - Files: `kebab-case.ts` (e.g. `user-creator.service.ts`, `email.ts`). No `.entity.ts` / `.vo.ts` suffixes — the directory provides context.
    - Classes: `PascalCase`.
    - Methods: `camelCase`.
    - Constants: `SCREAMING_SNAKE_CASE`.

@@ -233,14 +233,14 @@ describe('InMemoryUserRepository', () => {
     repository = new InMemoryUserRepository()
   })
 
-  it('should return null when user not found', async () => {
+  it('returns null for a user that was never saved', async () => {
     const id = UserId.generateUniqueId()
     const result = await repository.findById(id)
     expect(result).toBeNull()
   })
 
-  it('should find user by email after save', async () => {
-    const user = User.register('test@example.com', 'hash')
+  it('finds a user by email after it has been saved', async () => {
+    const user = User.register(Email.create('test@example.com'), PasswordHash.create('hashed_pw'))
     await repository.save(user)
 
     const found = await repository.findByEmail(Email.create('test@example.com'))

@@ -211,7 +211,7 @@ const container = await new OneJs()
 
 ### Redis requirement
 
-Both `RedisBridge` (event bus) and `@OneJs/jobs` require Redis. Default Docker setup exposes it on `localhost:6379`.
+Both `RedisBridge` (event bus) and `@OneJs/jobs` require Redis. Default Podman setup exposes it on `localhost:6379`.
 
 ```bash
 bun run start:db    # starts Postgres + Redis via podman-compose

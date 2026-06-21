@@ -12,10 +12,6 @@
 
   <h4>
     <a href="docs/README.md">Documentation</a>
-    <span> · </span>
-    <a href="https://github.com/your-username/eyjs-boilerplate/issues">Report Bug</a>
-    <span> · </span>
-    <a href="https://github.com/your-username/eyjs-boilerplate/pulls">Request Feature</a>
   </h4>
 </div>
 
@@ -77,29 +73,15 @@ graph TD
 1. **Clone & Install**
    ```bash
    git clone <repository-url>
-   cd eyjs-boilerplate
+   cd OneJs_Boilerplate
    bun install
    ```
 
-2. **Initialize Your Project**
+2. **Launch Dev Environment**
    ```bash
-   bun run init
+   bun run start:api:dev
    ```
-   *Follow the interactive prompts to choose which components (API, Admin, Worker) and examples you want to keep. This will clean up the boilerplate for your specific needs.*
-
-3. **Launch Dev Environment**
-   ```bash
-   bun start:api:dev
-   ```
-   *This starts the DB, merges schemas, runs migrations, and launches the server.*
-
-## 🛠️ Usage & Scaffolding
-
-### Project Templates
-OneJs supports different application types that you can choose during `bun run init`:
-- **API**: High-performance backend using Elysia.js.
-- **Admin**: Modern dashboard built with Next.js and Shadcn UI.
-- **Worker**: Background task processor using BullMQ and Redis.
+   *This starts the DB, merges schemas, runs migrations, and launches the API server.*
 
 ## 📖 Documentation
 

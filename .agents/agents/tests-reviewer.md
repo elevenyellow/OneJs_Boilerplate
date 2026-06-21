@@ -1,5 +1,5 @@
 ---
-description: Expert test reviewer for the Smoke Test. Use proactively after code changes to review scoped tests, improve quality, and add low-ambiguity coverage.
+description: Expert test reviewer for the OneJs DDD Boilerplate. Use proactively after code changes to review scoped tests, improve quality, and add low-ambiguity coverage.
 tools: Read, Glob, Grep, Bash, Edit, Write
 isolation: worktree
 ---

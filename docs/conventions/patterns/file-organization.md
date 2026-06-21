@@ -10,42 +10,33 @@ This document outlines how files should be organized within the monorepo structu
 packages/[context]/
 ├── domain/                           # Core business logic layer
 │   ├── entities/                    # Domain entities and aggregates
-│   │   ├── [entity].ts              # Main entity class
-│   │   ├── [entity].dto.ts          # Data transfer object
-│   │   └── [entity]-[concept].ts    # Related value objects
+│   │   └── [entity].ts              # EntityBase<TId> subclass
+│   ├── value-objects/               # Value objects
+│   │   └── [concept].ts             # ValueObjectBase<T> subclass
 │   ├── repositories/                # Repository interfaces (ports)
-│   │   └── [entity].repository.ts   # Repository contract
-│   ├── services/                    # Domain services
-│   │   └── [entity]-[action].service.ts
+│   │   └── [entity].repository.interface.ts  # I[Entity]Repository
 │   ├── events/                      # Domain events
 │   │   └── [entity]-[action].event.ts
 │   └── index.ts                     # Domain layer exports
 ├── application/                      # Use cases and application logic
 │   └── [entity]/                    # Group by entity
-│       ├── [entity]-[action].service.ts  # Use case services
-│       ├── [input].input.ts         # Input/output types
+│       ├── [entity]-[action].service.ts  # Use case — single run() entry point
 │       └── index.ts                 # Application exports
+├── dtos/                             # DTOs (persistence boundary only)
+│   └── [entity].dto.ts
 ├── infrastructure/                   # External concerns (adapters)
 │   ├── repositories/               # Repository implementations
-│   │   ├── [entity]-prisma.repository.ts
-│   │   └── [entity]-table-config.ts
-│   ├── controllers/                # Web/API controllers
-│   │   └── [entity]-[action].controller.ts
-│   ├── adapters/                   # External service adapters
-│   │   └── [service]-[provider].adapter.ts
-│   ├── factories/                  # Dependency injection
-│   │   └── [entity].factory.ts
+│   │   ├── in-memory-[entity].repository.ts   # InMemory fake
+│   │   └── [entity]-prisma.repository.ts      # Prisma adapter
+│   ├── controllers/                # HTTP controllers (Elysia)
+│   │   └── [entity].controller.ts
 │   └── index.ts                    # Infrastructure exports
-├── client/                          # Optional: frontend-safe surface
-│   ├── index.ts                    # Types/helpers for web/mobile
-│   └── types.ts                    # Inferred types (e.g. tRPC I/O)
 ├── tests/                           # Tests grouped by type
 │   ├── unit/
 │   ├── integration/
 │   └── e2e/
 ├── package.json                    # Package configuration
 ├── tsconfig.json                   # TypeScript configuration
-├── README.md                       # Package documentation
 └── index.ts                        # Public API exports
 ```
 
@@ -164,7 +155,7 @@ Configure TypeScript path mapping in `tsconfig.json`:
 {
   "compilerOptions": {
     "paths": {
-      "@smoke/*": ["./packages/*/index.ts"],
+      "@user/*": ["./packages/user/index.ts"],
       "@/domain/*": ["./domain/*"],
       "@/application/*": ["./application/*"],
       "@/infrastructure/*": ["./infrastructure/*"]
@@ -287,7 +278,7 @@ packages/users/
     │   │   └── services/user-validator.service.test.ts
     │   └── application/
     │       └── user/user-creator.service.test.ts
-    ├── integration/                       # Real DB via PGlite
+    ├── integration/                       # Real DB via Prisma + PostgreSQL
     │   └── infrastructure/
     │       └── repositories/user-prisma.repository.integration.test.ts
     ├── e2e/                               # Full HTTP flows

@@ -30,8 +30,6 @@ Tests live in a dedicated `tests/` folder inside each package, organized by type
 - Compile-time safety when interfaces change
 - Consistency with hexagonal architecture (adapters in infrastructure)
 
-**Frontend exception**: React component tests (`.test.tsx`) may stay co-located with components per community convention, but backend tests follow the `tests/` folder structure.
-
 ## Structure and naming
 
 - AAA — Arrange / Act / Assert, blank lines between sections.
@@ -56,8 +54,8 @@ Tests live in a dedicated `tests/` folder inside each package, organized by type
 ## Integration tests
 
 - Use `InMemoryUserRepository` (and equivalent per context) for all service and domain tests — instantiate fresh per `beforeEach`, no DB needed.
-- Real Postgres via `bun run dbs` (docker-compose) only for full e2e tests if needed.
-- `bun run db:sync` before running against a fresh schema.
+- Real Postgres via `bun run start:db` (podman-compose) only for full e2e tests if needed.
+- Run `bun run prisma:migrate:dev` before running against a fresh schema.
 - Reset state with `beforeEach` cleanup (e.g., `await prisma.user.deleteMany()`).
 
 ## No magic strings in tests

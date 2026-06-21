@@ -32,7 +32,7 @@ Launch the `architecture-reviewer` subagent to check DDD/hexagonal compliance on
 - **Repository pattern**: port in domain, Prisma implementation in infrastructure.
 - **No primitives as parameters**: Entity constructors, `register()`, and `with*()` receive VOs; `run()` and repository methods receive VOs/entities; `reconstitute()` is the sole primitive exception. See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
 - **Cross-context boundaries**: communicate through application services or domain ports, never direct adapter coupling.
-- **Frontend delegation**: `apps/webapp` and `apps/mobile` must delegate to application services through the tRPC boundary, not reimplement domain logic.
+- **HTTP controller delegation**: `packages/*/infrastructure/controllers/` must delegate to application services — no domain logic, no direct repository calls in Elysia handlers.
 
 ## Rules
 

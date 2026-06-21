@@ -7,8 +7,7 @@ This guide will help you get up and running with the OneJs boilerplate.
 Before you begin, ensure you have the following installed on your system:
 
 - **Bun**: The primary runtime and package manager. Install it from [bun.sh](https://bun.sh/).
-- **Docker** or **Podman**: Required for running the database and background services.
-- **Node.js**: (v18 or later) Sometimes required for specific tooling dependencies.
+- **Podman**: Required for running the database and Redis containers (`podman-compose`).
 
 ## Installation
 
@@ -32,11 +31,11 @@ OneJs comes with pre-configured scripts to manage your development environment.
 To start the full development environment (Database + Prisma Generate + Migrations + API):
 
 ```bash
-bun start:api:dev
+bun run start:api:dev
 ```
 
 This command will:
-1.  Start the Postgres database using Docker/Podman.
+1.  Start the Postgres database and Redis using Podman.
 2.  Generate the Prisma client.
 3.  Run database migrations.
 4.  Start the Elysia.js server with hot-reloading.
@@ -46,7 +45,7 @@ This command will:
 If you only want to start the database container:
 
 ```bash
-bun start:db
+bun run start:db
 ```
 
 ### Production Mode
@@ -54,7 +53,7 @@ bun start:db
 To build and start the application for production:
 
 ```bash
-bun start:api:prod
+bun run start:api:prod
 ```
 
 ## What's in the box

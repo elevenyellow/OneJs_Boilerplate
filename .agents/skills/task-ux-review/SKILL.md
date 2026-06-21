@@ -1,38 +1,36 @@
 ---
 name: task-ux-review
-description: Visual UX evaluation of the Vite webapp using Playwright MCP. Triggers "review UX", "visual review", "check UI".
+description: API ergonomics evaluation of the Elysia backend — route naming, response shape, HTTP codes, and error consistency. Triggers "review UX", "API review", "check ergonomics".
 argument-hint: "[spec:<path> | description of what to review]"
 context: fork
 agent: ux-reviewer
-allowed-tools: Read, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_wait_for, mcp__playwright__browser_resize, mcp__playwright__browser_tabs
+allowed-tools: Read, Glob, Bash, mcp__playwright__browser_network_request, mcp__playwright__browser_network_requests
 ---
 
-# UX Review
+# API Ergonomics Review
 
-Launch the `ux-reviewer` subagent to perform a visual UX review of the Vite webapp via the Playwright MCP. Requires the Playwright MCP at the user/global level.
+Launch the `ux-reviewer` subagent to evaluate the Elysia API's external surface quality — route design, response shape, HTTP status codes, and error format consistency.
 
 ## Usage
 
 ```
-/task-ux-review spec:docs/specs/feature.md    → Extract target screens from a spec file
-/task-ux-review "session dashboard"            → Free-text focus
-/task-ux-review                                → Auto-discover top-level routes from TanStack Router
+/task-ux-review spec:openspec/changes/<name>/specs/    → Extract endpoints from a spec
+/task-ux-review "user registration endpoints"          → Free-text focus
+/task-ux-review                                        → Auto-discover all controllers
 ```
 
 ## Prerequisites
 
 - Backend running at `http://localhost:4000` (`bun run api` if not started).
-- Webapp running at `http://localhost:3000` (`bun run webapp` if not started).
-- Test credentials available if any screen requires authentication.
 
 ## What the agent checks
 
-- Visual hierarchy (typographic scale, spacing, primary-action prominence)
-- Readability (contrast, alignment, font size, line height)
-- Interactivity (hover, `:focus-visible`, transitions, touch targets)
-- Responsiveness (layout below 900px, no horizontal scroll)
-- Accessibility (labels, color independence, focus outlines, form error announcement)
+- REST route naming (plural nouns, no verbs in paths, consistent `:id` params)
+- HTTP status codes (201 for creation, 204 for deletion, correct 4xx mapping)
+- Response shape consistency (DTOs from `entity.toDto()`, camelCase JSON keys)
+- Error format consistency (same shape across all endpoints, no stack trace leaks)
+- No sensitive fields in responses (password hashes, internal IDs)
 
 ## Output
 
-Per screen: route path, snapshot reference, findings table (category → issue → proposed fix → severity).
+Per endpoint group: controller path, findings table (category → issue → proposed fix → severity).

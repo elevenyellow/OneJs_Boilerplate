@@ -31,7 +31,7 @@ packages/[context]/
 ├── infrastructure/
 └── tests/
     ├── unit/              # Fast, no external dependencies
-    ├── integration/       # Real DB (PGlite in-memory)
+    ├── integration/       # Real DB (Prisma + PostgreSQL)
     └── e2e/               # Full HTTP stack
 ```
 
@@ -140,8 +140,8 @@ infrastructure/
 
 **Example**:
 ```typescript
-// infrastructure/repositories/user-in-memory.repository.ts
-export class UserInMemoryRepository implements UserRepository {
+// infrastructure/repositories/in-memory-user.repository.ts
+export class InMemoryUserRepository implements IUserRepository {
   private users = new Map<string, User>();
 
   async save(user: User): Promise<void> {
@@ -165,16 +165,16 @@ Used in application service tests (no mocks — real implementations only):
 // tests/unit/application/user-creator.service.test.ts
 import { InMemoryEventBus } from '@OneJs/event-bus'
 import { SilentLogger } from '@OneJs/core'
-import { UserInMemoryRepository } from '../../../infrastructure/repositories/user-in-memory.repository';
+import { InMemoryUserRepository } from '../../../infrastructure/repositories/in-memory-user.repository';
 
 describe('The UserCreator', () => {
-  let repository: UserInMemoryRepository;
+  let repository: InMemoryUserRepository;
   let eventBus: InMemoryEventBus;
   let logger: SilentLogger;
   let service: UserCreator;
 
   beforeEach(() => {
-    repository = new UserInMemoryRepository();
+    repository = new InMemoryUserRepository();
     eventBus = new InMemoryEventBus();
     logger = new SilentLogger();
     service = new UserCreator(repository, eventBus, logger);

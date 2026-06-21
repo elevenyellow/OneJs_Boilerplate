@@ -1,11 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "github-copilot/claude-opus-4.7",
+  "model": "github-copilot/claude-opus-4.8",
   "agent": {
-    "explore": {
+    "spec-explore": {
       "description": "Thinking partner. Investigates the codebase, clarifies requirements, and prepares the ground for a proposal. Does NOT write code or final specs.",
       "mode": "primary",
-      "model": "github-copilot/claude-opus-4.7",
+      "model": "github-copilot/claude-opus-4.8",
       "temperature": 0.7,
       "reasoningEffort": "high",
       "permission": {
@@ -15,14 +15,15 @@
         "glob": "allow",
         "grep": "allow",
         "webfetch": "allow",
-        "task": "allow"
+        "task": "allow",
+        "question": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-explore/SKILL.md}"
     },
-    "propose": {
+    "spec-propose": {
       "description": "OpenSpec propose mode. Generates the full change folder (proposal.md, design.md, specs/, tasks.md) under openspec/changes/<id>/. Loads the openspec-propose skill. Only writes inside openspec/.",
       "mode": "primary",
-      "model": "github-copilot/claude-opus-4.7",
+      "model": "github-copilot/claude-opus-4.8",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -32,14 +33,15 @@
         "glob": "allow",
         "grep": "allow",
         "webfetch": "allow",
-        "task": "allow"
+        "task": "allow",
+        "question": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-propose/SKILL.md}"
     },
-    "apply": {
-      "description": "OpenSpec apply mode. Implements tasks from an existing change following hexagonal architecture and TDD. Loads the openspec-apply-change skill. ALWAYS reads openspec/changes/<id>/ before editing code.",
+    "spec-apply": {
+      "description": "OpenSpec apply mode. Implements tasks from an existing change following hexagonal architecture and TDD. Loads the openspec-apply-change skill. ALWAYS reads openspec/changes/<id>/ before editing code. Commits are operator opt-in.",
       "mode": "primary",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-sonnet-4.6",
       "temperature": 0.2,
       "reasoningEffort": "medium",
       "permission": {
@@ -49,14 +51,15 @@
         "glob": "allow",
         "grep": "allow",
         "webfetch": "allow",
-        "task": "allow"
+        "task": "allow",
+        "question": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-apply-change/SKILL.md}"
     },
-    "archive": {
-      "description": "OpenSpec archive mode. Closes an implemented change: updates canonical specs, moves the change to archive/, and validates.",
+    "spec-archive": {
+      "description": "OpenSpec archive mode. After explicit review, confirms archive policy and delegates spec updates plus the archive move to `openspec archive`.",
       "mode": "primary",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-sonnet-4.6",
       "temperature": 0.1,
       "reasoningEffort": "medium",
       "permission": {
@@ -65,14 +68,15 @@
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
-        "task": "allow"
+        "task": "allow",
+        "question": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-archive-change/SKILL.md}"
     },
-    "review": {
-      "description": "OpenSpec review mode. Runs the full review gate before archive: invokes code/tests/architecture/frontend reviewers in parallel, consolidates findings, applies fixes, and validates with project-validator until green. Sits between `apply` and `archive`.",
+    "spec-review": {
+      "description": "OpenSpec review mode. Runs the full review gate before archive: invokes code/tests/architecture reviewers in parallel, consolidates findings, applies fixes, and validates with project-validator until green. Sits between `spec-apply` and `spec-archive`.",
       "mode": "primary",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-opus-4.8",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -81,45 +85,35 @@
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
-        "task": "allow"
+        "task": "allow",
+        "question": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-review/SKILL.md}"
     },
-    "spec-writer": {
-      "description": "Drafts a single OpenSpec artifact (proposal.md, design.md, spec delta, or tasks.md) for a given change id. Read-only on production code; writes only inside openspec/.",
-      "mode": "subagent",
-      "model": "github-copilot/claude-sonnet-4.5",
-      "temperature": 0.1,
-      "reasoningEffort": "low",
+    "spec-loop": {
+      "description": "Unattended Ralph-style loop over an OpenSpec change. Implements ONE task per iteration with strict TDD, gated by @project-validator, until every task is checked. Driven externally by scripts/loop.sh. The unattended sibling of `spec-apply`.",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.6",
+      "temperature": 0.2,
+      "reasoningEffort": "medium",
       "permission": {
         "edit": "allow",
-        "bash": "deny",
+        "bash": "allow",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
-        "webfetch": "allow"
+        "webfetch": "deny",
+        "task": {
+          "project-validator": "allow",
+          "*": "deny"
+        }
       },
-      "prompt": "{file:./.agents/agents/spec-writer.md}"
-    },
-    "spec-reviewer": {
-      "description": "Reviews an OpenSpec change folder for completeness, internal consistency, and alignment with project conventions. Read-only.",
-      "mode": "subagent",
-      "model": "github-copilot/claude-sonnet-4.5",
-      "temperature": 0.2,
-      "reasoningEffort": "high",
-      "permission": {
-        "edit": "deny",
-        "bash": "deny",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow"
-      },
-      "prompt": "{file:./.agents/agents/spec-reviewer.md}"
+      "prompt": "{file:./.agents/skills/openspec-loop/SKILL.md}"
     },
     "code-reviewer": {
       "description": "Reviews production code in a scoped diff against design, naming, and error-handling conventions. Applies fixes inside the scope.",
       "mode": "subagent",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-sonnet-4.6",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -134,7 +128,7 @@
     "tests-reviewer": {
       "description": "Reviews test quality and coverage inside a scoped diff. Fixes low-ambiguity issues and adds missing tests when behavior is clear.",
       "mode": "subagent",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-sonnet-4.6",
       "temperature": 0.2,
       "reasoningEffort": "medium",
       "permission": {
@@ -149,7 +143,7 @@
     "architecture-reviewer": {
       "description": "Reviews hexagonal/DDD architecture compliance inside a scoped diff and fixes violations.",
       "mode": "subagent",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-sonnet-4.6",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -162,9 +156,9 @@
       "prompt": "{file:./.agents/agents/architecture-reviewer.md}"
     },
     "frontend-reviewer": {
-      "description": "Reviews frontend changes (apps/webapp, apps/mobile) for component, hook, routing, and tRPC integration issues.",
+      "description": "Reviews infrastructure layer changes (apps/, HTTP controllers, adapters) for Elysia conventions and layer boundary violations.",
       "mode": "subagent",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-sonnet-4.6",
       "temperature": 0.2,
       "reasoningEffort": "medium",
       "permission": {
@@ -179,7 +173,7 @@
     "project-validator": {
       "description": "Runs full project validation (lint, typecheck, tests), fixes issues, and re-runs until clean.",
       "mode": "subagent",
-      "model": "github-copilot/claude-sonnet-4.5",
+      "model": "github-copilot/claude-sonnet-4.6",
       "temperature": 0,
       "reasoningEffort": "low",
       "permission": {
@@ -190,12 +184,25 @@
         "grep": "allow"
       },
       "prompt": "{file:./.agents/agents/project-validator.md}"
+    },
+    "project-validator-fast": {
+      "description": "Fast incremental validator. Use after each task during interactive apply — scoped lint + scoped tests + incremental typecheck. Escalates to @project-validator on broad blast radius, schema changes, or last task of a block.",
+      "mode": "subagent",
+      "model": "github-copilot/claude-sonnet-4.6",
+      "temperature": 0,
+      "reasoningEffort": "low",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "task": "deny"
+      },
+      "prompt": "{file:./.agents/agents/project-validator-fast.md}"
     }
   },
-  "instructions": [
-    "AGENTS.md",
-    ".agents/skills/guidelines/git-strategy/SKILL.md"
-  ],
+  "instructions": ["AGENTS.md", ".agents/skills/guidelines/git-strategy/SKILL.md"],
   "mcp": {
     "postgres": {
       "type": "local",
@@ -203,8 +210,18 @@
         "bunx",
         "-y",
         "@modelcontextprotocol/server-postgres",
-        "{env:DDD_FULLSTACK_STARTER_DATABASE_URL}"
+        "{env:ONEJS_BOILERPLATE_DATABASE_URL}"
       ],
+      "enabled": true
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["bunx", "-y", "@playwright/mcp@latest"],
+      "enabled": true
+    },
+    "context7": {
+      "type": "local",
+      "command": ["bunx", "-y", "@upstash/context7-mcp"],
       "enabled": true
     }
   }

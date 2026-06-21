@@ -74,19 +74,19 @@ export class UserCreator {
 import { UserErrorTypes, UserErrorMessages } from '../../domain/constants/error-types'
 
 // Validation failure
-throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, 'Password must be at least 8 characters', {}, ErrorCodes.VALIDATION_FAILED)
+throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.PASSWORD_TOO_SHORT, {}, ErrorCodes.VALIDATION_FAILED)
 
 // Not found
-throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, `User not found: ${userId}`, {}, ErrorCodes.USER_NOT_FOUND)
+throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, UserErrorMessages.USER_NOT_FOUND, {}, ErrorCodes.USER_NOT_FOUND)
 
 // Conflict / duplicate
 throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
 
 // Unauthorized
-throw new OneJsError(UserErrorTypes.UNAUTHORIZED, 401, 'Invalid credentials', {}, ErrorCodes.AUTH_INVALID)
+throw new OneJsError(UserErrorTypes.UNAUTHORIZED, 401, UserErrorMessages.INVALID_CREDENTIALS, {}, ErrorCodes.AUTH_INVALID)
 
 // Expired token
-throw new OneJsError(UserErrorTypes.BAD_REQUEST, 400, 'Invalid or expired reset token', {}, ErrorCodes.AUTH_INVALID)
+throw new OneJsError(UserErrorTypes.BAD_REQUEST, 400, UserErrorMessages.INVALID_OR_EXPIRED_TOKEN, {}, ErrorCodes.AUTH_INVALID)
 ```
 
 ## Errors in Value Objects
@@ -103,7 +103,7 @@ export class Email extends ValueObjectBase<string> {
     if (!value?.trim())
       throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.EMAIL_REQUIRED, {}, ErrorCodes.VALIDATION_FAILED)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase()))
-      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, `Invalid email format: ${value}`, {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.INVALID_EMAIL_FORMAT, {}, ErrorCodes.VALIDATION_FAILED)
     return new Email(value.trim().toLowerCase())
   }
 }

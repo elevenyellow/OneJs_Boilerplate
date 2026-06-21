@@ -47,7 +47,7 @@ export class Email extends ValueObjectBase<string> {
       throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.EMAIL_REQUIRED, {}, ErrorCodes.VALIDATION_FAILED)
     const normalized = value.trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
-      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, `Invalid email: ${normalized}`, {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.INVALID_EMAIL_FORMAT, {}, ErrorCodes.VALIDATION_FAILED)
     return new Email(normalized)
   }
 }
@@ -86,7 +86,7 @@ export class UserId extends ValueObjectBase<string> {
   }
 
   static fromString(value: string): UserId {
-    if (!value) throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, 'Invalid UserId', {}, ErrorCodes.VALIDATION_FAILED)
+    if (!value) throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.INVALID_USER_ID, {}, ErrorCodes.VALIDATION_FAILED)
     return new UserId(value)
   }
 }
@@ -101,7 +101,7 @@ export class UserRole extends ValueObjectBase<string> {
 
   static create(value: string): UserRole {
     if (!['user', 'admin'].includes(value))
-      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, `Invalid role: ${value}`, {}, ErrorCodes.VALIDATION_FAILED)
+      throw new OneJsError(UserErrorTypes.VALIDATION_FAILED, 400, UserErrorMessages.INVALID_ROLE, {}, ErrorCodes.VALIDATION_FAILED)
     return new UserRole(value)
   }
 }
@@ -269,7 +269,7 @@ export class OrderCreator {
   async run(customerId: CustomerId, items: OrderItem[]): Promise<Order> {
     const customer = await this.customerRepo.findById(customerId)
     if (!customer)
-      throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, 'Customer not found', {}, ErrorCodes.NOT_FOUND)
+      throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, CustomerErrorMessages.CUSTOMER_NOT_FOUND, {}, ErrorCodes.NOT_FOUND)
 
     const order = Order.create(customerId, items)
     const total = this.pricingService.run(order, customer)
@@ -356,7 +356,7 @@ The single most important convention in this codebase:
 | `toDto()` | Extracts primitives via `.getValue()` | `this.email.getValue()` |
 | Controller / API handler | Creates VOs from request primitives | `Email.create(req.body.email)` |
 
-Primitives only cross the domain boundary in two places:
+Primitives only cross the domain boundary in three places:
 1. **`reconstitute()`** — reading from persistence
 2. **`toDto()`** — writing to persistence
 3. **Controllers** — creating VOs from raw HTTP/RPC input

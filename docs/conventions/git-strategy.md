@@ -50,7 +50,7 @@ Format:
 
 ### Scope
 
-The package or app touched: `api`, `users`, `webapp`, `mobile`, `database`, `common`, `auth`, or `ui` / `errors` / `index` for cross-cutting areas.
+The bounded context or app touched: `user`, `task`, `shared`, `api`, or cross-cutting area (`openspec`, `chore`, `errors`, `index`).
 
 ### Examples
 
@@ -58,8 +58,8 @@ The package or app touched: `api`, `users`, `webapp`, `mobile`, `database`, `com
 feat(errors): implement domain error handling system
 docs(readme): update project structure and documentation references
 chore(index): remove console log statement
-fix(webapp): redirect to /login when session expires
-refactor(users): extract EmailNormalizer from UserCreator
+fix(user): return 401 when JWT is expired
+refactor(user): extract EmailNormalizer from UserCreator
 ```
 
 ### Rules
@@ -98,9 +98,9 @@ When following the TDD cycle from [TDD Practices](./patterns/tdd-practices.md):
 - **Refactor commits are separate** from feature commits and labelled `refactor(<scope>): …`.
 
 ```
-feat(users): add UserCreator application service          ← domain + application in one slice
-refactor(users): extract EmailNormalizer from UserCreator  ← refactor, separate commit
-feat(users): wire UserCreator into tRPC router            ← infra in next commit
+feat(user): add UserCreator application service           ← domain + application in one slice
+refactor(user): extract EmailNormalizer from UserCreator   ← refactor, separate commit
+feat(user): wire UserCreator into Elysia controller       ← infra in next commit
 ```
 
 ## Pushing and PRs

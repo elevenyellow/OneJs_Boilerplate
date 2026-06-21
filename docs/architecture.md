@@ -20,17 +20,16 @@ The heart of your application. It contains the business rules and logic.
 -   **Value Objects**: Objects defined by their attributes (e.g., `Email`, `Id`).
 -   **Domain Events**: Events that signify something important happened in the domain (e.g., `UserCreatedEvent`).
 -   **Repositories (Interfaces)**: Contracts for data persistence.
--   **DTOs**: Data Transfer Objects for passing data between layers.
-
 ### 2. Application Layer (`application/`)
 Orchestrates the domain logic to fulfill specific use cases.
--   **Use Cases**: Specific actions a user can perform (e.g., `CreateUserUseCase`).
--   **Services**: Application-wide logic that doesn't belong in a single entity.
+-   **Services**: Application services with a single `run()` entry point (e.g., `UserCreator`, `UserAuthenticator`).
+-   **DTOs**: Data Transfer Objects at the persistence boundary (`toDto()` / `reconstitute()`).
+-   **Dependency injection**: `@Injectable()` on the service, `@Inject(ConcreteClass)` on constructor params.
 
 ### 3. Infrastructure Layer (`infrastructure/`)
 Contains the concrete implementations of the interfaces defined in the domain and application layers.
 -   **Controllers**: Handle incoming HTTP requests and map them to use cases.
--   **Persistence**: Concrete repository implementations (e.g., `PrismaUserRepository`, `MongoUserRepository`).
+-   **Persistence**: Concrete repository implementations (e.g., `UserPrismaRepository`, `InMemoryUserRepository`).
 -   **External Adapters**: Clients for external services (e.g., Email providers, Payment gateways).
 
 ## Dependency Flow
@@ -61,5 +60,5 @@ graph TD
     Infrastructure --> Domain
 ```
 
-By following this pattern, you can change your database (e.g., from Mongo to Prisma) or your web framework without touching your core business logic.
+By following this pattern, you can swap adapters (e.g., replace the InMemory repository with a Prisma one, or change the HTTP framework) without touching your core business logic.
 

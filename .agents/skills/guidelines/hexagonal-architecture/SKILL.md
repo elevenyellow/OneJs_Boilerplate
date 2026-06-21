@@ -95,7 +95,8 @@ export class User extends EntityBase<UserId> {
 ## Error handling
 
 ```typescript
-throw new OneJsError('Not Found', 404, 'User not found', {}, ErrorCodes.USER_NOT_FOUND)
+import { UserErrorTypes, UserErrorMessages } from '../domain/constants/error-types'
+throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, UserErrorMessages.USER_NOT_FOUND, {}, ErrorCodes.USER_NOT_FOUND)
 ```
 
 Never `new Error()`. **No magic strings**: every type label and message must be a named constant per bounded context (see [ddd-principles.md — No Magic Strings](../../../../docs/conventions/architecture/ddd-principles.md#no-magic-strings)).
