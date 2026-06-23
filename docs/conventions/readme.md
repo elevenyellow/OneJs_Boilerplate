@@ -97,6 +97,7 @@ Domain defines ports (interfaces). Infrastructure provides adapters. Application
 ### Architecture & DDD
 
 - [DDD Principles](./architecture/ddd-principles.md)
+- [SOLID + DRY Principles](./architecture/solid-dry-principles.md)
 - [File Organization](./patterns/file-organization.md)
 
 ### Backend Patterns

@@ -232,5 +232,6 @@ See [docs/conventions/](docs/conventions/readme.md) for complete documentation:
 - [Testing](docs/conventions/patterns/testing.md)
 - [TDD Practices](docs/conventions/patterns/tdd-practices.md)
 - [DDD Principles](docs/conventions/architecture/ddd-principles.md)
+- [SOLID + DRY Principles](docs/conventions/architecture/solid-dry-principles.md)
 - [Agentic Workflow](docs/conventions/agentic/readme.md)
 - [Complete Example: User Management](docs/conventions/examples/user-management/complete-implementation.md)
