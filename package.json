@@ -15,6 +15,7 @@
     ".oneJs/testing"
   ],
   "scripts": {
+    "prepare": "husky",
     "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb redisdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
     "prisma:merge": "bun ./.oneJs/prisma/src/scripts/merge-schema.ts",
     "prisma:validate": "npx prisma validate --schema=./prisma/schema.prisma",
@@ -51,6 +52,7 @@
     "@types/debug": "^4.1.12",
     "@types/jsonwebtoken": "^9.0.6",
     "glob": "^13.0.0",
+    "husky": "^9.1.7",
     "prisma": "^6.1.0"
   },
   "dependencies": {
