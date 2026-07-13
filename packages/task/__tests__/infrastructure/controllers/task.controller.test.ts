@@ -1,6 +1,8 @@
 import { OneJsError } from '@OneJs/core'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { Task } from '../../../domain/entities/task'
+import { TaskDescription } from '../../../domain/value-objects/task-description'
+import { TaskTitle } from '../../../domain/value-objects/task-title'
 import { TaskController } from '../../../infrastructure/controllers/task.controller'
 
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
@@ -11,7 +13,9 @@ function makeService() {
   return {
     getAll: mock(async (): Promise<Task[]> => []),
     getById: mock(async (_id: string) => null as Task | null),
-    create: mock(async (_title: string, _desc: string) => task(_title)),
+    create: mock(async (title: TaskTitle, _desc: TaskDescription) =>
+      task(title.getValue()),
+    ),
     complete: mock(async (_id: string) => task('A', true)),
     delete: mock(async (_id: string) => {}),
   }

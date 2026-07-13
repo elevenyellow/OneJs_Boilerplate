@@ -59,7 +59,7 @@ feat(errors): implement domain error handling system
 docs(readme): update project structure and documentation references
 chore(index): remove console log statement
 fix(user): return 401 when JWT is expired
-refactor(user): extract EmailNormalizer from UserCreator
+refactor(user): extract EmailNormalizer from UserService
 ```
 
 ### Rules
@@ -98,9 +98,9 @@ When following the TDD cycle from [TDD Practices](./patterns/tdd-practices.md):
 - **Refactor commits are separate** from feature commits and labelled `refactor(<scope>): …`.
 
 ```
-feat(user): add UserCreator application service           ← domain + application in one slice
-refactor(user): extract EmailNormalizer from UserCreator   ← refactor, separate commit
-feat(user): wire UserCreator into Elysia controller       ← infra in next commit
+feat(user): add UserService application service           ← domain + application in one slice
+refactor(user): extract EmailNormalizer from UserService   ← refactor, separate commit
+feat(user): wire UserService into Elysia controller       ← infra in next commit
 ```
 
 ## Pushing and PRs

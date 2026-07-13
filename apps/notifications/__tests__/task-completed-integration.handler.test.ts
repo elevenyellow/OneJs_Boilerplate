@@ -1,6 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 import { TaskCompletedIntegrationEvent } from '@shared/events'
 import { Task } from '@task/domain/entities/task'
+import { TaskDescription } from '@task/domain/value-objects/task-description'
+import { TaskTitle } from '@task/domain/value-objects/task-title'
 import { TaskCompletedIntegrationHandler } from '../../../packages/task/application/handlers/task-completed-integration.handler'
 
 function makeNotificationService() {
@@ -16,7 +18,10 @@ describe('TaskCompletedIntegrationHandler', () => {
     const handler = new TaskCompletedIntegrationHandler(
       notificationService as any,
     )
-    const task = Task.create('Fix production bug', 'urgent').complete()
+    const task = Task.create(
+      TaskTitle.create('Fix production bug'),
+      TaskDescription.create('urgent'),
+    ).complete()
 
     await handler.handle(new TaskCompletedIntegrationEvent(task))
 

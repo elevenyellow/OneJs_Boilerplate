@@ -43,7 +43,7 @@ packages/
 │   │   ├── repositories/    # Interface (port) definitions
 │   │   └── events/          # Domain event classes
 │   ├── application/
-│   │   ├── *.service.ts     # Use case services (run() entry point)
+│   │   ├── *.service.ts     # One service per context, one method per use case
 │   │   └── dtos/            # DTO classes (persistence boundary)
 │   └── infrastructure/
 │       ├── repositories/    # InMemory + Prisma adapters
@@ -64,7 +64,7 @@ packages/{context}/
 │   ├── repositories/ # interfaces (ports)
 │   └── events/
 ├── application/      ← depends on domain
-│   ├── *.service.ts  # run(vo|entity) entry point
+│   ├── *.service.ts  # [Context]Service — one method per use case, VO/entity params
 │   └── dtos/
 └── infrastructure/   ← depends on domain + application
     ├── repositories/ # concrete adapters (@Injectable())
@@ -74,10 +74,10 @@ packages/{context}/
 ## Core Rules
 
 - **No magic strings**: every error type label, error message, and log scope is a named constant per bounded context — never inline string literals. See [ddd-principles.md — No Magic Strings](./architecture/ddd-principles.md#no-magic-strings).
-- **No primitives as parameters**: `run()` and repository interface methods receive VOs, entities, or aggregates — never `string`, `number`, `boolean`. VOs are created at the system boundary (controller).
+- **No primitives as parameters**: application service methods and repository interface methods receive VOs, entities, or aggregates — never `string`, `number`, `boolean`. VOs are created at the system boundary (controller).
 - **Entities built from VOs**: constructors and `register()` receive VOs; `reconstitute()` is the only place accepting primitives (persistence boundary). See [ddd-principles.md — No Primitives Rule](./architecture/ddd-principles.md#no-primitives-rule).
-- **Immutable entities**: all properties `readonly`; state transitions via `with*()` returning new instances.
-- **`run()` entry point**: every application and domain service exposes a public `run()` method.
+- **Immutable entities**: all fields `private readonly` (prefixed `_`), exposed via getter methods (`getEmail()`, …) — no public properties, no setters; state transitions via `with*()` returning new instances.
+- **One service per bounded context**: each context has a single application service named `[Context]Service` (e.g. `UserService`), exposing one public method per use case named after the operation (`register`, `login`, `getById`, …) — no `run()`, no `UseCase` suffix, no one-class-per-use-case.
 - **`@Injectable()` + `@Inject()`**: all DI via decorators — no factory classes.
 - **`OneJsError`**: all errors use `new OneJsError(type, statusCode, message, details, ErrorCodes.CODE)` with named constants for type and message.
 - **InMemory fakes in tests**: never mock repositories — use the InMemory adapter.

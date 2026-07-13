@@ -30,7 +30,7 @@ If you reach for `while` on the second test, you jumped too far.
 Work from the center of the hexagon outward:
 
 1. **Domain** — pure logic, no IO.
-2. **Application** — the `run()` service, driven by an InMemory repository fake.
+2. **Application** — the `[Context]Service` and its use-case methods, driven by an InMemory repository fake.
 3. **Infrastructure** — real adapters (Prisma, Elysia HTTP) once the application layer is stable.
 
 Each layer has its own TDD cycle. Don't mix them.

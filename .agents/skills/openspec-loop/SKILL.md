@@ -56,8 +56,8 @@ slice of the task:
 
 Respect hexagonal boundaries (`.agents/skills/guidelines/hexagonal-architecture/SKILL.md`)
 and design principles (`.agents/skills/guidelines/design-principles/SKILL.md`):
-ports in domain, adapters in infrastructure, constructor injection, no
-getters/setters, `@OneJs/*` imports in infrastructure layer only.
+ports in domain, adapters in infrastructure, constructor injection,
+private fields + getters (no setters), `@OneJs/*` imports in infrastructure layer only.
 
 ## Phase 3 — Validate, then commit (MANDATORY gate)
 

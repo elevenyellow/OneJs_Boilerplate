@@ -1,6 +1,6 @@
 ---
 name: hexagonal-architecture
-description: Hexagonal + DDD rules for this monorepo — bounded contexts, inward-only layer dependencies (domain → application → infrastructure), repository port/adapter, application services with run(), no primitives as parameters. Load when writing, reviewing, or refactoring backend code in packages/ or planning cross-context workflows.
+description: Hexagonal + DDD rules for this monorepo — bounded contexts, inward-only layer dependencies (domain → application → infrastructure), repository port/adapter, one [Context]Service per bounded context with use-case methods, no primitives as parameters. Load when writing, reviewing, or refactoring backend code in packages/ or planning cross-context workflows.
 ---
 
 # Hexagonal Architecture + DDD
@@ -37,14 +37,14 @@ packages/<context>/
 ```
 
 - **Domain**: entities (`EntityBase<TId>` + `@Entity()`), value objects (`ValueObjectBase<T>` + `@ValueObject()`), repository **interfaces** (ports), domain services, domain events.
-- **Application**: services with a single `run(vo|entity)` entry point, `@Injectable()` + `@Inject(ConcreteClass)` constructor injection, DTOs at persistence boundaries.
+- **Application**: one `[Context]Service` per bounded context with one public method per use case (named after the operation — no `run()`, no `UseCase` suffix, no one-class-per-use-case), `@Injectable()` + `@Inject(ConcreteClass)` constructor injection, DTOs at persistence boundaries.
 - **Infrastructure**: repository **implementations** (adapters) with `@Injectable()`, controllers, event handlers.
 
 ## No primitives as parameters
 
 This is the most critical rule in the codebase. The canonical source is [ddd-principles.md — No Primitives Rule](../../../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
 
-- `run()` params: always VOs or entities — never `string`, `number`, `boolean`
+- Application service method params: always VOs or entities — never `string`, `number`, `boolean` (raw passwords are the documented exception)
 - Entity constructors: always VOs — never primitives
 - Repository interface methods: always VO params — `findById(id: UserId)`, `findByEmail(email: Email)`
 - Entity `register()` and `with*()`: accept VOs
@@ -84,7 +84,8 @@ export class Email extends ValueObjectBase<string> {
 ```typescript
 @Entity()
 export class User extends EntityBase<UserId> {
-  constructor(id: UserId, readonly email: Email, ...) { super(id) }
+  constructor(id: UserId, private readonly _email: Email, ...) { super(id) }
+  getEmail(): Email { return this._email }                              // getter, no setter
   static register(email: Email, hash: PasswordHash): User { ... }       // VOs
   static reconstitute(id: string, email: string, ...): User { ... }     // primitives OK here only
   withPasswordHash(hash: PasswordHash): User { /* returns new User */ }  // immutable

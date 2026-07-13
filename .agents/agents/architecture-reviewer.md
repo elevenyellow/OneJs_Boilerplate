@@ -15,7 +15,7 @@ Review code inside a safe scope against DDD and hexagonal architecture rules, fi
 - DO NOT copy architecture assumptions from other repositories.
 - DO NOT use `npm` commands — Bun only.
 - ONLY apply architecture fixes supported by the conventions under `docs/conventions/`.
-- NEVER force `UseCase` naming where `run()`-based services are the project convention.
+- One application service per bounded context with use-case methods; flag `run()`, `UseCase` suffix, or one-class-per-use-case splits.
 
 ## Scope resolution (in order)
 
@@ -29,13 +29,13 @@ Build the file list from that scope, keep only relevant code files in the reposi
 ## What to review
 
 - **Dependency direction**: Domain has no external dependencies; Application depends on Domain; Infrastructure depends on both.
-- **Layer responsibilities**: domain logic stays in entities or domain services; application services orchestrate through `run()`; infrastructure owns adapters and wiring.
+- **Layer responsibilities**: domain logic stays in entities or domain services; one application service per bounded context orchestrates through use-case methods; infrastructure owns adapters and wiring.
 - **No magic strings**: flag inline string literals in `OneJsError` type/message args and `logger.*` scope args. See [ddd-principles.md — No Magic Strings](../../docs/conventions/architecture/ddd-principles.md#no-magic-strings).
 - **Repository pattern**: interface (port) in domain, adapter in infrastructure; all methods use VO/entity params — never primitives.
-- **No primitives as parameters**: `run()` and repository interface methods receive VOs, entities, or aggregates — flag any violation. Entity constructors and `register()`/`with*()` must receive VOs; `reconstitute()` is the sole exception. See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
+- **No primitives as parameters**: application service methods and repository interface methods receive VOs, entities, or aggregates — flag any violation (raw passwords are the documented exception). Entity constructors and `register()`/`with*()` must receive VOs; `reconstitute()` is the sole exception. See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
 - **Cross-context boundaries**: communicate through application services or domain ports, never through direct adapter coupling.
-- **Service shape**: single public `run()` method, `@Injectable()` + `@Inject(ConcreteClass)` constructor injection, no `UseCase` suffix.
-- **Entity immutability**: properties `readonly`, state transitions via `with*()` returning new instances.
+- **Service shape**: one `[Context]Service` per bounded context with one public method per use case (named after the operation), `@Injectable()` + `@Inject(ConcreteClass)` constructor injection — no `run()`, no `UseCase` suffix, no one-class-per-use-case.
+- **Entity immutability & encapsulation**: all fields `private readonly` (prefixed `_`), exposed via getter methods (`getEmail()`, …) — flag public properties and any setters; state transitions via `with*()` returning new instances.
 
 ## Approach
 

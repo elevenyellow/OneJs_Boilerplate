@@ -181,12 +181,17 @@ import { Entity, EntityBase } from '@OneJs/core'
 export class User extends EntityBase<UserId> {
   constructor(
     id: UserId,
-    readonly email: Email,
-    readonly role: UserRole,
-    readonly createdAt: Date,
+    private readonly _email: Email,
+    private readonly _role: UserRole,
+    private readonly _createdAt: Date,
   ) {
     super(id)
   }
+
+  // Getters expose state (read-only); no setters
+  getEmail(): Email { return this._email }
+  getRole(): UserRole { return this._role }
+  getCreatedAt(): Date { return this._createdAt }
 
   static register(email: Email): User {
     return new User(UserId.generateUniqueId(), email, UserRole.user(), new Date())
@@ -197,16 +202,16 @@ export class User extends EntityBase<UserId> {
   }
 
   withRole(role: UserRole): User {
-    return new User(this.getId(), this.email, role, this.createdAt)
+    return new User(this.getId(), this._email, role, this._createdAt)
   }
 
   toDto(): UserDto {
-    return new UserDto(this.getId().getValue(), this.email.getValue(), this.role.getValue(), this.createdAt)
+    return new UserDto(this.getId().getValue(), this._email.getValue(), this._role.getValue(), this._createdAt)
   }
 }
 ```
 
-- Immutable (`readonly` properties + `with*()` for transitions)
+- Immutable (`private readonly` fields + `with*()` for transitions; getters for read access, no setters)
 - `register()` for creation from VOs, `reconstitute()` for hydration from primitives (DB)
 - `toDto()` for the persistence/transport boundary
 

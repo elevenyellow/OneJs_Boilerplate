@@ -1,6 +1,9 @@
 import { Injectable } from '@OneJs/core'
 import type { User } from '../../domain/entities/user'
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface'
+import type { Email } from '../../domain/value-objects/email'
+import type { ResetToken } from '../../domain/value-objects/reset-token'
+import type { UserId } from '../../domain/value-objects/user-id'
 
 @Injectable()
 export class InMemoryUserRepository implements IUserRepository {
@@ -10,20 +13,20 @@ export class InMemoryUserRepository implements IUserRepository {
     return Array.from(this.store.values())
   }
 
-  async findById(id: string): Promise<User | null> {
-    return this.store.get(id) ?? null
+  async findById(id: UserId): Promise<User | null> {
+    return this.store.get(id.getValue()) ?? null
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: Email): Promise<User | null> {
     for (const user of this.store.values()) {
-      if (user.email.getValue() === email.toLowerCase()) return user
+      if (user.getEmail().getValue() === email.getValue()) return user
     }
     return null
   }
 
-  async findByResetToken(token: string): Promise<User | null> {
+  async findByResetToken(token: ResetToken): Promise<User | null> {
     for (const user of this.store.values()) {
-      if (user.resetToken?.getValue() === token) return user
+      if (user.getResetToken()?.getValue() === token.getValue()) return user
     }
     return null
   }
@@ -32,7 +35,7 @@ export class InMemoryUserRepository implements IUserRepository {
     this.store.set(user.getId().getValue(), user)
   }
 
-  async delete(id: string): Promise<void> {
-    this.store.delete(id)
+  async delete(id: UserId): Promise<void> {
+    this.store.delete(id.getValue())
   }
 }

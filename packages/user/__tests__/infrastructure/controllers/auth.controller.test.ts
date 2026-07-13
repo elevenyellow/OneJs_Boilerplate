@@ -1,13 +1,16 @@
 import { OneJsError } from '@OneJs/core'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { User } from '../../../domain/entities/user'
+import { Email } from '../../../domain/value-objects/email'
+import { PasswordHash } from '../../../domain/value-objects/password-hash'
 import { AuthController } from '../../../infrastructure/controllers/auth.controller'
 
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
 const EMAIL = 'user@example.com'
 const HASH = '$2b$10$fakehash'
 
-const user = () => User.register(EMAIL, HASH)
+const user = () =>
+  User.register(Email.create(EMAIL), PasswordHash.create(HASH))
 
 function makeService() {
   return {

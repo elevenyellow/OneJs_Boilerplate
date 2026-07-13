@@ -22,7 +22,7 @@ The heart of your application. It contains the business rules and logic.
 -   **Repositories (Interfaces)**: Contracts for data persistence.
 ### 2. Application Layer (`application/`)
 Orchestrates the domain logic to fulfill specific use cases.
--   **Services**: Application services with a single `run()` entry point (e.g., `UserCreator`, `UserAuthenticator`).
+-   **Services**: One application service per bounded context, named `[Context]Service` (e.g., `UserService`), with one public method per use case (`register`, `login`, …) — no `run()`, no `UseCase` suffix, no one-class-per-use-case.
 -   **DTOs**: Data Transfer Objects at the persistence boundary (`toDto()` / `reconstitute()`).
 -   **Dependency injection**: `@Injectable()` on the service, `@Inject(ConcreteClass)` on constructor params.
 

@@ -19,8 +19,8 @@ How the five SOLID principles and DRY apply within the OneJs DDD/Hexagonal archi
 ```typescript
 // BAD — service does too much
 @Injectable()
-export class UserCreator {
-  async run(email: string) {
+export class UserService {
+  async register(email: string) {
     const normalised = email.trim().toLowerCase() // ← belongs in Email VO
     if (!/regex/.test(normalised)) throw new Error('bad email') // ← belongs in Email VO
     // ...
@@ -29,8 +29,8 @@ export class UserCreator {
 
 // GOOD — responsibility delegated to the right layer
 @Injectable()
-export class UserCreator {
-  async run(email: Email, passwordHash: PasswordHash): Promise<User> {
+export class UserService {
+  async register(email: Email, passwordHash: PasswordHash): Promise<User> {
     // Email is already valid — it was created at the boundary
     const user = User.register(email, passwordHash)
     await this.repo.save(user)
@@ -138,7 +138,7 @@ Domain (IUserRepository interface)
     ↑ implements
 Infrastructure (InMemoryUserRepository, PrismaUserRepository)
 
-Application (UserCreator) → domain interface only, never the adapter
+Application (UserService) → domain interface only, never the adapter
 ```
 
 ```typescript
@@ -146,7 +146,7 @@ Application (UserCreator) → domain interface only, never the adapter
 import { PrismaUserRepository } from '../../infrastructure/repositories/prisma-user-repository'
 
 @Injectable()
-export class UserCreator {
+export class UserService {
   constructor(
     @Inject(PrismaUserRepository)
     private readonly repo: PrismaUserRepository, // ← coupled to Prisma
@@ -158,7 +158,7 @@ import type { IUserRepository } from '../../domain/repositories/user.repository.
 import { InMemoryUserRepository } from '../../infrastructure/repositories/in-memory-user-repository'
 
 @Injectable()
-export class UserCreator {
+export class UserService {
   constructor(
     @Inject(InMemoryUserRepository) // ← DI token: tells the container which adapter to inject
     private readonly repo: IUserRepository, // ← type: what the service actually depends on

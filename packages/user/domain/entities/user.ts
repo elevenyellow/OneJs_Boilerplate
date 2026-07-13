@@ -10,20 +10,40 @@ import { UserRole } from '../value-objects/user-role'
 export class User extends EntityBase<UserId> {
   constructor(
     id: UserId,
-    readonly email: Email,
-    readonly passwordHash: PasswordHash,
-    readonly role: UserRole,
-    readonly createdAt: Date,
-    readonly resetToken: ResetToken | null,
+    private readonly _email: Email,
+    private readonly _passwordHash: PasswordHash,
+    private readonly _role: UserRole,
+    private readonly _createdAt: Date,
+    private readonly _resetToken: ResetToken | null,
   ) {
     super(id)
   }
 
-  static register(email: string, passwordHash: string): User {
+  getEmail(): Email {
+    return this._email
+  }
+
+  getPasswordHash(): PasswordHash {
+    return this._passwordHash
+  }
+
+  getRole(): UserRole {
+    return this._role
+  }
+
+  getCreatedAt(): Date {
+    return this._createdAt
+  }
+
+  getResetToken(): ResetToken | null {
+    return this._resetToken
+  }
+
+  static register(email: Email, passwordHash: PasswordHash): User {
     return new User(
       UserId.generateUniqueId(),
-      Email.create(email),
-      PasswordHash.create(passwordHash),
+      email,
+      passwordHash,
       UserRole.user(),
       new Date(),
       null,
@@ -48,34 +68,34 @@ export class User extends EntityBase<UserId> {
     )
   }
 
-  withPasswordHash(hash: string): User {
+  withPasswordHash(hash: PasswordHash): User {
     return new User(
       this.getId(),
-      this.email,
-      PasswordHash.create(hash),
-      this.role,
-      this.createdAt,
+      this._email,
+      hash,
+      this._role,
+      this._createdAt,
       null,
     )
   }
 
-  withResetToken(token: string | null): User {
+  withResetToken(token: ResetToken | null): User {
     return new User(
       this.getId(),
-      this.email,
-      this.passwordHash,
-      this.role,
-      this.createdAt,
-      token ? ResetToken.create(token) : null,
+      this._email,
+      this._passwordHash,
+      this._role,
+      this._createdAt,
+      token,
     )
   }
 
   toDto(): UserDto {
     return new UserDto(
       this.getId().getValue(),
-      this.email.getValue(),
-      this.role.getValue(),
-      this.createdAt,
+      this._email.getValue(),
+      this._role.getValue(),
+      this._createdAt,
     )
   }
 }

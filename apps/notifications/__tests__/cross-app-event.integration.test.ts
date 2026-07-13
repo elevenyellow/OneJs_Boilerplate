@@ -14,6 +14,8 @@ import { clearEventHandlers } from '@OneJs/event-bus/domain/store'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
 import { TaskService } from '@task/application/task.service'
+import { TaskDescription } from '@task/domain/value-objects/task-description'
+import { TaskTitle } from '@task/domain/value-objects/task-title'
 import { InMemoryTaskRepository } from '@task/infrastructure/repositories/in-memory-task.repository'
 
 describe('Cross-app event communication (task -> notifications)', () => {
@@ -56,7 +58,10 @@ describe('Cross-app event communication (task -> notifications)', () => {
     const logger = new Logger({}, false)
     const service = new TaskService(repository, eventBus, logger)
 
-    const created = await service.create('Cross App', 'Task app emitted this')
+    const created = await service.create(
+      TaskTitle.create('Cross App'),
+      TaskDescription.create('Task app emitted this'),
+    )
 
     expect(onTaskCreatedIntegration).toHaveBeenCalledTimes(1)
     const received = onTaskCreatedIntegration.mock

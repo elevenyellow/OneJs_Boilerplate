@@ -19,7 +19,7 @@ Domain services represent domain concepts and operations that don't belong to a 
 **Dependencies:** Only domain objects (entities, value objects, other domain services)
 
 ### Application Services
-Application services represent complete use cases and orchestrate domain objects.
+Application services represent a bounded context's use cases and orchestrate domain objects.
 
 **Location:** `packages/[context]/application/`
 **Purpose:** Use case orchestration, external integrations, event publishing
@@ -27,96 +27,105 @@ Application services represent complete use cases and orchestrate domain objects
 
 ## Standard Service Structure
 
+**One application service per bounded context**, named `[Context]Service` (e.g. `UserService`, `TaskService`). The service exposes **one public method per use case**, named after the operation (`register`, `login`, `create`, `complete`, …). There is no single `run()` entry point, no `UseCase` suffix, and no one-class-per-use-case.
+
 ### Template Pattern
 
 ```typescript
-// user-creator.service.ts
+// user.service.ts
 import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
 import { EventBus } from '@OneJs/event-bus'
-import { UserErrorTypes, UserErrorMessages, UserLogScopes } from '../../domain/constants'
-import type { IUserRepository } from '../../domain/repositories/user.repository.interface'
-import { InMemoryUserRepository } from '../../infrastructure/repositories/in-memory-user.repository'
-import type { Email } from '../../domain/value-objects/email'
-import type { PasswordHash } from '../../domain/value-objects/password-hash'
+import { UserErrorTypes, UserErrorMessages, UserLogScopes } from '../domain/constants'
+import type { IUserRepository } from '../domain/repositories/user.repository.interface'
+import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
+import { User } from '../domain/entities/user'
+import { UserRegisteredEvent } from '../domain/events/user-registered.event'
+import type { Email } from '../domain/value-objects/email'
+import { PasswordHash } from '../domain/value-objects/password-hash'
 
 @Injectable()
-export class UserCreator {
+export class UserService {
   constructor(
     @Inject(InMemoryUserRepository)
-    private readonly userRepository: IUserRepository,
+    private readonly repository: IUserRepository,
     @Inject(EventBus) private readonly eventBus: EventBus,
     @Inject(Logger) private readonly logger: Logger,
   ) {}
 
-  async run(email: Email, passwordHash: PasswordHash): Promise<User> {
-    this.logger.debug(UserLogScopes.SERVICE, `Creating user: ${email.getValue()}`)
-
-    const existing = await this.userRepository.findByEmail(email)
+  // One public method per use case
+  async register(email: Email, password: string): Promise<User> {
+    const existing = await this.repository.findByEmail(email)
     if (existing)
       throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
 
-    const user = User.register(email, passwordHash)
-    await this.userRepository.save(user)
+    const hash = await Bun.password.hash(password)
+    const user = User.register(email, PasswordHash.create(hash))
+
+    await this.repository.save(user)
     await this.eventBus.publish(new UserRegisteredEvent(user))
 
-    this.logger.debug(UserLogScopes.SERVICE, `User created: ${user.getId().getValue()}`)
+    this.logger.debug(UserLogScopes.SERVICE, `User registered: ${user.getId().getValue()}`)
     return user
+  }
+
+  async getById(userId: UserId): Promise<User | null> {
+    return this.repository.findById(userId)
   }
 }
 ```
 
 ## Key Patterns
 
-### 1. Single Entry Point: `run()` Method
+### 1. One service per context, use-case methods
 
-Every service exposes a public `run()` method as the main entry point:
+Each bounded context has a single application service; each use case is a public method named after the operation:
 
 ```typescript
 ✅ Correct
-class UserCreator {
-  async run(email: Email, passwordHash: PasswordHash): Promise<User> { }
+class UserService {
+  async register(email: Email, password: string): Promise<User> { }
+  async login(email: Email, password: string): Promise<{ token: string; user: User }> { }
+  async getById(id: UserId): Promise<User | null> { }
 }
 
-class UserFinder {
-  async run(id: UserId): Promise<User> { }
+class TaskService {
+  async create(title: TaskTitle, description: TaskDescription): Promise<Task> { }
+  async complete(id: TaskId): Promise<Task> { }
+  async delete(id: TaskId): Promise<void> { }
 }
 
-❌ Wrong
+❌ Wrong — one class per use case with a generic entry point
 class UserCreator {
-  async create(email: string, password: string): Promise<User> { }
-  async execute(input: any): Promise<User> { }
+  async run(email: Email, hash: PasswordHash): Promise<User> { }
+}
+class UserCreator {
+  async execute(input: any): Promise<User> { }   // also wrong: `execute`, `any`
 }
 ```
 
 ### 2. No Primitive Parameters
 
-Service `run()` methods **never accept primitive types** (`string`, `number`, `boolean`) as parameters. Always use value objects, entities, or aggregates:
+Service methods **never accept primitive types** (`string`, `number`, `boolean`) as parameters. Always use value objects, entities, or aggregates:
 
 ```typescript
 ✅ Correct — VOs and entities as params
-class UserCreator {
-  async run(email: Email, passwordHash: PasswordHash): Promise<User> { }
+class UserService {
+  async getById(id: UserId): Promise<User | null> { }
 }
 
-class UserFinder {
-  async run(id: UserId): Promise<User | null> { }
-}
-
-class OrderProcessor {
-  async run(order: Order, customer: Customer): Promise<OrderResult> { }
+class TaskService {
+  async complete(id: TaskId): Promise<Task> { }
 }
 
 ❌ Wrong — primitives as params
-class UserCreator {
-  async run(email: string, password: string): Promise<User> { }
-}
-
-class UserFinder {
-  async run(id: string): Promise<User | null> { }
+class TaskService {
+  async complete(id: string): Promise<Task> { }
 }
 ```
 
 The VO is created and validated at the **system boundary** (controller / API handler), not inside the service.
+
+**The one exception is a raw plaintext password** (a transient credential — there is no `Password` VO). It stays a `string` from the controller into the service, where it is hashed (→ `PasswordHash`) or verified, then discarded.
 
 > **Authoritative reference**: The [No Primitives Rule](../architecture/ddd-principles.md#no-primitives-rule) in `ddd-principles.md` is the canonical source for this rule across the codebase.
 
@@ -127,19 +136,19 @@ Use `@Injectable()` on the class and `@Inject(Token)` on constructor params:
 ```typescript
 ✅ Correct
 @Injectable()
-export class UserCreator {
+export class UserService {
   constructor(
     @Inject(InMemoryUserRepository)
-    private readonly userRepository: IUserRepository,
+    private readonly repository: IUserRepository,
     @Inject(EventBus) private readonly eventBus: EventBus,
     @Inject(Logger) private readonly logger: Logger,
   ) {}
 }
 
 ❌ Wrong — setter injection
-export class UserCreator {
-  private userRepository: IUserRepository
-  setRepository(repo: IUserRepository) { this.userRepository = repo }
+export class UserService {
+  private repository: IUserRepository
+  setRepository(repo: IUserRepository) { this.repository = repo }
 }
 ```
 
@@ -150,48 +159,45 @@ Always inject against the **interface** (port), bind to the **implementation** (
 *(Imports omitted for brevity — all error type labels, messages, and log scopes are named constants per context.)*
 
 ```typescript
-async run(param: SomeVO): Promise<Result> {
-  // 1. Log entry
-  this.logger.debug(UserLogScopes.SERVICE, `Starting: ${param.getValue()}`)
+async complete(id: TaskId): Promise<Task> {
+  // 1. Load/validate domain objects
+  const task = await this.repository.findById(id)
+  if (!task) throw new OneJsError(TaskErrorTypes.NOT_FOUND, 404, TaskErrorMessages.NOT_FOUND, {}, ErrorCodes.RESOURCE_NOT_FOUND)
 
-  // 2. Load/validate domain objects
-  const entity = await this.repository.findById(id)
-  if (!entity) throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, UserErrorMessages.USER_NOT_FOUND, {}, ErrorCodes.NOT_FOUND)
+  // 2. Business logic (delegates to entities/domain services)
+  const completed = task.complete()
 
-  // 3. Business logic (delegates to entities/domain services)
-  const updated = entity.performAction()
+  // 3. Persist
+  await this.repository.save(completed)
 
-  // 4. Persist
-  await this.repository.save(updated)
+  // 4. Publish domain events
+  await this.eventBus.publish(new TaskCompletedIntegrationEvent(completed))
 
-  // 5. Publish domain events
-  await this.eventBus.publish(new SomethingHappenedEvent(updated))
-
-  // 6. Log completion
-  this.logger.debug(UserLogScopes.SERVICE, `Done: ${updated.getId().getValue()}`)
-  return updated
+  // 5. Log completion
+  this.logger.debug(TaskLogScopes.SERVICE, `Task completed: ${completed.getId().getValue()}`)
+  return completed
 }
 ```
 
 ### 5. Private Method Organization
 
-Break down complex logic into well-named private methods:
+Break down complex use-case methods into well-named private helpers:
 
 ```typescript
-import { UserErrorTypes, UserLogScopes } from '../domain/constants'
+import { UserErrorTypes, UserErrorMessages, UserLogScopes } from '../domain/constants'
 
 @Injectable()
-export class PasswordResetter {
+export class UserService {
   constructor(
     @Inject(InMemoryUserRepository) private readonly repo: IUserRepository,
     @Inject(EventBus) private readonly eventBus: EventBus,
     @Inject(Logger) private readonly logger: Logger,
   ) {}
 
-  async run(token: ResetToken, newPasswordHash: PasswordHash): Promise<void> {
+  async resetPassword(token: ResetToken, newPassword: string): Promise<void> {
     const user = await this.findUserByToken(token)
-    const updated = this.applyNewPassword(user, newPasswordHash)
-    await this.persist(updated)
+    const hash = await Bun.password.hash(newPassword)
+    await this.persist(user.withPasswordHash(PasswordHash.create(hash)))
   }
 
   private async findUserByToken(token: ResetToken): Promise<User> {
@@ -199,10 +205,6 @@ export class PasswordResetter {
     if (!user)
       throw new OneJsError(UserErrorTypes.BAD_REQUEST, 400, UserErrorMessages.INVALID_OR_EXPIRED_TOKEN, {}, ErrorCodes.AUTH_INVALID)
     return user
-  }
-
-  private applyNewPassword(user: User, hash: PasswordHash): User {
-    return user.withPasswordHash(hash)
   }
 
   private async persist(user: User): Promise<void> {
@@ -227,7 +229,7 @@ import type { User } from '../entities/user'
 export class UserValidator {
   constructor(@Inject(Logger) private readonly logger: Logger) {}
 
-  run(user: User): ValidationResult {
+  validate(user: User): ValidationResult {
     this.logger.debug(UserLogScopes.SERVICE, `Validating: ${user.getId().getValue()}`)
 
     const errors: string[] = []
@@ -239,11 +241,11 @@ export class UserValidator {
   }
 
   private hasValidEmail(user: User): boolean {
-    return user.email !== null
+    return user.getEmail() !== null
   }
 
   private hasValidRole(user: User): boolean {
-    return user.role !== null
+    return user.getRole() !== null
   }
 }
 ```
@@ -251,38 +253,41 @@ export class UserValidator {
 ### Application Service Example
 
 ```typescript
-// packages/user/application/user-creator.service.ts
-import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
+// packages/task/application/task.service.ts
+import { ErrorCodes, Inject, Injectable, Logger, OneJsError } from '@OneJs/core'
 import { EventBus } from '@OneJs/event-bus'
-import { UserErrorTypes, UserErrorMessages, UserLogScopes } from '../domain/constants'
-import type { IUserRepository } from '../domain/repositories/user.repository.interface'
-import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
-import { User } from '../domain/entities/user'
-import { UserRegisteredEvent } from '../domain/events/user-registered.event'
-import type { Email } from '../domain/value-objects/email'
-import type { PasswordHash } from '../domain/value-objects/password-hash'
+import { TaskCompletedIntegrationEvent } from '@shared/events'
+import { Task } from '../domain/entities/task'
+import type { ITaskRepository } from '../domain/repositories/task.repository.interface'
+import { InMemoryTaskRepository } from '../infrastructure/repositories/in-memory-task.repository'
+import type { TaskDescription } from '../domain/value-objects/task-description'
+import type { TaskId } from '../domain/value-objects/task-id'
+import type { TaskTitle } from '../domain/value-objects/task-title'
 
 @Injectable()
-export class UserCreator {
+export class TaskService {
   constructor(
-    @Inject(InMemoryUserRepository) private readonly repository: IUserRepository,
+    @Inject(InMemoryTaskRepository) private readonly repository: ITaskRepository,
     @Inject(EventBus) private readonly eventBus: EventBus,
     @Inject(Logger) private readonly logger: Logger,
   ) {}
 
-  async run(email: Email, passwordHash: PasswordHash): Promise<User> {
-    this.logger.debug(UserLogScopes.SERVICE, `Registering: ${email.getValue()}`)
+  async create(title: TaskTitle, description: TaskDescription): Promise<Task> {
+    const task = Task.create(title, description)
+    await this.repository.save(task)
+    this.logger.debug('task:service', `Task created: ${task.getId().getValue()}`)
+    return task
+  }
 
-    const existing = await this.repository.findByEmail(email)
-    if (existing)
-      throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)
+  async complete(id: TaskId): Promise<Task> {
+    const task = await this.repository.findById(id)
+    if (!task)
+      throw new OneJsError('Not Found', 404, `Task not found: ${id.getValue()}`, {}, ErrorCodes.RESOURCE_NOT_FOUND)
 
-    const user = User.register(email, passwordHash)
-    await this.repository.save(user)
-    await this.eventBus.publish(new UserRegisteredEvent(user))
-
-    this.logger.debug(UserLogScopes.SERVICE, `Registered: ${user.getId().getValue()}`)
-    return user
+    const completed = task.complete()
+    await this.repository.save(completed)
+    await this.eventBus.publish(new TaskCompletedIntegrationEvent(completed))
+    return completed
   }
 }
 ```
@@ -317,17 +322,16 @@ throw new OneJsError(UserErrorTypes.UNAUTHORIZED, 401, UserErrorMessages.INVALID
 Use **InMemory fakes** — never mocks or stubs. InMemory repositories live in `infrastructure/` next to production adapters. For EventBus and Logger, use the framework's `InMemoryEventBus` and `SilentLogger`.
 
 ```typescript
-// user-creator.service.test.ts
+// user.service.test.ts
 import { describe, beforeEach, it, expect } from 'bun:test'
 import { InMemoryEventBus } from '@OneJs/event-bus'
 import { SilentLogger } from '@OneJs/core'
-import { UserCreator } from './user-creator.service'
+import { UserService } from './user.service'
 import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
 import { Email } from '../domain/value-objects/email'
-import { PasswordHash } from '../domain/value-objects/password-hash'
 
-describe('The UserCreator', () => {
-  let service: UserCreator
+describe('The UserService', () => {
+  let service: UserService
   let repository: InMemoryUserRepository
   let eventBus: InMemoryEventBus
   let logger: SilentLogger
@@ -336,26 +340,24 @@ describe('The UserCreator', () => {
     repository = new InMemoryUserRepository()
     eventBus = new InMemoryEventBus()
     logger = new SilentLogger()
-    service = new UserCreator(repository, eventBus, logger)
+    service = new UserService(repository, eventBus, configService, logger)
   })
 
-  describe('when registering a user', () => {
+  describe('register', () => {
     it('creates a user with valid email', async () => {
       const email = Email.create('user@example.com')
-      const hash = PasswordHash.create('hashed_pw')
 
-      const user = await service.run(email, hash)
+      const user = await service.register(email, 'password123')
 
-      expect(user.email.getValue()).toBe('user@example.com')
+      expect(user.getEmail().getValue()).toBe('user@example.com')
       expect(await repository.findByEmail(email)).not.toBeNull()
     })
 
     it('rejects a duplicate email', async () => {
       const email = Email.create('user@example.com')
-      const hash = PasswordHash.create('hashed_pw')
-      await service.run(email, hash)
+      await service.register(email, 'password123')
 
-      await expect(service.run(email, hash)).rejects.toThrow(UserErrorMessages.EMAIL_IN_USE)
+      await expect(service.register(email, 'password123')).rejects.toThrow(UserErrorMessages.EMAIL_IN_USE)
     })
   })
 })
@@ -363,9 +365,9 @@ describe('The UserCreator', () => {
 
 ## Best Practices
 
-1. **Single Responsibility**: Each service has one clear use case
-2. **`run()` entry point**: Always the public interface
-3. **No primitives in `run()`**: Accept VOs, entities, or aggregates only
+1. **One service per bounded context**: `UserService`, `TaskService` — not one class per use case
+2. **Use-case methods**: one public method per operation, named after it (`register`, `complete`, …); no `run()`, no `UseCase` suffix
+3. **No primitives as params**: accept VOs, entities, or aggregates only (raw passwords are the sole exception)
 4. **Constructor injection**: `@Injectable()` + `@Inject(Token)` for all dependencies
 5. **Inject interface, bind implementation**: `@Inject(InMemoryRepo) readonly repo: IRepo`
 6. **`OneJsError`**: Use for all domain errors with appropriate `ErrorCodes`

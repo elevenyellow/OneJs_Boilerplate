@@ -27,8 +27,8 @@ Review HTTP controller and app wiring code inside a safe scope under `packages/*
 
 ### Controllers (`packages/*/infrastructure/controllers/`)
 - Controllers delegate to application services — no domain logic, no direct repository calls.
-- VOs are constructed at the boundary: raw request primitives → VO → `service.run(vo)`.
-- Errors from `run()` are caught and translated to HTTP status codes using `OneJsError.statusCode`.
+- VOs are constructed at the boundary: raw request primitives → VO → `service.<useCase>(vo)`.
+- Errors from service methods are caught and translated to HTTP status codes using `OneJsError.statusCode`.
 - HTTP methods, route paths, and parameter names follow REST conventions (`GET /users/:id`, `POST /users`).
 - No business rules in request handlers — only parsing, delegation, and response mapping.
 

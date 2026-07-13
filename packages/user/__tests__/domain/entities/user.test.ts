@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import { User } from '../../../domain/entities/user'
+import { Email } from '../../../domain/value-objects/email'
+import { PasswordHash } from '../../../domain/value-objects/password-hash'
+import { ResetToken } from '../../../domain/value-objects/reset-token'
 
 const HASH = '$2b$10$fakehash'
 const EMAIL = 'user@example.com'
@@ -7,58 +10,60 @@ const EMAIL = 'user@example.com'
 describe('User', () => {
   describe('register()', () => {
     it('creates a user with role=user, no resetToken, and a valid id', () => {
-      const user = User.register(EMAIL, HASH)
+      const user = User.register(Email.create(EMAIL), PasswordHash.create(HASH))
 
       expect(user.getId().getValue()).toMatch(
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/,
       )
-      expect(user.email.getValue()).toBe(EMAIL)
-      expect(user.role.getValue()).toBe('user')
-      expect(user.resetToken).toBeNull()
+      expect(user.getEmail().getValue()).toBe(EMAIL)
+      expect(user.getRole().getValue()).toBe('user')
+      expect(user.getResetToken()).toBeNull()
     })
   })
 
   describe('withPasswordHash()', () => {
     it('returns a new instance with updated hash and clears resetToken', () => {
-      const user = User.register(EMAIL, HASH)
+      const user = User.register(Email.create(EMAIL), PasswordHash.create(HASH))
       const withToken = user.withResetToken(
-        '550e8400-e29b-41d4-a716-446655440000',
+        ResetToken.create('550e8400-e29b-41d4-a716-446655440000'),
       )
-      const updated = withToken.withPasswordHash('$2b$10$newhash')
+      const updated = withToken.withPasswordHash(
+        PasswordHash.create('$2b$10$newhash'),
+      )
 
-      expect(updated.passwordHash.getValue()).toBe('$2b$10$newhash')
-      expect(updated.resetToken).toBeNull()
+      expect(updated.getPasswordHash().getValue()).toBe('$2b$10$newhash')
+      expect(updated.getResetToken()).toBeNull()
       expect(updated.getId().getValue()).toBe(user.getId().getValue())
     })
 
     it('does not mutate the original', () => {
-      const user = User.register(EMAIL, HASH)
-      user.withPasswordHash('$2b$10$newhash')
-      expect(user.passwordHash.getValue()).toBe(HASH)
+      const user = User.register(Email.create(EMAIL), PasswordHash.create(HASH))
+      user.withPasswordHash(PasswordHash.create('$2b$10$newhash'))
+      expect(user.getPasswordHash().getValue()).toBe(HASH)
     })
   })
 
   describe('withResetToken()', () => {
     it('sets a reset token', () => {
-      const user = User.register(EMAIL, HASH)
+      const user = User.register(Email.create(EMAIL), PasswordHash.create(HASH))
       const token = '550e8400-e29b-41d4-a716-446655440000'
-      const updated = user.withResetToken(token)
+      const updated = user.withResetToken(ResetToken.create(token))
 
-      expect(updated.resetToken?.getValue()).toBe(token)
+      expect(updated.getResetToken()?.getValue()).toBe(token)
     })
 
     it('clears reset token when passed null', () => {
-      const user = User.register(EMAIL, HASH)
-        .withResetToken('550e8400-e29b-41d4-a716-446655440000')
+      const user = User.register(Email.create(EMAIL), PasswordHash.create(HASH))
+        .withResetToken(ResetToken.create('550e8400-e29b-41d4-a716-446655440000'))
         .withResetToken(null)
 
-      expect(user.resetToken).toBeNull()
+      expect(user.getResetToken()).toBeNull()
     })
   })
 
   describe('toDto()', () => {
     it('returns a DTO with id, email, role, and createdAt — no passwordHash', () => {
-      const user = User.register(EMAIL, HASH)
+      const user = User.register(Email.create(EMAIL), PasswordHash.create(HASH))
       const dto = user.toDto()
 
       expect(dto.id).toBe(user.getId().getValue())

@@ -57,8 +57,8 @@ import { Injectable, Inject, Logger, OneJsError, ErrorCodes } from '@OneJs/core'
 import { UserErrorTypes, UserErrorMessages } from '../../domain/constants/error-types'
 
 @Injectable()
-export class UserCreator {
-  async run(email: Email, passwordHash: PasswordHash): Promise<User> {
+export class UserService {
+  async register(email: Email, passwordHash: PasswordHash): Promise<User> {
     const existing = await this.repo.findByEmail(email)
     if (existing)
       throw new OneJsError(UserErrorTypes.CONFLICT, 409, UserErrorMessages.EMAIL_IN_USE, {}, ErrorCodes.USER_ALREADY_EXISTS)

@@ -7,6 +7,9 @@ import {
 import { Task } from '../domain/entities/task'
 import { TaskCreatedEvent } from '../domain/events/task-created.event'
 import type { ITaskRepository } from '../domain/repositories/task.repository.interface'
+import type { TaskDescription } from '../domain/value-objects/task-description'
+import type { TaskId } from '../domain/value-objects/task-id'
+import type { TaskTitle } from '../domain/value-objects/task-title'
 import { InMemoryTaskRepository } from '../infrastructure/repositories/in-memory-task.repository'
 
 @Injectable()
@@ -22,11 +25,11 @@ export class TaskService {
     return this.repository.findAll()
   }
 
-  async getById(id: string): Promise<Task | null> {
+  async getById(id: TaskId): Promise<Task | null> {
     return this.repository.findById(id)
   }
 
-  async create(title: string, description: string): Promise<Task> {
+  async create(title: TaskTitle, description: TaskDescription): Promise<Task> {
     const task = Task.create(title, description)
 
     await this.repository.save(task)
@@ -40,13 +43,13 @@ export class TaskService {
     return task
   }
 
-  async complete(id: string): Promise<Task> {
+  async complete(id: TaskId): Promise<Task> {
     const task = await this.repository.findById(id)
     if (!task)
       throw new OneJsError(
         'Not Found',
         404,
-        `Task not found: ${id}`,
+        `Task not found: ${id.getValue()}`,
         {},
         ErrorCodes.RESOURCE_NOT_FOUND,
       )
@@ -57,18 +60,18 @@ export class TaskService {
     return completed
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: TaskId): Promise<void> {
     const task = await this.repository.findById(id)
     if (!task)
       throw new OneJsError(
         'Not Found',
         404,
-        `Task not found: ${id}`,
+        `Task not found: ${id.getValue()}`,
         {},
         ErrorCodes.RESOURCE_NOT_FOUND,
       )
 
     await this.repository.delete(id)
-    this.logger.debug('task:service', `Task deleted: ${id}`)
+    this.logger.debug('task:service', `Task deleted: ${id.getValue()}`)
   }
 }

@@ -2,13 +2,17 @@ import { OneJsError } from '@OneJs/core'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { UserService } from '../../application/user.service'
 import { User } from '../../domain/entities/user'
+import { Email } from '../../domain/value-objects/email'
+import { PasswordHash } from '../../domain/value-objects/password-hash'
+import { ResetToken } from '../../domain/value-objects/reset-token'
+import { UserId } from '../../domain/value-objects/user-id'
 
 const HASH = '$2b$10$fakehashvalue'
 const EMAIL = 'test@example.com'
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
 
 function makeUser(email = EMAIL) {
-  return User.register(email, HASH)
+  return User.register(Email.create(email), PasswordHash.create(HASH))
 }
 
 function makeRepo() {
@@ -59,19 +63,19 @@ describe('UserService', () => {
 
   describe('register()', () => {
     it('saves a new user and publishes UserRegisteredEvent', async () => {
-      const user = await service.register(EMAIL, 'password123')
+      const user = await service.register(Email.create(EMAIL), 'password123')
 
       expect(repo.save.mock.calls).toHaveLength(1)
       expect(eventBus.publish.mock.calls).toHaveLength(1)
-      expect(user.email.getValue()).toBe(EMAIL)
-      expect(user.role.getValue()).toBe('user')
+      expect(user.getEmail().getValue()).toBe(EMAIL)
+      expect(user.getRole().getValue()).toBe('user')
     })
 
     it('throws 409 when email already exists', async () => {
       repo.findByEmail = mock(async () => makeUser())
 
       try {
-        await service.register(EMAIL, 'password123')
+        await service.register(Email.create(EMAIL), 'password123')
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -81,7 +85,7 @@ describe('UserService', () => {
 
     it('throws 400 when password is too short', async () => {
       try {
-        await service.register(EMAIL, 'short')
+        await service.register(Email.create(EMAIL), 'short')
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -96,18 +100,18 @@ describe('UserService', () => {
     it('returns a JWT token and the user on valid credentials', async () => {
       const password = 'password123'
       const hash = await Bun.password.hash(password)
-      const user = User.register(EMAIL, hash)
+      const user = User.register(Email.create(EMAIL), PasswordHash.create(hash))
       repo.findByEmail = mock(async () => user)
 
-      const result = await service.login(EMAIL, password)
+      const result = await service.login(Email.create(EMAIL), password)
 
       expect(typeof result.token).toBe('string')
-      expect(result.user.email.getValue()).toBe(EMAIL)
+      expect(result.user.getEmail().getValue()).toBe(EMAIL)
     })
 
     it('throws 401 when user is not found', async () => {
       try {
-        await service.login(EMAIL, 'password123')
+        await service.login(Email.create(EMAIL), 'password123')
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -117,10 +121,12 @@ describe('UserService', () => {
 
     it('throws 401 when password is wrong', async () => {
       const hash = await Bun.password.hash('correct-password')
-      repo.findByEmail = mock(async () => User.register(EMAIL, hash))
+      repo.findByEmail = mock(async () =>
+        User.register(Email.create(EMAIL), PasswordHash.create(hash)),
+      )
 
       try {
-        await service.login(EMAIL, 'wrong-password')
+        await service.login(Email.create(EMAIL), 'wrong-password')
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -135,7 +141,7 @@ describe('UserService', () => {
     it('returns a reset token and saves the updated user', async () => {
       repo.findByEmail = mock(async () => makeUser())
 
-      const token = await service.forgotPassword(EMAIL)
+      const token = await service.forgotPassword(Email.create(EMAIL))
 
       expect(typeof token).toBe('string')
       expect(repo.save.mock.calls).toHaveLength(1)
@@ -143,7 +149,9 @@ describe('UserService', () => {
     })
 
     it('returns null silently when email does not exist', async () => {
-      const token = await service.forgotPassword('nobody@example.com')
+      const token = await service.forgotPassword(
+        Email.create('nobody@example.com'),
+      )
       expect(token).toBeNull()
       expect(repo.save.mock.calls).toHaveLength(0)
     })
@@ -153,19 +161,22 @@ describe('UserService', () => {
 
   describe('resetPassword()', () => {
     it('updates the password and clears the reset token', async () => {
-      const user = makeUser().withResetToken(UUID)
+      const user = makeUser().withResetToken(ResetToken.create(UUID))
       repo.findByResetToken = mock(async () => user)
 
-      await service.resetPassword(UUID, 'newpassword123')
+      await service.resetPassword(ResetToken.create(UUID), 'newpassword123')
 
       expect(repo.save.mock.calls).toHaveLength(1)
       const saved = repo.save.mock.calls[0][0] as User
-      expect(saved.resetToken).toBeNull()
+      expect(saved.getResetToken()).toBeNull()
     })
 
     it('throws 400 on invalid token', async () => {
       try {
-        await service.resetPassword('bad-token', 'newpassword123')
+        await service.resetPassword(
+          ResetToken.create('bad-token'),
+          'newpassword123',
+        )
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -174,10 +185,12 @@ describe('UserService', () => {
     })
 
     it('throws 400 when new password is too short', async () => {
-      repo.findByResetToken = mock(async () => makeUser().withResetToken(UUID))
+      repo.findByResetToken = mock(async () =>
+        makeUser().withResetToken(ResetToken.create(UUID)),
+      )
 
       try {
-        await service.resetPassword(UUID, 'short')
+        await service.resetPassword(ResetToken.create(UUID), 'short')
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -192,9 +205,15 @@ describe('UserService', () => {
     it('updates the password when current password is correct', async () => {
       const password = 'current-pass'
       const hash = await Bun.password.hash(password)
-      repo.findById = mock(async () => User.register(EMAIL, hash))
+      repo.findById = mock(async () =>
+        User.register(Email.create(EMAIL), PasswordHash.create(hash)),
+      )
 
-      await service.updatePassword(UUID, password, 'new-password-123')
+      await service.updatePassword(
+        UserId.fromString(UUID),
+        password,
+        'new-password-123',
+      )
 
       expect(repo.save.mock.calls).toHaveLength(1)
       expect(eventBus.publish.mock.calls).toHaveLength(1)
@@ -202,7 +221,11 @@ describe('UserService', () => {
 
     it('throws 404 when user does not exist', async () => {
       try {
-        await service.updatePassword(UUID, 'current', 'new-password-123')
+        await service.updatePassword(
+          UserId.fromString(UUID),
+          'current',
+          'new-password-123',
+        )
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -212,10 +235,16 @@ describe('UserService', () => {
 
     it('throws 401 when current password is wrong', async () => {
       const hash = await Bun.password.hash('correct-pass')
-      repo.findById = mock(async () => User.register(EMAIL, hash))
+      repo.findById = mock(async () =>
+        User.register(Email.create(EMAIL), PasswordHash.create(hash)),
+      )
 
       try {
-        await service.updatePassword(UUID, 'wrong-pass', 'new-password-123')
+        await service.updatePassword(
+          UserId.fromString(UUID),
+          'wrong-pass',
+          'new-password-123',
+        )
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)

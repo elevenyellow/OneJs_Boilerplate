@@ -29,15 +29,15 @@ Build the file list from that scope. Keep only production code — `*.ts`, `*.ts
 ## What to review
 
 - **No magic strings**: flag inline string literals in `OneJsError` type/message args and `logger.*` scope args. Every error type label, message, and log scope must be a named constant (e.g., `UserErrorTypes.CONFLICT`, not `'Conflict'`). See [ddd-principles.md — No Magic Strings](../../docs/conventions/architecture/ddd-principles.md#no-magic-strings).
-- **No primitives as parameters**: `run()` params and repository interface methods must be VOs, entities, or aggregates — never `string`, `number`, `boolean`. Flag any violation.
+- **No primitives as parameters**: application service method params and repository interface methods must be VOs, entities, or aggregates — never `string`, `number`, `boolean` (raw passwords are the documented exception). Flag any violation.
 - **Entities built from VOs**: constructors receive VOs; `register()` and `with*()` accept VOs; `reconstitute()` is the only place accepting primitives (persistence boundary only). See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
-- **Service patterns**: `run()` entry point, `@Injectable()` + `@Inject(Token)` on constructor, constructor receives interface typed against port.
+- **Service patterns**: one `[Context]Service` per bounded context with one public method per use case (named after the operation — no `run()`, no `UseCase` suffix, no one-class-per-use-case), `@Injectable()` + `@Inject(Token)` on constructor, constructor receives interface typed against port.
 - **Naming**: `kebab-case.ts` filenames, `PascalCase` classes, `camelCase` methods, no redundant suffixes (`Impl`, `Abstract`, `I` prefix).
 - **Error handling**: always `OneJsError` from `@OneJs/core` with an `ErrorCodes` value — never `new Error()`. Type labels and messages must be named constants (see no-magic-strings rule above).
 - **Repository interface**: VO/entity params and returns, `null` (not `undefined`) for not-found, `@Injectable()` on concrete implementations.
 - **Entity hydration**: use `Entity.reconstitute()` — not `Entity.fromDto()`.
-- **Immutability**: entity properties are `readonly`; state transitions use `with*()` returning new instances.
-- **No getters/setters** on domain classes — expose behavior through named methods.
+- **Immutability**: entity fields are `private readonly` (prefixed `_`); state transitions use `with*()` returning new instances — never setters.
+- **Private fields + getters**: domain classes keep state in `private readonly` fields and expose it through getter methods (`getEmail()`, …); no public properties, no setters. Behavior is exposed through named methods.
 
 ## Approach
 

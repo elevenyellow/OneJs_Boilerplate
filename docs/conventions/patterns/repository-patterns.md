@@ -71,7 +71,7 @@ export class InMemoryUserRepository implements IUserRepository {
 
   async findByEmail(email: Email): Promise<User | null> {
     for (const user of this.store.values()) {
-      if (user.email.getValue() === email.getValue()) return user
+      if (user.getEmail().getValue() === email.getValue()) return user
     }
     return null
   }
@@ -197,9 +197,9 @@ Every entity implements `toDto()` to serialize to persistence:
 toDto(): UserDto {
   return new UserDto(
     this.getId().getValue(),      // VO → primitive
-    this.email.getValue(),
-    this.role.getValue(),
-    this.createdAt,
+    this.getEmail().getValue(),
+    this.getRole().getValue(),
+    this.getCreatedAt(),
   )
 }
 ```
@@ -210,7 +210,7 @@ Bind the concrete implementation to the interface via `@Inject()`:
 
 ```typescript
 @Injectable()
-export class UserCreator {
+export class UserService {
   constructor(
     @Inject(InMemoryUserRepository)          // concrete token
     private readonly repo: IUserRepository,  // typed as interface

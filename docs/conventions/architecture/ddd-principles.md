@@ -109,7 +109,7 @@ export class UserRole extends ValueObjectBase<string> {
 
 ## Entities
 
-**Entities** have identity and lifecycle. They are built from value objects and expose behavior through methods.
+**Entities** have identity and lifecycle. They are built from value objects, keep all state in `private readonly` fields, and expose that state through getter methods and behavior through named methods.
 
 ### Pattern
 
@@ -126,14 +126,21 @@ import { ResetToken } from '../value-objects/reset-token'
 export class User extends EntityBase<UserId> {
   constructor(
     id: UserId,
-    readonly email: Email,
-    readonly passwordHash: PasswordHash,
-    readonly role: UserRole,
-    readonly createdAt: Date,
-    readonly resetToken: ResetToken | null,
+    private readonly _email: Email,
+    private readonly _passwordHash: PasswordHash,
+    private readonly _role: UserRole,
+    private readonly _createdAt: Date,
+    private readonly _resetToken: ResetToken | null,
   ) {
     super(id)
   }
+
+  // Getters expose state (read-only); no setters
+  getEmail(): Email { return this._email }
+  getPasswordHash(): PasswordHash { return this._passwordHash }
+  getRole(): UserRole { return this._role }
+  getCreatedAt(): Date { return this._createdAt }
+  getResetToken(): ResetToken | null { return this._resetToken }
 
   // Factory: create a new user (business operation)
   static register(email: Email, passwordHash: PasswordHash): User {
@@ -168,20 +175,20 @@ export class User extends EntityBase<UserId> {
 
   // Immutable state transition
   withPasswordHash(hash: PasswordHash): User {
-    return new User(this.getId(), this.email, hash, this.role, this.createdAt, null)
+    return new User(this.getId(), this._email, hash, this._role, this._createdAt, null)
   }
 
   withResetToken(token: ResetToken | null): User {
-    return new User(this.getId(), this.email, this.passwordHash, this.role, this.createdAt, token)
+    return new User(this.getId(), this._email, this._passwordHash, this._role, this._createdAt, token)
   }
 
   // Required by @Entity() decorator
   toDto(): UserDto {
     return new UserDto(
       this.getId().getValue(),
-      this.email.getValue(),
-      this.role.getValue(),
-      this.createdAt,
+      this._email.getValue(),
+      this._role.getValue(),
+      this._createdAt,
     )
   }
 }
@@ -192,11 +199,13 @@ export class User extends EntityBase<UserId> {
 - Extend `EntityBase<TId>` where `TId` is a VO (e.g., `UserId`)
 - Decorate with `@Entity()`
 - **Constructor receives VOs**, never primitives
+- **All fields are `private readonly`** (prefixed with `_`, e.g. `_email`) — never public
+- **Expose state via getter methods** (`getEmail()`, `getRole()`, …) — read-only access, **no setters**
 - `static register()` — creates a new entity (business operation, accepts VOs)
 - `static reconstitute()` — hydrates from persistence (accepts primitives, converts to VOs internally)
-- `with*()` methods return **new instances** (immutability)
+- `with*()` methods return **new instances** (immutability) — never mutate, no setters
 - `toDto()` is required by the `@Entity()` decorator
-- No getters/setters — expose behavior through methods
+- Behavior (state changes, domain rules) is exposed through named methods, never setters
 - `getId()` returns the typed VO id (inherited from `EntityBase`)
 
 ### Calling Conventions
@@ -229,7 +238,7 @@ import { UserLogScopes } from '../constants/log-scopes'
 export class PricingService {
   constructor(@Inject(Logger) private readonly logger: Logger) {}
 
-  run(order: Order, customer: Customer): OrderTotal {
+  calculate(order: Order, customer: Customer): OrderTotal {
     this.logger.debug(UserLogScopes.SERVICE, `Calculating for order ${order.getId().getValue()}`)
     const subtotal = this.calculateSubtotal(order)
     const discount = this.calculateDiscount(customer, subtotal)
@@ -246,18 +255,18 @@ export class PricingService {
 
 ## Application Layer (Use Cases)
 
-Application services orchestrate domain objects. They:
-- Accept **VOs or entities** as parameters (never primitives)
-- Load entities from repositories
-- Delegate business logic to entities/domain services
-- Publish domain events
-- Never contain business rules themselves
+Each bounded context has **one application service**, named `[Context]Service` (e.g. `OrderService`), exposing **one public method per use case** named after the operation (`create`, `cancel`, …) — no `run()`, no `UseCase` suffix, no one-class-per-use-case. The service orchestrates domain objects. It:
+- Accepts **VOs or entities** as parameters (never primitives)
+- Loads entities from repositories
+- Delegates business logic to entities/domain services
+- Publishes domain events
+- Never contains business rules itself
 
 ```typescript
 import { UserErrorTypes } from '../constants/error-types'
 
 @Injectable()
-export class OrderCreator {
+export class OrderService {
   constructor(
     @Inject(InMemoryOrderRepository) private readonly orderRepo: IOrderRepository,
     @Inject(InMemoryCustomerRepository) private readonly customerRepo: ICustomerRepository,
@@ -266,13 +275,14 @@ export class OrderCreator {
     @Inject(Logger) private readonly logger: Logger,
   ) {}
 
-  async run(customerId: CustomerId, items: OrderItem[]): Promise<Order> {
+  // One public method per use case
+  async create(customerId: CustomerId, items: OrderItem[]): Promise<Order> {
     const customer = await this.customerRepo.findById(customerId)
     if (!customer)
       throw new OneJsError(UserErrorTypes.NOT_FOUND, 404, CustomerErrorMessages.CUSTOMER_NOT_FOUND, {}, ErrorCodes.NOT_FOUND)
 
     const order = Order.create(customerId, items)
-    const total = this.pricingService.run(order, customer)
+    const total = this.pricingService.calculate(order, customer)
     order.applyTotal(total)
 
     await this.orderRepo.save(order)
@@ -327,7 +337,7 @@ export class InMemoryUserRepository implements IUserRepository {
 
   async findByEmail(email: Email): Promise<User | null> {
     for (const u of this.store.values())
-      if (u.email.getValue() === email.getValue()) return u
+      if (u.getEmail().getValue() === email.getValue()) return u
     return null
   }
 
@@ -349,17 +359,18 @@ The single most important convention in this codebase:
 |---|---|---|
 | Domain layer — entity constructor | VOs as params | `constructor(id: UserId, email: Email)` |
 | Domain layer — repository interface | VOs everywhere | `findByEmail(email: Email)` |
-| Application service `run()` | VOs or entities as params | `run(email: Email, hash: PasswordHash)` |
+| Application service methods | VOs or entities as params (raw passwords are the only exception, see below) | `register(email: Email, password: string)` |
 | Entity `register()` | VOs as params | `User.register(email: Email, hash: PasswordHash)` |
 | Entity `with*()` | VOs as params | `user.withPasswordHash(hash: PasswordHash)` |
 | Entity `reconstitute()` | Primitives allowed **only here** (persistence boundary) | `User.reconstitute(id: string, ...)` |
-| `toDto()` | Extracts primitives via `.getValue()` | `this.email.getValue()` |
+| `toDto()` | Extracts primitives via `.getValue()` | `this._email.getValue()` |
 | Controller / API handler | Creates VOs from request primitives | `Email.create(req.body.email)` |
 
-Primitives only cross the domain boundary in three places:
+Primitives only cross the domain boundary in four places:
 1. **`reconstitute()`** — reading from persistence
 2. **`toDto()`** — writing to persistence
 3. **Controllers** — creating VOs from raw HTTP/RPC input
+4. **Raw passwords** — a plaintext password is a transient credential, not a domain value (there is no `Password` VO). It stays a `string` from the controller into the service, where it is hashed (→ `PasswordHash` VO) or verified, then discarded. Wrapping it in a validating VO would also turn malformed-login `401`s into `400`s.
 
 Everywhere else, pass VOs and entities.
 
@@ -453,7 +464,7 @@ export class ExternalUserAdapter {
 1. **Rich domain models**: Business logic lives in entities and domain services — not in services or controllers
 2. **VO-first**: Model every concept as a VO before using a primitive
 3. **No magic strings**: All error type labels, messages, and log scopes are named constants per bounded context — see [No Magic Strings](#no-magic-strings) above
-4. **No primitives as parameters**: Entity constructors, `register()`, `with*()`, and `run()` receive VOs — see [No Primitives Rule](#no-primitives-rule) above
+4. **No primitives as parameters**: Entity constructors, `register()`, `with*()`, and application service methods receive VOs — see [No Primitives Rule](#no-primitives-rule) above
 5. **Consistency boundaries**: Aggregates maintain invariants; only reference other aggregates by VO id
 6. **Domain events**: Use events for cross-aggregate consistency and side effects
 7. **Layered dependencies**: Domain ← Application ← Infrastructure (never reversed)

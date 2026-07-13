@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
 import { TaskService } from '../../application/task.service'
 import { TaskCreatedEvent } from '../../domain/events/task-created.event'
+import { TaskDescription } from '../../domain/value-objects/task-description'
+import { TaskTitle } from '../../domain/value-objects/task-title'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
 import { createTestEventBus } from '../helpers/event-bus-test.utils'
 
@@ -33,7 +35,10 @@ describe('TaskService + EventBus (unit)', () => {
   })
 
   it('publishes both internal and integration events and delivers them to subscribers', async () => {
-    const created = await service.create('Comprar leche', 'Descremada')
+    const created = await service.create(
+      TaskTitle.create('Comprar leche'),
+      TaskDescription.create('Descremada'),
+    )
 
     expect(receivedInternalEvents).toHaveLength(1)
     expect(receivedInternalEvents[0]).toBeInstanceOf(TaskCreatedEvent)
@@ -72,9 +77,12 @@ describe('TaskService + EventBus (unit)', () => {
     })
 
     const resilientService = new TaskService(repository, eventBus, logger)
-    const created = await resilientService.create('Resilient task', 'event bus')
+    const created = await resilientService.create(
+      TaskTitle.create('Resilient task'),
+      TaskDescription.create('event bus'),
+    )
 
-    expect(created.title.getValue()).toBe('Resilient task')
+    expect(created.getTitle().getValue()).toBe('Resilient task')
     expect(deliveredEvents).toHaveLength(1)
     expect(deliveredEvents[0].payload.id).toBe(created.getId().getValue())
   })

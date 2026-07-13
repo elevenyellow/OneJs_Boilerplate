@@ -142,15 +142,23 @@ import { OrderDto } from '../../application/dtos/order.dto'
 export class Order extends EntityBase<OrderId> {
   constructor(
     id: OrderId,
-    readonly customerId: string,
-    readonly items: readonly LineItem[],
-    readonly total: Money,
-    readonly status: OrderStatus,
-    readonly placedAt: Date,
-    readonly paidAt: Date | null,
+    private readonly _customerId: string,
+    private readonly _items: readonly LineItem[],
+    private readonly _total: Money,
+    private readonly _status: OrderStatus,
+    private readonly _placedAt: Date,
+    private readonly _paidAt: Date | null,
   ) {
     super(id)
   }
+
+  // Getters expose state (read-only); no setters
+  getCustomerId(): string { return this._customerId }
+  getItems(): readonly LineItem[] { return this._items }
+  getTotal(): Money { return this._total }
+  getStatus(): OrderStatus { return this._status }
+  getPlacedAt(): Date { return this._placedAt }
+  getPaidAt(): Date | null { return this._paidAt }
 
   static place(customerId: string, items: LineItem[]): Order {
     if (items.length === 0)
@@ -160,29 +168,29 @@ export class Order extends EntityBase<OrderId> {
   }
 
   pay(): Order {
-    if (this.status.isPaid())
+    if (this._status.isPaid())
       throw new OneJsError(OrderErrorTypes.ALREADY_PAID, 409, OrderErrorMessages.ORDER_ALREADY_PAID, {}, ErrorCodes.VALIDATION_FAILED)
-    if (this.status.isCancelled())
+    if (this._status.isCancelled())
       throw new OneJsError(OrderErrorTypes.ALREADY_CANCELLED, 409, OrderErrorMessages.ORDER_ALREADY_CANCELLED, {}, ErrorCodes.VALIDATION_FAILED)
-    return new Order(this.getId(), this.customerId, this.items, this.total, OrderStatus.paid(), this.placedAt, new Date())
+    return new Order(this.getId(), this._customerId, this._items, this._total, OrderStatus.paid(), this._placedAt, new Date())
   }
 
   toDto(): OrderDto {
     return new OrderDto(
       this.getId().getValue(),
-      this.customerId,
-      this.items.map((i) => i.toDto()),
-      this.total.getValue(),
-      this.status.getValue(),
-      this.placedAt,
-      this.paidAt,
+      this._customerId,
+      this._items.map((i) => i.toDto()),
+      this._total.getValue(),
+      this._status.getValue(),
+      this._placedAt,
+      this._paidAt,
     )
   }
 }
 ```
 
 Key properties:
-- `readonly` everywhere — entity is immutable.
+- `private readonly` fields everywhere — entity is immutable; state is read through getters, never mutated.
 - `place()` is the factory; `pay()` returns a new `Order` (no mutation).
 - Behavior lives on the entity (`pay()`, `cancel()`), not in a service. Services just orchestrate.
 - `toDto()` is the persistence/transport boundary.
@@ -245,9 +253,9 @@ describe('Order entity', () => {
       const order = Order.place('cust-123', items)
 
       // Assert
-      expect(order.total.getValue().amount).toBe(25)
-      expect(order.status.isPaid()).toBe(false)
-      expect(order.items).toHaveLength(2)
+      expect(order.getTotal().getValue().amount).toBe(25)
+      expect(order.getStatus().isPaid()).toBe(false)
+      expect(order.getItems()).toHaveLength(2)
     })
 
     it('throws when items list is empty', () => {
@@ -259,8 +267,8 @@ describe('Order entity', () => {
     it('marks order as paid and stamps paidAt', () => {
       const order = Order.place('cust-123', [LineItem.create('sku-1', 'Widget', 1, Money.create(10, 'USD'))])
       const paid = order.pay()
-      expect(paid.status.isPaid()).toBe(true)
-      expect(paid.paidAt).toBeInstanceOf(Date)
+      expect(paid.getStatus().isPaid()).toBe(true)
+      expect(paid.getPaidAt()).toBeInstanceOf(Date)
     })
 
     it('refuses to pay an already-paid order', () => {

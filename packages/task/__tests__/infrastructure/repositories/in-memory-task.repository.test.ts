@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 import { Task } from '../../../domain/entities/task'
+import { TaskId } from '../../../domain/value-objects/task-id'
 import { InMemoryTaskRepository } from '../../../infrastructure/repositories/in-memory-task.repository'
 
 const uuid = (n: number) =>
@@ -21,14 +22,14 @@ describe('InMemoryTaskRepository', () => {
   it('saves and retrieves a task by id', async () => {
     await repo.save(task(1, 'Buy milk'))
 
-    const found = await repo.findById(uuid(1))
+    const found = await repo.findById(TaskId.fromString(uuid(1)))
     expect(found).not.toBeNull()
     expect(found!.getId().getValue()).toBe(uuid(1))
-    expect(found!.title.getValue()).toBe('Buy milk')
+    expect(found!.getTitle().getValue()).toBe('Buy milk')
   })
 
   it('returns null for unknown id', async () => {
-    expect(await repo.findById(uuid(99))).toBeNull()
+    expect(await repo.findById(TaskId.fromString(uuid(99)))).toBeNull()
   })
 
   it('findAll returns all saved tasks', async () => {
@@ -42,16 +43,20 @@ describe('InMemoryTaskRepository', () => {
     await repo.save(original)
     await repo.save(original.complete())
 
-    expect((await repo.findById(uuid(1)))!.status.getValue()).toBe(true)
+    expect(
+      (await repo.findById(TaskId.fromString(uuid(1))))!.getStatus().getValue(),
+    ).toBe(true)
   })
 
   it('deletes a task by id', async () => {
     await repo.save(task(1))
-    await repo.delete(uuid(1))
-    expect(await repo.findById(uuid(1))).toBeNull()
+    await repo.delete(TaskId.fromString(uuid(1)))
+    expect(await repo.findById(TaskId.fromString(uuid(1)))).toBeNull()
   })
 
   it('does nothing when deleting non-existent id', async () => {
-    await expect(repo.delete(uuid(99))).resolves.toBeUndefined()
+    await expect(
+      repo.delete(TaskId.fromString(uuid(99))),
+    ).resolves.toBeUndefined()
   })
 })

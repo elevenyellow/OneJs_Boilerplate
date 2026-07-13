@@ -19,9 +19,8 @@ packages/[context]/
 │   │   └── [entity]-[action].event.ts
 │   └── index.ts                     # Domain layer exports
 ├── application/                      # Use cases and application logic
-│   └── [entity]/                    # Group by entity
-│       ├── [entity]-[action].service.ts  # Use case — single run() entry point
-│       └── index.ts                 # Application exports
+│   ├── [context].service.ts         # One service per context, one method per use case
+│   └── index.ts                     # Application exports
 ├── dtos/                             # DTOs (persistence boundary only)
 │   └── [entity].dto.ts
 ├── infrastructure/                   # External concerns (adapters)
@@ -54,7 +53,7 @@ Cross-context communication goes through the `shared/` package (integration even
 - **Events**: `user-registered.event.ts`, `password-changed.event.ts`
 
 ### Application Layer
-- **Use Case Services**: `user-creator.service.ts`, `user.service.ts`
+- **Application Services**: `user.service.ts`, `task.service.ts` — one `[context].service.ts` per bounded context, with one public method per use case
 - **DTOs**: `user.dto.ts` (persistence boundary only)
 
 ### Infrastructure Layer
@@ -73,7 +72,7 @@ packages/users/
 │   ├── entities/
 │   └── services/
 ├── application/
-│   └── user/
+│   └── user.service.ts
 └── infrastructure/
 
 ❌ Bad
@@ -102,25 +101,21 @@ domain/
 └── user.event.ts
 ```
 
-### 3. Application Layer Grouped by Entity/Use Case
+### 3. One Application Service per Bounded Context
+
+Each bounded context has a single `[context].service.ts` exposing one public method per use case — not one class (and file) per use case.
 
 ```
 ✅ Good
 application/
-├── user/
-│   ├── user-creator.service.ts
-│   ├── user-updater.service.ts
-│   └── user-finder.service.ts
-└── profile/
-    ├── profile-creator.service.ts
-    └── profile-updater.service.ts
+└── user.service.ts        # UserService — register(), getById(), updatePassword(), …
 
-❌ Bad
+❌ Bad — one class per use case
 application/
-├── user-creator.service.ts
-├── user-updater.service.ts
-├── profile-creator.service.ts
-└── profile-updater.service.ts
+└── user/
+    ├── user-creator.service.ts
+    ├── user-updater.service.ts
+    └── user-finder.service.ts
 ```
 
 ## Import Organization
@@ -178,9 +173,7 @@ export { UserRole } from './domain/entities/user-role'
 export type { UserRepository } from './domain/repositories/user.repository'
 
 // Application exports (use cases)
-export { UserCreator } from './application/user/user-creator.service'
-export { UserFinder } from './application/user/user-finder.service'
-export type { CreateUserInput } from './application/user/user-creator.service'
+export { UserService } from './application/user.service'
 
 // Don't export internal implementation details
 // ❌ export { InMemoryUserRepository } from './infrastructure/repositories/in-memory-user.repository'
@@ -197,8 +190,7 @@ export type { UserRepository } from './repositories/user.repository'
 export { UserValidator } from './services/user-validator.service'
 
 // application/index.ts
-export { UserCreator } from './user/user-creator.service'
-export { UserFinder } from './user/user-finder.service'
+export { UserService } from './user.service'
 
 // infrastructure/index.ts
 export { InMemoryUserRepository } from './repositories/in-memory-user.repository'
@@ -268,7 +260,7 @@ packages/users/
 │   ├── entities/user.ts
 │   └── services/user-validator.service.ts
 ├── application/
-│   └── user/user-creator.service.ts
+│   └── user.service.ts
 ├── infrastructure/
 │   └── repositories/user-prisma.repository.ts
 └── tests/
@@ -277,7 +269,7 @@ packages/users/
     │   │   ├── entities/user.test.ts
     │   │   └── services/user-validator.service.test.ts
     │   └── application/
-    │       └── user/user-creator.service.test.ts
+    │       └── user.service.test.ts
     ├── integration/                       # Real DB via Prisma + PostgreSQL
     │   └── infrastructure/
     │       └── repositories/user-prisma.repository.integration.test.ts

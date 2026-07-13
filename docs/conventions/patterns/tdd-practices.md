@@ -18,14 +18,14 @@ Before writing any test:
 - Record the list as `TODO:` comments at the top of the test file. Delete each as the corresponding case goes green.
 
 ```typescript
-// user-creator.service.test.ts
+// user.service.test.ts
 
 // TODO: creates a user with a valid email and password
 // TODO: rejects an email that already exists
 // TODO: rejects a password shorter than 8 characters
 // TODO: hashes the password before persisting
 
-describe('The UserCreator', () => { ... })
+describe('The UserService', () => { ... })
 ```
 
 ### 1. Red
@@ -49,7 +49,7 @@ It's fine — encouraged, even — to hard-code values in the first green. The n
 // First test: "returns 1 for count of new users"
 // Green:
 class UserCounter {
-  run() { return 1 }  // ← hard-coded is OK
+  count() { return 1 }  // ← hard-coded is OK
 }
 ```
 
@@ -95,7 +95,7 @@ If you reach for `while` on the second test, you jumped too far — step back an
 Work from the center of the hexagon outward — **no mocks at any layer**:
 
 1. **Domain** — entities, value objects, domain services. Pure logic, no IO. Test with real instances only.
-2. **Application** — the `run()` service, driven by InMemory fakes (repositories, EventBus, Logger). Zero mocks or stubs.
+2. **Application** — the `[Context]Service` and its use-case methods, driven by InMemory fakes (repositories, EventBus, Logger). Zero mocks or stubs.
 3. **Infrastructure** — real adapters (Prisma repo, Elysia controller) once the application layer is stable. Mocks allowed only here and only for external boundaries (e.g. third-party HTTP, push notifications).
 
 ### Why Inside-Out

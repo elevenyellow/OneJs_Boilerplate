@@ -10,6 +10,9 @@ import {
   UpdatePasswordDto,
 } from '../../application/dtos/user.dto'
 import { UserService } from '../../application/user.service'
+import { Email } from '../../domain/value-objects/email'
+import { ResetToken } from '../../domain/value-objects/reset-token'
+import { UserId } from '../../domain/value-objects/user-id'
 
 @Controller('/auth')
 export class AuthController {
@@ -30,7 +33,10 @@ export class AuthController {
       )
 
     const dto = new RegisterUserDto(body.email, body.password)
-    const user = await this.userService.register(dto.email, dto.password)
+    const user = await this.userService.register(
+      Email.create(dto.email),
+      dto.password,
+    )
 
     ctx.set.status = 201
     return user.toDto()
@@ -50,7 +56,7 @@ export class AuthController {
 
     const dto = new LoginDto(body.email, body.password)
     const { token, user } = await this.userService.login(
-      dto.email,
+      Email.create(dto.email),
       dto.password,
     )
 
@@ -70,7 +76,9 @@ export class AuthController {
       )
 
     const dto = new ForgotPasswordDto(body.email)
-    const resetToken = await this.userService.forgotPassword(dto.email)
+    const resetToken = await this.userService.forgotPassword(
+      Email.create(dto.email),
+    )
 
     // In production: send email with reset link, never expose resetToken.
     // Returned here only for demo/development purposes.
@@ -93,7 +101,10 @@ export class AuthController {
       )
 
     const dto = new ResetPasswordDto(body.token, body.newPassword)
-    await this.userService.resetPassword(dto.token, dto.newPassword)
+    await this.userService.resetPassword(
+      ResetToken.create(dto.token),
+      dto.newPassword,
+    )
 
     return { message: 'Password reset successfully' }
   }
@@ -116,7 +127,7 @@ export class AuthController {
     const userId = (ctx.store as { user: { userId: string } }).user.userId
     const dto = new UpdatePasswordDto(body.currentPassword, body.newPassword)
     await this.userService.updatePassword(
-      userId,
+      UserId.fromString(userId),
       dto.currentPassword,
       dto.newPassword,
     )
@@ -128,7 +139,7 @@ export class AuthController {
   @UseAuth()
   async me(ctx: Context) {
     const userId = (ctx.store as { user: { userId: string } }).user.userId
-    const user = await this.userService.getById(userId)
+    const user = await this.userService.getById(UserId.fromString(userId))
 
     if (!user)
       throw new OneJsError(
