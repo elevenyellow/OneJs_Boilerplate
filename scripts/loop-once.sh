@@ -3,7 +3,7 @@
 #
 # Usage: bash scripts/loop-once.sh <change-name> [model]
 #   change-name  required, e.g. add-users-filter-pagination
-#   model        default: the `loop` agent default (openai/gpt-5.4-mini)
+#   model        default: the `loop` agent model in opencode.json (openai/gpt-5.5)
 #
 # Use this to learn the harness and to tune the openspec-loop skill before
 # letting the full loop run unattended via scripts/loop.sh.

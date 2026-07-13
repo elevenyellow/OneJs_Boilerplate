@@ -5,7 +5,7 @@
 #   change-name  required, e.g. add-users-filter-pagination
 #   max-iters    optional hard backstop; empty/0 = unlimited (default). The loop
 #                runs until every task is done, bounded by MAX_RETRIES_PER_TASK.
-#   model        default: the `loop` agent default (openai/gpt-5.4-mini)
+#   model        default: the `loop` agent model in opencode.json (openai/gpt-5.5)
 #
 # Env:
 #   MAX_RETRIES_PER_TASK  consecutive no-progress iterations before aborting a

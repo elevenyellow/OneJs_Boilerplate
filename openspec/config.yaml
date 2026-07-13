@@ -19,9 +19,10 @@ context: |
   Bounded contexts communicate only through application services or
   domain ports, never through direct adapter coupling.
   Auth: Clerk integrated via @OneJs/auth.
-  Testing: bun test runner. Unit tests (*.test.ts) live in tests/ and use
-  InMemory fakes only — zero mocks, stubs or spies. Integration tests
-  (*.integration.test.ts) may mock external libraries when needed.
+  Testing: bun test runner. Unit tests (*.test.ts) live in __tests__/ mirroring
+  source and use InMemory fakes only — zero mocks, stubs or spies. Integration
+  tests (*.integration.test.ts in __tests__/integration/) run against a real
+  Prisma + PostgreSQL database.
   Linting: Biome (bun run lint, bun run lint:fix, bun run format).
   All code, comments, and documentation in English.
 
@@ -38,13 +39,14 @@ context: |
     no JSDoc unless requested
   - guidelines/testing-standards — bun:test runner, AAA structure,
     business-oriented describe/test names, InMemory fakes over mocks,
-    tests in dedicated tests/ folder, integration tests as
-    *.integration.test.ts, FIRST principles
+    tests in __tests__/ mirroring source, integration tests as
+    *.integration.test.ts against a real database, FIRST principles
   - guidelines/tdd-practices — 5-step cycle (Reason → Red → Green →
     Refactor → Re-evaluate), TPP, inside-out development (domain →
     application → infrastructure)
-  - guidelines/git-strategy — Conventional Commits, feature branches
-    off main, mandatory lint:fix + typecheck + test before commit
+  - guidelines/git-strategy — Conventional Commits, worktree-per-change
+    (spec/<change> branch + worktree + PR into main), mandatory
+    lint:fix + typecheck + test before push
 
 rules:
   proposal:
@@ -56,41 +58,37 @@ rules:
     - Organize specs by bounded context matching packages/ or apps/ structure
     - Include edge cases and error scenarios
   design:
-    - Read .agents/skills/guidelines/hexagonal-architecture/ references before designing
-    - Read .agents/skills/guidelines/frontend-patterns/ references for frontend design
+    - Read .agents/skills/guidelines/hexagonal-architecture/ and
+      .agents/skills/guidelines/design-principles/ references before designing
     - Map components to hexagonal layers (domain, application, infrastructure)
     - Identify ports (domain interfaces) and adapters (infrastructure implementations)
     - Application services expose semantic methods (e.g. registerUser, listActiveUsers);
-      use-cases may expose execute(); invariants live in entities/VOs
+      use-cases may expose execute(); invariants live in entities and value objects
     - Bounded contexts communicate through application services or domain ports,
       never through direct adapter coupling
     - Configuration enters through ConfigService.get(key); application services
       do not import config directly
-    - Frontend state — TanStack Query for server state, local useState/hooks for
-      view state
   tasks:
-    - Read .agents/skills/guidelines/tdd-practices/ references before creating tasks
-    - Read .agents/skills/guidelines/testing-standards/ references for test types per layer
-    - Tasks with behavior (entities, VOs, application services, repositories, hooks,
-      components) use TDD format — RED write failing test → GREEN implement →
+    - Read .agents/skills/guidelines/tdd-practices/ and
+      .agents/skills/guidelines/testing-standards/ references before creating tasks
+    - Tasks with behavior (entities, value objects, application services, repositories)
+      use TDD format — RED write failing test → GREEN implement →
       COMMIT (conventional commit) → REFACTOR
     - Tasks without behavior (types, DTOs, wiring, schema migrations) are plain
       tasks without TDD format
     - Order tasks inside-out — domain first, then application, then infrastructure
     - Keep tasks small enough for one TDD cycle
-    - Testing strategy per layer
-    - Domain (entities, VOs, domain services) — unit tests with bun test (*.test.ts in __tests__/)
-    - Application (services with semantic methods or execute()) — unit tests with InMemory repositories (*.test.ts in __tests__/)
-    - Infrastructure DB/repository adapters — unit tests with hand-written InMemory fakes (*.test.ts in __tests__/)
-    - Infrastructure REST @Controller endpoints — integration/e2e tests against a running Elysia
-      server (*.test.ts in __tests__/)
-    - Frontend components and hooks — unit tests with Testing Library (*.test.tsx in __tests__/)
-    - Frontend user journeys — e2e tests with Playwright when applicable
-    - Use InMemory repositories for application service tests. Never mock Prisma
-      directly — use hand-written InMemory fakes for real behavior in tests
-    - After any schema change, regenerate Prisma client with
-      `bun run prisma:build`
-    - Always include a final validation group — run /task-validate,
-      /task-code-review, /task-tests-review, /task-architecture-review, and for
-      frontend changes /task-frontend-review
-    - Always include a final task — commit all changes with a conventional commit message
+    - Testing strategy per layer:
+      - Domain (entities, value objects, domain services) — unit tests with bun test
+        (*.test.ts in __tests__/ mirroring source), zero mocks, InMemory fakes only
+      - Application (services with semantic methods or execute()) — unit tests with
+        InMemory repositories (*.test.ts in __tests__/), zero mocks
+      - Infrastructure DB/repository adapters — integration tests against a real
+        Prisma + PostgreSQL database (*.integration.test.ts in __tests__/integration/)
+      - Infrastructure REST @Controller endpoints — integration/e2e tests against a
+        running Elysia server (*.integration.test.ts in __tests__/integration/)
+    - Never mock Prisma directly — use a real test database in integration tests
+    - After any schema change, regenerate the Prisma client with `bun run prisma:build`
+    - Always include a final validation group that runs `bun run lint:fix`,
+      `bun run typecheck`, and `bun test`
+    - Always end with a final task that commits all changes using a Conventional Commits message

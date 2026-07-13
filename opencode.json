@@ -1,11 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "opencode-go/deepseek-v4-pro",
+  "model": "openai/gpt-5.5",
   "agent": {
     "spec-explore": {
       "description": "Thinking partner. Investigates the codebase, clarifies requirements, and prepares the ground for a proposal. Does NOT write code or final specs.",
       "mode": "primary",
-      "model": "opencode-go/deepseek-v4-pro",
+      "model": "openai/gpt-5.5",
       "temperature": 0.7,
       "reasoningEffort": "high",
       "permission": {
@@ -23,7 +23,7 @@
     "spec-propose": {
       "description": "OpenSpec propose mode. Generates the full change folder (proposal.md, design.md, specs/, tasks.md) under openspec/changes/<id>/. Only writes inside openspec/.",
       "mode": "primary",
-      "model": "opencode-go/deepseek-v4-pro",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -41,7 +41,7 @@
     "spec-apply": {
       "description": "OpenSpec apply mode. Implements tasks from an existing change following hexagonal architecture and TDD. ALWAYS reads openspec/changes/<id>/ before editing code. Commits are operator opt-in.",
       "mode": "primary",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "medium",
       "permission": {
@@ -59,7 +59,7 @@
     "spec-archive": {
       "description": "OpenSpec archive mode. After explicit review, confirms archive policy and delegates spec updates plus the archive move to `openspec archive`.",
       "mode": "primary",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0.1,
       "reasoningEffort": "medium",
       "permission": {
@@ -76,7 +76,7 @@
     "spec-review": {
       "description": "OpenSpec review mode. Runs the full review gate before archive: invokes code/tests/architecture reviewers in parallel, consolidates findings, applies fixes, and validates with project-validator until green.",
       "mode": "primary",
-      "model": "opencode-go/deepseek-v4-pro",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -93,7 +93,7 @@
     "spec-loop": {
       "description": "Unattended Ralph-style loop over an OpenSpec change. Implements ONE task per iteration with strict TDD, gated by @project-validator, until every task is checked. Driven externally by scripts/loop.sh.",
       "mode": "primary",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "medium",
       "permission": {
@@ -113,7 +113,7 @@
     "code-reviewer": {
       "description": "Reviews production code in a scoped diff against MATO's design, naming, DI, and error-handling conventions. Applies fixes inside the scope.",
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -128,7 +128,7 @@
     "tests-reviewer": {
       "description": "Reviews test quality and coverage inside a scoped diff. Fixes low-ambiguity issues and adds missing tests when behavior is clear.",
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "medium",
       "permission": {
@@ -143,7 +143,7 @@
     "architecture-reviewer": {
       "description": "Reviews hexagonal/DDD architecture compliance inside a scoped diff and fixes violations.",
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "high",
       "permission": {
@@ -158,7 +158,7 @@
     "frontend-reviewer": {
       "description": "Reviews frontend changes (apps/next, apps/admin, apps/mobile) for component, hook, routing, and API integration issues. Applies fixes inside the scope.",
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0.2,
       "reasoningEffort": "medium",
       "permission": {
@@ -173,7 +173,7 @@
     "project-validator": {
       "description": "Runs full project validation (biome check, type-check, bun test), fixes issues, and re-runs until clean.",
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0,
       "reasoningEffort": "low",
       "permission": {
@@ -188,7 +188,7 @@
     "project-validator-fast": {
       "description": "Fast scoped validator for interactive apply. Validates only touched packages \u2014 scoped lint + scoped tests + whole-project typecheck. Use after each task during apply. Escalate to @project-validator for broad changes (shared packages, schema, root config) or at review/loop checkpoints.",
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "openai/gpt-5.5",
       "temperature": 0,
       "reasoningEffort": "low",
       "permission": {
