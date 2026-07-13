@@ -5,7 +5,7 @@
 #   change-name  required, e.g. add-users-filter-pagination
 #   max-iters    optional hard backstop; empty/0 = unlimited (default). The loop
 #                runs until every task is done, bounded by MAX_RETRIES_PER_TASK.
-#   model        default: the `loop` agent model in opencode.json (openai/gpt-5.5)
+#   model        default: the `spec-loop` agent model in opencode.json (openai/gpt-5.5)
 #
 # Env:
 #   MAX_RETRIES_PER_TASK  consecutive no-progress iterations before aborting a
@@ -111,7 +111,7 @@ while true; do
   echo "[loop] iter $iter ($pending_before task(s) pending, retry $retries/$MAX_RETRIES_PER_TASK)"
 
   OUTPUT=$(bun --env-file=.env.local run scripts/opencode.ts run \
-    --agent loop \
+    --agent spec-loop \
     "${MODEL_ARGS[@]}" \
     "$KICKOFF" 2>&1)
   echo "$OUTPUT"

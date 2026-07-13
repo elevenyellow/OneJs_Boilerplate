@@ -90,6 +90,23 @@
       },
       "prompt": "{file:./.agents/skills/openspec-review/SKILL.md}"
     },
+    "spec-merge-review": {
+      "description": "Pre-merge gate for the worktree→PR flow. Given a spec/<change> branch or PR, checks supersession and mergeability against the CURRENT main, runs the reviewer panel on the branch→main diff, confirms the branch is green, and emits MERGE / REBASE-FIRST / CLOSE-SUPERSEDED / FIX. Read-only — never merges; the operator merges. Sits between spec-review and the merge.",
+      "mode": "primary",
+      "model": "openai/gpt-5.5",
+      "temperature": 0.2,
+      "reasoningEffort": "high",
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "task": "allow",
+        "question": "allow"
+      },
+      "prompt": "{file:./.agents/skills/openspec-merge-review/SKILL.md}"
+    },
     "spec-loop": {
       "description": "Unattended Ralph-style loop over an OpenSpec change. Implements ONE task per iteration with strict TDD, gated by @project-validator, until every task is checked. Driven externally by scripts/loop.sh.",
       "mode": "primary",

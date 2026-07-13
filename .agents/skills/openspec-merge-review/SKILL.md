@@ -32,7 +32,7 @@ This closes the gap that `openspec-review` (pre-archive, on the local change) le
    - `@code-reviewer` — always.
    - `@tests-reviewer` — if any `__tests__/` or `*.test.*` changed.
    - `@architecture-reviewer` — if `packages/*/domain|application`, ports/adapters, or `*.model.prisma` changed.
-   - `@frontend-reviewer` — if `apps/admin`, `apps/summit`, or `apps/web` changed.
+   - `@frontend-reviewer` — if any `apps/` or `packages/*/infrastructure/` path changed.
    Collect findings; keep only CRITICAL/HIGH as merge-blocking.
 
    **Bounds (prevent runaway fan-out):** launch each applicable reviewer **once** for this branch tip — do not re-spawn the panel within a run, and do not re-run the panel on a tip you have already reviewed (idempotent per branch-tip SHA). The reviewers are leaf agents: they report findings only and must not spawn further sub-agents or trigger fixes.
