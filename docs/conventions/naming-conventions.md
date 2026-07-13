@@ -15,15 +15,15 @@ email.ts                         # Value Object
 user-id.ts                       # Value Object
 user.repository.interface.ts     # Repository port
 in-memory-user.repository.ts     # Repository adapter
-user-creator.service.ts          # Application service
+user.service.ts                  # Application service (one per bounded context)
 user-registered.event.ts         # Domain event
 user.dto.ts                      # DTO
 auth.controller.ts               # Controller
 
 ❌ Bad
-UserCreator.service.ts
-userCreator.service.ts
-user_creator.service.ts
+User.service.ts
+userService.service.ts
+user_service.service.ts
 user.entity.ts     ← don't add .entity. suffix
 email.vo.ts        ← don't add .vo. suffix
 ```
@@ -36,7 +36,7 @@ email.vo.ts        ← don't add .vo. suffix
 | Value Object | `.ts` | `email.ts`, `user-id.ts`, `user-role.ts` |
 | Repository interface | `.repository.interface.ts` | `user.repository.interface.ts` |
 | Repository impl | `.repository.ts` | `in-memory-user.repository.ts` |
-| Service | `.service.ts` | `user-creator.service.ts` |
+| Service | `.service.ts` | `user.service.ts`, `task.service.ts` |
 | Domain event | `.event.ts` | `user-registered.event.ts` |
 | DTO | `.dto.ts` | `user.dto.ts` |
 | Controller | `.controller.ts` | `auth.controller.ts` |
@@ -47,16 +47,16 @@ email.vo.ts        ← don't add .vo. suffix
 
 ```typescript
 ✅ Good
-export class UserCreator { }
+export class UserService { }
 export class InMemoryUserRepository { }
 export class Email { }
 export class UserId { }
 export class UserRole { }
 
 ❌ Bad
-export class userCreator { }
-export class User_Creator { }
-export class user_creator { }
+export class userService { }
+export class User_Service { }
+export class user_service { }
 export class UserFactory { }    // ← No factory classes; use @Injectable() DI
 ```
 
@@ -68,7 +68,7 @@ export class UserFactory { }    // ← No factory classes; use @Injectable() DI
 | Value Object | `[Concept]` | `Email`, `UserId`, `UserRole`, `PasswordHash` |
 | Repository interface | `I[Entity]Repository` | `IUserRepository`, `IOrderRepository` |
 | Repository impl | `[Storage][Entity]Repository` | `InMemoryUserRepository`, `UserPrismaRepository` |
-| Application service | `[Entity][Action]` | `UserCreator`, `UserFinder` |
+| Application service | `[Context]Service` | `UserService`, `TaskService` |
 | Domain service | `[Entity][Action]` | `UserValidator`, `PricingCalculator` |
 | Domain event | `[Entity][Action]Event` | `UserRegisteredEvent`, `PasswordChangedEvent` |
 | Controller | `[Entity]Controller` | `AuthController` |
@@ -79,13 +79,11 @@ export class UserFactory { }    // ← No factory classes; use @Injectable() DI
 
 ```typescript
 ✅ Good
-class UserCreator {
-  async run(email: Email, passwordHash: PasswordHash): Promise<User> { }  // VO params
-  private validateUniqueness(email: Email): Promise<void> { }
-}
-
-class UserFinder {
-  async run(id: UserId): Promise<User | null> { }  // VO param
+class UserService {
+  // One public method per use case, named after the operation
+  async register(email: Email, password: string): Promise<User> { }  // VO + raw password
+  async getById(id: UserId): Promise<User | null> { }                // VO param
+  private async validateUniqueness(email: Email): Promise<void> { }
 }
 
 interface IUserRepository {
@@ -97,9 +95,11 @@ interface IUserRepository {
 
 ❌ Bad
 class UserCreator {
-  async execute() { }                          // Not run()
-  async run(email: string): Promise<User> { }  // Primitive param
-  async CreateUser() { }                       // PascalCase
+  async run(email: Email, hash: PasswordHash): Promise<User> { }  // No run()/one-class-per-use-case
+}
+class UserService {
+  async getById(id: string): Promise<User | null> { }  // Primitive param
+  async GetById() { }                                  // PascalCase
 }
 ```
 
@@ -107,7 +107,7 @@ class UserCreator {
 
 | Purpose | Method Name | Notes |
 |---------|-------------|-------|
-| Service entry point | `run(vo)` | Always VOs/entities as params, never primitives |
+| Use-case method | `[verb](vo)` | Named after the operation (`register`, `complete`, …); VOs/entities as params, never primitives (raw password excepted) |
 | Find by ID | `findById(id: SomeId)` | Returns `Promise<Entity \| null>` |
 | Find by field | `findBy[Field](vo: FieldVO)` | VO param |
 | Persist | `save(entity: Entity)` | Repository pattern |
@@ -196,13 +196,13 @@ export interface UserRepository { }   // ambiguous with implementation
 
 ```typescript
 ✅ Good
-import { UserCreator } from './user-creator.service'
+import { UserService } from './user.service'
 import { InMemoryUserRepository } from './in-memory-user.repository'
-export { UserCreator } from './user-creator.service'
+export { UserService } from './user.service'
 
 ❌ Bad
-import { UserCreator as Creator } from './user-creator.service'
-import UserCreator from './user-creator.service'  // No default exports
+import { UserService as Service } from './user.service'
+import UserService from './user.service'  // No default exports
 ```
 
 ## Best Practices
@@ -227,10 +227,10 @@ in-memory-user.repository.ts   // Adapter
 class User extends EntityBase<UserId> { }
 class Email extends ValueObjectBase<string> { }
 class InMemoryUserRepository implements IUserRepository { }
-class UserCreator { async run(email: Email, hash: PasswordHash): Promise<User> { } }
+class UserService { async register(email: Email, password: string): Promise<User> { } }
 
 // Correct — VO params throughout
 async findByEmail(email: Email): Promise<User | null>
-async run(id: UserId): Promise<User | null>
+async getById(id: UserId): Promise<User | null>
 static register(email: Email, passwordHash: PasswordHash): User
 ```

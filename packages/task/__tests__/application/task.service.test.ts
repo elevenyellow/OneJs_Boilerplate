@@ -1,9 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
+import { TaskService } from '../../application/task.service'
 import { Task } from '../../domain/entities/task'
 import type { ITaskRepository } from '../../domain/repositories/task.repository.interface'
-import { TaskService } from '../../application/task.service'
+import { TaskDescription } from '../../domain/value-objects/task-description'
+import { TaskId } from '../../domain/value-objects/task-id'
+import { TaskTitle } from '../../domain/value-objects/task-title'
 
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
 const UUID_REGEX =
@@ -60,27 +63,33 @@ describe('TaskService', () => {
     it('returns task when found', async () => {
       const t = task()
       repo.findById = mock(async () => t)
-      expect(await service.getById(UUID)).toEqual(t)
+      expect(await service.getById(TaskId.fromString(UUID))).toEqual(t)
     })
 
     it('returns null when not found', async () => {
-      expect(await service.getById(UUID)).toBeNull()
+      expect(await service.getById(TaskId.fromString(UUID))).toBeNull()
     })
   })
 
   describe('create()', () => {
     it('saves the task with a generated UUID v4', async () => {
-      const result = await service.create('Buy milk', 'Full fat')
+      const result = await service.create(
+        TaskTitle.create('Buy milk'),
+        TaskDescription.create('Full fat'),
+      )
 
-      expect(result.title.getValue()).toBe('Buy milk')
-      expect(result.description.getValue()).toBe('Full fat')
-      expect(result.status.getValue()).toBe(false)
+      expect(result.getTitle().getValue()).toBe('Buy milk')
+      expect(result.getDescription().getValue()).toBe('Full fat')
+      expect(result.getStatus().getValue()).toBe(false)
       expect(result.getId().getValue()).toMatch(UUID_REGEX)
       expect(repo.save).toHaveBeenCalledTimes(1)
     })
 
     it('publishes internal and cross-app events with a DTO payload', async () => {
-      await service.create('Task', 'Details')
+      await service.create(
+        TaskTitle.create('Task'),
+        TaskDescription.create('Details'),
+      )
 
       expect(eventBus.publish).toHaveBeenCalledTimes(2)
 
@@ -100,14 +109,14 @@ describe('TaskService', () => {
   describe('complete()', () => {
     it('marks the task as done', async () => {
       repo.findById = mock(async () => task())
-      const result = await service.complete(UUID)
-      expect(result.status.getValue()).toBe(true)
+      const result = await service.complete(TaskId.fromString(UUID))
+      expect(result.getStatus().getValue()).toBe(true)
       expect(repo.save).toHaveBeenCalledTimes(1)
     })
 
     it('throws OneJsError when task not found', async () => {
       try {
-        await service.complete(UUID)
+        await service.complete(TaskId.fromString(UUID))
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)
@@ -122,13 +131,13 @@ describe('TaskService', () => {
   describe('delete()', () => {
     it('deletes the task', async () => {
       repo.findById = mock(async () => task())
-      await service.delete(UUID)
-      expect(repo.delete).toHaveBeenCalledWith(UUID)
+      await service.delete(TaskId.fromString(UUID))
+      expect(repo.delete).toHaveBeenCalledWith(TaskId.fromString(UUID))
     })
 
     it('throws OneJsError when task not found', async () => {
       try {
-        await service.delete(UUID)
+        await service.delete(TaskId.fromString(UUID))
         expect.unreachable('should have thrown')
       } catch (err) {
         expect(err).toBeInstanceOf(OneJsError)

@@ -1,11 +1,10 @@
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
 import {
   Container,
+  clearMarkers,
   Injectable,
+  Module,
   OneJs,
   PluginRegistry,
-  Module,
-  clearMarkers,
 } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
 import { clearModules } from '@OneJs/core/bootstrap/module'
@@ -15,6 +14,7 @@ import {
   EventBusPlugin,
   EventHandler,
 } from '@OneJs/event-bus'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { clearEventHandlers, getAllEventHandlers } from '../domain/store'
 
 async function startKernel(container: Container): Promise<void> {

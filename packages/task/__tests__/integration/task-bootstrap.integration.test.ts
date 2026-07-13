@@ -1,17 +1,19 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
 import {
   Container,
+  clearMarkers,
+  Module,
   OneJs,
   PluginRegistry,
-  Module,
-  clearMarkers,
 } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
 import { clearModules } from '@OneJs/core/bootstrap/module'
 import { clearBootstraps } from '@OneJs/core/bootstrap/store'
-import { Task } from '../../domain/entities/task'
-import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import { TaskSeeder } from '../../application/bootstrap/task-seeder'
+import { Task } from '../../domain/entities/task'
+import { TaskDescription } from '../../domain/value-objects/task-description'
+import { TaskTitle } from '../../domain/value-objects/task-title'
+import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
 
 describe('TaskSeeder — integration (OneJs bootstrap)', () => {
   beforeEach(() => {
@@ -71,7 +73,10 @@ describe('TaskSeeder — integration (OneJs bootstrap)', () => {
     const container = await bootWithSeeder()
     const repo = container.get(InMemoryTaskRepository)
 
-    const extra = Task.create('Extra task', 'Should not be duplicated')
+    const extra = Task.create(
+      TaskTitle.create('Extra task'),
+      TaskDescription.create('Should not be duplicated'),
+    )
     await repo.save(extra)
     expect(await repo.findAll()).toHaveLength(4)
 

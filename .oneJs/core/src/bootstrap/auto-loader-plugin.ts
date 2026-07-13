@@ -1,8 +1,8 @@
 import type { Container } from '../container'
 import { logger } from '../logger'
 import { GlobModuleLoader } from './adapters/GlobModuleLoader'
-import type { AutoLoaderOptions, IModuleLoader } from './ports/IModuleLoader'
 import type { BootstrapPlugin } from './plugin-registry'
+import type { AutoLoaderOptions, IModuleLoader } from './ports/IModuleLoader'
 
 export type { AutoLoaderOptions } from './ports/IModuleLoader'
 

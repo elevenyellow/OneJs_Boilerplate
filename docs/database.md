@@ -20,32 +20,39 @@ The main schema is located at `prisma/schema.prisma`.
 Repositories act as a bridge between the Domain and Infrastructure layers. You should define an interface in the Domain and implement it using Prisma in the Infrastructure.
 
 ### Base Repository
-OneJs provides a `PrismaRepository` base class that simplifies common CRUD operations.
+OneJs provides a `PrismaRepository` base class that exposes `findAll`, `findOne`, `create`, `update`, `delete`, and `findWithPagination`. Extend it in your Prisma adapter; implement the domain port interface separately.
 
 ```typescript
 import { Inject, Injectable } from '@OneJs/core'
 import { PrismaClientOneJs, PrismaRepository } from '@OneJs/prisma'
-import { UserEntity } from '@user/domain/entities/user.entity'
+import { User } from '@user/domain/entities/user'
+import { Email } from '@user/domain/value-objects/email'
+import type { IUserRepository } from '@user/domain/repositories/user.repository.interface'
 
 @Injectable()
-export class UserPrismaRepository extends PrismaRepository<'user'> {
+export class UserPrismaRepository
+  extends PrismaRepository<'user'>
+  implements IUserRepository
+{
   constructor(
     @Inject(PrismaClientOneJs) protected readonly prisma: PrismaClientOneJs,
   ) {
     super(prisma, 'user')
   }
 
-  async findByEmail(email: string): Promise<UserEntity | null> {
-    const user = await this.prisma.user.findUnique({ where: { email } })
-    return user ? this.toEntity(user) : null
-  }
-
-  // Mapper to Domain Entity
-  private toEntity(doc: any): UserEntity {
-    return new UserEntity(doc.id, doc.name, doc.email)
+  async findByEmail(email: Email): Promise<User | null> {
+    const row = await this.prisma.user.findUnique({
+      where: { email: email.getValue() },
+    })
+    return row ? User.reconstitute(row.id, row.email, row.passwordHash, row.role, row.createdAt, row.updatedAt) : null
   }
 }
 ```
+
+Key conventions:
+- Repository interface methods receive **Value Objects**, never primitives (`email: Email`, not `email: string`).
+- Hydrate domain entities via **`Entity.reconstitute()`** — never `new Entity(...)` directly.
+- `this.model` (exposed by the base class) gives direct access to the Prisma delegate for the model.
 
 ## Migrations
 

@@ -6,8 +6,8 @@ This folder is the **canonical location** for everything that customizes AI agen
 
 - `agents/` — subagent definitions (Markdown with frontmatter). Each file describes one focused responsibility (review code, validate project, draft a spec).
 - `skills/` — skill prompts grouped by purpose:
-  - `guidelines/` — design, hexagonal, TDD, testing, frontend, git rules.
-  - `openspec-*` — Spec Driven Development workflow (explore, propose, apply, archive).
+  - `guidelines/` — design, hexagonal, TDD, testing, git rules.
+  - `openspec-*` — Spec Driven Development workflow (explore, propose, apply, review, archive).
   - `action-*` — focused workflows (TDD, refactor, generate tests).
   - `task-*` — task-oriented automations (validate, code review, QA).
 

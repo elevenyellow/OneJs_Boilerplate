@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { Container, Logger } from '@OneJs/core'
-import { Server } from '.././http-server'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { clearControllers, registerController } from '.././controller-registry'
+import { Server } from '.././http-server'
 
 class PatchController {
   static __meta = {
@@ -87,7 +87,9 @@ describe('Server', () => {
   it('registers PATCH routes', () => {
     ;(server as any).registerControllerRoutes(PatchController)
 
-    const infoCalls = logger.info.mock.calls.map((call) => String(call[0] ?? ''))
+    const infoCalls = logger.info.mock.calls.map((call) =>
+      String(call[0] ?? ''),
+    )
 
     expect(
       infoCalls.some((message) =>
@@ -99,10 +101,14 @@ describe('Server', () => {
   it('skips unsupported HTTP methods', () => {
     ;(server as any).registerControllerRoutes(InvalidMethodController)
 
-    const infoCalls = logger.info.mock.calls.map((call) => String(call[0] ?? ''))
+    const infoCalls = logger.info.mock.calls.map((call) =>
+      String(call[0] ?? ''),
+    )
 
     expect(
-      infoCalls.some((message) => message.includes('Registering route [OPTIONS]')),
+      infoCalls.some((message) =>
+        message.includes('Registering route [OPTIONS]'),
+      ),
     ).toBe(false)
   })
 
@@ -124,7 +130,9 @@ describe('Server', () => {
 
     server.start(0)
 
-    const infoCalls = logger.info.mock.calls.map((call) => String(call[0] ?? ''))
+    const infoCalls = logger.info.mock.calls.map((call) =>
+      String(call[0] ?? ''),
+    )
     const getRouteRegistrations = infoCalls.filter((message) =>
       message.includes('Registering route [GET] /api/tasks/'),
     )

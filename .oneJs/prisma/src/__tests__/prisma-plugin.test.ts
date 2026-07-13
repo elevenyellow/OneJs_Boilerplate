@@ -1,7 +1,7 @@
-import { describe, test, expect } from 'bun:test'
+import type { Container } from '@OneJs/core'
+import { describe, expect, test } from 'bun:test'
 import { PrismaPlugin } from '../prisma-plugin'
 import { PrismaClientOneJs } from '../services/prisma-client'
-import type { Container } from '@OneJs/core'
 
 type RegisterCall = { cls: unknown; opts: unknown }
 

@@ -34,7 +34,7 @@ style: |
 
 **Resumen de la sesión** · 8 páginas · 10 min de lectura
 
-Template de referencia: `smoke-test`
+Template de referencia: `onejs-boilerplate`
 
 ---
 
@@ -125,11 +125,6 @@ Si tus convenciones viven en tu cabeza, el agente las ignora. Si viven en un wik
 // opencode.json
 "instructions": [
   "AGENTS.md",
-  ".agents/skills/guidelines/design-principles/SKILL.md",
-  ".agents/skills/guidelines/hexagonal-architecture/SKILL.md",
-  ".agents/skills/guidelines/tdd-practices/SKILL.md",
-  ".agents/skills/guidelines/testing-standards/SKILL.md",
-  ".agents/skills/guidelines/frontend-patterns/SKILL.md",
   ".agents/skills/guidelines/git-strategy/SKILL.md"
 ]
 ```
@@ -170,20 +165,21 @@ Las **skills** son el QUÉ hacer. Los **agentes** son el QUIÉN lo hace.
 
 ## Roles típicos del equipo
 
-`code-reviewer` · `architecture-reviewer` · `tests-reviewer` · `frontend-reviewer` · `spec-writer` · `spec-reviewer` · `project-validator`
+`code-reviewer` · `architecture-reviewer` · `tests-reviewer` · `frontend-reviewer` · `project-validator` · `qa-tester` · `ux-reviewer`
 
 Cada rol con un fichero `.md` que define: **descripción, tools permitidas, constraints (lo que NO puede hacer), scope, qué revisar, formato de output**.
 
 ## La regla que más cambia el juego
 
 ```markdown
-## Mandatory Review Gate
-After modifying production code, you MUST run code-review,
-tests-review, and architecture-review IN PARALLEL before
-reporting the task as complete. Non-negotiable.
+## Mandatory Validation Gate
+After every completed task during interactive `apply`, invoke
+`@project-validator-fast` (scoped lint + tests + incremental typecheck).
+Escalate to the full `@project-validator` on broad blast radius or last task of a block.
+Reviewers (`code-reviewer`, `tests-reviewer`, etc.) run ONLY during `spec-review` — never during `apply`.
 ```
 
-Cuando el agente principal termina, **dispara los tres reviewers en paralelo**. Tú recibes código ya revisado por tres roles distintos.
+Por tarea el agente usa el **validador rápido** (barato, incremental). En checkpoints de bloque usa el **validador completo** (monorepo entero). Los reviewers se reservan para la fase `spec-review` — no contaminan el `apply`.
 
 ## La idea
 
@@ -203,19 +199,22 @@ El agente que improvisa **deriva en 20 minutos**. Empieza bien, se va por las ra
 
 ## La solución
 
-Spec Driven Development: la spec es el **contrato** entre tú y el agente. Cuatro fases, una carpeta por cambio:
+Spec Driven Development: la spec es el **contrato** entre tú y el agente. Cinco fases, una carpeta por cambio:
 
 ```
-  explore  →  pensar, investigar el código
+  explore  →  investigar el código, clarificar requisitos
               NO escribe nada
-              
-  plan     →  generar proposal.md, design.md,
+
+  propose  →  generar proposal.md, design.md,
               specs/ (Given/When/Then), tasks.md
               escribe SOLO dentro de openspec/
-              
-  build    →  ejecutar las tareas del plan
+
+  apply    →  ejecutar las tareas del plan
               aquí sí toca el código de verdad
-              
+
+  review   →  reviewers en paralelo (code/tests/architecture)
+              corrige todos los hallazgos HIGH+; valida hasta verde
+
   archive  →  cerrar el cambio, mover a archive/,
               actualizar specs canónicas
 ```
@@ -258,29 +257,35 @@ Usar el mismo modelo, la misma temperatura y las mismas tools para *todo* es car
 Cada fase de OpenSpec se materializa como un **modo** con su modelo, temperatura y permisos de tools.
 
 ```jsonc
-// opencode.json (extracto)
-"explore": {
-  "model": "claude-opus-4.7",
+// opencode.json (extracto — la clave de permisos es "permission" con valores "allow"/"deny")
+"spec-explore": {
+  "model": "github-copilot/claude-opus-4.8",
   "temperature": 0.7,
   "reasoningEffort": "high",
-  "tools": { "write": false, "edit": false, "bash": false }
+  "permission": { "edit": "deny", "bash": "deny", "read": "allow" }
 },
-"propose": {
-  "model": "claude-opus-4.7",
+"spec-propose": {
+  "model": "github-copilot/claude-opus-4.8",
   "temperature": 0.2,
   "reasoningEffort": "high",
-  "tools": { "write": true, "edit": true }  // solo en openspec/
+  "permission": { "edit": "allow", "bash": "allow" }  // solo en openspec/
 },
-"apply": {
-  "model": "claude-sonnet-4.5",
+"spec-apply": {
+  "model": "github-copilot/claude-sonnet-4.6",
   "temperature": 0.2,
   "reasoningEffort": "medium",
-  "tools": { "write": true, "edit": true, "bash": true }
+  "permission": { "edit": "allow", "bash": "allow" }
 },
-"archive": {
-  "model": "claude-sonnet-4.5",
+"spec-loop": {
+  "model": "github-copilot/claude-sonnet-4.6",
+  "temperature": 0.2,
+  "reasoningEffort": "medium",
+  "permission": { "task": { "project-validator": "allow", "*": "deny" } }
+},
+"spec-archive": {
+  "model": "github-copilot/claude-sonnet-4.6",
   "temperature": 0.1,
-  "reasoningEffort": "low"
+  "reasoningEffort": "medium"
 }
 ```
 
@@ -324,7 +329,7 @@ Spec Driven Development con OpenSpec, y modos por fase en vuestra herramienta de
 
 ### Para profundizar
 
-- **Template de referencia**: `smoke-test` *(repo público)*
+- **Template de referencia**: `onejs-boilerplate` *(repo público)*
 - **Documentación de convenciones**: `docs/conventions/`
 - **OpenSpec**: github.com/Fission-AI/OpenSpec
 - **OpenCode**: opencode.ai

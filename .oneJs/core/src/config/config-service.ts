@@ -27,7 +27,10 @@ export class ConfigService {
       this.loadEnvFile(path.join(rootDirectory, file))
     }
 
-    this.logger.info('OneJs:config', 'All .env files from root loaded successfully.')
+    this.logger.info(
+      'OneJs:config',
+      'All .env files from root loaded successfully.',
+    )
   }
 
   private loadEnvFile(filePath: string): void {

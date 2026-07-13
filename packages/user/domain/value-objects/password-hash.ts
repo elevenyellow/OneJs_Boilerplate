@@ -8,7 +8,11 @@ export class PasswordHash extends ValueObjectBase<string> {
 
   static create(hash: string): PasswordHash {
     if (!hash?.trim())
-      throw new OneJsError('PasswordHash cannot be empty', 400, 'Invalid password hash')
+      throw new OneJsError(
+        'PasswordHash cannot be empty',
+        400,
+        'Invalid password hash',
+      )
 
     return new PasswordHash(hash)
   }

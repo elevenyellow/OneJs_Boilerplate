@@ -1,6 +1,6 @@
 ---
 name: design-principles
-description: Design, naming, and error-handling rules for this monorepo — kebab-case files, PascalCase classes, run() service entry point, @Injectable()/@Inject() DI, no getters/setters, rich domain models, OneJsError. Load when writing, renaming, or reviewing TypeScript code in packages/.
+description: Design, naming, and error-handling rules for this monorepo — kebab-case files, PascalCase classes, one [Context]Service per bounded context with use-case methods, @Injectable()/@Inject() DI, private fields + getters (no setters), rich domain models, OneJsError. Load when writing, renaming, or reviewing TypeScript code in packages/.
 ---
 
 # Design Principles
@@ -13,7 +13,7 @@ Short checklist. Canonical rules live in `docs/conventions/` — go there for fu
 - Suffixes used: `.service.ts`, `.repository.interface.ts`, `.repository.ts`, `.controller.ts`, `.event.ts`, `.dto.ts`.
 - Classes: `PascalCase`. Repository interfaces: `I[Entity]Repository` (with `I` prefix).
 - Methods: `camelCase`. Constants: `SCREAMING_SNAKE_CASE`.
-- Functions = verbs (`findByEmail`). Classes = nouns (`UserCreator`).
+- Functions = verbs (`findByEmail`). Classes = nouns (`UserService`).
 - No `helper`, `util`, `manager` catch-alls. No `Impl`, `Abstract` unless the abstraction is real.
 - No factory classes — use `@Injectable()` / `@Inject()`.
 
@@ -24,11 +24,11 @@ Short checklist. Canonical rules live in `docs/conventions/` — go there for fu
 - `@Injectable()` on every service and repository implementation; `@Inject(ConcreteClass)` on constructor params.
 - Inject by interface type, bind via concrete token: `@Inject(InMemoryRepo) private readonly repo: IRepo`.
 - No service locators, no globals, no factory classes.
-- No getters/setters on domain models — expose behavior through named methods.
+- Domain models keep state in `private readonly` fields (prefixed `_`) and expose it through getter methods (`getEmail()`, …) — no public properties, no setters. Behavior is exposed through named methods.
 - Rich domain models — invariants and transitions belong on the entity, not in a service.
-- Application services expose a single public `run(vo|entity)` method. No `UseCase` suffix.
-- **No primitives as parameters**: `run()` and repository interface methods receive VOs, entities, or aggregates.
-- Entities are immutable: all properties `readonly`; state transitions via `with*()` returning new instances.
+- One application service per bounded context, named `[Context]Service`, exposing one public method per use case named after the operation (`register`, `getById`, …). No `run()`, no `UseCase` suffix, no one-class-per-use-case.
+- **No primitives as parameters**: application service methods and repository interface methods receive VOs, entities, or aggregates (raw passwords are the documented exception).
+- Entities are immutable: all fields `private readonly`; state transitions via `with*()` returning new instances — never setters.
 
 → Full service pattern: [patterns/service-patterns.md](../../../../docs/conventions/patterns/service-patterns.md)
 

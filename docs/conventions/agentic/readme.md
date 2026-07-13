@@ -45,25 +45,23 @@ Every AI tool wants its own folder: `.claude/`, `.cursor/`, `.github/copilot/`, 
 
 ```
 .agents/                          ← source of truth
-├── agents/                       ← subagent definitions (9 roles)
+├── agents/                       ← subagent definitions (8 roles)
 │   ├── code-reviewer.md
 │   ├── architecture-reviewer.md
 │   ├── tests-reviewer.md
 │   ├── frontend-reviewer.md
-│   ├── spec-writer.md
-│   ├── spec-reviewer.md
 │   ├── project-validator.md
+│   ├── project-validator-fast.md
 │   ├── qa-tester.md
 │   └── ux-reviewer.md
-└── skills/                       ← loadable prompts (16 skills)
+└── skills/                       ← loadable prompts (21 skills)
     ├── guidelines/               ← project conventions
     │   ├── design-principles/
     │   ├── hexagonal-architecture/
     │   ├── tdd-practices/
     │   ├── testing-standards/
-    │   ├── frontend-patterns/
     │   └── git-strategy/
-    ├── openspec-*/               ← spec-driven workflow
+    ├── openspec-*/               ← spec-driven workflow (+ openspec-loop)
     ├── action-*/                 ← focused workflows (TDD, refactor, tests)
     └── task-*/                   ← task automations (validate, review, QA)
 
@@ -98,11 +96,6 @@ If your conventions live in your head, the agent ignores them. If they live in a
 // opencode.json
 "instructions": [
   "AGENTS.md",
-  ".agents/skills/guidelines/design-principles/SKILL.md",
-  ".agents/skills/guidelines/hexagonal-architecture/SKILL.md",
-  ".agents/skills/guidelines/tdd-practices/SKILL.md",
-  ".agents/skills/guidelines/testing-standards/SKILL.md",
-  ".agents/skills/guidelines/frontend-patterns/SKILL.md",
   ".agents/skills/guidelines/git-strategy/SKILL.md"
 ]
 ```
@@ -145,17 +138,16 @@ The agent reads the full docs on demand when it needs detail.
 
 ### Team Roles
 
-The template includes 9 subagents:
+The template includes 8 subagents:
 
 - **code-reviewer** — reviews production code against design, naming, and error-handling rules
 - **architecture-reviewer** — checks hexagonal/DDD compliance (layers, ports, adapters)
 - **tests-reviewer** — reviews test quality and coverage
-- **frontend-reviewer** — checks component, hook, routing, and tRPC integration
-- **spec-writer** — drafts OpenSpec artifacts (proposal, design, specs, tasks)
-- **spec-reviewer** — validates OpenSpec changes for completeness and consistency
-- **project-validator** — runs lint, typecheck, tests; fixes issues until clean
-- **qa-tester** — functional QA of the webapp with Playwright
-- **ux-reviewer** — visual UX evaluation of the webapp
+- **frontend-reviewer** — reviews infrastructure layer changes (apps/, HTTP controllers, adapters) for Elysia conventions
+- **project-validator** — runs full lint + typecheck + tests; fixes issues until clean
+- **project-validator-fast** — scoped lint + scoped tests + incremental typecheck; per-task gate during interactive `apply`
+- **qa-tester** — functional QA via direct HTTP requests against the Elysia API (no browser)
+- **ux-reviewer** — evaluates the Elysia API's external surface: route design, response shapes, HTTP status codes
 
 Each role has an `.md` file defining:
 
@@ -178,20 +170,20 @@ Example from `code-reviewer.md`:
 - NEVER impose undocumented rules from other projects.
 ```
 
-### The Mandatory Review Gate
+### The Mandatory Validation Gate
 
 The most impactful rule in `AGENTS.md`:
 
 ```markdown
-## Mandatory Review Gate
-After modifying production code, you MUST run code-review,
-tests-review, and architecture-review IN PARALLEL before
-reporting the task as complete. Non-negotiable.
+## Mandatory Validation Gate
+After every completed task during interactive `apply`, you MUST invoke
+`@project-validator-fast` (scoped lint + scoped tests + incremental typecheck).
+The task MUST NOT be marked complete until it returns green.
+Escalate to the full `@project-validator` on broad blast radius, schema changes,
+or last task of a block. The `spec-loop` always uses the full `@project-validator`.
 ```
 
-When the main agent finishes implementing, it **fires the three reviewers in parallel**. You get back code already reviewed by three different roles.
-
-For frontend changes, add `frontend-review` to the gate.
+Per-task the main agent runs the **fast validator** (scoped, cheap). At block checkpoints it escalates to the **full validator** (whole-monorepo). Reviewers run only during the dedicated `spec-review` phase — never during `apply`.
 
 ---
 
@@ -203,19 +195,22 @@ An agent that improvises **drifts in 20 minutes**. It starts well, wanders off, 
 
 ### The Solution: Spec Driven Development
 
-The spec is the **contract** between you and the agent. Four phases, one folder per change:
+The spec is the **contract** between you and the agent. Five phases, one folder per change:
 
 ```
-  explore  →  think, investigate the codebase
+  explore  →  investigate the codebase, clarify requirements
               writes NOTHING
-              
-  plan     →  generate proposal.md, design.md,
+
+  propose  →  generate proposal.md, design.md,
               specs/ (Given/When/Then), tasks.md
               writes ONLY inside openspec/
-              
-  build    →  execute the tasks from the plan
+
+  apply    →  execute the tasks from the plan
               this is where real code gets touched
-              
+
+  review   →  run code/tests/architecture reviewers in parallel
+              fix all HIGH+ findings; validate until green
+
   archive  →  close the change, move to archive/,
               update canonical specs
 ```
@@ -279,29 +274,35 @@ Using the same model, the same temperature and the same tools for *everything* i
 Each OpenSpec phase becomes a **mode** with its own model, temperature and tool permissions.
 
 ```jsonc
-// opencode.json (excerpt)
-"explore": {
-  "model": "claude-opus-4.7",
+// opencode.json (excerpt — permission keys use "allow"/"deny" values)
+"spec-explore": {
+  "model": "claude-opus-4.8",
   "temperature": 0.7,
   "reasoningEffort": "high",
-  "tools": { "write": false, "edit": false, "bash": false }
+  "permission": { "edit": "deny", "bash": "deny", "read": "allow" }
 },
-"propose": {
-  "model": "claude-opus-4.7",
+"spec-propose": {
+  "model": "claude-opus-4.8",
   "temperature": 0.2,
   "reasoningEffort": "high",
-  "tools": { "write": true, "edit": true }  // only inside openspec/
+  "permission": { "edit": "allow", "bash": "allow" }  // only inside openspec/
 },
-"apply": {
-  "model": "claude-sonnet-4.5",
+"spec-apply": {
+  "model": "claude-sonnet-4.6",
   "temperature": 0.2,
   "reasoningEffort": "medium",
-  "tools": { "write": true, "edit": true, "bash": true }
+  "permission": { "edit": "allow", "bash": "allow" }
 },
-"archive": {
-  "model": "claude-sonnet-4.5",
+"spec-loop": {
+  "model": "claude-sonnet-4.6",
+  "temperature": 0.2,
+  "reasoningEffort": "medium",
+  "permission": { "task": { "project-validator": "allow", "*": "deny" } }
+},
+"spec-archive": {
+  "model": "claude-sonnet-4.6",
   "temperature": 0.1,
-  "reasoningEffort": "low"
+  "reasoningEffort": "medium"
 }
 ```
 
@@ -344,9 +345,9 @@ Each OpenSpec phase becomes a **mode** with its own model, temperature and tool 
 |---|---|
 | `AGENTS.md` | Universal entry point, loaded by all tools |
 | `.agents/README.md` | Explains the source of truth pattern |
-| `.agents/agents/*.md` | Subagent definitions (9 roles) |
-| `.agents/skills/guidelines/*/SKILL.md` | Project conventions (6 skills, always loaded) |
-| `.agents/skills/openspec-*/SKILL.md` | Spec-driven workflow skills (4 phases) |
+| `.agents/agents/*.md` | Subagent definitions (8 roles) |
+| `.agents/skills/guidelines/*/SKILL.md` | Project conventions (5 skills, always loaded) |
+| `.agents/skills/openspec-*/SKILL.md` | Spec-driven workflow skills (5 phases + loop) |
 | `.agents/skills/action-*/SKILL.md` | Focused workflows (TDD, refactor, tests) |
 | `.agents/skills/task-*/SKILL.md` | Task automations (validate, review, QA) |
 | `opencode.json` | Mode definitions, instructions[], subagent config |

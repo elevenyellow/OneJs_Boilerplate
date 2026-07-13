@@ -11,7 +11,11 @@ export class ResetToken extends ValueObjectBase<string> {
 
   static create(value: string): ResetToken {
     if (!value?.trim())
-      throw new OneJsError('ResetToken cannot be empty', 400, 'Invalid reset token')
+      throw new OneJsError(
+        'ResetToken cannot be empty',
+        400,
+        'Invalid reset token',
+      )
 
     if (!UUID_V4_REGEX.test(value))
       throw new OneJsError(

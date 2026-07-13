@@ -1,9 +1,13 @@
-import { ErrorCodes, Inject, OneJsError, Roles, UseAuth } from '@OneJs/core'
+import { Roles, UseAuth } from '@OneJs/auth'
+import { ErrorCodes, Inject, OneJsError } from '@OneJs/core'
 import { Controller, Delete, Get, Patch, Post } from '@OneJs/server'
 import { AppRoles } from '@shared/auth'
 import type { Context } from 'elysia'
 import { CreateTaskDto } from '../../application/dtos/task.dto'
 import { TaskService } from '../../application/task.service'
+import { TaskDescription } from '../../domain/value-objects/task-description'
+import { TaskId } from '../../domain/value-objects/task-id'
+import { TaskTitle } from '../../domain/value-objects/task-title'
 
 @Controller('/tasks')
 export class TaskController {
@@ -20,7 +24,9 @@ export class TaskController {
   @Get('/:id')
   @UseAuth()
   async getById(ctx: Context) {
-    const task = await this.taskService.getById(ctx.params.id)
+    const task = await this.taskService.getById(
+      TaskId.fromString(ctx.params.id),
+    )
     if (!task)
       throw new OneJsError(
         'Not Found',
@@ -46,7 +52,10 @@ export class TaskController {
       )
 
     const dto = new CreateTaskDto(body.title, body.description ?? '')
-    const task = await this.taskService.create(dto.title, dto.description)
+    const task = await this.taskService.create(
+      TaskTitle.create(dto.title),
+      TaskDescription.create(dto.description),
+    )
 
     ctx.set.status = 201
     return task.toDto()
@@ -57,7 +66,9 @@ export class TaskController {
   @UseAuth()
   @Roles(AppRoles.STAFF, AppRoles.ADMIN)
   async complete(ctx: Context) {
-    const task = await this.taskService.complete(ctx.params.id)
+    const task = await this.taskService.complete(
+      TaskId.fromString(ctx.params.id),
+    )
     return task.toDto()
   }
 
@@ -66,7 +77,7 @@ export class TaskController {
   @UseAuth()
   @Roles(AppRoles.ADMIN)
   async delete(ctx: Context) {
-    await this.taskService.delete(ctx.params.id)
+    await this.taskService.delete(TaskId.fromString(ctx.params.id))
     ctx.set.status = 204
   }
 }

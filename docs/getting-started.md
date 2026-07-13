@@ -7,15 +7,14 @@ This guide will help you get up and running with the OneJs boilerplate.
 Before you begin, ensure you have the following installed on your system:
 
 - **Bun**: The primary runtime and package manager. Install it from [bun.sh](https://bun.sh/).
-- **Docker** or **Podman**: Required for running the database and background services.
-- **Node.js**: (v18 or later) Sometimes required for specific tooling dependencies.
+- **Podman**: Required for running the database and Redis containers (`podman-compose`).
 
 ## Installation
 
 1.  **Clone the repository:**
     ```bash
     git clone <your-repository-url>
-    cd eyjs-boilerplate
+    cd one-js-boilerplate
     ```
 
 2.  **Install dependencies:**
@@ -32,11 +31,11 @@ OneJs comes with pre-configured scripts to manage your development environment.
 To start the full development environment (Database + Prisma Generate + Migrations + API):
 
 ```bash
-bun start:api:dev
+bun run start:api:dev
 ```
 
 This command will:
-1.  Start the Postgres database using Docker/Podman.
+1.  Start the Postgres database and Redis using Podman.
 2.  Generate the Prisma client.
 3.  Run database migrations.
 4.  Start the Elysia.js server with hot-reloading.
@@ -46,7 +45,7 @@ This command will:
 If you only want to start the database container:
 
 ```bash
-bun start:db
+bun run start:db
 ```
 
 ### Production Mode
@@ -54,16 +53,28 @@ bun start:db
 To build and start the application for production:
 
 ```bash
-bun start:api:prod
+bun run start:api:prod
 ```
 
-## Creating Your First App
+## What's in the box
 
-OneJs allows you to scaffold new applications or modules within the `apps/` directory using the built-in CLI:
+This boilerplate ships these workspace packages:
 
-```bash
-bun create-app my-new-api
-```
+| Package | Purpose |
+|---------|---------|
+| `@OneJs/core` | DI container, bootstrap, plugins, domain primitives, errors, logger |
+| `@OneJs/server` | Elysia HTTP server, controller decorators, health checks, request-id |
+| `@OneJs/auth` | Authentication (Local JWT, Clerk), `@UseAuth`, `@Roles` |
+| `@OneJs/event-bus` | In-process + Redis-bridged event bus, `@EventHandler` decorator |
+| `@OneJs/jobs` | BullMQ-backed durable job queues, `@WorkerJob` decorator |
+| `@OneJs/prisma` | Prisma integration, repository base classes |
+| `@OneJs/testing` | InMemory fakes for tests (EventBus, Logger, helpers) |
 
-Follow the prompts to set up your new application structure.
+Example bounded contexts in `packages/`: `user/`, `task/`, `shared/`. Example apps in `apps/`: `api/`, `notifications/`.
+
+## Next steps
+
+- [Architecture](architecture.md) — Hexagonal layers and dependency rules
+- [Core Features](core-features.md) — DI, bootstrap, domain primitives
+- [Feature walkthrough](feature-walkthrough.md) — build a new bounded context end-to-end
 

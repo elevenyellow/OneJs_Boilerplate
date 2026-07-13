@@ -1,10 +1,11 @@
-import { describe, expect, it, mock, beforeAll } from 'bun:test'
-import { OneJsError } from '@OneJs/core'
-
 // Silence logger output during tests
-import { logger } from '@OneJs/core'
+import { logger, OneJsError } from '@OneJs/core'
+import { beforeAll, describe, expect, it, mock } from 'bun:test'
+
 const originalError = logger.error.bind(logger)
-beforeAll(() => { logger.error = mock(() => {}) as any })
+beforeAll(() => {
+  logger.error = mock(() => {}) as any
+})
 
 import { createErrorHandler } from '.././error.middleware'
 

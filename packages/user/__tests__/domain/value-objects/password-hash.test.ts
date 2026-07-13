@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
+import { describe, expect, it } from 'bun:test'
 import { PasswordHash } from '../../../domain/value-objects/password-hash'
 
 describe('PasswordHash', () => {

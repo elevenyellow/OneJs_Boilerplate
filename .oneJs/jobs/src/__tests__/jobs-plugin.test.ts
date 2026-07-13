@@ -1,4 +1,4 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { WorkerService } from '../application/worker.service'
 
 const mockGetAllWorkerHandlers = mock(() => [] as any[])

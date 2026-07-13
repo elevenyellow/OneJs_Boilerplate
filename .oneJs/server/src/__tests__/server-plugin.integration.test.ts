@@ -6,10 +6,11 @@
  * - Controllers registered via the controller registry are wired to the Server
  */
 /** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
-import { describe, it, expect, beforeEach } from 'bun:test'
+
 import { Container, OneJs, PluginRegistry } from '@OneJs/core'
-import { ServerPlugin } from '../server-plugin'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import { clearControllers, registerController } from '../controller-registry'
+import { ServerPlugin } from '../server-plugin'
 
 // Minimal stub that satisfies ServerPlugin's dependsOn: ['bootstrap-loader']
 const stubBootstrapLoader = { name: 'bootstrap-loader', priority: 10 }

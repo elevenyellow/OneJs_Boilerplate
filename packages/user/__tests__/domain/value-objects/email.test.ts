@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
+import { describe, expect, it } from 'bun:test'
 import { Email } from '../../../domain/value-objects/email'
 
 describe('Email', () => {

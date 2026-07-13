@@ -28,11 +28,11 @@ Launch the `architecture-reviewer` subagent to check DDD/hexagonal compliance on
 
 - **No magic strings**: flag inline string literals in `OneJsError` type/message args and `logger.*` scope args. See [ddd-principles.md — No Magic Strings](../../docs/conventions/architecture/ddd-principles.md#no-magic-strings).
 - **Dependency direction**: Domain has no external deps; Application depends on Domain; Infrastructure depends on both.
-- **Layer responsibilities**: domain logic stays in entities / domain services; application services orchestrate through `run()`; infrastructure owns adapters and wiring.
+- **Layer responsibilities**: domain logic stays in entities / domain services; one application service per bounded context orchestrates through use-case methods; infrastructure owns adapters and wiring.
 - **Repository pattern**: port in domain, Prisma implementation in infrastructure.
-- **No primitives as parameters**: Entity constructors, `register()`, and `with*()` receive VOs; `run()` and repository methods receive VOs/entities; `reconstitute()` is the sole primitive exception. See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
+- **No primitives as parameters**: Entity constructors, `register()`, and `with*()` receive VOs; application service methods and repository methods receive VOs/entities (raw passwords are the documented exception); `reconstitute()` is the sole primitive exception. See [ddd-principles.md — No Primitives Rule](../../docs/conventions/architecture/ddd-principles.md#no-primitives-rule).
 - **Cross-context boundaries**: communicate through application services or domain ports, never direct adapter coupling.
-- **Frontend delegation**: `apps/webapp` and `apps/mobile` must delegate to application services through the tRPC boundary, not reimplement domain logic.
+- **HTTP controller delegation**: `packages/*/infrastructure/controllers/` must delegate to application services — no domain logic, no direct repository calls in Elysia handlers.
 
 ## Rules
 
@@ -40,7 +40,7 @@ Launch the `architecture-reviewer` subagent to check DDD/hexagonal compliance on
 - Never touch files outside the resolved scope.
 - Never use `npm` commands — Bun only.
 - Never copy assumptions from other projects onto this one.
-- Never force `UseCase` naming where `run()`-based services are the convention.
+- One application service per bounded context with use-case methods; flag `run()`, `UseCase` suffix, or one-class-per-use-case splits.
 
 ## Validation
 

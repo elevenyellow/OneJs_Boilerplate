@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskSeeder } from '../../../application/bootstrap/task-seeder'
 import { InMemoryTaskRepository } from '../../../infrastructure/repositories/in-memory-task.repository'
 
@@ -31,7 +31,7 @@ describe('TaskSeeder', () => {
     await seeder.bootstrap()
 
     const tasks = await repository.findAll()
-    const titles = tasks.map((t) => t.title.getValue())
+    const titles = tasks.map((t) => t.getTitle().getValue())
 
     expect(titles).toContain('Setup project')
     expect(titles).toContain('Configure database')
@@ -43,7 +43,7 @@ describe('TaskSeeder', () => {
 
     const tasks = await repository.findAll()
     for (const task of tasks) {
-      expect(task.status.getValue()).toBe(false)
+      expect(task.getStatus().getValue()).toBe(false)
     }
   })
 

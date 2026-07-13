@@ -1,1 +1,1 @@
-export { AppRoles, type AppRole } from './roles'
+export { type AppRole, AppRoles } from './roles'

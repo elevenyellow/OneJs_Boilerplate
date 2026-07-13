@@ -1,12 +1,16 @@
-import { describe, test, expect } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
+import { DefaultErrorMessages } from '.././default-messages'
 import { OneJsError } from '.././error'
 import { ErrorCodes } from '.././error-codes'
-import { DefaultErrorMessages } from '.././default-messages'
 
 describe('OneJsError', () => {
   describe('construction', () => {
     test('creates an error with all required fields', () => {
-      const err = new OneJsError('Something went wrong', 500, 'Internal server error')
+      const err = new OneJsError(
+        'Something went wrong',
+        500,
+        'Internal server error',
+      )
 
       expect(err).toBeInstanceOf(Error)
       expect(err).toBeInstanceOf(OneJsError)
@@ -45,7 +49,6 @@ describe('OneJsError', () => {
       expect(err instanceof Error).toBe(true)
     })
   })
-
 })
 
 describe('ErrorCodes', () => {
@@ -91,6 +94,8 @@ describe('DefaultErrorMessages', () => {
   })
 
   test('RESOURCE_NOT_FOUND maps to the correct message', () => {
-    expect(DefaultErrorMessages[ErrorCodes.RESOURCE_NOT_FOUND]).toBe('Not found.')
+    expect(DefaultErrorMessages[ErrorCodes.RESOURCE_NOT_FOUND]).toBe(
+      'Not found.',
+    )
   })
 })

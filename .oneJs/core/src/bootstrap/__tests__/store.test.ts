@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import { registerBootstrap, getAllBootstraps, clearBootstraps } from '../store'
+import { clearBootstraps, getAllBootstraps, registerBootstrap } from '../store'
 
 class FakeService {}
 class AnotherService {}

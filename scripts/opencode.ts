@@ -10,7 +10,7 @@ const prefix = basename(repoRoot)
   .replace(/[^A-Z0-9]+/g, '_')
 
 const aliases: Record<string, string> = {
-  DATABASE_URL: `${prefix}_DATABASE_URL`
+  DATABASE_URL: `${prefix}_DATABASE_URL`,
 }
 
 for (const [source, target] of Object.entries(aliases)) {
@@ -22,7 +22,7 @@ for (const [source, target] of Object.entries(aliases)) {
 
 const child = spawn('opencode', process.argv.slice(2), {
   stdio: 'inherit',
-  env: process.env
+  env: process.env,
 })
 
 child.on('error', (err: NodeJS.ErrnoException) => {

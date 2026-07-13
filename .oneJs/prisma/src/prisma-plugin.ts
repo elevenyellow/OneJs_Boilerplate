@@ -1,4 +1,4 @@
-import { type Container, logger, type BootstrapPlugin } from '@OneJs/core'
+import { type BootstrapPlugin, type Container, logger } from '@OneJs/core'
 import { PrismaClientOneJs } from './services/prisma-client'
 
 export class PrismaPlugin implements BootstrapPlugin {
@@ -24,12 +24,8 @@ export class PrismaPlugin implements BootstrapPlugin {
       await prisma.$connect()
       logger.debug('oneJs:prisma', '✅ Database connected successfully')
     } catch (err) {
-      logger.error?.(
-        'oneJs:prisma',
-        `❌ Error connecting to database: ${err}`,
-      )
+      logger.error?.('oneJs:prisma', `❌ Error connecting to database: ${err}`)
       throw err
     }
   }
 }
-

@@ -22,7 +22,7 @@ Implement tasks from an OpenSpec change.
    - Auto-select if only one active change exists
    - If ambiguous, run `openspec list --json` to get available changes and use the **AskUserQuestion tool** to let the user select
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx:apply <other>`).
+   Always announce: "Using change: <name>" and how to override (Cursor: `/opsx-apply <other>`; Claude Code: `/opsx:apply <other>`; OpenCode: `spec-apply <other>`).
 
 2. **Check status to understand the schema**
    ```bash
@@ -45,8 +45,8 @@ Implement tasks from an OpenSpec change.
    - Dynamic instruction based on current state
 
    **Handle states:**
-   - If `state: "blocked"` (missing artifacts): show message, suggest using openspec-continue-change
-   - If `state: "all_done"`: congratulate, suggest archive
+   - If `state: "blocked"` (missing artifacts): show message, suggest using Cursor `/opsx-propose`, Claude Code `/opsx:propose`, or OpenCode `spec-propose` to complete artifacts
+   - If `state: "all_done"`: congratulate, suggest review via Cursor `/opsx-review`, Claude Code `/opsx:review`, or OpenCode `spec-review` before archive
    - Otherwise: proceed to implementation
 
 4. **Read context files**
@@ -70,10 +70,19 @@ Implement tasks from an OpenSpec change.
    - Show which task is being worked on
    - Make the code changes required
    - Keep changes minimal and focused
-   - Invoke `@project-validator` to run lint, typecheck, and tests
-   - If validator returns red, address the failures and re-invoke until green
-   - Only when validator is green, mark task complete in the tasks file: `- [ ]` → `- [x]`
+   - Invoke `@project-validator-fast` to validate the delta (scoped lint + scoped tests + incremental typecheck)
+   - If the fast validator returns red, address the failures and re-invoke until green
+   - If the fast validator tells you to escalate (broad blast radius, schema change, or last task of the block), run the full `@project-validator` instead
+   - Only when validation is green, mark task complete in the tasks file: `- [ ]` → `- [x]`
    - Continue to next task
+
+   At the end of a **block of related tasks** (or the whole change), run the full `@project-validator` once as a checkpoint — the per-task fast gate keeps the inner loop cheap, the checkpoint guarantees the whole monorepo is green. Unattended `loop` runs always use the full `@project-validator` on every task.
+
+   Commit policy:
+   - `apply` is interactive and MUST NOT create commits unless the operator explicitly asks for a commit in this run or the already-approved tasks explicitly require one.
+   - If a commit is requested, update the relevant `tasks.md` checkboxes before staging and include `tasks.md` in the same commit as the implementation/docs changes.
+   - If no commit is requested, leave the intended implementation/docs changes and updated `tasks.md` uncommitted, then report a suggested Conventional Commit message.
+   - Never create a separate "mark tasks complete" commit as the default path; that is only a repair step when a previous run committed too early.
 
    **Pause if:**
    - Task is unclear → ask for clarification
@@ -86,7 +95,10 @@ Implement tasks from an OpenSpec change.
    Display:
    - Tasks completed this session
    - Overall progress: "N/M tasks complete"
-   - If all done: suggest archive
+   - Commit status:
+     - If a commit was explicitly requested: report the commit hash/message and confirm the working tree is clean
+     - If no commit was requested: report that changes are uncommitted and provide a suggested Conventional Commit message
+   - If all done: suggest review via Cursor `/opsx-review`, Claude Code `/opsx:review`, or OpenCode `spec-review` before archive
    - If paused: explain why and wait for guidance
 
 **Output During Implementation**
@@ -117,7 +129,8 @@ Working on task 4/7: <task description>
 - [x] Task 2
 ...
 
-All tasks complete! Ready to archive this change.
+All tasks complete! Ready for explicit review.
+Run Cursor `/opsx-review`, Claude Code `/opsx:review`, or OpenCode `spec-review` before archive.
 ```
 
 **Output On Pause (Issue Encountered)**
@@ -146,11 +159,13 @@ What would you like to do?
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
-- Never mark a task complete without a green @project-validator run
-- Update task checkbox immediately after completing each task
+- Never mark a task complete without a green validator run — use `@project-validator-fast` per task during interactive apply; escalate to `@project-validator` on broad blast radius, schema changes, or last task of a block
+- Update task checkbox immediately after completing each task, before any requested final commit
+- Do not commit during `apply` unless the operator explicitly requested it or the already-approved tasks explicitly require it
+- When committing during `apply`, include the updated `tasks.md` in the same logical commit; do not leave post-commit checkbox changes behind
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
-- **NEVER invoke reviewer subagents in `apply` mode.** Specifically: do NOT call `@code-reviewer`, `@tests-reviewer`, `@architecture-reviewer`, `@frontend-reviewer`, or `@spec-reviewer`, and do NOT run the `/task-code-review`, `/task-tests-review`, `/task-architecture-review`, `/task-frontend-review`, `/task-ux-review`, or `/task-qa` skills. Reviewers belong to the dedicated `review` mode that runs between `apply` and `archive`. The ONLY subagent `apply` is allowed to call is `@project-validator`. If you feel the urge to "double-check" with a reviewer, resist — that is `review`'s job.
+- **NEVER invoke reviewer subagents in `apply` mode.** Specifically: do NOT call `@code-reviewer`, `@tests-reviewer`, `@architecture-reviewer`, or `@frontend-reviewer`, and do NOT run the `/task-code-review`, `/task-tests-review`, `/task-architecture-review`, `/task-frontend-review`, `/task-ux-review`, or `/task-qa` skills. Reviewers belong to the dedicated `review` mode that runs between `apply` and `archive`. The ONLY subagents `apply` is allowed to call are `@project-validator-fast` (per-task gate) and `@project-validator` (checkpoint/escalation). If you feel the urge to "double-check" with a reviewer, resist — that is `review`'s job.
 
 **Fluid Workflow Integration**
 

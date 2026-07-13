@@ -15,6 +15,8 @@ Archive a completed change in the experimental workflow.
 
 This mode assumes `review` already ran successfully (validator green, reviewer findings resolved, fixes committed). If the operator skipped `review`, prompt them to run it first; archive is a clerical move, not a quality gate.
 
+This mode delegates the final spec merge and archive move to the official OpenSpec CLI. Do not reimplement archive behavior with filesystem moves. The wrapper's job is to apply the project's policy before and after the CLI call.
+
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
 **Steps**
@@ -54,20 +56,18 @@ This mode assumes `review` already ran successfully (validator green, reviewer f
 
    **If no tasks file exists:** Proceed without task-related warning.
 
-4. **Assess delta spec sync state**
+4. **Choose spec update policy**
 
-   Check for delta specs at `openspec/changes/<name>/specs/`. If none exist, proceed without sync prompt.
+   `sync` is optional and belongs before review when the operator wants to inspect `openspec/specs/` while the change remains active. Archive itself can update specs, so do not run a separate sync here.
+
+   Check for delta specs at `openspec/changes/<name>/specs/`.
 
    **If delta specs exist:**
-   - Compare each delta spec with its corresponding main spec at `openspec/specs/<capability>/spec.md`
-   - Determine what changes would be applied (adds, modifications, removals, renames)
-   - Show a combined summary before prompting
+   - Default recommendation: archive and update canonical specs with `openspec archive "<name>" --yes`
+   - Offer "Archive without updating specs" only for infrastructure, tooling, or docs-only changes where the operator explicitly wants `--skip-specs`
 
-   **Prompt options:**
-   - If changes needed: "Sync now (recommended)", "Archive without syncing"
-   - If already synced: "Archive now", "Sync anyway", "Cancel"
-
-   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke openspec-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
+   **If no delta specs exist:**
+   - Proceed with the default archive command. The CLI will have no specs to update.
 
 5. **Confirm `review` has run**
 
@@ -79,43 +79,58 @@ This mode assumes `review` already ran successfully (validator green, reviewer f
 
    This mode does **not** run `@project-validator` or any reviewer subagents. Those live in the `review` mode.
 
-6. **Perform the archive**
+6. **Perform the archive with the official CLI**
 
     **Idempotency check:** If `openspec/changes/archive/` already contains a directory matching the pattern `*-<change-name>` for the same change id, short-circuit and report that the change is already archived.
 
-    Create the archive directory if it doesn't exist:
-    ```bash
-    mkdir -p openspec/changes/archive
-    ```
-
-    Generate target name using current date: `YYYY-MM-DD-<change-name>`
-
-    **Check if target already exists:**
-    - If yes: Fail with error, suggest renaming existing archive or using different date
-    - If no: Move the change directory to archive
+    Build the command from the spec update policy:
 
     ```bash
-    mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
+    openspec archive "<name>" --yes
     ```
 
-7. **Commit the archive move**
+    If the operator explicitly chose to archive without updating specs:
 
-    Stage the move and any spec sync changes, then commit per the rules in `.agents/skills/guidelines/git-strategy/SKILL.md` (loaded via `instructions`). Use a `chore(openspec)` scope:
+    ```bash
+    openspec archive "<name>" --skip-specs --yes
+    ```
+
+    Capture and summarize the CLI output. If the CLI fails, stop and report the exact failure. Do not try to complete the archive manually.
+
+7. **Normalize generated canonical spec purposes**
+
+    If specs were updated (not skipped), inspect the canonical specs touched by the archive before committing:
+
+    ```bash
+    rg -n "TBD - created by archiving change" openspec/specs
+    ```
+
+    For each generated placeholder found:
+    - Replace only the `Purpose` placeholder text with a concise, human-readable purpose derived from the archived change's `proposal.md`, `design.md`, or capability name.
+    - Keep the CLI-merged requirements and scenarios unchanged.
+    - If a meaningful purpose cannot be inferred, stop and ask the operator for wording before committing.
+
+    Then run `openspec validate --all`. If validation fails, fix the spec formatting/content and re-run it before committing.
+
+8. **Commit the archive move**
+
+    Stage the archive move and any spec updates created by the CLI, then commit per the rules in `.agents/skills/guidelines/git-strategy/SKILL.md` (loaded via `instructions`). Use a `chore(openspec)` scope:
 
     ```bash
     git add -A
     git commit -m "chore(openspec): archive <change-name>"
     ```
 
-    If specs were synced in step 4, mention it in the body. Do not leave the archive `mv` uncommitted — the working tree must be clean before the summary.
+    If specs were updated or skipped, mention it in the body. Do not leave archive changes uncommitted — the working tree must be clean before the summary.
 
-8. **Display summary**
+9. **Display summary**
 
     Show archive completion summary including:
     - Change name
     - Schema that was used
     - Archive location
-    - Whether specs were synced (if applicable)
+    - Whether specs were updated, skipped, or unchanged according to the CLI output
+    - Whether generated canonical spec purpose placeholders were normalized
     - Note about any warnings (incomplete artifacts/tasks)
 
 **Output On Success**
@@ -126,7 +141,7 @@ This mode assumes `review` already ran successfully (validator green, reviewer f
 **Change:** <change-name>
 **Schema:** <schema-name>
 **Archived to:** openspec/changes/archive/YYYY-MM-DD-<name>/
-**Specs:** ✓ Synced to main specs (or "No delta specs" or "Sync skipped")
+**Specs:** ✓ Updated by `openspec archive` (or "No delta specs" or "Skipped with --skip-specs")
 
 All artifacts complete. All tasks complete. Review gate previously passed.
 ```
@@ -135,10 +150,12 @@ All artifacts complete. All tasks complete. Review gate previously passed.
 - Always prompt for change selection if not provided
 - Use artifact graph (openspec status --json) for completion checking
 - Don't block archive on warnings — just inform and confirm
-- Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
-- If sync is requested, use openspec-sync-specs approach (agent-driven)
-- If delta specs exist, always run the sync assessment and show the combined summary before prompting
+- Delegate archive to `openspec archive`; never move the change directory manually
+- Use `openspec archive "<name>" --yes` by default after this wrapper has handled prompts
+- Use `--skip-specs --yes` only when the operator explicitly chooses to archive without updating specs
+- Do not use `--no-validate` unless the operator explicitly requests it after acknowledging the risk
 - Never archive on a dirty working tree
+- Before committing, replace any generated `TBD - created by archiving change` purpose placeholders in canonical specs and run `openspec validate --all`
 - This mode does NOT run reviewers or `@project-validator`; if the operator skipped `review`, prompt them before proceeding
 - Detect already-archived changes and short-circuit

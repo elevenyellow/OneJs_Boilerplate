@@ -1,19 +1,21 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import {
   Container,
+  clearMarkers,
   Injectable,
   Module,
   OneJs,
   PluginRegistry,
-  clearMarkers,
 } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
+import { clearModules } from '@OneJs/core/bootstrap/module'
 import { EventBus, EventBusPlugin, EventHandler } from '@OneJs/event-bus'
 import { clearEventHandlers } from '@OneJs/event-bus/domain/store'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
-import { clearModules } from '@OneJs/core/bootstrap/module'
 import { TaskService } from '../../application/task.service'
 import { TaskCreatedEvent } from '../../domain/events/task-created.event'
+import { TaskDescription } from '../../domain/value-objects/task-description'
+import { TaskTitle } from '../../domain/value-objects/task-title'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
 import { createTestLogger } from '../helpers/event-bus-test.utils'
 
@@ -65,7 +67,10 @@ describe('Task module + EventBusPlugin (integration)', () => {
     const repository = new InMemoryTaskRepository()
     const logger = createTestLogger()
     const taskService = new TaskService(repository, eventBus, logger)
-    const created = await taskService.create('Integration event', 'Bus wiring')
+    const created = await taskService.create(
+      TaskTitle.create('Integration event'),
+      TaskDescription.create('Bus wiring'),
+    )
 
     expect(onTaskCreated).toHaveBeenCalledTimes(1)
     const received = onTaskCreated.mock.calls[0][0] as TaskCreatedEvent
@@ -125,11 +130,11 @@ describe('Task module + EventBusPlugin (integration)', () => {
     const taskService = new TaskService(repository, eventBus, logger)
 
     const created = await taskService.create(
-      'Resilience integration',
-      'event bus',
+      TaskTitle.create('Resilience integration'),
+      TaskDescription.create('event bus'),
     )
 
-    expect(created.title.getValue()).toBe('Resilience integration')
+    expect(created.getTitle().getValue()).toBe('Resilience integration')
     expect(onResilientHandler).toHaveBeenCalledTimes(1)
     const received = onResilientHandler.mock
       .calls[0][0] as TaskCreatedIntegrationEvent

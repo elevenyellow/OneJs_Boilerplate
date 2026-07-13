@@ -6,7 +6,10 @@ export const LoggingMiddleware: Middleware = async (
   event: DomainEvent,
   next: () => Promise<void>,
 ) => {
-  logger.debug('oneJs:event-bus', `Receive event: ${event.constructor.name} at ${event.occurredOn}`)
+  logger.debug(
+    'oneJs:event-bus',
+    `Receive event: ${event.constructor.name} at ${event.occurredOn}`,
+  )
   await next()
   logger.debug('oneJs:event-bus', `Process event: ${event.constructor.name}`)
 }

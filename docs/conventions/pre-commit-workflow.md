@@ -142,9 +142,9 @@ After ensuring all checks pass, write clear commit messages:
 
 ```bash
 # Good examples
-git commit -m "feat: add user authentication with JWT"
-git commit -m "fix: resolve race condition in order processing"
-git commit -m "refactor: extract validation logic to domain service"
+git commit -m "feat(user): add user authentication with JWT"
+git commit -m "fix(task): resolve race condition in order processing"
+git commit -m "refactor(user): extract validation logic to domain service"
 
 # Bad examples
 git commit -m "fix stuff"
@@ -164,7 +164,7 @@ bun run lint
 bun run lint:fix
 
 # Auto-fix with unsafe transformations (use cautiously)
-bun run lint:unsafe
+bun run lint:errors
 ```
 
 ### TypeScript Check Fails

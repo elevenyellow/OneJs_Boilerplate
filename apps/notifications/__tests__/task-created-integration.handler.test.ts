@@ -1,7 +1,9 @@
 import { describe, expect, it, mock } from 'bun:test'
-import { TaskCreatedIntegrationHandler } from '../../../packages/task/application/handlers/task-created-integration.handler'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
 import { Task } from '@task/domain/entities/task'
+import { TaskDescription } from '@task/domain/value-objects/task-description'
+import { TaskTitle } from '@task/domain/value-objects/task-title'
+import { TaskCreatedIntegrationHandler } from '../../../packages/task/application/handlers/task-created-integration.handler'
 
 function makeNotificationService() {
   return {
@@ -16,7 +18,10 @@ describe('TaskCreatedIntegrationHandler', () => {
     const handler = new TaskCreatedIntegrationHandler(
       notificationService as any,
     )
-    const task = Task.create('Task from task app', 'cross-app event')
+    const task = Task.create(
+      TaskTitle.create('Task from task app'),
+      TaskDescription.create('cross-app event'),
+    )
 
     await handler.handle(new TaskCreatedIntegrationEvent(task))
 

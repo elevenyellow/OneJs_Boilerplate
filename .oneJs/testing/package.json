@@ -1,0 +1,38 @@
+{
+  "name": "@OneJs/testing",
+  "version": "1.0.0",
+  "description": "Testing utilities and InMemory fakes for OneJs framework",
+  "module": "src/index.ts",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun --test"
+  },
+  "keywords": [
+    "testing",
+    "test-utilities",
+    "framework",
+    "typescript"
+  ],
+  "author": "OneJs Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@OneJs/core": "workspace:*",
+    "@OneJs/event-bus": "workspace:*",
+    "typescript": "^5"
+  }
+}

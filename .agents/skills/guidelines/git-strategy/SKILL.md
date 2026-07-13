@@ -20,7 +20,7 @@ Short checklist. Full rules and examples live in [docs/conventions/git-strategy.
 ```
 
 - Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`.
-- Scope: package / app name (`api`, `users`, `webapp`, `mobile`, `database`, `common`, `auth`) or cross-cutting area (`ui`, `errors`, `index`).
+- Scope: package / bounded context name (`user`, `task`, `shared`, `api`) or cross-cutting area (`openspec`, `chore`, `errors`, `index`).
 - Summary: imperative, lower-case, no trailing period, ≤ 72 chars.
 - One logical change per commit. Body explains *why*, not *what*.
 - Don't reference Claude, Copilot, or any assistant.

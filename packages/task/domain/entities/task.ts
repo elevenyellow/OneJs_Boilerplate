@@ -9,19 +9,35 @@ import { TaskTitle } from '../value-objects/task-title'
 export class Task extends EntityBase<TaskId> {
   constructor(
     id: TaskId,
-    readonly title: TaskTitle,
-    readonly description: TaskDescription,
-    readonly status: TaskStatus,
-    readonly createdAt: Date,
+    private readonly _title: TaskTitle,
+    private readonly _description: TaskDescription,
+    private readonly _status: TaskStatus,
+    private readonly _createdAt: Date,
   ) {
     super(id)
   }
 
-  static create(title: string, description: string): Task {
+  getTitle(): TaskTitle {
+    return this._title
+  }
+
+  getDescription(): TaskDescription {
+    return this._description
+  }
+
+  getStatus(): TaskStatus {
+    return this._status
+  }
+
+  getCreatedAt(): Date {
+    return this._createdAt
+  }
+
+  static create(title: TaskTitle, description: TaskDescription): Task {
     return new Task(
       TaskId.generateUniqueId(),
-      TaskTitle.create(title),
-      TaskDescription.create(description),
+      title,
+      description,
       TaskStatus.pending(),
       new Date(),
     )
@@ -46,20 +62,20 @@ export class Task extends EntityBase<TaskId> {
   complete(): Task {
     return new Task(
       this.getId(),
-      this.title,
-      this.description,
+      this._title,
+      this._description,
       TaskStatus.done(),
-      this.createdAt,
+      this._createdAt,
     )
   }
 
   toDto(): TaskDto {
     return new TaskDto(
       this.getId().getValue(),
-      this.title.getValue(),
-      this.description.getValue(),
-      this.status.getValue(),
-      this.createdAt,
+      this._title.getValue(),
+      this._description.getValue(),
+      this._status.getValue(),
+      this._createdAt,
     )
   }
 }

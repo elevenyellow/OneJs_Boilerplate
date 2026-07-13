@@ -14,6 +14,10 @@ import { PasswordChangedEvent } from '../domain/events/password-changed.event'
 import { PasswordResetRequestedEvent } from '../domain/events/password-reset-requested.event'
 import { UserRegisteredEvent } from '../domain/events/user-registered.event'
 import type { IUserRepository } from '../domain/repositories/user.repository.interface'
+import type { Email } from '../domain/value-objects/email'
+import { PasswordHash } from '../domain/value-objects/password-hash'
+import { ResetToken } from '../domain/value-objects/reset-token'
+import type { UserId } from '../domain/value-objects/user-id'
 import { InMemoryUserRepository } from '../infrastructure/repositories/in-memory-user.repository'
 
 const MIN_PASSWORD_LENGTH = 8
@@ -28,7 +32,7 @@ export class UserService {
     @Inject(Logger) private readonly logger: Logger,
   ) {}
 
-  async register(email: string, password: string): Promise<User> {
+  async register(email: Email, password: string): Promise<User> {
     this.validatePassword(password)
 
     const existing = await this.repository.findByEmail(email)
@@ -42,16 +46,22 @@ export class UserService {
       )
 
     const hash = await Bun.password.hash(password)
-    const user = User.register(email, hash)
+    const user = User.register(email, PasswordHash.create(hash))
 
     await this.repository.save(user)
     await this.eventBus.publish(new UserRegisteredEvent(user))
 
-    this.logger.debug('user:service', `User registered: ${user.getId().getValue()}`)
+    this.logger.debug(
+      'user:service',
+      `User registered: ${user.getId().getValue()}`,
+    )
     return user
   }
 
-  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+  async login(
+    email: Email,
+    password: string,
+  ): Promise<{ token: string; user: User }> {
     const user = await this.repository.findByEmail(email)
     if (!user)
       throw new OneJsError(
@@ -62,7 +72,10 @@ export class UserService {
         ErrorCodes.AUTH_INVALID,
       )
 
-    const valid = await Bun.password.verify(password, user.passwordHash.getValue())
+    const valid = await Bun.password.verify(
+      password,
+      user.getPasswordHash().getValue(),
+    )
     if (!valid)
       throw new OneJsError(
         'Unauthorized',
@@ -73,27 +86,38 @@ export class UserService {
       )
 
     const token = this.signToken(user)
-    this.logger.debug('user:service', `User logged in: ${user.getId().getValue()}`)
+    this.logger.debug(
+      'user:service',
+      `User logged in: ${user.getId().getValue()}`,
+    )
     return { token, user }
   }
 
-  async forgotPassword(email: string): Promise<string | null> {
+  async forgotPassword(email: Email): Promise<string | null> {
     const user = await this.repository.findByEmail(email)
     if (!user) {
-      this.logger.debug('user:service', `Forgot-password: no user for ${email}`)
+      this.logger.debug(
+        'user:service',
+        `Forgot-password: no user for ${email.getValue()}`,
+      )
       return null
     }
 
     const resetToken = uuidv4()
-    const updated = user.withResetToken(resetToken)
+    const updated = user.withResetToken(ResetToken.create(resetToken))
     await this.repository.save(updated)
-    await this.eventBus.publish(new PasswordResetRequestedEvent(updated, resetToken))
+    await this.eventBus.publish(
+      new PasswordResetRequestedEvent(updated, resetToken),
+    )
 
-    this.logger.debug('user:service', `Reset token issued for ${email}`)
+    this.logger.debug(
+      'user:service',
+      `Reset token issued for ${email.getValue()}`,
+    )
     return resetToken
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<void> {
+  async resetPassword(token: ResetToken, newPassword: string): Promise<void> {
     this.validatePassword(newPassword)
 
     const user = await this.repository.findByResetToken(token)
@@ -107,15 +131,18 @@ export class UserService {
       )
 
     const hash = await Bun.password.hash(newPassword)
-    const updated = user.withPasswordHash(hash)
+    const updated = user.withPasswordHash(PasswordHash.create(hash))
     await this.repository.save(updated)
     await this.eventBus.publish(new PasswordChangedEvent(updated))
 
-    this.logger.debug('user:service', `Password reset for user ${user.getId().getValue()}`)
+    this.logger.debug(
+      'user:service',
+      `Password reset for user ${user.getId().getValue()}`,
+    )
   }
 
   async updatePassword(
-    userId: string,
+    userId: UserId,
     currentPassword: string,
     newPassword: string,
   ): Promise<void> {
@@ -126,12 +153,15 @@ export class UserService {
       throw new OneJsError(
         'Not Found',
         404,
-        `User not found: ${userId}`,
+        `User not found: ${userId.getValue()}`,
         {},
         ErrorCodes.USER_NOT_FOUND,
       )
 
-    const valid = await Bun.password.verify(currentPassword, user.passwordHash.getValue())
+    const valid = await Bun.password.verify(
+      currentPassword,
+      user.getPasswordHash().getValue(),
+    )
     if (!valid)
       throw new OneJsError(
         'Unauthorized',
@@ -142,14 +172,17 @@ export class UserService {
       )
 
     const hash = await Bun.password.hash(newPassword)
-    const updated = user.withPasswordHash(hash)
+    const updated = user.withPasswordHash(PasswordHash.create(hash))
     await this.repository.save(updated)
     await this.eventBus.publish(new PasswordChangedEvent(updated))
 
-    this.logger.debug('user:service', `Password updated for user ${userId}`)
+    this.logger.debug(
+      'user:service',
+      `Password updated for user ${userId.getValue()}`,
+    )
   }
 
-  async getById(userId: string): Promise<User | null> {
+  async getById(userId: UserId): Promise<User | null> {
     return this.repository.findById(userId)
   }
 
@@ -158,8 +191,8 @@ export class UserService {
     return jwt.sign(
       {
         sub: user.getId().getValue(),
-        email: user.email.getValue(),
-        role: user.role.getValue(),
+        email: user.getEmail().getValue(),
+        role: user.getRole().getValue(),
       },
       secret,
       { expiresIn: '7d' },

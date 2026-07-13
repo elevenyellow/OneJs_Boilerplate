@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { createSuccessResponse, createErrorResponse } from '.././response'
+import { createErrorResponse, createSuccessResponse } from '.././response'
 
 describe('createSuccessResponse()', () => {
   it('wraps data in a success envelope', () => {
@@ -24,7 +24,11 @@ describe('createSuccessResponse()', () => {
 
 describe('createErrorResponse()', () => {
   it('wraps error details in an error envelope', () => {
-    const res = createErrorResponse('Validation failed', 400, 'Title is required')
+    const res = createErrorResponse(
+      'Validation failed',
+      400,
+      'Title is required',
+    )
 
     expect(res.success).toBe(false)
     expect(res.message).toBe('Validation failed')

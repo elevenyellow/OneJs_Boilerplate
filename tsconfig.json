@@ -37,6 +37,8 @@
       "@OneJs/prisma/*": ["./.oneJs/prisma/src/*"],
       "@OneJs/auth": ["./.oneJs/auth/src"],
       "@OneJs/auth/*": ["./.oneJs/auth/src/*"],
+      "@OneJs/testing": ["./.oneJs/testing/src"],
+      "@OneJs/testing/*": ["./.oneJs/testing/src/*"],
       "@shared": ["./packages/shared"],
       "@shared/*": ["./packages/shared/*"]
     }

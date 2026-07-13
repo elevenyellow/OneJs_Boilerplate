@@ -12,10 +12,6 @@
 
   <h4>
     <a href="docs/README.md">Documentation</a>
-    <span> · </span>
-    <a href="https://github.com/your-username/eyjs-boilerplate/issues">Report Bug</a>
-    <span> · </span>
-    <a href="https://github.com/your-username/eyjs-boilerplate/pulls">Request Feature</a>
   </h4>
 </div>
 
@@ -32,7 +28,6 @@ OneJs is a high-performance boilerplate built on top of **Elysia.js** and **Bun*
 - 👷 **Background Processing** - Managed background tasks with BullMQ & Redis.
 - 🛡️ **Built-in Security** - JWT and Clerk authentication strategies out of the box.
 - 🗄️ **Schema Harmony** - Automated Prisma schema merging for multi-module projects.
-- 📝 **Smart CLI** - Instant scaffolding of apps and domain modules.
 
 ## 🛠️ Tech Stack
 
@@ -78,36 +73,15 @@ graph TD
 1. **Clone & Install**
    ```bash
    git clone <repository-url>
-   cd eyjs-boilerplate
+   cd OneJs_Boilerplate
    bun install
    ```
 
-2. **Initialize Your Project**
+2. **Launch Dev Environment**
    ```bash
-   bun run init
+   bun run start:api:dev
    ```
-   *Follow the interactive prompts to choose which components (API, Admin, Worker) and examples you want to keep. This will clean up the boilerplate for your specific needs.*
-
-3. **Launch Dev Environment**
-   ```bash
-   bun start:api:dev
-   ```
-   *This starts the DB, merges schemas, runs migrations, and launches the server.*
-
-## 🛠️ Usage & Scaffolding
-
-### Project Templates
-OneJs supports different application types that you can choose during `bun run init`:
-- **API**: High-performance backend using Elysia.js.
-- **Admin**: Modern dashboard built with Next.js and Shadcn UI.
-- **Worker**: Background task processor using BullMQ and Redis.
-
-### Scaffolding New Modules
-To create new business logic modules following hexagonal architecture:
-```bash
-bun create-app <module-name>
-```
-This generates a complete folder structure including Domain, Application, and Infrastructure layers.
+   *This starts the DB, merges schemas, runs migrations, and launches the API server.*
 
 ## 📖 Documentation
 
@@ -120,7 +94,6 @@ Explore our comprehensive guides to master OneJs:
 - [**Database & Persistence**](docs/database.md)
 - [**Events & Background Jobs**](docs/events-jobs.md)
 - [**Authentication & Security**](docs/auth.md)
-- [**CLI Tool Usage**](docs/cli.md)
 
 ## 🤝 Contributing
 

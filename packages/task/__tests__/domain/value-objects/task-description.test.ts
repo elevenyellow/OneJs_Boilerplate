@@ -23,14 +23,20 @@ describe('TaskDescription', () => {
   })
 
   it('throws when value exceeds max length', () => {
-    expect(() => TaskDescription.create('x'.repeat(501))).toThrow('TaskDescription cannot exceed 500 characters')
+    expect(() => TaskDescription.create('x'.repeat(501))).toThrow(
+      'TaskDescription cannot exceed 500 characters',
+    )
   })
 
   it('equals returns true for same value', () => {
-    expect(TaskDescription.create('a').equals(TaskDescription.create('a'))).toBe(true)
+    expect(
+      TaskDescription.create('a').equals(TaskDescription.create('a')),
+    ).toBe(true)
   })
 
   it('equals returns false for different value', () => {
-    expect(TaskDescription.create('a').equals(TaskDescription.create('b'))).toBe(false)
+    expect(
+      TaskDescription.create('a').equals(TaskDescription.create('b')),
+    ).toBe(false)
   })
 })

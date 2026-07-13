@@ -22,7 +22,7 @@ Generate tests for existing code following `docs/conventions/patterns/testing.md
 
 ## Rules
 
-- Use `bun:test` imports: `import { describe, expect, test, mock } from "bun:test"`.
+- Use `bun:test` imports: `import { describe, expect, test } from "bun:test"`. Unit tests (`tests/unit/`) must have **zero mocks** — use InMemory repositories and fakes. `mock` is only permitted in `tests/integration/` when no InMemory adapter exists.
 - Prefer InMemory implementations or lightweight fakes over mocks.
 - Each test must be independent — no shared mutable state.
 - Test behavior, not implementation details.

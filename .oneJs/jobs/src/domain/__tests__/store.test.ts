@@ -1,5 +1,5 @@
-import { describe, test, expect } from 'bun:test'
-import { registerWorkerHandler, getAllWorkerHandlers } from '../store'
+import { describe, expect, test } from 'bun:test'
+import { getAllWorkerHandlers, registerWorkerHandler } from '../store'
 
 class HandlerA {}
 class HandlerB {}

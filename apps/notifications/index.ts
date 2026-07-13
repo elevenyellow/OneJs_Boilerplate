@@ -1,4 +1,4 @@
-import { OneJs, logger } from '@OneJs/core'
+import { logger, OneJs } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
 import { EventBusPlugin, RedisBridge } from '@OneJs/event-bus'
 

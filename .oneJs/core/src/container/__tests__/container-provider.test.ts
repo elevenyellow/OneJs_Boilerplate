@@ -1,6 +1,6 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
-import { ContainerProvider } from '.././container-provider'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { Container } from '.././container'
+import { ContainerProvider } from '.././container-provider'
 
 describe('ContainerProvider', () => {
   beforeEach(() => {

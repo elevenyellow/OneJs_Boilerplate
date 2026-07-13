@@ -1,5 +1,5 @@
 {
-  "name": "my-eyjs-project",
+  "name": "one-js-boilerplate",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -11,10 +11,11 @@
     ".oneJs/prisma",
     ".oneJs/auth",
     ".oneJs/event-bus",
-    ".oneJs/jobs"
+    ".oneJs/jobs",
+    ".oneJs/testing"
   ],
   "scripts": {
-    "create-app": "bun ./.oneJs/create-app/cli.ts",
+    "prepare": "husky",
     "start:db": "podman-compose down > /dev/null 2>&1 && (podman rm -f postgresdb redisdb > /dev/null 2>&1 || true) && podman-compose up -d > /dev/null 2>&1",
     "prisma:merge": "bun ./.oneJs/prisma/src/scripts/merge-schema.ts",
     "prisma:validate": "npx prisma validate --schema=./prisma/schema.prisma",
@@ -31,17 +32,27 @@
     "test:integration": "bun test ./packages/task/__tests__/integration/",
     "test:e2e": "bun test ./packages/task/__tests__/e2e/",
     "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "typecheck:incremental": "tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc-incremental.tsbuildinfo",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "lint": "biome lint .",
+    "lint:fix": "biome check --write --max-diagnostics=20000 .",
+    "lint:errors": "biome lint --max-diagnostics=20000 .",
+    "format": "biome format --write .",
+    "opencode": "bun run scripts/opencode.ts",
+    "loop": "bash scripts/loop.sh",
+    "loop:once": "bash scripts/loop-once.sh",
     "start:api:prod": "bun run --cwd apps/api start",
-    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev",
-    "start:admin:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/admin dev",
-    "start:web:dev": "bun run --cwd apps/web dev",
-    "start:mobile:dev": "bun run --cwd apps/mobile start"
+    "start:api:dev": "bun install && bun run start:db && bun run prisma:build && bun run prisma:migrate:dev && bun run --cwd apps/api start:dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
     "@prisma/client": "^6.1.0",
     "@types/bun": "latest",
+    "@types/debug": "^4.1.12",
+    "@types/jsonwebtoken": "^9.0.6",
     "glob": "^13.0.0",
+    "husky": "^9.1.7",
     "prisma": "^6.1.0"
   },
   "dependencies": {

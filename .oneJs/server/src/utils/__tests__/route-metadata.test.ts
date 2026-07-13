@@ -12,7 +12,10 @@ describe('getControllerMeta()', () => {
 
   it('returns existing __meta if already set', () => {
     class Existing {}
-    ;(Existing as any).__meta = { path: '/items', routes: { list: { method: 'get' } } }
+    ;(Existing as any).__meta = {
+      path: '/items',
+      routes: { list: { method: 'get' } },
+    }
 
     const meta = getControllerMeta(Existing)
     expect(meta.path).toBe('/items')

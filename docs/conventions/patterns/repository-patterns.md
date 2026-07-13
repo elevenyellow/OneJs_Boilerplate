@@ -71,7 +71,7 @@ export class InMemoryUserRepository implements IUserRepository {
 
   async findByEmail(email: Email): Promise<User | null> {
     for (const user of this.store.values()) {
-      if (user.email.getValue() === email.getValue()) return user
+      if (user.getEmail().getValue() === email.getValue()) return user
     }
     return null
   }
@@ -197,9 +197,9 @@ Every entity implements `toDto()` to serialize to persistence:
 toDto(): UserDto {
   return new UserDto(
     this.getId().getValue(),      // VO → primitive
-    this.email.getValue(),
-    this.role.getValue(),
-    this.createdAt,
+    this.getEmail().getValue(),
+    this.getRole().getValue(),
+    this.getCreatedAt(),
   )
 }
 ```
@@ -210,7 +210,7 @@ Bind the concrete implementation to the interface via `@Inject()`:
 
 ```typescript
 @Injectable()
-export class UserCreator {
+export class UserService {
   constructor(
     @Inject(InMemoryUserRepository)          // concrete token
     private readonly repo: IUserRepository,  // typed as interface
@@ -233,14 +233,14 @@ describe('InMemoryUserRepository', () => {
     repository = new InMemoryUserRepository()
   })
 
-  it('should return null when user not found', async () => {
+  it('returns null for a user that was never saved', async () => {
     const id = UserId.generateUniqueId()
     const result = await repository.findById(id)
     expect(result).toBeNull()
   })
 
-  it('should find user by email after save', async () => {
-    const user = User.register('test@example.com', 'hash')
+  it('finds a user by email after it has been saved', async () => {
+    const user = User.register(Email.create('test@example.com'), PasswordHash.create('hashed_pw'))
     await repository.save(user)
 
     const found = await repository.findByEmail(Email.create('test@example.com'))

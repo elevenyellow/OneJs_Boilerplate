@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { OneJsError } from '@OneJs/core'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { Task } from '../../../domain/entities/task'
+import { TaskDescription } from '../../../domain/value-objects/task-description'
+import { TaskTitle } from '../../../domain/value-objects/task-title'
 import { TaskController } from '../../../infrastructure/controllers/task.controller'
 
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
@@ -11,7 +13,9 @@ function makeService() {
   return {
     getAll: mock(async (): Promise<Task[]> => []),
     getById: mock(async (_id: string) => null as Task | null),
-    create: mock(async (_title: string, _desc: string) => task(_title)),
+    create: mock(async (title: TaskTitle, _desc: TaskDescription) =>
+      task(title.getValue()),
+    ),
     complete: mock(async (_id: string) => task('A', true)),
     delete: mock(async (_id: string) => {}),
   }
@@ -67,7 +71,9 @@ describe('TaskController', () => {
 
   describe('create()', () => {
     it('returns 201 with the created task DTO', async () => {
-      const ctx = makeCtx({ body: { title: 'New task', description: 'Details' } })
+      const ctx = makeCtx({
+        body: { title: 'New task', description: 'Details' },
+      })
       const result = await controller.create(ctx)
 
       expect(ctx.set.status).toBe(201)
@@ -87,13 +93,17 @@ describe('TaskController', () => {
 
   describe('complete()', () => {
     it('returns the completed task DTO with done=true', async () => {
-      const result = await controller.complete(makeCtx({ params: { id: UUID } }))
+      const result = await controller.complete(
+        makeCtx({ params: { id: UUID } }),
+      )
       expect((result as any).done).toBe(true)
     })
 
     it('propagates error when service throws', async () => {
       const error = new OneJsError('Not Found', 404, 'Task not found', {})
-      service.complete = mock(async () => { throw error })
+      service.complete = mock(async () => {
+        throw error
+      })
 
       try {
         await controller.complete(makeCtx({ params: { id: UUID } }))
@@ -114,7 +124,9 @@ describe('TaskController', () => {
 
     it('propagates error when service throws', async () => {
       const error = new OneJsError('Not Found', 404, 'Task not found', {})
-      service.delete = mock(async () => { throw error })
+      service.delete = mock(async () => {
+        throw error
+      })
 
       try {
         await controller.delete(makeCtx({ params: { id: UUID } }))

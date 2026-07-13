@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { metadataRegistry } from '.././metadata-registry'
 
 class ServiceA {}
@@ -78,7 +78,11 @@ describe('MetadataRegistry', () => {
 
     test('marks param as optional with a static fallback value', () => {
       metadataRegistry.registerService(ServiceB as any, 'singleton', false)
-      metadataRegistry.registerParamOptional(ServiceB as any, 0, 'default-value')
+      metadataRegistry.registerParamOptional(
+        ServiceB as any,
+        0,
+        'default-value',
+      )
 
       const meta = metadataRegistry.getMetadata(ServiceB as any)
       expect(meta!.params[0].optional).toBe(true)
@@ -112,7 +116,10 @@ describe('MetadataRegistry', () => {
       // Ensure none of our test classes are registered
       const all = metadataRegistry.getAllMetadata()
       const relevant = all.filter(
-        (m) => m.constructor === ServiceA || m.constructor === ServiceB || m.constructor === ServiceC,
+        (m) =>
+          m.constructor === ServiceA ||
+          m.constructor === ServiceB ||
+          m.constructor === ServiceC,
       )
       expect(relevant).toHaveLength(0)
     })
@@ -138,7 +145,9 @@ describe('MetadataRegistry', () => {
     })
 
     test('is a no-op for an unregistered service', () => {
-      expect(() => metadataRegistry.removeService(ServiceC as any)).not.toThrow()
+      expect(() =>
+        metadataRegistry.removeService(ServiceC as any),
+      ).not.toThrow()
     })
   })
 })

@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 
 // Mock @OneJs/event-bus to prevent loading the full package
 // (which has optional peer dependencies that may not exist in this context)

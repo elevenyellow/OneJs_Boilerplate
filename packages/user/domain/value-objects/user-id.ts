@@ -16,7 +16,11 @@ export class UserId extends ValueObjectBase<string> {
 
   static fromString(id: string): UserId {
     if (!id)
-      throw new OneJsError('UserId cannot be empty', 400, 'Invalid user identifier')
+      throw new OneJsError(
+        'UserId cannot be empty',
+        400,
+        'Invalid user identifier',
+      )
 
     if (!this.isValid(id))
       throw new OneJsError(

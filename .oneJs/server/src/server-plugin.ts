@@ -1,8 +1,8 @@
 import {
+  type BootstrapPlugin,
   Container,
   logger,
   metadataRegistry,
-  type BootstrapPlugin,
 } from '@OneJs/core'
 import { getAllControllers } from './controller-registry'
 import { Server } from './http-server'

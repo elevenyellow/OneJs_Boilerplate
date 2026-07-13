@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
-import { Module, getAllModules, clearModules } from '../module'
-import { markAs, clearMarkers } from '../../markers'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import { clearMarkers, markAs } from '../../markers'
 import { BootstrapBase } from '../bootstrap-base'
+import { clearModules, getAllModules, Module } from '../module'
 
 beforeEach(() => {
   clearModules()

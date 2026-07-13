@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { Get, Post, Put, Patch, Delete } from '.././methods'
 import { getControllerMeta } from '../../utils/route-metadata'
+import { Delete, Get, Patch, Post, Put } from '.././methods'
 
 describe('HTTP method decorators', () => {
   it('@Get() sets method=get and path', () => {

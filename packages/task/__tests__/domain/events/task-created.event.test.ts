@@ -6,7 +6,13 @@ const UUID = '550e8400-e29b-41d4-a716-446655440000'
 
 describe('TaskCreatedEvent', () => {
   it('creates an event with the task DTO as payload', () => {
-    const task = Task.reconstitute(UUID, 'Buy milk', 'Full fat', false, new Date())
+    const task = Task.reconstitute(
+      UUID,
+      'Buy milk',
+      'Full fat',
+      false,
+      new Date(),
+    )
     const event = new TaskCreatedEvent(task)
 
     expect(event.payload.id).toBe(UUID)

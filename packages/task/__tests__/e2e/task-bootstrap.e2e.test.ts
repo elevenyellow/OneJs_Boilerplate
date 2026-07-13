@@ -4,21 +4,27 @@
  * Verifies that after OneJs boots with TaskSeeder via @Module,
  * the seeded tasks are accessible through the full HTTP pipeline.
  */
+
+import { ErrorCodes, OneJsError } from '@OneJs/core'
+import { createSuccessResponse } from '@OneJs/server/types/response'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { Elysia } from 'elysia'
-import { OneJsError, ErrorCodes } from '@OneJs/core'
-import { TaskController } from '../../infrastructure/controllers/task.controller'
-import { TaskService } from '../../application/task.service'
 import { TaskSeeder } from '../../application/bootstrap/task-seeder'
+import { TaskService } from '../../application/task.service'
+import { TaskController } from '../../infrastructure/controllers/task.controller'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
-import { createSuccessResponse } from '@OneJs/server/types/response'
 
 const BASE = 'http://test'
 
 function createSeededApp() {
   const repo = new InMemoryTaskRepository()
   const eventBus = { publish: mock(async () => {}) }
-  const logger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} }
+  const logger = {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+  }
   const service = new TaskService(repo as any, eventBus as any, logger as any)
   const controller = new TaskController(service as any)
   const seeder = new TaskSeeder(repo, logger as any)

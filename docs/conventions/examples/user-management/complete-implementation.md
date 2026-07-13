@@ -158,14 +158,21 @@ import { UserRole } from '../value-objects/user-role'
 export class User extends EntityBase<UserId> {
   constructor(
     id: UserId,
-    readonly email: Email,
-    readonly passwordHash: PasswordHash,
-    readonly role: UserRole,
-    readonly createdAt: Date,
-    readonly resetToken: ResetToken | null,
+    private readonly _email: Email,
+    private readonly _passwordHash: PasswordHash,
+    private readonly _role: UserRole,
+    private readonly _createdAt: Date,
+    private readonly _resetToken: ResetToken | null,
   ) {
     super(id)
   }
+
+  // Getters expose state (read-only); no setters
+  getEmail(): Email { return this._email }
+  getPasswordHash(): PasswordHash { return this._passwordHash }
+  getRole(): UserRole { return this._role }
+  getCreatedAt(): Date { return this._createdAt }
+  getResetToken(): ResetToken | null { return this._resetToken }
 
   // Create a new user — accepts VOs
   static register(email: Email, passwordHash: PasswordHash): User {
@@ -200,20 +207,20 @@ export class User extends EntityBase<UserId> {
 
   // Immutable transitions — accept VOs, return new instance
   withPasswordHash(hash: PasswordHash): User {
-    return new User(this.getId(), this.email, hash, this.role, this.createdAt, null)
+    return new User(this.getId(), this._email, hash, this._role, this._createdAt, null)
   }
 
   withResetToken(token: ResetToken | null): User {
-    return new User(this.getId(), this.email, this.passwordHash, this.role, this.createdAt, token)
+    return new User(this.getId(), this._email, this._passwordHash, this._role, this._createdAt, token)
   }
 
   // Required by @Entity() — serialize to persistence
   toDto(): UserDto {
     return new UserDto(
       this.getId().getValue(),
-      this.email.getValue(),
-      this.role.getValue(),
-      this.createdAt,
+      this._email.getValue(),
+      this._role.getValue(),
+      this._createdAt,
     )
   }
 }
@@ -348,13 +355,13 @@ export class InMemoryUserRepository implements IUserRepository {
 
   async findByEmail(email: Email): Promise<User | null> {
     for (const user of this.store.values())
-      if (user.email.getValue() === email.getValue()) return user
+      if (user.getEmail().getValue() === email.getValue()) return user
     return null
   }
 
   async findByResetToken(token: ResetToken): Promise<User | null> {
     for (const user of this.store.values())
-      if (user.resetToken?.getValue() === token.getValue()) return user
+      if (user.getResetToken()?.getValue() === token.getValue()) return user
     return null
   }
 
@@ -412,8 +419,8 @@ describe('User', () => {
 
   it('should register with user role by default', () => {
     const user = User.register(email, hash)
-    expect(user.role.getValue()).toBe('user')
-    expect(user.resetToken).toBeNull()
+    expect(user.getRole().getValue()).toBe('user')
+    expect(user.getResetToken()).toBeNull()
   })
 
   it('should return new instance on withPasswordHash', () => {
@@ -422,8 +429,8 @@ describe('User', () => {
     const updated = user.withPasswordHash(newHash)
 
     expect(updated).not.toBe(user)  // new instance
-    expect(updated.passwordHash.getValue()).toBe('new_hash')
-    expect(user.passwordHash.getValue()).toBe('hashed_password')  // immutable
+    expect(updated.getPasswordHash().getValue()).toBe('new_hash')
+    expect(user.getPasswordHash().getValue()).toBe('hashed_password')  // immutable
   })
 
   it('should produce DTO with primitive values', () => {
@@ -469,7 +476,7 @@ describe('The UserService', () => {
 
       const user = await service.register(email, hash)
 
-      expect(user.email.getValue()).toBe('user@example.com')
+      expect(user.getEmail().getValue()).toBe('user@example.com')
       expect(await repository.findByEmail(email)).not.toBeNull()
     })
 

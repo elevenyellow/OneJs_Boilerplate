@@ -12,13 +12,14 @@
  *   PATCH  /tasks/:id/complete → staff | admin
  *   DELETE /tasks/:id          → admin only
  */
+
+import { ErrorCodes, OneJsError } from '@OneJs/core'
+import { createSuccessResponse } from '@OneJs/server/types/response'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { Elysia } from 'elysia'
-import { OneJsError, ErrorCodes } from '@OneJs/core'
-import { TaskController } from '../../infrastructure/controllers/task.controller'
 import { TaskService } from '../../application/task.service'
+import { TaskController } from '../../infrastructure/controllers/task.controller'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
-import { createSuccessResponse } from '@OneJs/server/types/response'
 
 const BASE = 'http://test'
 
@@ -29,10 +30,28 @@ const TOKENS = {
   admin: 'token-admin',
 } as const
 
-const TEST_USERS: Record<string, { userId: string; email: string; role: string; payload: any }> = {
-  [TOKENS.user]:  { userId: 'u1', email: 'user@test.com',  role: 'user',  payload: {} },
-  [TOKENS.staff]: { userId: 'u2', email: 'staff@test.com', role: 'staff', payload: {} },
-  [TOKENS.admin]: { userId: 'u3', email: 'admin@test.com', role: 'admin', payload: {} },
+const TEST_USERS: Record<
+  string,
+  { userId: string; email: string; role: string; payload: any }
+> = {
+  [TOKENS.user]: {
+    userId: 'u1',
+    email: 'user@test.com',
+    role: 'user',
+    payload: {},
+  },
+  [TOKENS.staff]: {
+    userId: 'u2',
+    email: 'staff@test.com',
+    role: 'staff',
+    payload: {},
+  },
+  [TOKENS.admin]: {
+    userId: 'u3',
+    email: 'admin@test.com',
+    role: 'admin',
+    payload: {},
+  },
 }
 
 function authGuard(requiredRoles?: string[]) {
@@ -40,8 +59,11 @@ function authGuard(requiredRoles?: string[]) {
     const header = ctx.request.headers.get('authorization')
     if (!header?.startsWith('Bearer ')) {
       throw new OneJsError(
-        'Unauthorized', 401, 'Bearer token is required',
-        { header }, ErrorCodes.AUTH_MISSING,
+        'Unauthorized',
+        401,
+        'Bearer token is required',
+        { header },
+        ErrorCodes.AUTH_MISSING,
       )
     }
 
@@ -49,15 +71,21 @@ function authGuard(requiredRoles?: string[]) {
     const user = TEST_USERS[token]
     if (!user) {
       throw new OneJsError(
-        'Unauthorized', 401, 'Token is invalid or expired',
-        { token }, ErrorCodes.AUTH_INVALID,
+        'Unauthorized',
+        401,
+        'Token is invalid or expired',
+        { token },
+        ErrorCodes.AUTH_INVALID,
       )
     }
 
     if (requiredRoles?.length && !requiredRoles.includes(user.role)) {
       throw new OneJsError(
-        'Forbidden', 403, 'You do not have the required role to access this resource',
-        { requiredRoles, userRole: user.role }, ErrorCodes.PERMISSION_DENIED,
+        'Forbidden',
+        403,
+        'You do not have the required role to access this resource',
+        { requiredRoles, userRole: user.role },
+        ErrorCodes.PERMISSION_DENIED,
       )
     }
 
@@ -70,7 +98,12 @@ function authGuard(requiredRoles?: string[]) {
 function createE2EApp() {
   const repo = new InMemoryTaskRepository()
   const eventBus = { publish: mock(async () => {}) }
-  const logger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} }
+  const logger = {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+  }
   const service = new TaskService(repo as any, eventBus as any, logger as any)
   const controller = new TaskController(service as any)
 
@@ -106,23 +139,39 @@ function createE2EApp() {
       return createSuccessResponse(result)
     })
     // Authenticated
-    .get('/tasks/:id', async (ctx) => {
-      const result = await controller.getById(ctx as any)
-      return createSuccessResponse(result)
-    }, { beforeHandle: authGuard() })
-    .post('/tasks', async (ctx) => {
-      const result = await controller.create(ctx as any)
-      return createSuccessResponse(result)
-    }, { beforeHandle: authGuard() })
+    .get(
+      '/tasks/:id',
+      async (ctx) => {
+        const result = await controller.getById(ctx as any)
+        return createSuccessResponse(result)
+      },
+      { beforeHandle: authGuard() },
+    )
+    .post(
+      '/tasks',
+      async (ctx) => {
+        const result = await controller.create(ctx as any)
+        return createSuccessResponse(result)
+      },
+      { beforeHandle: authGuard() },
+    )
     // Staff + Admin
-    .patch('/tasks/:id/complete', async (ctx) => {
-      const result = await controller.complete(ctx as any)
-      return createSuccessResponse(result)
-    }, { beforeHandle: authGuard(['staff', 'admin']) })
+    .patch(
+      '/tasks/:id/complete',
+      async (ctx) => {
+        const result = await controller.complete(ctx as any)
+        return createSuccessResponse(result)
+      },
+      { beforeHandle: authGuard(['staff', 'admin']) },
+    )
     // Admin only
-    .delete('/tasks/:id', async (ctx) => {
-      await controller.delete(ctx as any)
-    }, { beforeHandle: authGuard(['admin']) })
+    .delete(
+      '/tasks/:id',
+      async (ctx) => {
+        await controller.delete(ctx as any)
+      },
+      { beforeHandle: authGuard(['admin']) },
+    )
 
   return app
 }
@@ -158,7 +207,9 @@ function del(path: string, token?: string) {
 
 // helper: create a task and return its DTO
 async function createTask(app: any, title: string, token = TOKENS.admin) {
-  const res = await app.handle(post('/api/tasks', { title, description: '' }, token))
+  const res = await app.handle(
+    post('/api/tasks', { title, description: '' }, token),
+  )
   return (await res.json()).data
 }
 
@@ -209,7 +260,9 @@ describe('Task API — E2E (Elysia handle)', () => {
     })
 
     it('returns 401 with invalid token', async () => {
-      const res = await app.handle(post('/api/tasks', { title: 'Bad token' }, 'garbage'))
+      const res = await app.handle(
+        post('/api/tasks', { title: 'Bad token' }, 'garbage'),
+      )
 
       expect(res.status).toBe(401)
       const body = await res.json()
@@ -218,7 +271,11 @@ describe('Task API — E2E (Elysia handle)', () => {
 
     it('user role can create tasks', async () => {
       const res = await app.handle(
-        post('/api/tasks', { title: 'User task', description: 'by user' }, TOKENS.user),
+        post(
+          '/api/tasks',
+          { title: 'User task', description: 'by user' },
+          TOKENS.user,
+        ),
       )
 
       expect(res.status).toBe(201)
@@ -287,7 +344,9 @@ describe('Task API — E2E (Elysia handle)', () => {
 
     it('returns 403 for user role', async () => {
       const task = await createTask(app, 'User cannot complete')
-      const res = await app.handle(patch(`/api/tasks/${task.id}/complete`, TOKENS.user))
+      const res = await app.handle(
+        patch(`/api/tasks/${task.id}/complete`, TOKENS.user),
+      )
 
       expect(res.status).toBe(403)
       const body = await res.json()
@@ -296,7 +355,9 @@ describe('Task API — E2E (Elysia handle)', () => {
 
     it('staff can complete a task', async () => {
       const task = await createTask(app, 'Staff completes')
-      const res = await app.handle(patch(`/api/tasks/${task.id}/complete`, TOKENS.staff))
+      const res = await app.handle(
+        patch(`/api/tasks/${task.id}/complete`, TOKENS.staff),
+      )
 
       expect(res.status).toBe(200)
       expect((await res.json()).data.done).toBe(true)
@@ -304,7 +365,9 @@ describe('Task API — E2E (Elysia handle)', () => {
 
     it('admin can complete a task', async () => {
       const task = await createTask(app, 'Admin completes')
-      const res = await app.handle(patch(`/api/tasks/${task.id}/complete`, TOKENS.admin))
+      const res = await app.handle(
+        patch(`/api/tasks/${task.id}/complete`, TOKENS.admin),
+      )
 
       expect(res.status).toBe(200)
       expect((await res.json()).data.done).toBe(true)
@@ -312,7 +375,10 @@ describe('Task API — E2E (Elysia handle)', () => {
 
     it('returns 404 when task does not exist (even with valid role)', async () => {
       const res = await app.handle(
-        patch('/api/tasks/550e8400-e29b-41d4-a716-446655440099/complete', TOKENS.admin),
+        patch(
+          '/api/tasks/550e8400-e29b-41d4-a716-446655440099/complete',
+          TOKENS.admin,
+        ),
       )
       expect(res.status).toBe(404)
     })
@@ -365,34 +431,50 @@ describe('Task API — E2E (Elysia handle)', () => {
     it('user creates → staff completes → admin deletes', async () => {
       // User creates
       const createRes = await app.handle(
-        post('/api/tasks', { title: 'Role lifecycle', description: 'multi-role' }, TOKENS.user),
+        post(
+          '/api/tasks',
+          { title: 'Role lifecycle', description: 'multi-role' },
+          TOKENS.user,
+        ),
       )
       expect(createRes.status).toBe(201)
       const task = (await createRes.json()).data
 
       // User can read
-      const readRes = await app.handle(get(`/api/tasks/${task.id}`, TOKENS.user))
+      const readRes = await app.handle(
+        get(`/api/tasks/${task.id}`, TOKENS.user),
+      )
       expect(readRes.status).toBe(200)
 
       // User cannot complete
-      const userCompleteRes = await app.handle(patch(`/api/tasks/${task.id}/complete`, TOKENS.user))
+      const userCompleteRes = await app.handle(
+        patch(`/api/tasks/${task.id}/complete`, TOKENS.user),
+      )
       expect(userCompleteRes.status).toBe(403)
 
       // Staff completes
-      const staffCompleteRes = await app.handle(patch(`/api/tasks/${task.id}/complete`, TOKENS.staff))
+      const staffCompleteRes = await app.handle(
+        patch(`/api/tasks/${task.id}/complete`, TOKENS.staff),
+      )
       expect(staffCompleteRes.status).toBe(200)
       expect((await staffCompleteRes.json()).data.done).toBe(true)
 
       // Staff cannot delete
-      const staffDeleteRes = await app.handle(del(`/api/tasks/${task.id}`, TOKENS.staff))
+      const staffDeleteRes = await app.handle(
+        del(`/api/tasks/${task.id}`, TOKENS.staff),
+      )
       expect(staffDeleteRes.status).toBe(403)
 
       // Admin deletes
-      const adminDeleteRes = await app.handle(del(`/api/tasks/${task.id}`, TOKENS.admin))
+      const adminDeleteRes = await app.handle(
+        del(`/api/tasks/${task.id}`, TOKENS.admin),
+      )
       expect(adminDeleteRes.status).toBe(204)
 
       // Confirm gone
-      const goneRes = await app.handle(get(`/api/tasks/${task.id}`, TOKENS.admin))
+      const goneRes = await app.handle(
+        get(`/api/tasks/${task.id}`, TOKENS.admin),
+      )
       expect(goneRes.status).toBe(404)
     })
   })
@@ -411,7 +493,9 @@ describe('Task API — E2E (Elysia handle)', () => {
     })
 
     it('error responses include success=false, error.statusCode, and error.code', async () => {
-      const res = await app.handle(get('/api/tasks/550e8400-e29b-41d4-a716-446655440099'))
+      const res = await app.handle(
+        get('/api/tasks/550e8400-e29b-41d4-a716-446655440099'),
+      )
       const body = await res.json()
 
       expect(body.success).toBe(false)

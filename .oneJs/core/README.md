@@ -1,88 +1,9 @@
 # @OneJs/core
 
-Core dependency injection container, bootstrap, and utilities for OneJs framework.
+Dependency injection, Entity/VO base classes, Logger, OneJsError, decorators.
 
-## Installation
-
-```bash
-npm install @OneJs/core
-```
-
-## Features
-
-- **Dependency Injection Container**: Full-featured DI container with decorators
-- **Bootstrap System**: Two-phase plugin system for application initialization
-- **Configuration Service**: Environment-based configuration management
-- **Logger**: Advanced logging with debug support and color themes
-- **Error Handling**: Comprehensive error system with custom error codes
-- **Authentication**: Built-in auth middleware with Clerk integration
-- **Database**: Prisma client integration with repository pattern
-
-## Usage
-
-### Basic Setup
-
-```typescript
-import { OneJs, PluginRegistry } from '@OneJs/core'
-
-const oneJs = new OneJs(import.meta.url)
-await oneJs.start()
-```
-
-### Dependency Injection
-
-```typescript
-import { Injectable, Inject } from '@OneJs/core'
-
-@Injectable()
-export class MyService {
-  constructor(@Inject(Logger) private logger: Logger) {}
-}
-```
-
-### Configuration
-
-```typescript
-import { ConfigService } from '@OneJs/core'
-
-const config = new ConfigService()
-const dbUrl = config.get('DATABASE_URL')
-```
-
-### Logging
-
-```typescript
-import { logger } from '@OneJs/core'
-
-logger.info('app:start', 'Application started')
-logger.debug('app:debug', 'Debug information')
-```
-
-## Core Services
-
-The following services are automatically registered:
-
-- `Logger` - Application logging
-- `ConfigService` - Configuration management
-- `PrismaClientEy` - Database client
-- `AuthMiddleware` - Authentication middleware
-
-## Plugin System
-
-Plugins can register additional services and functionality:
-
-```typescript
-import { BootstrapPlugin } from '@OneJs/core'
-
-export class MyPlugin implements BootstrapPlugin {
-  name = 'my-plugin'
-  
-  register(container: Container): void {
-    // Register services
-  }
-  
-  async load(container: Container): Promise<void> {
-    // Initialize plugin
-  }
-}
-```
+> ⚠️ The previous README was auto-generated and documented APIs that did not exist.
+> It has been removed. For the **real** API, see:
+> - Root [AGENTS.md](../../AGENTS.md) for project conventions
+> - `src/__tests__/` for actual usage examples
+> - `apps/api/index.ts` for integration examples

@@ -3,7 +3,7 @@ name: openspec-review
 description: Run the full review gate for an implemented OpenSpec change before archive. Invokes code/tests/architecture/frontend reviewers in parallel, consolidates findings, applies fixes, and validates until green. Use after `apply` completes all tasks and before `archive`.
 license: MIT
 metadata:
-  author: smoke-test
+  author: onejs-boilerplate
   version: "1.0"
 ---
 
@@ -52,7 +52,7 @@ This mode owns everything that used to live between "all tasks done" and "move t
 
    Run `git diff --name-only "$(git merge-base HEAD main)...HEAD"` (or the equivalent against the repo's default branch) to detect which files changed.
 
-   Set a boolean `frontendTouched` flag: true if any path matches `^apps/(webapp|mobile)/` or `^packages/ui/`.
+   Set a boolean `frontendTouched` flag: true if any path matches `^packages/.+/infrastructure/` or `^apps/`.
 
    **Fallback**: if `git merge-base` fails (detached HEAD, no `main`, shallow clone), treat `frontendTouched` as `true` (safe default — don't miss a UI regression).
 
@@ -143,7 +143,7 @@ What would you like to do?
 
 **Guardrails**
 - Never run reviewers on a red validator — fix first, review second.
-- Always run the four reviewers in parallel (skip `frontend-reviewer` only when nothing under `apps/webapp`, `apps/mobile`, or `packages/ui` changed).
+- Always run the four reviewers in parallel (skip `frontend-reviewer` only when nothing under `packages/*/infrastructure/` or `apps/` changed).
 - Reviewers are scoped to the change diff; do not let them refactor unrelated code.
 - Never finish `review` with a red validator or unresolved high-severity findings.
 - Never leave review fixes uncommitted — `archive` expects a clean tree.

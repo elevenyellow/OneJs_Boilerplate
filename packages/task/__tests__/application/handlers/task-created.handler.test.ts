@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
+import { TaskCreatedHandler } from '../../../application/handlers/task-created.handler'
 import { Task } from '../../../domain/entities/task'
 import { TaskCreatedEvent } from '../../../domain/events/task-created.event'
-import { TaskCreatedHandler } from '../../../application/handlers/task-created.handler'
 
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
 

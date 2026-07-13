@@ -8,22 +8,23 @@
  * Uses Elysia's internal handle() so no real TCP server is needed.
  * Signs JWTs with 'default_secret' (LocalJwtStrategy fallback when JWT_SECRET is unset).
  */
-import { beforeEach, describe, expect, it } from 'bun:test'
-import jwt from 'jsonwebtoken'
+
 import {
   AuthMiddleware,
   Container,
   Logger,
+  metadataRegistry,
   OneJs,
   PluginRegistry,
-  metadataRegistry,
 } from '@OneJs/core'
 import { ServerPlugin } from '@OneJs/server'
-import { Server } from '@OneJs/server/http-server'
 import {
   clearControllers,
   registerController,
 } from '@OneJs/server/controller-registry'
+import { Server } from '@OneJs/server/http-server'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import jwt from 'jsonwebtoken'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

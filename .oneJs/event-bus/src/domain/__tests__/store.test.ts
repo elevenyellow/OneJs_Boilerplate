@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import { registerEventHandler, getAllEventHandlers, clearEventHandlers } from '.././store'
+import {
+  clearEventHandlers,
+  getAllEventHandlers,
+  registerEventHandler,
+} from '.././store'
 
 class FakeHandler {}
 
@@ -27,14 +31,29 @@ describe('Event handler store', () => {
   })
 
   it('accumulates multiple handlers', () => {
-    registerEventHandler({ target: FakeHandler, methodName: 'a', eventType: 'EventA', options: {} })
-    registerEventHandler({ target: FakeHandler, methodName: 'b', eventType: 'EventB', options: {} })
+    registerEventHandler({
+      target: FakeHandler,
+      methodName: 'a',
+      eventType: 'EventA',
+      options: {},
+    })
+    registerEventHandler({
+      target: FakeHandler,
+      methodName: 'b',
+      eventType: 'EventB',
+      options: {},
+    })
 
     expect(getAllEventHandlers()).toHaveLength(2)
   })
 
   it('clearEventHandlers() empties the store', () => {
-    registerEventHandler({ target: FakeHandler, methodName: 'handle', eventType: 'X', options: {} })
+    registerEventHandler({
+      target: FakeHandler,
+      methodName: 'handle',
+      eventType: 'X',
+      options: {},
+    })
     clearEventHandlers()
 
     expect(getAllEventHandlers()).toHaveLength(0)

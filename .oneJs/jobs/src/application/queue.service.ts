@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@OneJs/core'
-import { Job, Queue, QueueEvents, type JobsOptions } from 'bullmq'
+import { Job, type JobsOptions, Queue, QueueEvents } from 'bullmq'
 import crypto from 'crypto'
 import IORedis from 'ioredis'
 import moment from 'moment'

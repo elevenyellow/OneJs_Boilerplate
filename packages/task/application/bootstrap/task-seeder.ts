@@ -1,6 +1,7 @@
-import { Inject, Injectable, Logger } from '@OneJs/core'
-import { BootstrapBase } from '@OneJs/core'
+import { BootstrapBase, Inject, Injectable, Logger } from '@OneJs/core'
 import { Task } from '../../domain/entities/task'
+import { TaskDescription } from '../../domain/value-objects/task-description'
+import { TaskTitle } from '../../domain/value-objects/task-title'
 import { InMemoryTaskRepository } from '../../infrastructure/repositories/in-memory-task.repository'
 
 const DEFAULT_TASKS = [
@@ -27,7 +28,10 @@ export class TaskSeeder extends BootstrapBase {
     }
 
     for (const { title, description } of DEFAULT_TASKS) {
-      const task = Task.create(title, description)
+      const task = Task.create(
+        TaskTitle.create(title),
+        TaskDescription.create(description),
+      )
       await this.repository.save(task)
     }
 

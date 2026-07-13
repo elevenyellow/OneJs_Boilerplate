@@ -10,7 +10,11 @@ export class TaskTitle extends ValueObjectBase<string> {
 
   static create(value: string): TaskTitle {
     if (!value?.trim()) {
-      throw new OneJsError('TaskTitle cannot be empty', 400, 'Invalid task title')
+      throw new OneJsError(
+        'TaskTitle cannot be empty',
+        400,
+        'Invalid task title',
+      )
     }
     if (value.trim().length > TaskTitle.MAX_LENGTH) {
       throw new OneJsError(

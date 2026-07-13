@@ -1,6 +1,6 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
-import { PrismaRepository } from '../repositories/base.repository'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import type { PrismaClient } from '@prisma/client'
+import { PrismaRepository } from '../repositories/base.repository'
 
 // Concrete subclass used only for testing — no domain methods needed.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

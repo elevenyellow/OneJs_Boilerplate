@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define the validation and review gates used by the agentic OpenSpec workflow so implementation, review, and archive phases remain explicit and repeatable.
+
+## Requirements
 
 ### Requirement: Validation gate enforced after every apply task
 
@@ -37,10 +41,15 @@ Reviewer subagents (`code-reviewer`, `tests-reviewer`, `architecture-reviewer`, 
 
 ### Requirement: Frontend reviewer selection based on diff
 
-The `openspec-archive-change` SKILL SHALL invoke `frontend-reviewer` only when the change's diff against the base branch includes files under `apps/webapp/` or `apps/mobile/`. When diff detection fails, the SKILL SHALL invoke `frontend-reviewer` as a safe default.
+The `openspec-archive-change` SKILL SHALL invoke `frontend-reviewer` only when the change's diff against the base branch includes files under `apps/admin/`, `apps/web/`, or `apps/mobile/`. When diff detection fails, the SKILL SHALL invoke `frontend-reviewer` as a safe default. The non-existent path `apps/webapp/` is no longer used as a trigger.
 
-#### Scenario: Change touches webapp
-- **GIVEN** a change whose diff against `main` includes files under `apps/webapp/`
+#### Scenario: Change touches admin
+- **GIVEN** a change whose diff against `main` includes files under `apps/admin/`
+- **WHEN** the archive SKILL determines which reviewers to invoke
+- **THEN** `frontend-reviewer` is invoked alongside the other reviewers
+
+#### Scenario: Change touches web
+- **GIVEN** a change whose diff against `main` includes files under `apps/web/`
 - **WHEN** the archive SKILL determines which reviewers to invoke
 - **THEN** `frontend-reviewer` is invoked alongside the other reviewers
 
@@ -50,7 +59,7 @@ The `openspec-archive-change` SKILL SHALL invoke `frontend-reviewer` only when t
 - **THEN** `frontend-reviewer` is invoked alongside the other reviewers
 
 #### Scenario: Change touches only backend
-- **GIVEN** a change whose diff against `main` includes no files under `apps/webapp/` or `apps/mobile/`
+- **GIVEN** a change whose diff against `main` includes no files under `apps/admin/`, `apps/web/`, or `apps/mobile/`
 - **WHEN** the archive SKILL determines which reviewers to invoke
 - **THEN** `frontend-reviewer` is not invoked
 
@@ -58,6 +67,11 @@ The `openspec-archive-change` SKILL SHALL invoke `frontend-reviewer` only when t
 - **GIVEN** a change where `git diff` cannot resolve the merge-base (for example, no `main` branch, detached HEAD, or shallow clone)
 - **WHEN** the archive SKILL attempts to determine which reviewers to invoke
 - **THEN** `frontend-reviewer` is invoked as a safe default
+
+#### Scenario: Stale apps/webapp path is no longer a trigger
+- **GIVEN** a change whose diff against `main` includes a file matching the literal path `apps/webapp/` (which does not exist in this monorepo)
+- **WHEN** the archive SKILL determines which reviewers to invoke
+- **THEN** `apps/webapp/` is not considered as a frontend trigger; only `apps/admin/`, `apps/web/`, and `apps/mobile/` qualify
 
 ### Requirement: Archive orchestrates the full closing sequence
 
@@ -101,10 +115,10 @@ The `openspec-archive-change` SKILL SHALL execute the following sequence before 
 - **WHEN** any operator or agent reads `AGENTS.md`
 - **THEN** the file does not contain a "Mandatory Review Gate" section or any instruction to run reviewer subagents after every task
 
-### Requirement: Archive mode uses sonnet medium reasoning
+### Requirement: Archive mode uses GPT medium reasoning
 
-The `archive` mode in `opencode.json` SHALL use `claude-sonnet-4.5` with `reasoningEffort: "medium"` and `temperature: 0.1`.
+The `archive` mode in `opencode.json` SHALL use `openai/gpt-5.5-mini` with `reasoningEffort: "medium"` and `temperature: 0.1`.
 
 #### Scenario: Archive mode configuration
 - **WHEN** OpenCode loads `opencode.json`
-- **THEN** `mode.archive.model` is `github-copilot/claude-sonnet-4.5`, `mode.archive.reasoningEffort` is `medium`, and `mode.archive.temperature` is `0.1`
+- **THEN** `mode.archive.model` is `openai/gpt-5.5-mini`, `mode.archive.reasoningEffort` is `medium`, and `mode.archive.temperature` is `0.1`

@@ -1,14 +1,17 @@
-import { describe, test, expect, beforeEach, mock } from 'bun:test'
-import { EventBus } from '.././event-bus'
-import { InMemoryEventPublisher } from '.././publishers/in-memory-event-publisher'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { DomainEvent } from '../../domain/events/domain-events'
 import type { IEventHandler } from '../../domain/handlers/event-handler'
+import { EventBus } from '.././event-bus'
 import type { EventBusMiddlewareInterface } from '.././middleware'
+import { InMemoryEventPublisher } from '.././publishers/in-memory-event-publisher'
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
 class OrderCreatedEvent extends DomainEvent {
-  constructor(public readonly orderId: string, occurredOn?: Date) {
+  constructor(
+    public readonly orderId: string,
+    occurredOn?: Date,
+  ) {
     super(occurredOn)
   }
 }
@@ -45,7 +48,11 @@ function makeEventBus(nodeEnv = 'test') {
   const configService = makeStubConfigService(nodeEnv)
   const logger = makeStubLogger()
 
-  const bus = new EventBus(publisher as any, configService as any, logger as any)
+  const bus = new EventBus(
+    publisher as any,
+    configService as any,
+    logger as any,
+  )
   return { bus, publisher, configService, logger }
 }
 
@@ -127,8 +134,12 @@ describe('EventBus', () => {
       const { bus } = makeEventBus()
       const order: string[] = []
 
-      const first = makeHandler<OrderCreatedEvent>(async () => order.push('first'))
-      const second = makeHandler<OrderCreatedEvent>(async () => order.push('second'))
+      const first = makeHandler<OrderCreatedEvent>(async () =>
+        order.push('first'),
+      )
+      const second = makeHandler<OrderCreatedEvent>(async () =>
+        order.push('second'),
+      )
 
       // Both priority 0 - should be called in registration order
       bus.subscribe('OrderCreatedEvent', first)
@@ -143,9 +154,11 @@ describe('EventBus', () => {
     test('middleware is called when an event is published', async () => {
       const { bus } = makeEventBus()
       const handler = makeHandler<OrderCreatedEvent>()
-      const middlewareCalled = mock(async (_event: DomainEvent, next: () => Promise<void>) => {
-        await next()
-      })
+      const middlewareCalled = mock(
+        async (_event: DomainEvent, next: () => Promise<void>) => {
+          await next()
+        },
+      )
 
       bus.use(middlewareCalled as EventBusMiddlewareInterface)
       bus.subscribe('OrderCreatedEvent', handler)
@@ -159,7 +172,10 @@ describe('EventBus', () => {
       const { bus } = makeEventBus()
       const handler = makeHandler<OrderCreatedEvent>()
 
-      const blockingMiddleware: EventBusMiddlewareInterface = async (_event, _next) => {
+      const blockingMiddleware: EventBusMiddlewareInterface = async (
+        _event,
+        _next,
+      ) => {
         // Intentionally not calling next() - blocks propagation
       }
 
@@ -202,7 +218,9 @@ describe('EventBus', () => {
       expect(order).toContain('mw2-before')
       expect(order).toContain('handler')
       expect(order).toContain('mw2-after')
-      expect(order.indexOf('mw1-before')).toBeLessThan(order.indexOf('mw2-before'))
+      expect(order.indexOf('mw1-before')).toBeLessThan(
+        order.indexOf('mw2-before'),
+      )
       expect(order.indexOf('mw2-before')).toBeLessThan(order.indexOf('handler'))
     })
   })
@@ -216,7 +234,9 @@ describe('EventBus', () => {
 
       bus.subscribe('OrderCreatedEvent', failingHandler)
       // Should NOT throw in development mode
-      await expect(bus.publish(new OrderCreatedEvent('err-dev'))).resolves.toBeUndefined()
+      await expect(
+        bus.publish(new OrderCreatedEvent('err-dev')),
+      ).resolves.toBeUndefined()
     })
 
     test('isDevelopment flag is false when NODE_ENV is production', () => {
@@ -235,7 +255,9 @@ describe('EventBus', () => {
 
       bus.use(failingMiddleware)
       bus.subscribe('OrderCreatedEvent', makeHandler<OrderCreatedEvent>())
-      await expect(bus.publish(new OrderCreatedEvent('mw-err'))).resolves.toBeUndefined()
+      await expect(
+        bus.publish(new OrderCreatedEvent('mw-err')),
+      ).resolves.toBeUndefined()
     })
   })
 

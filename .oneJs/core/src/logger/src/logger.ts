@@ -4,12 +4,12 @@ import pretty from 'pino-pretty'
 import { Injectable } from '../../container/decorators'
 import { ColorManager } from './color-themes'
 import { getConfigFromEnv, mergeConfig } from './env-config'
+import { type ExtensibleLogger } from './logger.interface'
 import {
   type ColorConfig,
   type ColorTheme,
   type LoggerConfig,
 } from './logger-config.interface'
-import { type ExtensibleLogger } from './logger.interface'
 
 @Injectable()
 export class Logger implements ExtensibleLogger {
@@ -159,7 +159,11 @@ export class Logger implements ExtensibleLogger {
     data?: Record<string, unknown>,
   ): void {
     if (this.debugMode) {
-      const msg = this.buildDebugMessage(contextPrefixOrMessage, messageOrData, data)
+      const msg = this.buildDebugMessage(
+        contextPrefixOrMessage,
+        messageOrData,
+        data,
+      )
       this.debugInfo(msg)
       return
     }
@@ -211,7 +215,11 @@ export class Logger implements ExtensibleLogger {
     data?: Record<string, unknown>,
   ): void {
     if (this.debugMode) {
-      const msg = this.buildDebugMessage(contextPrefixOrMessage, messageOrData, data)
+      const msg = this.buildDebugMessage(
+        contextPrefixOrMessage,
+        messageOrData,
+        data,
+      )
       this.debugWarn(msg)
       return
     }
@@ -263,7 +271,11 @@ export class Logger implements ExtensibleLogger {
     data?: Record<string, unknown>,
   ): void {
     if (this.debugMode) {
-      const msg = this.buildDebugMessage(contextPrefixOrMessage, messageOrData, data)
+      const msg = this.buildDebugMessage(
+        contextPrefixOrMessage,
+        messageOrData,
+        data,
+      )
       this.debugError(msg)
       return
     }

@@ -15,7 +15,9 @@ type ControllerMeta = {
   routes: Record<string | symbol, RouteMeta>
 }
 
-type ControllerLike = (ClassConstructor | Function) & { __meta?: ControllerMeta }
+type ControllerLike = (ClassConstructor | Function) & {
+  __meta?: ControllerMeta
+}
 
 export function getControllerMeta(ctor: ControllerLike): ControllerMeta {
   ctor.__meta = ctor.__meta || { routes: {} }
