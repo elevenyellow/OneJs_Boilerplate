@@ -1,5 +1,31 @@
 {
   "permissions": {
     "allow": ["Bash(rtk ls *)", "Bash(rtk find *)"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/git-guard.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking git policy..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/worktree-guard.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking worktree policy..."
+          }
+        ]
+      }
+    ]
   }
 }
