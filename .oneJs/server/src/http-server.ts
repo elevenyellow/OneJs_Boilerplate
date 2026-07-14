@@ -50,9 +50,13 @@ interface ControllerMeta {
   routes: Record<string, RouteMeta>
 }
 
-interface ControllerClass {
-  __meta?: ControllerMeta
-  new (...args: never[]): unknown
+type ControllerClass = ClassConstructor & { __meta?: ControllerMeta }
+
+type MiddlewareHandlerInstance = {
+  handle(
+    context: Context,
+    roles: RouteMeta['roles'],
+  ): unknown | Promise<unknown>
 }
 
 type EnhancedContext = Context & { query: Record<string, string | undefined> }
@@ -118,9 +122,9 @@ export class Server {
     return middlewares.map((mw) => {
       if (typeof mw === 'function' && mw.prototype?.handle) {
         const instance = this.container.get(
-          mw as ClassConstructor<MiddlewareInterface>,
+          mw as ClassConstructor<MiddlewareHandlerInstance>,
         )
-        return ((app: Elysia) =>
+        return (app: Elysia) =>
           app.onBeforeHandle(async (context) => {
             try {
               await instance.handle(context, roles)
@@ -283,7 +287,7 @@ export class Server {
         ? (((app: Elysia) => {
             const middlewareClass = middleware as MiddlewareClass
             const instance = this.container.get(
-              middlewareClass as ClassConstructor<MiddlewareInterface>,
+              middlewareClass as ClassConstructor<MiddlewareHandlerInstance>,
             )
             return app.onBeforeHandle(async (context) => {
               try {

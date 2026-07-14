@@ -10,7 +10,7 @@ export interface AuthUser {
   userId: string
   email?: string
   role: UserRole | string
-  payload: Record<string, unknown>
+  payload: unknown
 }
 
 export interface AuthStrategy {

@@ -1,6 +1,15 @@
 import { AuthMiddleware, Roles, UseAuth } from '@OneJs/core'
 import { describe, expect, test } from 'bun:test'
 
+type TestControllerMeta = {
+  __meta?: {
+    routes?: Record<
+      string,
+      { middlewares?: unknown[]; roles?: string[] } | undefined
+    >
+  }
+}
+
 describe('@UseAuth()', () => {
   test('adds AuthMiddleware to route middlewares metadata', () => {
     class TestController {
@@ -10,7 +19,7 @@ describe('@UseAuth()', () => {
       }
     }
 
-    const meta = (TestController as any).__meta?.routes?.guarded
+    const meta = (TestController as TestControllerMeta).__meta?.routes?.guarded
     expect(meta?.middlewares).toContain(AuthMiddleware)
   })
 
@@ -26,7 +35,7 @@ describe('@UseAuth()', () => {
       }
     }
 
-    const routes = (TestController as any).__meta?.routes
+    const routes = (TestController as TestControllerMeta).__meta?.routes
     expect(routes?.guarded?.middlewares).toContain(AuthMiddleware)
     expect(routes?.open).toBeUndefined()
   })
@@ -44,7 +53,8 @@ describe('@UseAuth()', () => {
       }
     }
 
-    const { routeA, routeB } = (TestController as any).__meta.routes
+    const { routeA, routeB } =
+      (TestController as TestControllerMeta).__meta?.routes ?? {}
     expect(routeA?.middlewares).toContain(AuthMiddleware)
     expect(routeB?.middlewares).toContain(AuthMiddleware)
   })
@@ -59,7 +69,8 @@ describe('@Roles()', () => {
       }
     }
 
-    const meta = (TestController as any).__meta?.routes?.restricted
+    const meta = (TestController as TestControllerMeta).__meta?.routes
+      ?.restricted
     expect(meta?.roles).toEqual(['admin', 'staff'])
   })
 
@@ -71,7 +82,8 @@ describe('@Roles()', () => {
       }
     }
 
-    const meta = (TestController as any).__meta?.routes?.adminOnly
+    const meta = (TestController as TestControllerMeta).__meta?.routes
+      ?.adminOnly
     expect(meta?.roles).toEqual(['admin'])
   })
 
@@ -84,7 +96,8 @@ describe('@Roles()', () => {
       }
     }
 
-    const meta = (TestController as any).__meta?.routes?.fullGuard
+    const meta = (TestController as TestControllerMeta).__meta?.routes
+      ?.fullGuard
     expect(meta?.middlewares).toContain(AuthMiddleware)
     expect(meta?.roles).toEqual(['admin'])
   })
@@ -104,7 +117,8 @@ describe('@Roles()', () => {
       }
     }
 
-    const { adminRoute, staffRoute } = (TestController as any).__meta.routes
+    const { adminRoute, staffRoute } =
+      (TestController as TestControllerMeta).__meta?.routes ?? {}
     expect(adminRoute?.roles).toEqual(['admin'])
     expect(staffRoute?.roles).toEqual(['staff', 'admin'])
   })

@@ -3,7 +3,7 @@ import { logger, OneJsError } from '@OneJs/core'
 import { beforeAll, describe, expect, it, mock } from 'bun:test'
 
 beforeAll(() => {
-  logger.error = mock(() => {}) as any
+  logger.error = mock(() => undefined) as typeof logger.error
 })
 
 import { createErrorHandler } from '.././error.middleware'

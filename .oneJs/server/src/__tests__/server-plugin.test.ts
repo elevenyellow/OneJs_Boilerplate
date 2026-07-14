@@ -1,5 +1,5 @@
-/** biome-ignore-all lint/suspicious/noEmptyBlockStatements: <explanation> */
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+/** biome-ignore-all lint/suspicious/noEmptyBlockStatements: intentional no-op test fakes */
+/** biome-ignore-all lint/suspicious/noExplicitAny: unit test exercises dynamic server wiring */
 
 import { metadataRegistry } from '@OneJs/core'
 import { beforeEach, describe, expect, mock, test } from 'bun:test'

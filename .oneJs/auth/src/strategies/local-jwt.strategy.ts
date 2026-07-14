@@ -6,8 +6,15 @@ import {
   Injectable,
   OneJsError,
 } from '@OneJs/core'
-import jwt, { type JwtPayload } from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
 import { type AuthStrategy, type AuthUser, UserRoles } from '../types'
+
+type LocalJwtPayload = {
+  sub?: string
+  id?: string
+  email?: string
+  role?: string
+}
 
 @Injectable()
 export class LocalJwtStrategy implements AuthStrategy {
@@ -19,10 +26,20 @@ export class LocalJwtStrategy implements AuthStrategy {
 
   async validate(token: string): Promise<AuthUser> {
     try {
-      const decoded = jwt.verify(token, this.secret) as JwtPayload
+      const decoded = jwt.verify(token, this.secret) as LocalJwtPayload
+      const userId = decoded.sub || decoded.id
+      if (!userId) {
+        throw new OneJsError(
+          'Unauthorized',
+          401,
+          'Invalid or expired local token',
+          undefined,
+          ErrorCodes.AUTH_INVALID as ErrorCode,
+        )
+      }
 
       return {
-        userId: decoded.sub || decoded.id,
+        userId,
         email: decoded.email,
         role: decoded.role || UserRoles.USER,
         payload: decoded,

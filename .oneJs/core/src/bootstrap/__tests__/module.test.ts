@@ -37,6 +37,7 @@ describe('@Module', () => {
 
     @Module({ providers: [FakeService] })
     class ServiceModule {}
+    void ServiceModule
 
     const modules = getAllModules()
     expect(modules).toHaveLength(1)
@@ -75,6 +76,7 @@ describe('@Module', () => {
   it('clears all modules', () => {
     @Module({ controllers: [] })
     class SomeModule {}
+    void SomeModule
 
     expect(getAllModules()[0].target).toBe(SomeModule)
     clearModules()
