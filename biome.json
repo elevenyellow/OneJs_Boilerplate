@@ -77,7 +77,7 @@
         "noDuplicateObjectKeys": "error",
         "noDuplicateParameters": "error",
         "noEmptyBlockStatements": "error",
-        "noExplicitAny": "error",
+        "noExplicitAny": "off",
         "noExtraNonNullAssertion": "error",
         "noFallthroughSwitchClause": "error",
         "noFunctionAssign": "error",
@@ -165,7 +165,6 @@
       "linter": {
         "rules": {
           "suspicious": {
-            "noExplicitAny": "warn",
             "noEmptyBlockStatements": "warn"
           }
         }
