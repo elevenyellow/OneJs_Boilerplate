@@ -5,7 +5,6 @@
  * the seeded tasks are accessible through the full HTTP pipeline.
  */
 
-import { ErrorCodes, OneJsError } from '@OneJs/core'
 import { createSuccessResponse } from '@OneJs/server/types/response'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { Elysia } from 'elysia'
@@ -68,14 +67,13 @@ function get(path: string) {
 }
 
 describe('Task Bootstrap — E2E (seeded data via HTTP)', () => {
-  let app: Elysia
-  let repo: InMemoryTaskRepository
+  // biome-ignore lint/suspicious/noExplicitAny: Elysia's generic prefix/metadata invariance makes a precise annotation impractical in tests.
+  let app: any
   let seeder: TaskSeeder
 
   beforeEach(async () => {
     const ctx = createSeededApp()
     app = ctx.app
-    repo = ctx.repo
     seeder = ctx.seeder
 
     await seeder.bootstrap()

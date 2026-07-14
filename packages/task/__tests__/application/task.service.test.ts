@@ -26,7 +26,7 @@ function makeRepo(overrides: Partial<ITaskRepository> = {}): ITaskRepository {
 }
 
 function makeEventBus() {
-  return { publish: mock(async () => {}) }
+  return { publish: mock(async (_event: any) => {}) }
 }
 
 function makeLogger() {

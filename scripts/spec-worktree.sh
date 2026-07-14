@@ -44,6 +44,26 @@ cmd_bootstrap() {
       cp "$MAIN/$envf" "$wt/$envf"; info "copied $envf (gitignored — never commit)"
     fi
   done
+  # Grant full, frictionless editing INSIDE this worktree (gitignored, per-
+  # worktree — never reaches the spec branch, auto-gone when the worktree is
+  # removed). The guard hooks already allow worktree edits; this drops the
+  # interactive edit prompts too, and CLAUDE_GIT_ALLOW lets the assistant
+  # commit/push its own spec branch. main stays protected (that's a DIFFERENT
+  # checkout with its own settings). Only written if absent — never clobber.
+  if [ ! -e "$wt/.claude/settings.local.json" ]; then
+    mkdir -p "$wt/.claude"
+    cat > "$wt/.claude/settings.local.json" <<'JSON'
+{
+  "env": {
+    "CLAUDE_GIT_ALLOW": "1"
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits"
+  }
+}
+JSON
+    info "wrote .claude/settings.local.json (acceptEdits + CLAUDE_GIT_ALLOW — worktree-scoped, gitignored)"
+  fi
   ( cd "$wt" && bun install >/dev/null 2>&1 && git checkout -- bun.lock 2>/dev/null || true )
   info "deps hydrated (bun.lock churn dropped)"
   ( cd "$wt" && bun run prisma:build >/dev/null 2>&1 ) && info "prisma client generated" \

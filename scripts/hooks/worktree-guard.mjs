@@ -29,8 +29,8 @@ function readStdin() {
 const IMPL_PREFIXES = ['apps/', 'packages/', '.oneJs/']
 
 // Walk up from a path to the enclosing repo root (first dir containing `.git`).
-// Returns { root, gitIsFile } or null.
-function repoRootOf(startDir) {
+// Returns { root, gitIsFile } or null. Exported for reuse by propose-guard.
+export function repoRootOf(startDir) {
   let dir = startDir
   for (let i = 0; i < 64; i++) {
     try {

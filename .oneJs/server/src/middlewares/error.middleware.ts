@@ -1,7 +1,15 @@
 import { logger, OneJsError } from '@OneJs/core'
 
 export function createErrorHandler() {
-  return ({ code, error, set }: { code: string; error: Error; set: any }) => {
+  return ({
+    code,
+    error,
+    set,
+  }: {
+    code: string
+    error: Error
+    set: { status: number }
+  }) => {
     const isDevelopment = process.env.NODE_ENV === 'development'
     const isOneJsError = error instanceof OneJsError
 
@@ -30,7 +38,9 @@ export function createErrorHandler() {
       error: {
         statusCode: status,
         ...(isDevelopment && {
-          details: error.explanatoryMessage || error.message,
+          details:
+            (error as { explanatoryMessage?: string }).explanatoryMessage ||
+            error.message,
         }),
       },
       data: {},

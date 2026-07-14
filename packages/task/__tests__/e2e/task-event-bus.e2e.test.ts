@@ -19,7 +19,8 @@ function post(path: string, body: object) {
 }
 
 describe('Task API + EventBus (e2e)', () => {
-  let app: Elysia
+  // biome-ignore lint/suspicious/noExplicitAny: Elysia's generic prefix/metadata invariance makes a precise annotation impractical in tests.
+  let app: any
   const onTaskCreated = mock(async (_event: TaskCreatedEvent) => undefined)
   const onTaskCreatedIntegration = mock(
     async (_event: TaskCreatedIntegrationEvent) => undefined,

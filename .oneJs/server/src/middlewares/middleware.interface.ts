@@ -27,6 +27,7 @@ export type ElysiaPlugin = Elysia<
     macro: {}
     macroFn: {}
     parser: {}
+    response: {}
   },
   {},
   {
@@ -34,12 +35,14 @@ export type ElysiaPlugin = Elysia<
     resolve: {}
     schema: {}
     standaloneSchema: {}
+    response: {}
   },
   {
     derive: {}
     resolve: {}
     schema: {}
     standaloneSchema: {}
+    response: {}
   }
 >
 

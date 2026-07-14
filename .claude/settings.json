@@ -12,6 +12,12 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/git-guard.mjs\"",
             "timeout": 10,
             "statusMessage": "Checking git policy..."
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/propose-guard.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking worktree policy..."
           }
         ]
       },
@@ -21,6 +27,12 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/worktree-guard.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking worktree policy..."
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/propose-guard.mjs\"",
             "timeout": 10,
             "statusMessage": "Checking worktree policy..."
           }

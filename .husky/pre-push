@@ -1,1 +1,7 @@
-bun run lint && bun run typecheck && bun test
+#!/bin/sh
+set -e
+# Check only (no --write) so the gate never rewrites files / dirties the tree.
+# Staged files are already formatted by pre-commit, so this passes.
+bun run lint
+bun run typecheck
+bun test

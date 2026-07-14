@@ -33,13 +33,46 @@ When ready to implement, use Cursor `/opsx-apply`, Claude Code `/opsx:apply`, or
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Create the change's worktree FIRST — before any artifact (enforced)**
+
+   Per AGENTS.md → Git Policy, `1 change = 1 branch = 1 worktree = 1 PR`. The
+   proposal itself lives on the spec branch, so the worktree must exist before
+   `openspec new change`.
+
+   a. **Detect where you are.** If the current checkout is a linked worktree
+      (its `.git` is a FILE, not a directory) whose path is
+      `../worktrees/<repo>/<name>`, you are already inside the change's
+      worktree — skip to step 3.
+
+      ```bash
+      # FILE → linked worktree (proceed); directory → primary main checkout (create + stop)
+      test -f .git && echo "in-worktree" || echo "primary-checkout"
+      ```
+
+   b. **On the primary `main` checkout, create the worktree and STOP.** A
+      mid-run `cd` does NOT persist across tool calls, so you cannot create the
+      worktree and keep working in the same session.
+
+      ```bash
+      scripts/spec-worktree.sh new "<name>"   # branch spec/<name> + worktree + bootstrap
+      ```
+
+      Then STOP and tell the operator to relaunch the session inside the
+      worktree:
+      > "Worktree created at `../worktrees/<repo>/<name>` on branch
+      > `spec/<name>`. Relaunch the session there (make it the session cwd) and
+      > re-run `/opsx:propose` to generate the artifacts."
+
+      Do NOT run `openspec new change` on `main` — the `propose-guard` hook
+      denies it and points you here.
+
+3. **Create the change directory (inside the worktree)**
    ```bash
    openspec new change "<name>"
    ```
    This creates a scaffolded change at `openspec/changes/<name>/` with `.openspec.yaml`.
 
-3. **Get the artifact build order**
+4. **Get the artifact build order**
    ```bash
    openspec status --change "<name>" --json
    ```
@@ -47,7 +80,7 @@ When ready to implement, use Cursor `/opsx-apply`, Claude Code `/opsx:apply`, or
    - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
    - `artifacts`: list of all artifacts with their status and dependencies
 
-4. **Create artifacts in sequence until apply-ready**
+5. **Create artifacts in sequence until apply-ready**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
@@ -79,7 +112,7 @@ When ready to implement, use Cursor `/opsx-apply`, Claude Code `/opsx:apply`, or
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Show final status**
+6. **Show final status**
    ```bash
    openspec status --change "<name>"
    ```

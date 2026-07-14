@@ -8,6 +8,10 @@ import {
   offendingGhMerge,
   offendingGit,
 } from '../git-guard.mjs'
+import {
+  blockedProposalWrite,
+  offendingProposeCreate,
+} from '../propose-guard.mjs'
 import { blockedImplEdit } from '../worktree-guard.mjs'
 
 // The repository root for import path checks (this test lives at scripts/hooks/__tests__).
@@ -179,6 +183,97 @@ describe('worktree-guard blockedImplEdit', () => {
 
   test('uses the real checkout as a smoke fixture', () => {
     expect(blockedImplEdit('docs/x.md', REPO)).toBeNull()
+  })
+})
+
+describe('propose-guard offendingProposeCreate', () => {
+  test('flags creating a new change (proposal scaffold)', () => {
+    expect(offendingProposeCreate('openspec new change add-user-auth')).toBe(
+      'openspec new change',
+    )
+    expect(offendingProposeCreate('openspec new change "add-user-auth"')).toBe(
+      'openspec new change',
+    )
+    expect(offendingProposeCreate('openspec --no-color new change foo')).toBe(
+      'openspec new change',
+    )
+  })
+
+  test('scans compound commands and prefixes', () => {
+    expect(offendingProposeCreate('cd /tmp && openspec new change foo')).toBe(
+      'openspec new change',
+    )
+    expect(offendingProposeCreate('sudo openspec new change foo')).toBe(
+      'openspec new change',
+    )
+  })
+
+  test('allows other openspec subcommands', () => {
+    expect(offendingProposeCreate('openspec status --change foo')).toBeNull()
+    expect(offendingProposeCreate('openspec list')).toBeNull()
+    expect(offendingProposeCreate('openspec archive foo')).toBeNull()
+    expect(
+      offendingProposeCreate('openspec instructions tasks --change foo'),
+    ).toBeNull()
+    // `new` without `change` (e.g. a hypothetical other item) is not the scaffold.
+    expect(offendingProposeCreate('openspec new')).toBeNull()
+  })
+
+  test('does not flag openspec appearing as a mere argument', () => {
+    expect(offendingProposeCreate('echo "openspec new change foo"')).toBeNull()
+    expect(offendingProposeCreate('grep openspec file.txt')).toBeNull()
+  })
+})
+
+describe('propose-guard blockedProposalWrite', () => {
+  test('blocks writing change artifacts in the primary checkout', () => {
+    withPrimaryCheckout((repo) => {
+      expect(
+        blockedProposalWrite('openspec/changes/add-foo/proposal.md', repo),
+      ).toBe('openspec/changes/add-foo/proposal.md')
+      expect(
+        blockedProposalWrite('openspec/changes/add-foo/design.md', repo),
+      ).toBe('openspec/changes/add-foo/design.md')
+      expect(
+        blockedProposalWrite(`${repo}/openspec/changes/add-foo/tasks.md`, repo),
+      ).toBe('openspec/changes/add-foo/tasks.md')
+    })
+  })
+
+  test('allows archived changes and non-change openspec paths in the primary checkout', () => {
+    withPrimaryCheckout((repo) => {
+      // Archive runs on main post-merge — must stay allowed.
+      expect(
+        blockedProposalWrite(
+          'openspec/changes/archive/add-foo/proposal.md',
+          repo,
+        ),
+      ).toBeNull()
+      // Specs and openspec root config are not change proposals.
+      expect(
+        blockedProposalWrite('openspec/specs/user/spec.md', repo),
+      ).toBeNull()
+      expect(blockedProposalWrite('openspec/project.md', repo)).toBeNull()
+      // Unrelated paths.
+      expect(blockedProposalWrite('docs/x.md', repo)).toBeNull()
+    })
+  })
+
+  test('allows change artifacts inside a linked worktree', () => {
+    withLinkedWorktree((repo) => {
+      expect(
+        blockedProposalWrite('openspec/changes/add-foo/proposal.md', repo),
+      ).toBeNull()
+    })
+  })
+
+  test('ignores paths outside any git repo', () => {
+    expect(
+      blockedProposalWrite(
+        '/nonexistent/tmp/openspec/changes/c/p.md',
+        '/nonexistent/tmp',
+      ),
+    ).toBeNull()
   })
 })
 
