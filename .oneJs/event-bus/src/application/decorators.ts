@@ -4,6 +4,8 @@ import type { DomainEvent } from '../domain/events/domain-events'
 import type { EventHandlerOptions } from '../domain/interfaces'
 import { registerEventHandler } from '../domain/store'
 
+const EVENT_HANDLER_MARKER = Symbol.for('onejs.handler')
+
 export function EventHandler<T extends DomainEvent>(
   eventType: ClassConstructor<T>,
   options: EventHandlerOptions = {},
@@ -29,6 +31,9 @@ export function EventHandler<T extends DomainEvent>(
     }
 
     markAs(controller, 'handler')
+    ;(controller as ClassConstructor & { [EVENT_HANDLER_MARKER]?: true })[
+      EVENT_HANDLER_MARKER
+    ] = true
 
     registerEventHandler({
       target: controller,

@@ -1,17 +1,7 @@
 import { describe, expect, mock, test } from 'bun:test'
+import { responseMiddleware } from '../response.middleware'
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
-
-mock.module('@OneJs/core', () => ({
-  logger: {
-    debug: mock(() => {}),
-    info: mock(() => {}),
-    warn: mock(() => {}),
-    error: mock(() => {}),
-  },
-}))
-
-const { responseMiddleware } = await import('../response.middleware')
+void mock
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

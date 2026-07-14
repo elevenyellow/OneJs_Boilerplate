@@ -13,6 +13,23 @@ Implement tasks from an OpenSpec change.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
+**Optional Skill Loading**
+
+Load skills when the current task needs their rules. This is allowed in `apply`,
+but it must not replace reading the change artifacts or running validators.
+
+- Load `tdd-practices` and `testing-standards` before behavioral tasks that add
+  or change tests.
+- Load `hexagonal-architecture` and `design-principles` before touching domain,
+  application, repository, controller, DI, or error-handling code.
+- Load `api-design` and `security-review` before creating or changing endpoints,
+  authentication, authorization, user input handling, or external integrations.
+- Load `frontend-patterns`, `next-best-practices`, or `impeccable` only for
+  frontend/UI tasks.
+- Load `context7-mcp` and fetch current docs before writing code against an
+  external library, framework, SDK, or CLI whose API matters.
+- Do not load reviewer skills in `apply`; reviewers belong to `spec-review`.
+
 **Steps**
 
 1. **Select the change**

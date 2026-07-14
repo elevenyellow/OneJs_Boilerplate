@@ -17,6 +17,12 @@ This mode assumes `review` already ran successfully (validator green, reviewer f
 
 This mode delegates the final spec merge and archive move to the official OpenSpec CLI. Do not reimplement archive behavior with filesystem moves. The wrapper's job is to apply the project's policy before and after the CLI call.
 
+**Optional Skill Loading**
+
+Archive is mostly mechanical. Load skills only for narrow policy questions, such
+as `git-strategy` for commit wording or OpenSpec workflow clarification. Do not
+load implementation, design, reviewer, or frontend skills here.
+
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
 **Steps**

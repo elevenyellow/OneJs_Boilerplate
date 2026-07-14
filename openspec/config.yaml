@@ -13,16 +13,16 @@ context: |
   Architecture: Domain-Driven Design with Hexagonal Architecture
   (Ports & Adapters). Each bounded context lives in packages/<context>/
   and is organized in three layers — domain (entities, value objects,
-  repository interfaces, domain events) → application (services with
-  semantic methods or execute() on use-cases, DTOs) → infrastructure (adapters
+  repository interfaces, domain events) → application (one service per bounded
+  context with semantic use-case methods, DTOs) → infrastructure (adapters
   implementing ports, InMemory + Prisma repositories, HTTP controllers).
   Bounded contexts communicate only through application services or
   domain ports, never through direct adapter coupling.
   Auth: Clerk integrated via @OneJs/auth.
-  Testing: bun test runner. Unit tests (*.test.ts) live in __tests__/ mirroring
-  source and use InMemory fakes only — zero mocks, stubs or spies. Integration
-  tests (*.integration.test.ts in __tests__/integration/) run against a real
-  Prisma + PostgreSQL database.
+  Testing: bun test runner. Unit tests (*.test.ts) live in tests/unit/
+  mirroring source and use InMemory fakes only — zero mocks, stubs or spies.
+  Integration tests (*.integration.test.ts in tests/integration/) run against a
+  real Prisma + PostgreSQL database.
   Linting: Biome (bun run lint, bun run lint:fix, bun run format).
   All code, comments, and documentation in English.
 
@@ -34,12 +34,13 @@ context: |
     layer dependencies, repository port/adapter, application services
     with semantic methods, no primitives as parameters
   - guidelines/design-principles — kebab-case files, PascalCase classes,
-    camelCase methods, semantic method names or execute() on use-cases, @Injectable()/@Inject() DI,
-    no getters/setters, rich domain models, OneJsError for all errors,
+    camelCase methods, semantic use-case method names on application services,
+    @Injectable()/@Inject() DI, private fields exposed through getter methods,
+    no setters, rich domain models, OneJsError for all errors,
     no JSDoc unless requested
   - guidelines/testing-standards — bun:test runner, AAA structure,
     business-oriented describe/test names, InMemory fakes over mocks,
-    tests in __tests__/ mirroring source, integration tests as
+    tests in tests/unit/ mirroring source, integration tests as
     *.integration.test.ts against a real database, FIRST principles
   - guidelines/tdd-practices — 5-step cycle (Reason → Red → Green →
     Refactor → Re-evaluate), TPP, inside-out development (domain →
@@ -63,7 +64,7 @@ rules:
     - Map components to hexagonal layers (domain, application, infrastructure)
     - Identify ports (domain interfaces) and adapters (infrastructure implementations)
     - Application services expose semantic methods (e.g. registerUser, listActiveUsers);
-      use-cases may expose execute(); invariants live in entities and value objects
+      invariants live in entities and value objects
     - Bounded contexts communicate through application services or domain ports,
       never through direct adapter coupling
     - Configuration enters through ConfigService.get(key); application services
@@ -72,23 +73,23 @@ rules:
     - Read .agents/skills/guidelines/tdd-practices/ and
       .agents/skills/guidelines/testing-standards/ references before creating tasks
     - Tasks with behavior (entities, value objects, application services, repositories)
-      use TDD format — RED write failing test → GREEN implement →
-      COMMIT (conventional commit) → REFACTOR
+      use TDD format — RED write failing test → GREEN implement → REFACTOR
     - Tasks without behavior (types, DTOs, wiring, schema migrations) are plain
       tasks without TDD format
     - Order tasks inside-out — domain first, then application, then infrastructure
     - Keep tasks small enough for one TDD cycle
     - Testing strategy per layer:
       - Domain (entities, value objects, domain services) — unit tests with bun test
-        (*.test.ts in __tests__/ mirroring source), zero mocks, InMemory fakes only
-      - Application (services with semantic methods or execute()) — unit tests with
-        InMemory repositories (*.test.ts in __tests__/), zero mocks
+        (*.test.ts in tests/unit/ mirroring source), zero mocks, InMemory fakes only
+      - Application (services with semantic methods) — unit tests with
+        InMemory repositories (*.test.ts in tests/unit/), zero mocks
       - Infrastructure DB/repository adapters — integration tests against a real
-        Prisma + PostgreSQL database (*.integration.test.ts in __tests__/integration/)
+        Prisma + PostgreSQL database (*.integration.test.ts in tests/integration/)
       - Infrastructure REST @Controller endpoints — integration/e2e tests against a
-        running Elysia server (*.integration.test.ts in __tests__/integration/)
+        running Elysia server (*.integration.test.ts in tests/integration/)
     - Never mock Prisma directly — use a real test database in integration tests
     - After any schema change, regenerate the Prisma client with `bun run prisma:build`
     - Always include a final validation group that runs `bun run lint:fix`,
       `bun run typecheck`, and `bun test`
-    - Always end with a final task that commits all changes using a Conventional Commits message
+    - Always end with a final task that suggests a Conventional Commits message;
+      commit only when the operator explicitly requests it or the approved workflow requires it

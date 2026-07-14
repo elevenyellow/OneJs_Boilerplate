@@ -20,6 +20,17 @@ This mode owns everything that used to live between "all tasks done" and "move t
 
 `apply` keeps its per-task `@project-validator` gate for fast feedback. `archive` no longer runs reviewers — it trusts that `review` already left the tree green.
 
+**Optional Skill Loading**
+
+Load focused guideline skills only to interpret or resolve findings. The primary
+review mechanism is still the reviewer subagent panel.
+
+- Load `hexagonal-architecture`, `design-principles`, `testing-standards`, or
+  `tdd-practices` when consolidating related reviewer findings.
+- Load `api-design`, `security-review`, or frontend skills when findings touch
+  those surfaces.
+- Do not use skills to broaden scope beyond the change diff.
+
 **Steps**
 
 1. **Select the change**

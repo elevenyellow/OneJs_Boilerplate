@@ -13,6 +13,13 @@ This closes the gap that `openspec-review` (pre-archive, on the local change) le
 
 **Input**: a spec branch name (`spec/<change>`), a change id, or a PR number. If missing, infer from the current worktree branch; if ambiguous, run `git branch --list 'spec/*'` (and `gh pr list` if available) and ask.
 
+**Optional Skill Loading**
+
+This gate is read-only and should stay lean. Load skills only when they help
+interpret a blocking result, such as `git-strategy` for branch/PR policy,
+`hexagonal-architecture` for an architectural blocker, or `testing-standards`
+for a test blocker. Do not load skills to auto-fix or expand the review scope.
+
 ## Workflow
 
 1. **Resolve & orient.** Determine `BRANCH=spec/<change>` and announce `Merge-review: <BRANCH>`. `git fetch origin main --quiet`. Establish `BASE=origin/main`.

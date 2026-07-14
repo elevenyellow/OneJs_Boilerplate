@@ -9,8 +9,8 @@
  * Signs JWTs with 'default_secret' (LocalJwtStrategy fallback when JWT_SECRET is unset).
  */
 
+import { AuthMiddleware, AuthPlugin } from '@OneJs/auth'
 import {
-  AuthMiddleware,
   Container,
   Logger,
   metadataRegistry,
@@ -114,6 +114,7 @@ async function bootAuthApp() {
 
   await new OneJs(container)
     .use(stubBootstrapLoader)
+    .use(new AuthPlugin())
     .use(new ServerPlugin())
     .start()
 

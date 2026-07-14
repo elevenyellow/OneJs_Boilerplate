@@ -54,7 +54,9 @@ describe('User', () => {
 
     it('clears reset token when passed null', () => {
       const user = User.register(Email.create(EMAIL), PasswordHash.create(HASH))
-        .withResetToken(ResetToken.create('550e8400-e29b-41d4-a716-446655440000'))
+        .withResetToken(
+          ResetToken.create('550e8400-e29b-41d4-a716-446655440000'),
+        )
         .withResetToken(null)
 
       expect(user.getResetToken()).toBeNull()

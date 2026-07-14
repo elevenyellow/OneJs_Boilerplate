@@ -1,5 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 
+type QueryValue = Record<string, unknown>
+
 export abstract class PrismaRepository<TModel extends keyof PrismaClient> {
   protected model: PrismaClient[TModel]
 
@@ -14,9 +16,17 @@ export abstract class PrismaRepository<TModel extends keyof PrismaClient> {
     return this.model.findMany(args)
   }
 
-  findOne(args: { where: any; select?: any; include?: any }) {
+  findOne(args: {
+    where: QueryValue
+    select?: QueryValue
+    include?: QueryValue
+  }) {
     const { where, select, include } = args
-    return this.model.findFirst({ where, select, include })
+    return this.model.findFirst({
+      where,
+      select,
+      include,
+    } as Parameters<PrismaClient[TModel]['findFirst']>[0])
   }
 
   create(args: Parameters<PrismaClient[TModel]['create']>[0]) {
@@ -32,12 +42,12 @@ export abstract class PrismaRepository<TModel extends keyof PrismaClient> {
   }
 
   async findWithPagination(args: {
-    where?: any
+    where?: QueryValue
     limit?: number
     skip?: number
-    orderBy?: any
-    select?: any
-    include?: any
+    orderBy?: QueryValue
+    select?: QueryValue
+    include?: QueryValue
   }): Promise<{ data: unknown[]; total: number }> {
     const {
       where = {},
@@ -56,8 +66,10 @@ export abstract class PrismaRepository<TModel extends keyof PrismaClient> {
         orderBy,
         select,
         include,
-      }),
-      this.model.count({ where }),
+      } as Parameters<PrismaClient[TModel]['findMany']>[0]),
+      this.model.count({ where } as Parameters<
+        PrismaClient[TModel]['count']
+      >[0]),
     ])
 
     return { data, total }

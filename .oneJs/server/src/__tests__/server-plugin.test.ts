@@ -3,15 +3,8 @@
 
 import { metadataRegistry } from '@OneJs/core'
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { clearControllers, registerController } from '../controller-registry'
 import { Server } from '../http-server'
-
-const mockGetAllControllers = mock(() => [] as any[])
-
-mock.module('../controller-registry', () => ({
-  getAllControllers: mockGetAllControllers,
-  registerController: mock(() => {}),
-  clearControllers: mock(() => {}),
-}))
 
 const { ServerPlugin } = await import('../server-plugin')
 
@@ -24,8 +17,7 @@ function makeContainer() {
 
 describe('ServerPlugin', () => {
   beforeEach(() => {
-    mockGetAllControllers.mockReset()
-    mockGetAllControllers.mockImplementation(() => [])
+    clearControllers()
   })
 
   describe('metadata', () => {
@@ -83,7 +75,6 @@ describe('ServerPlugin', () => {
 
   describe('load()', () => {
     test('returns early when no controllers are registered', async () => {
-      mockGetAllControllers.mockImplementation(() => [])
       const container = makeContainer()
       const plugin = new ServerPlugin()
 
@@ -94,7 +85,7 @@ describe('ServerPlugin', () => {
 
     test('retrieves the Server from the container when controllers exist', async () => {
       class HealthController {}
-      mockGetAllControllers.mockImplementation(() => [HealthController])
+      registerController(HealthController)
 
       const fakeServer = { addControllers: mock(() => {}) }
       const container = {
@@ -113,10 +104,8 @@ describe('ServerPlugin', () => {
     test('calls addControllers with all registered controllers', async () => {
       class TaskController {}
       class UserController {}
-      mockGetAllControllers.mockImplementation(() => [
-        TaskController,
-        UserController,
-      ])
+      registerController(TaskController)
+      registerController(UserController)
 
       const fakeServer = { addControllers: mock(() => {}) }
       const container = {
@@ -134,8 +123,6 @@ describe('ServerPlugin', () => {
     })
 
     test('does not call addControllers when there are no controllers', async () => {
-      mockGetAllControllers.mockImplementation(() => [])
-
       const fakeServer = { addControllers: mock(() => {}) }
       const container = {
         get: mock(() => fakeServer),
@@ -149,7 +136,7 @@ describe('ServerPlugin', () => {
 
     test('passes exactly the controllers returned by getAllControllers', async () => {
       class OrderController {}
-      mockGetAllControllers.mockImplementation(() => [OrderController])
+      registerController(OrderController)
 
       const fakeServer = { addControllers: mock(() => {}) }
       const container = {

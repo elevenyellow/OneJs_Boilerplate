@@ -4,7 +4,7 @@ export type { Scope, Fallback }
 
 export interface ParamInfo {
   index: number
-  type?: any
+  type?: unknown
   optional?: boolean
   fallback?: Fallback
 }
@@ -29,7 +29,7 @@ class MetadataRegistry {
     this.services.set(ctor, { scope, autorun })
   }
 
-  registerParamType(target: ClassConstructor, index: number, type: any) {
+  registerParamType(target: ClassConstructor, index: number, type: unknown) {
     const list = this.paramMap.get(target) || []
     list[index] = { ...list[index], index, type }
     this.paramMap.set(target, list)

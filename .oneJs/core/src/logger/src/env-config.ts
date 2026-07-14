@@ -1,6 +1,8 @@
 // src/env-config.ts
 import { createRequire } from 'module'
-import { type LoggerConfig } from './logger-config.interface'
+import { type ColorTheme, type LoggerConfig } from './logger-config.interface'
+
+type DotenvModule = { config: () => unknown }
 
 let dotenvLoaded = false
 
@@ -9,7 +11,7 @@ function loadDotenv(): void {
   try {
     const requireFn = createRequire(import.meta.url)
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-    const dotenv: any = requireFn('dotenv')
+    const dotenv = requireFn('dotenv') as Partial<DotenvModule>
     if (dotenv && typeof dotenv.config === 'function') {
       dotenv.config()
     }
@@ -22,16 +24,14 @@ function loadDotenv(): void {
 export function getConfigFromEnv(): Partial<LoggerConfig> {
   loadDotenv()
 
-  const level = process.env['LOG_LEVEL'] as any as
-    | LoggerConfig['level']
-    | undefined
+  const level = process.env['LOG_LEVEL'] as LoggerConfig['level'] | undefined
   const enableDebug = process.env['LOG_DEBUG'] === 'true' ? true : undefined
   const debugKeys = process.env['LOG_DEBUG_KEYS']
     ? process.env['LOG_DEBUG_KEYS']!.split(',').filter(Boolean)
     : undefined
   const serverUrl = process.env['LOG_SERVER_URL'] || undefined
   const serviceName = process.env['SERVICE_NAME'] || undefined
-  const theme = (process.env['LOG_THEME'] as any) || undefined
+  const theme = process.env['LOG_THEME'] as ColorTheme | undefined
   const colorsEnabled =
     process.env['LOG_COLORS'] === undefined
       ? undefined

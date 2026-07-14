@@ -79,6 +79,23 @@ Depending on what the user brings, you might:
 
 You have full context of the OpenSpec system. Use it naturally, don't force it.
 
+## Optional Skill Loading
+
+Load relevant skills when they materially improve the discussion. Keep this
+selective: skills are context, not ceremony.
+
+- Use `brainstorming` for early product shaping, unclear user intent, or broad
+  feature exploration.
+- Use `clean-ddd-hexagonal`, `hexagonal-architecture`, or `design-principles`
+  when discussing bounded contexts, domain models, ports, adapters, or service
+  boundaries.
+- Use `testing-standards` or `tdd-practices` when exploring test strategy or
+  implementation sequencing.
+- Use `api-design` or `security-review` when exploring public endpoints,
+  authentication, authorization, or user input.
+- Use `context7-mcp` only when current external library/API documentation would
+  change the answer.
+
 ### Check for context
 
 At the start, quickly check what exists:

@@ -10,13 +10,14 @@
       "reasoningEffort": "high",
       "permission": {
         "edit": "deny",
-        "bash": "deny",
+        "bash": "allow",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
         "webfetch": "allow",
         "task": "allow",
-        "question": "allow"
+        "question": "allow",
+        "skill": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-explore/SKILL.md}"
     },
@@ -34,7 +35,8 @@
         "grep": "allow",
         "webfetch": "allow",
         "task": "allow",
-        "question": "allow"
+        "question": "allow",
+        "skill": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-propose/SKILL.md}"
     },
@@ -52,7 +54,8 @@
         "grep": "allow",
         "webfetch": "allow",
         "task": "allow",
-        "question": "allow"
+        "question": "allow",
+        "skill": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-apply-change/SKILL.md}"
     },
@@ -69,7 +72,8 @@
         "glob": "allow",
         "grep": "allow",
         "task": "allow",
-        "question": "allow"
+        "question": "allow",
+        "skill": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-archive-change/SKILL.md}"
     },
@@ -86,7 +90,8 @@
         "glob": "allow",
         "grep": "allow",
         "task": "allow",
-        "question": "allow"
+        "question": "allow",
+        "skill": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-review/SKILL.md}"
     },
@@ -103,7 +108,8 @@
         "glob": "allow",
         "grep": "allow",
         "task": "allow",
-        "question": "allow"
+        "question": "allow",
+        "skill": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-merge-review/SKILL.md}"
     },
@@ -123,7 +129,8 @@
         "task": {
           "project-validator": "allow",
           "*": "deny"
-        }
+        },
+        "skill": "allow"
       },
       "prompt": "{file:./.agents/skills/openspec-loop/SKILL.md}"
     },

@@ -1,30 +1,17 @@
+import { clearMarkers, getRoles, metadataRegistry } from '@OneJs/core'
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { clearControllers, getAllControllers } from '../../controller-registry'
+import { getControllerMeta } from '../../utils/route-metadata'
+import { Controller } from '../controller'
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
-
-const mockRegisterService = mock(() => {})
-const mockMarkAs = mock(() => {})
-const mockRegisterController = mock(() => {})
-
-mock.module('@OneJs/core', () => ({
-  metadataRegistry: { registerService: mockRegisterService },
-  markAs: mockMarkAs,
-}))
-
-mock.module('../../controller-registry', () => ({
-  registerController: mockRegisterController,
-}))
-
-const { Controller } = await import('../controller')
-const { getControllerMeta } = await import('../../utils/route-metadata')
+void mock
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Controller decorator', () => {
   beforeEach(() => {
-    mockRegisterService.mockClear()
-    mockMarkAs.mockClear()
-    mockRegisterController.mockClear()
+    clearControllers()
+    clearMarkers()
   })
 
   test('sets the path on controller metadata', () => {
@@ -55,25 +42,22 @@ describe('Controller decorator', () => {
     @Controller('/items')
     class ItemController {}
 
-    expect(mockRegisterService).toHaveBeenCalledTimes(1)
-    const [ctor, scope, lazy] = mockRegisterService.mock.calls[0] as any
-    expect(ctor).toBe(ItemController)
-    expect(scope).toBe('singleton')
-    expect(lazy).toBe(false)
+    const metadata = metadataRegistry.getMetadata(ItemController)
+    expect(metadata?.scope).toBe('singleton')
+    expect(metadata?.autorun).toBe(false)
   })
 
   test('marks the class as controller role', () => {
     @Controller('/tasks')
     class TaskController {}
 
-    expect(mockMarkAs).toHaveBeenCalledWith(TaskController, 'controller')
+    expect(getRoles(TaskController)).toContain('controller')
   })
 
   test('calls registerController with the class', () => {
     @Controller('/invoices')
     class InvoiceController {}
 
-    expect(mockRegisterController).toHaveBeenCalledTimes(1)
-    expect(mockRegisterController.mock.calls[0][0]).toBe(InvoiceController)
+    expect(getAllControllers()).toContain(InvoiceController)
   })
 })

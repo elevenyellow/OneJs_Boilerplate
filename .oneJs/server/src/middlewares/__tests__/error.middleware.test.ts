@@ -2,7 +2,6 @@
 import { logger, OneJsError } from '@OneJs/core'
 import { beforeAll, describe, expect, it, mock } from 'bun:test'
 
-const originalError = logger.error.bind(logger)
 beforeAll(() => {
   logger.error = mock(() => {}) as any
 })

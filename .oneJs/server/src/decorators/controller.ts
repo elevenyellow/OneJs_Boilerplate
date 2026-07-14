@@ -4,7 +4,7 @@ import { getControllerMeta } from '../utils/route-metadata'
 
 export function Controller(path: string, version?: string): ClassDecorator {
   return (target) => {
-    const ctor = target as unknown as ClassConstructor<any>
+    const ctor = target as unknown as ClassConstructor
 
     const meta = getControllerMeta(ctor)
     meta.path = path

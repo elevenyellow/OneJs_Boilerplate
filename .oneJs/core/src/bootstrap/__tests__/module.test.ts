@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
+import type { ClassConstructor } from '../../container/types'
 import { clearMarkers, markAs } from '../../markers'
 import { BootstrapBase } from '../bootstrap-base'
 import { clearModules, getAllModules, Module } from '../module'
@@ -39,6 +40,7 @@ describe('@Module', () => {
 
     const modules = getAllModules()
     expect(modules).toHaveLength(1)
+    expect(modules[0].target).toBe(ServiceModule)
     expect(modules[0].options.providers).toEqual([FakeService])
   })
 
@@ -74,7 +76,7 @@ describe('@Module', () => {
     @Module({ controllers: [] })
     class SomeModule {}
 
-    expect(getAllModules()).toHaveLength(1)
+    expect(getAllModules()[0].target).toBe(SomeModule)
     clearModules()
     expect(getAllModules()).toHaveLength(0)
   })
@@ -85,6 +87,7 @@ describe('@Module', () => {
     expect(() => {
       @Module({ controllers: [NotAController] })
       class BadModule {}
+      void BadModule
     }).toThrow(
       '"NotAController" was declared in "controllers" but is not decorated with @Controller',
     )
@@ -98,6 +101,7 @@ describe('@Module', () => {
     expect(() => {
       @Module({ handlers: [NotAHandler] })
       class BadModule {}
+      void BadModule
     }).toThrow(
       '"NotAHandler" was declared in "handlers" but is not decorated with @EventHandler',
     )
@@ -109,6 +113,7 @@ describe('@Module', () => {
     expect(() => {
       @Module({ providers: [NotAProvider] })
       class BadModule {}
+      void BadModule
     }).toThrow(
       '"NotAProvider" was declared in "providers" but is not decorated with @Injectable',
     )
@@ -119,8 +124,11 @@ describe('@Module', () => {
     markAs(NotBootstrap, 'provider')
 
     expect(() => {
-      @Module({ bootstrap: [NotBootstrap as any] })
+      @Module({
+        bootstrap: [NotBootstrap as unknown as ClassConstructor<BootstrapBase>],
+      })
       class BadModule {}
+      void BadModule
     }).toThrow(
       '"NotBootstrap" was declared in "bootstrap" but does not extend BootstrapBase',
     )
@@ -134,6 +142,7 @@ describe('@Module', () => {
     expect(() => {
       @Module({ bootstrap: [ValidSeeder] })
       class GoodModule {}
+      void GoodModule
     }).not.toThrow()
   })
 })

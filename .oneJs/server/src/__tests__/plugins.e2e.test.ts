@@ -219,6 +219,7 @@ describe('EventBusPlugin — E2E handler wiring', () => {
         return handled(event)
       }
     }
+    void PingHandler
 
     const container = new Container()
 
@@ -247,6 +248,7 @@ describe('EventBusPlugin — E2E handler wiring', () => {
         return handledA(event)
       }
     }
+    void HandlerA
 
     @Injectable()
     class HandlerB {
@@ -255,6 +257,7 @@ describe('EventBusPlugin — E2E handler wiring', () => {
         return handledB(event)
       }
     }
+    void HandlerB
 
     const container = new Container()
 
@@ -306,6 +309,7 @@ describe('ServerPlugin + EventBusPlugin — combined E2E', () => {
         return eventHandled(event)
       }
     }
+    void OrderEventHandler
 
     class OrderController {
       static __meta = {

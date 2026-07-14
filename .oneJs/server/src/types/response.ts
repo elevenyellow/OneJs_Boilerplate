@@ -25,7 +25,7 @@ export function createErrorResponse(
   message: string,
   statusCode: number,
   explanatoryMessage?: string,
-  data: any = {},
+  data: unknown = {},
 ) {
   return {
     success: false,

@@ -9,21 +9,21 @@ export class Container {
   private resolutionStack = new Set<ClassConstructor>()
 
   register<T>(
-    constructor: ClassConstructor<T>,
+    ctor: ClassConstructor<T>,
     scope: Scope = 'singleton',
     autorun: boolean = false,
     params: ParamInfo[] = [],
   ): void {
-    if (this.services.has(constructor)) return
-    this.services.set(constructor, { constructor, scope, autorun, params })
+    if (this.services.has(ctor)) return
+    this.services.set(ctor, { constructor: ctor, scope, autorun, params })
   }
 
   registerClass<T>(
-    constructor: ClassConstructor<T>,
+    ctor: ClassConstructor<T>,
     options?: { scope?: Scope; params?: ParamInfo[] },
   ): void {
     this.register(
-      constructor,
+      ctor,
       options?.scope ?? 'singleton',
       false,
       options?.params ?? [],
@@ -38,8 +38,8 @@ export class Container {
     this.tokenInstances.set(token, instance)
   }
 
-  get<T>(constructor: ClassConstructor<T>): T {
-    return this.resolve(constructor)
+  get<T>(ctor: ClassConstructor<T>): T {
+    return this.resolve(ctor)
   }
 
   getAllServices(): unknown[] {
@@ -54,39 +54,37 @@ export class Container {
     this.resolutionStack.clear()
   }
 
-  private resolve<T>(constructor: ClassConstructor<T>): T {
-    this.guardCyclicDependency(constructor)
+  private resolve<T>(ctor: ClassConstructor<T>): T {
+    this.guardCyclicDependency(ctor)
 
-    const metadata = this.getMetadataOrThrow(constructor)
+    const metadata = this.getMetadataOrThrow(ctor)
 
-    if (metadata.scope === 'singleton' && this.instances.has(constructor)) {
-      return this.instances.get(constructor) as T
+    if (metadata.scope === 'singleton' && this.instances.has(ctor)) {
+      return this.instances.get(ctor) as T
     }
 
-    this.resolutionStack.add(constructor)
+    this.resolutionStack.add(ctor)
     try {
       const instance = this.instantiate(metadata)
       if (metadata.scope === 'singleton') {
-        this.instances.set(constructor, instance)
+        this.instances.set(ctor, instance)
       }
       return instance as T
     } finally {
-      this.resolutionStack.delete(constructor)
+      this.resolutionStack.delete(ctor)
     }
   }
 
-  private guardCyclicDependency(constructor: ClassConstructor): void {
-    if (this.resolutionStack.has(constructor)) {
-      throw new Error(
-        `Cyclic dependency detected for type: ${constructor.name}`,
-      )
+  private guardCyclicDependency(ctor: ClassConstructor): void {
+    if (this.resolutionStack.has(ctor)) {
+      throw new Error(`Cyclic dependency detected for type: ${ctor.name}`)
     }
   }
 
-  private getMetadataOrThrow(constructor: ClassConstructor): ServiceMetadata {
-    const metadata = this.services.get(constructor)
+  private getMetadataOrThrow(ctor: ClassConstructor): ServiceMetadata {
+    const metadata = this.services.get(ctor)
     if (!metadata) {
-      throw new Error(`No service registered for type: ${constructor.name}`)
+      throw new Error(`No service registered for type: ${ctor.name}`)
     }
     return metadata
   }
@@ -95,7 +93,7 @@ export class Container {
     const args = metadata.params.map((param) =>
       this.resolveParam(param, metadata.constructor),
     )
-    return new metadata.constructor(...args)
+    return new metadata.constructor(...(args as never[]))
   }
 
   private resolveParam(param: ParamInfo, owner: ClassConstructor): unknown {
@@ -114,8 +112,10 @@ export class Container {
         : param.fallback
     }
 
+    const typeName =
+      typeof param.type === 'function' ? param.type.name : String(param.type)
     throw new Error(
-      `Missing required dependency '${param.type?.name}' for '${owner.name}' at index ${param.index}`,
+      `Missing required dependency '${typeName}' for '${owner.name}' at index ${param.index}`,
     )
   }
 

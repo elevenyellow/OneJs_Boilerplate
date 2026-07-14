@@ -3,8 +3,11 @@ import type { AnyMiddleware } from '../middlewares/middleware.interface'
 
 export function useClassMiddleware(ClassRef: ClassConstructor) {
   const container = ContainerProvider.getContainer()
-  const instance = container.get(ClassRef)
-  const middlewareMethodName = (ClassRef as any).__middlewareMethod || 'handle'
+  const instance = container.get(ClassRef) as Record<string | symbol, unknown>
+  const middlewareClass = ClassRef as ClassConstructor & {
+    __middlewareMethod?: string | symbol
+  }
+  const middlewareMethodName = middlewareClass.__middlewareMethod || 'handle'
   const middlewareMethod = instance[middlewareMethodName]
 
   if (typeof middlewareMethod !== 'function') {

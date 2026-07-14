@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { AutoLoaderPlugin } from '../auto-loader-plugin'
 import type { AutoLoaderOptions, IModuleLoader } from '../ports/IModuleLoader'
 

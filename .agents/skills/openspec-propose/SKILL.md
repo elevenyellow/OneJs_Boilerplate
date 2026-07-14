@@ -22,6 +22,22 @@ When ready to implement, use Cursor `/opsx-apply`, Claude Code `/opsx:apply`, or
 
 **Input**: The user's request should include a change name (kebab-case) OR a description of what they want to build.
 
+**Optional Skill Loading**
+
+Load skills as needed before creating artifacts. Prefer the smallest useful set
+for the change; do not load skills just because they exist.
+
+- For domain/application/infrastructure changes, load `hexagonal-architecture`
+  and `design-principles` before `design.md`.
+- For behavioral work or task sequencing, load `tdd-practices` and
+  `testing-standards` before `tasks.md`.
+- For REST/API surface changes, load `api-design`; for auth, secrets, external
+  input, or authorization, also load `security-review`.
+- For UI/frontend specs, load `frontend-patterns` or `impeccable` when visual or
+  UX behavior matters.
+- For external libraries, frameworks, SDKs, or CLI usage, load `context7-mcp`
+  and fetch current docs before writing library-specific guidance.
+
 **Steps**
 
 1. **If no clear input provided, ask what they want to build**

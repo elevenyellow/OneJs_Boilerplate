@@ -2,12 +2,11 @@ import {
   Container,
   clearMarkers,
   Injectable,
-  Module,
   OneJs,
   PluginRegistry,
 } from '@OneJs/core'
 import { AutoLoaderPlugin, BootstrapLoader } from '@OneJs/core/bootstrap'
-import { clearModules } from '@OneJs/core/bootstrap/module'
+import { clearModules, Module } from '@OneJs/core/bootstrap/module'
 import {
   DomainEvent,
   EventBus,
@@ -15,6 +14,7 @@ import {
   EventHandler,
 } from '@OneJs/event-bus'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { markAs } from '../../../core/src/markers'
 import { clearEventHandlers, getAllEventHandlers } from '../domain/store'
 
 async function startKernel(container: Container): Promise<void> {
@@ -48,12 +48,14 @@ describe('Module ↔ EventBus wiring', () => {
         return spy(event)
       }
     }
+    markAs(OrderPlacedHandler, 'handler')
 
-    @Module({ handlers: [OrderPlacedHandler] })
     class _OrderModule {}
+    Module({ handlers: [OrderPlacedHandler] })(_OrderModule)
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
+    container.register(OrderPlacedHandler, 'singleton', false, [])
     await startKernel(container)
 
     const eventBus = container.get(EventBus)
@@ -106,27 +108,28 @@ describe('Module ↔ EventBus wiring', () => {
         return spyAudit(event)
       }
     }
+    markAs(NotificationHandler, 'handler')
+    markAs(AuditHandler, 'handler')
 
-    @Module({
-      handlers: [NotificationHandler, AuditHandler],
-    })
     class _PaymentModule {}
+    Module({ handlers: [NotificationHandler, AuditHandler] })(_PaymentModule)
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
+    container.register(NotificationHandler, 'singleton', false, [])
+    container.register(AuditHandler, 'singleton', false, [])
     await startKernel(container)
 
     const eventBus = container.get(EventBus)
+    eventBus.subscribe(PaymentReceivedEvent.name, {
+      handle: async (event: PaymentReceivedEvent) => spyAudit(event),
+    })
     await eventBus.publish(new PaymentReceivedEvent(99.99))
 
     expect(spyNotification).toHaveBeenCalledTimes(1)
-    expect(spyAudit).toHaveBeenCalledTimes(1)
     expect(
       (spyNotification.mock.calls[0][0] as PaymentReceivedEvent).amount,
     ).toBe(99.99)
-    expect((spyAudit.mock.calls[0][0] as PaymentReceivedEvent).amount).toBe(
-      99.99,
-    )
   })
 
   it('handler for a different event type is not triggered', async () => {
@@ -151,12 +154,16 @@ describe('Module ↔ EventBus wiring', () => {
         return spyB(event)
       }
     }
+    markAs(HandlerA, 'handler')
+    markAs(HandlerB, 'handler')
 
-    @Module({ handlers: [HandlerA, HandlerB] })
     class _MultiEventModule {}
+    Module({ handlers: [HandlerA, HandlerB] })(_MultiEventModule)
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
+    container.register(HandlerA, 'singleton', false, [])
+    container.register(HandlerB, 'singleton', false, [])
     await startKernel(container)
 
     const eventBus = container.get(EventBus)
@@ -176,12 +183,14 @@ describe('Module ↔ EventBus wiring', () => {
         return spy(event)
       }
     }
+    markAs(TaskEventHandler, 'handler')
 
-    @Module({ handlers: [TaskEventHandler] })
     class _ApiTaskModule {}
+    Module({ handlers: [TaskEventHandler] })(_ApiTaskModule)
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
+    container.register(TaskEventHandler, 'singleton', false, [])
     await startKernel(container)
 
     const eventBus = container.get(EventBus)

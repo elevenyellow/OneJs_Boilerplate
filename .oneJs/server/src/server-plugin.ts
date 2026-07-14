@@ -41,7 +41,9 @@ export class ServerPlugin implements BootstrapPlugin {
     )
 
     const server = container.get(Server)
-    server.addControllers(controllers)
+    server.addControllers(
+      controllers as Parameters<Server['addControllers']>[0],
+    )
 
     logger.debug('oneJs:server', '✅ Controllers registered')
   }

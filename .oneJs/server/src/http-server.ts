@@ -52,7 +52,7 @@ interface ControllerMeta {
 
 interface ControllerClass {
   __meta?: ControllerMeta
-  new (...args: unknown[]): unknown
+  new (...args: never[]): unknown
 }
 
 type EnhancedContext = Context & { query: Record<string, string | undefined> }
@@ -71,21 +71,26 @@ export class Server {
   }
 
   private handleGlobalError(error: unknown): Response {
-    if (error instanceof OneJsError) {
+    const oneJsError = error as Partial<OneJsError>
+    if (
+      error instanceof OneJsError ||
+      (typeof oneJsError.statusCode === 'number' &&
+        typeof oneJsError.message === 'string')
+    ) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: error.message,
-          data: error.data ?? {},
+          message: oneJsError.message,
+          data: oneJsError.data ?? {},
           timestamp: new Date().toISOString(),
           error: {
-            statusCode: error.statusCode,
-            message: error.explanatoryMessage,
-            code: error.code,
+            statusCode: oneJsError.statusCode,
+            message: oneJsError.explanatoryMessage,
+            code: oneJsError.code,
           },
         }),
         {
-          status: error.statusCode,
+          status: oneJsError.statusCode,
           headers: { 'Content-Type': 'application/json' },
         },
       )
@@ -112,11 +117,17 @@ export class Server {
   ): ElysiaPlugin[] {
     return middlewares.map((mw) => {
       if (typeof mw === 'function' && mw.prototype?.handle) {
-        const instance = this.container.get(mw as ClassConstructor)
-        return (app: Elysia) =>
+        const instance = this.container.get(
+          mw as ClassConstructor<MiddlewareInterface>,
+        )
+        return ((app: Elysia) =>
           app.onBeforeHandle(async (context) => {
-            await instance.handle(context, roles)
-          })
+            try {
+              await instance.handle(context, roles)
+            } catch (error) {
+              return this.handleGlobalError(error)
+            }
+          })) as unknown as ElysiaPlugin
       }
       return mw as ElysiaPlugin
     })
@@ -269,15 +280,19 @@ export class Server {
   use(middleware: AnyMiddleware): this {
     const resolved: ElysiaUseInput =
       typeof middleware === 'function' && middleware.prototype?.handle
-        ? (app: Elysia) => {
+        ? (((app: Elysia) => {
             const middlewareClass = middleware as MiddlewareClass
             const instance = this.container.get(
-              middlewareClass as ClassConstructor,
+              middlewareClass as ClassConstructor<MiddlewareInterface>,
             )
             return app.onBeforeHandle(async (context) => {
-              await instance.handle(context, [])
+              try {
+                await instance.handle(context, [])
+              } catch (error) {
+                return this.handleGlobalError(error)
+              }
             })
-          }
+          }) as ElysiaUseInput)
         : (middleware as ElysiaUseInput)
     this.middlewares.push(resolved)
     return this
@@ -293,7 +308,7 @@ export class Server {
   start(port = 3000, callback?: () => void): void {
     this.middlewares.forEach((m) => this.app.use(m))
     if (this.controllers.length === 0) {
-      this.addControllers(getAllControllers())
+      this.addControllers(getAllControllers() as unknown as ControllerClass[])
     }
     this.registerRoutes()
 

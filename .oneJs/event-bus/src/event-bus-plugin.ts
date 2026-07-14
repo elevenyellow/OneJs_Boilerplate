@@ -48,8 +48,13 @@ export class EventBusPlugin implements BootstrapPlugin {
     for (const { target, methodName, eventType, options } of handlers) {
       const handler = {
         handle: async (event: DomainEvent) => {
-          const instance = container.get(target)
-          return instance[methodName](event)
+          const instance = container.get(target) as Record<
+            string | symbol,
+            unknown
+          >
+          const eventHandler = instance[methodName]
+          if (typeof eventHandler !== 'function') return undefined
+          return eventHandler(event)
         },
       }
 

@@ -22,6 +22,17 @@ This is the unattended sibling of the `spec-apply` mode. It loads the same
 exactly one task per iteration, then stop.** The external loop will start the
 next iteration.
 
+## Optional Skill Loading
+
+You may load only skills needed for the single task in this iteration.
+
+- For behavioral work, load `tdd-practices` and `testing-standards`.
+- For domain/application/infrastructure work, load `hexagonal-architecture` and
+  `design-principles`.
+- For API/security work, load `api-design` and `security-review`.
+- For library/API usage, load `context7-mcp` and fetch current docs.
+- Never load reviewer skills; reviewers belong to `spec-review`.
+
 ---
 
 ## Phase 0 — Orientation (read before acting)
