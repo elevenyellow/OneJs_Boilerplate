@@ -124,7 +124,7 @@ export class Server {
         const instance = this.container.get(
           mw as ClassConstructor<MiddlewareHandlerInstance>,
         )
-        return (app: Elysia) =>
+        return ((app: Elysia) =>
           app.onBeforeHandle(async (context) => {
             try {
               await instance.handle(context, roles)

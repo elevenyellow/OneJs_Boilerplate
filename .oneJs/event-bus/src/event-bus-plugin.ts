@@ -6,10 +6,6 @@ import type { DomainEvent } from './domain/events/domain-events'
 import type { EventBusBridge } from './domain/interfaces/event-bus-bridge'
 import { getAllEventHandlers } from './domain/store'
 
-type EventHandlerInstance = {
-  [methodName: string]: (event: DomainEvent) => unknown
-}
-
 export class EventBusPlugin implements BootstrapPlugin {
   name = 'event-bus-plugin'
   priority = 50
