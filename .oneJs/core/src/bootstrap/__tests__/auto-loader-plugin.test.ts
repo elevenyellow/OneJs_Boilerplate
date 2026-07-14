@@ -1,9 +1,11 @@
 import { describe, expect, mock, test } from 'bun:test'
+import { Container } from '../../container'
+import type { ClassConstructor } from '../../types'
 import { AutoLoaderPlugin } from '../auto-loader-plugin'
 import type { AutoLoaderOptions, IModuleLoader } from '../ports/IModuleLoader'
 
 function makeLoader(): IModuleLoader & { load: ReturnType<typeof mock> } {
-  return { load: mock(async (_options: AutoLoaderOptions) => {}) }
+  return { load: mock((_options: AutoLoaderOptions) => Promise.resolve()) }
 }
 
 describe('AutoLoaderPlugin', () => {
@@ -32,7 +34,7 @@ describe('AutoLoaderPlugin', () => {
   describe('register()', () => {
     test('does not throw with any container', () => {
       const plugin = new AutoLoaderPlugin({ rootDir: '/app' })
-      expect(() => plugin.register({} as any)).not.toThrow()
+      expect(() => plugin.register(new Container())).not.toThrow()
     })
   })
 
@@ -42,7 +44,7 @@ describe('AutoLoaderPlugin', () => {
       const options = { rootDir: '/app' }
       const plugin = new AutoLoaderPlugin(options, loader)
 
-      await plugin.load({} as any)
+      await plugin.load(new Container())
 
       expect(loader.load).toHaveBeenCalledTimes(1)
       expect(loader.load).toHaveBeenCalledWith(options)
@@ -53,23 +55,28 @@ describe('AutoLoaderPlugin', () => {
       const options = { rootDir: '/app', extraDirs: ['/packages', '/modules'] }
       const plugin = new AutoLoaderPlugin(options, loader)
 
-      await plugin.load({} as any)
+      await plugin.load(new Container())
 
       expect(loader.load).toHaveBeenCalledWith(options)
     })
 
     test('ignores container parameter', async () => {
       const loader = makeLoader()
-      const container = {
-        get: mock(() => {
+      const get = mock(() => {
+        throw new Error('should not be called')
+      })
+      class ThrowingContainer extends Container {
+        override get<T>(ctor: ClassConstructor<T>): T {
+          get(ctor)
           throw new Error('should not be called')
-        }),
+        }
       }
+      const container = new ThrowingContainer()
       const plugin = new AutoLoaderPlugin({ rootDir: '/app' }, loader)
 
-      await plugin.load(container as any)
+      await plugin.load(container)
 
-      expect(container.get).not.toHaveBeenCalled()
+      expect(get).not.toHaveBeenCalled()
     })
   })
 })
