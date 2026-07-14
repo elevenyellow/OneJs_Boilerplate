@@ -31,6 +31,7 @@ describe('WorkerJob decorator', () => {
       @WorkerJob('notifications')
       handle() {}
     }
+    void AnotherWorker
 
     const call = mockRegisterWorkerHandler.mock.calls[0][0] as any
     expect(call.target).toBe(AnotherWorker)
@@ -47,6 +48,7 @@ describe('WorkerJob decorator', () => {
       @WorkerJob('queue-b', 4)
       processB() {}
     }
+    void MultiWorker
 
     expect(mockRegisterWorkerHandler).toHaveBeenCalledTimes(2)
     const calls = mockRegisterWorkerHandler.mock.calls.map((c: any) => c[0])

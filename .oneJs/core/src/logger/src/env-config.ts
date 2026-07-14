@@ -2,7 +2,9 @@
 import { createRequire } from 'module'
 import { type ColorTheme, type LoggerConfig } from './logger-config.interface'
 
-type DotenvModule = { config: () => unknown }
+type DotenvModule = {
+  config?: () => unknown
+}
 
 let dotenvLoaded = false
 
@@ -10,8 +12,7 @@ function loadDotenv(): void {
   if (dotenvLoaded) return
   try {
     const requireFn = createRequire(import.meta.url)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-    const dotenv = requireFn('dotenv') as Partial<DotenvModule>
+    const dotenv = requireFn('dotenv') as DotenvModule
     if (dotenv && typeof dotenv.config === 'function') {
       dotenv.config()
     }

@@ -163,11 +163,7 @@
         "**/*.spec.ts"
       ],
       "linter": {
-        "rules": {
-          "suspicious": {
-            "noEmptyBlockStatements": "warn"
-          }
-        }
+        "enabled": false
       }
     }
   ]

@@ -63,18 +63,17 @@ export class AuthMiddleware {
         throw err
       }
 
-      if (process.env.NODE_ENV === 'development') {
-        this.logger.error('oneJs:auth', `Invalid token: ${String(err)}`)
-      }
+      const errorMessage = err instanceof Error ? err.message : String(err)
 
-      const message =
-        err instanceof Error ? err.message : 'Token is invalid or expired'
+      if (process.env.NODE_ENV === 'development') {
+        this.logger.error('oneJs:auth', `Invalid token: ${errorMessage}`)
+      }
 
       context.set.status = 401
       throw new OneJsError(
         'Unauthorized',
         401,
-        message,
+        errorMessage || 'Token is invalid or expired',
         { token },
         ErrorCodes.AUTH_INVALID as ErrorCode,
       )

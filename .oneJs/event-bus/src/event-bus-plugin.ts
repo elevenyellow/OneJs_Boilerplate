@@ -53,8 +53,8 @@ export class EventBusPlugin implements BootstrapPlugin {
             unknown
           >
           const eventHandler = instance[methodName]
-          if (typeof eventHandler !== 'function') return undefined
-          return eventHandler(event)
+          if (typeof eventHandler !== 'function') return
+          await eventHandler(event)
         },
       }
 

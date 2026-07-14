@@ -5,7 +5,7 @@
  * - Server is registered in the container after startup
  * - Controllers registered via the controller registry are wired to the Server
  */
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+/** biome-ignore-all lint/suspicious/noExplicitAny: integration test exercises dynamic server wiring */
 
 import { Container, OneJs, PluginRegistry } from '@OneJs/core'
 import { beforeEach, describe, expect, it } from 'bun:test'

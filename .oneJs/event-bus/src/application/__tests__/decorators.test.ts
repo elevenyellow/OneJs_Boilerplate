@@ -68,6 +68,7 @@ describe('EventHandler decorator', () => {
         @EventHandler(OrderCreatedEvent)
         onOrderCreated(_event: OrderCreatedEvent) {}
       }
+      void OrderHandler
 
       const entry = getAllEventHandlers().find(
         (h) => h.methodName === 'onOrderCreated',
@@ -117,6 +118,7 @@ describe('EventHandler decorator', () => {
         @EventHandler(PlainClass as any)
         handle() {}
       }
+      void InvalidHandler
 
       expect(mockLogger.warn).toHaveBeenCalledTimes(1)
     })

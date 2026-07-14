@@ -1,18 +1,14 @@
 import type { ClassConstructor } from '@OneJs/core'
 
 type MiddlewareRef = Function | ClassConstructor
-type RouteMetadata = {
-  middlewares?: MiddlewareRef[]
-}
-type MetadataTarget = {
-  constructor: {
-    __meta?: { routes: Record<string | symbol, RouteMetadata> }
-  }
+type RouteMeta = { middlewares?: MiddlewareRef[] }
+type RouteMetadataTarget = Function & {
+  __meta?: { routes: Record<string | symbol, RouteMeta> }
 }
 
 export function UseMiddleware(middleware: MiddlewareRef): MethodDecorator {
   return (target, propertyKey) => {
-    const ctor = (target as MetadataTarget).constructor
+    const ctor = target.constructor as RouteMetadataTarget
 
     if (!ctor.__meta) ctor.__meta = { routes: {} }
     if (!ctor.__meta.routes[propertyKey]) ctor.__meta.routes[propertyKey] = {}

@@ -50,8 +50,9 @@ describe('Module ↔ EventBus wiring', () => {
     }
     markAs(OrderPlacedHandler, 'handler')
 
-    class _OrderModule {}
-    Module({ handlers: [OrderPlacedHandler] })(_OrderModule)
+    @Module({ handlers: [OrderPlacedHandler] })
+    class OrderModule {}
+    void OrderModule
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
@@ -111,8 +112,11 @@ describe('Module ↔ EventBus wiring', () => {
     markAs(NotificationHandler, 'handler')
     markAs(AuditHandler, 'handler')
 
-    class _PaymentModule {}
-    Module({ handlers: [NotificationHandler, AuditHandler] })(_PaymentModule)
+    @Module({
+      handlers: [NotificationHandler, AuditHandler],
+    })
+    class PaymentModule {}
+    void PaymentModule
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
@@ -157,8 +161,9 @@ describe('Module ↔ EventBus wiring', () => {
     markAs(HandlerA, 'handler')
     markAs(HandlerB, 'handler')
 
-    class _MultiEventModule {}
-    Module({ handlers: [HandlerA, HandlerB] })(_MultiEventModule)
+    @Module({ handlers: [HandlerA, HandlerB] })
+    class MultiEventModule {}
+    void MultiEventModule
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
@@ -185,8 +190,9 @@ describe('Module ↔ EventBus wiring', () => {
     }
     markAs(TaskEventHandler, 'handler')
 
-    class _ApiTaskModule {}
-    Module({ handlers: [TaskEventHandler] })(_ApiTaskModule)
+    @Module({ handlers: [TaskEventHandler] })
+    class ApiTaskModule {}
+    void ApiTaskModule
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()

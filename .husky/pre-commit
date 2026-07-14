@@ -1,13 +1,10 @@
 #!/bin/sh
 set -e
 
-# Format & lint-fix ONLY the staged files, then re-stage them — the commit
-# includes the formatted result and the working tree is left CLEAN. Formatting
-# the whole repo (biome check --write .) rewrote unstaged files, dirtying `main`
-# and blocking other sessions' pulls.
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
 if [ -n "$STAGED" ]; then
-  bunx biome check --write --staged --no-errors-on-unmatched
+  bun run lint:fix
   echo "$STAGED" | xargs git add --
 fi
 

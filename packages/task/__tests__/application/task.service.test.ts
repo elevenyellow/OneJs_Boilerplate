@@ -1,8 +1,10 @@
-import { OneJsError } from '@OneJs/core'
+import { type Logger, OneJsError } from '@OneJs/core'
+import type { DomainEvent, EventBus } from '@OneJs/event-bus'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { TaskCreatedIntegrationEvent } from '@shared/events'
 import { TaskService } from '../../application/task.service'
 import { Task } from '../../domain/entities/task'
+import { TaskCreatedEvent } from '../../domain/events/task-created.event'
 import type { ITaskRepository } from '../../domain/repositories/task.repository.interface'
 import { TaskDescription } from '../../domain/value-objects/task-description'
 import { TaskId } from '../../domain/value-objects/task-id'
@@ -19,22 +21,22 @@ function makeRepo(overrides: Partial<ITaskRepository> = {}): ITaskRepository {
   return {
     findAll: mock(async () => []),
     findById: mock(async () => null),
-    save: mock(async () => {}),
-    delete: mock(async () => {}),
+    save: mock(async () => undefined),
+    delete: mock(async () => undefined),
     ...overrides,
   }
 }
 
 function makeEventBus() {
-  return { publish: mock(async (_event: any) => {}) }
+  return { publish: mock(async (_event: DomainEvent) => undefined) }
 }
 
 function makeLogger() {
   return {
-    debug: mock(() => {}),
-    info: mock(() => {}),
-    warn: mock(() => {}),
-    error: mock(() => {}),
+    debug: mock(() => undefined),
+    info: mock(() => undefined),
+    warn: mock(() => undefined),
+    error: mock(() => undefined),
   }
 }
 
@@ -48,7 +50,11 @@ describe('TaskService', () => {
     repo = makeRepo()
     eventBus = makeEventBus()
     logger = makeLogger()
-    service = new TaskService(repo as any, eventBus as any, logger as any)
+    service = new TaskService(
+      repo,
+      eventBus as unknown as EventBus,
+      logger as unknown as Logger,
+    )
   })
 
   describe('getAll()', () => {
@@ -93,8 +99,10 @@ describe('TaskService', () => {
 
       expect(eventBus.publish).toHaveBeenCalledTimes(2)
 
-      const internalEvent = eventBus.publish.mock.calls[0][0]
-      const integrationEvent = eventBus.publish.mock.calls[1][0]
+      const internalEvent = eventBus.publish.mock
+        .calls[0][0] as TaskCreatedEvent
+      const integrationEvent = eventBus.publish.mock
+        .calls[1][0] as TaskCreatedIntegrationEvent
 
       expect(internalEvent.constructor.name).toBe('TaskCreatedEvent')
       expect(internalEvent.payload.title).toBe('Task')

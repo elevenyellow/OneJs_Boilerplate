@@ -4,7 +4,7 @@
  * Boots the OneJs kernel with a real JobsPlugin and verifies plugin lifecycle.
  * BullMQ (Worker class) is mocked to avoid requiring a real Redis connection.
  */
-/** biome-ignore-all lint/suspicious/noEmptyBlockStatements: <explanation> */
+/** biome-ignore-all lint/suspicious/noEmptyBlockStatements: intentional no-op test fakes */
 
 import { Container, OneJs, PluginRegistry } from '@OneJs/core'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
