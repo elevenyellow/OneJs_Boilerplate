@@ -8,7 +8,7 @@ export function createErrorHandler() {
   }: {
     code: string
     error: Error
-    set: { status: number }
+    set: { status?: number }
   }) => {
     const isDevelopment = process.env.NODE_ENV === 'development'
     const isOneJsError = error instanceof OneJsError
@@ -39,7 +39,7 @@ export function createErrorHandler() {
         statusCode: status,
         ...(isDevelopment && {
           details:
-            (error as { explanatoryMessage?: string }).explanatoryMessage ||
+            (isOneJsError ? error.explanatoryMessage : undefined) ||
             error.message,
         }),
       },

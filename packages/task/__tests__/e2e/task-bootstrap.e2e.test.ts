@@ -5,9 +5,11 @@
  * the seeded tasks are accessible through the full HTTP pipeline.
  */
 
+import type { Logger, OneJsError } from '@OneJs/core'
+import type { DomainEvent, EventBus } from '@OneJs/event-bus'
 import { createSuccessResponse } from '@OneJs/server/types/response'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-import { Elysia } from 'elysia'
+import { type Context, Elysia } from 'elysia'
 import { TaskSeeder } from '../../application/bootstrap/task-seeder'
 import { TaskService } from '../../application/task.service'
 import { TaskController } from '../../infrastructure/controllers/task.controller'
@@ -17,20 +19,24 @@ const BASE = 'http://test'
 
 function createSeededApp() {
   const repo = new InMemoryTaskRepository()
-  const eventBus = { publish: mock(async () => {}) }
+  const eventBus = { publish: mock(async (_event: DomainEvent) => undefined) }
   const logger = {
-    debug: () => {},
-    info: () => {},
-    warn: () => {},
-    error: () => {},
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
   }
-  const service = new TaskService(repo as any, eventBus as any, logger as any)
-  const controller = new TaskController(service as any)
-  const seeder = new TaskSeeder(repo, logger as any)
+  const service = new TaskService(
+    repo,
+    eventBus as unknown as EventBus,
+    logger as unknown as Logger,
+  )
+  const controller = new TaskController(service)
+  const seeder = new TaskSeeder(repo, logger as unknown as Logger)
 
   const app = new Elysia({ prefix: '/api' })
     .onError(({ error, set }) => {
-      const err = error as any
+      const err = error as OneJsError
       if (typeof err.statusCode === 'number') {
         set.status = err.statusCode
         return {
@@ -51,11 +57,11 @@ function createSeededApp() {
       }
     })
     .get('/tasks', async (ctx) => {
-      const result = await controller.getAll(ctx as any)
+      const result = await controller.getAll(ctx as Context)
       return createSuccessResponse(result)
     })
     .get('/tasks/:id', async (ctx) => {
-      const result = await controller.getById(ctx as any)
+      const result = await controller.getById(ctx as Context)
       return createSuccessResponse(result)
     })
 
@@ -67,8 +73,7 @@ function get(path: string) {
 }
 
 describe('Task Bootstrap — E2E (seeded data via HTTP)', () => {
-  // biome-ignore lint/suspicious/noExplicitAny: Elysia's generic prefix/metadata invariance makes a precise annotation impractical in tests.
-  let app: any
+  let app: ReturnType<typeof createSeededApp>['app']
   let seeder: TaskSeeder
 
   beforeEach(async () => {
@@ -91,7 +96,7 @@ describe('Task Bootstrap — E2E (seeded data via HTTP)', () => {
   it('seeded tasks have expected titles', async () => {
     const res = await app.handle(get('/api/tasks'))
     const body = await res.json()
-    const titles = body.data.map((t: any) => t.title)
+    const titles = body.data.map((t: { title: string }) => t.title)
 
     expect(titles).toContain('Setup project')
     expect(titles).toContain('Configure database')

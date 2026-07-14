@@ -18,9 +18,16 @@ function post(path: string, body: object) {
   })
 }
 
+function createTaskApp() {
+  return new Elysia({ prefix: '/api' })
+}
+
+interface TestApp {
+  handle(request: Request): Response | Promise<Response>
+}
+
 describe('Task API + EventBus (e2e)', () => {
-  // biome-ignore lint/suspicious/noExplicitAny: Elysia's generic prefix/metadata invariance makes a precise annotation impractical in tests.
-  let app: any
+  let app: TestApp
   const onTaskCreated = mock(async (_event: TaskCreatedEvent) => undefined)
   const onTaskCreatedIntegration = mock(
     async (_event: TaskCreatedIntegrationEvent) => undefined,
@@ -48,7 +55,7 @@ describe('Task API + EventBus (e2e)', () => {
     const service = new TaskService(repository, eventBus, logger)
     const controller = new TaskController(service)
 
-    app = new Elysia({ prefix: '/api' }).post('/tasks', async (ctx) => {
+    app = createTaskApp().post('/tasks', async (ctx) => {
       const result = await controller.create(ctx)
       return createSuccessResponse(result)
     })

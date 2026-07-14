@@ -1,5 +1,6 @@
 import {
   ConfigService,
+  type ErrorCode,
   ErrorCodes,
   Inject,
   Injectable,
@@ -28,8 +29,8 @@ export class ClerkStrategy implements AuthStrategy {
       // Clerk roles can be mapped from metadata or publicMetadata
       // For now, we default to USER or check a specific metadata field
       const role =
-        (payload as { publicMetadata?: { role?: string } }).publicMetadata
-          ?.role || UserRoles.USER
+        ((payload.publicMetadata as { role?: string } | undefined)
+          ?.role as string) || UserRoles.USER
 
       return {
         userId: payload.sub,
@@ -37,13 +38,13 @@ export class ClerkStrategy implements AuthStrategy {
         role,
         payload,
       }
-    } catch {
+    } catch (_err) {
       throw new OneJsError(
         'Unauthorized',
         401,
         'Token is invalid or expired',
         { token },
-        ErrorCodes.AUTH_INVALID,
+        ErrorCodes.AUTH_INVALID as ErrorCode,
       )
     }
   }
