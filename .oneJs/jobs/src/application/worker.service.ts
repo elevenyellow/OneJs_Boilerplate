@@ -11,7 +11,7 @@ import { RedisService } from '../infrastructure/redis'
 
 type WorkerDefinition = {
   queueName: string
-  processor: (job: Job) => Promise<any>
+  processor: (job: Job) => Promise<unknown>
   concurrency: number
 }
 
@@ -35,7 +35,7 @@ export class WorkerService {
 
   registerWorker(
     queueName: string,
-    processor: (job: Job) => Promise<any>,
+    processor: (job: Job) => Promise<unknown>,
     concurrency: number = 1,
   ) {
     if (this.workerDefinitions.has(queueName)) {

@@ -4,17 +4,24 @@ type RouteMeta = {
   path?: string
   middlewares?: Function[]
   roles?: string[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
-export function ensureRouteMeta(target: any, propertyKey: string): RouteMeta {
-  if (!target.constructor.__meta) {
-    target.constructor.__meta = { routes: {} }
-  }
+// The class constructor carries route metadata that decorators attach at
+// definition time; it is not part of the standard type of a decorator target.
+type MetaCarrier = {
+  __meta?: { routes?: Record<string, RouteMeta> }
+}
 
-  const meta = target.constructor.__meta
-  meta.routes ??= {}
-  meta.routes[propertyKey] ??= {}
+export function ensureRouteMeta(
+  target: object,
+  propertyKey: string,
+): RouteMeta {
+  const ctor = (target as { constructor: MetaCarrier }).constructor
 
-  return meta.routes[propertyKey]
+  ctor.__meta ??= { routes: {} }
+  ctor.__meta.routes ??= {}
+  ctor.__meta.routes[propertyKey] ??= {}
+
+  return ctor.__meta.routes[propertyKey]
 }

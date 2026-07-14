@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { DomainEvent } from '../../domain/events/domain-events'
 import type { IEventHandler } from '../../domain/handlers/event-handler'
 import { EventBus } from '.././event-bus'

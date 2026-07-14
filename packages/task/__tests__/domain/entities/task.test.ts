@@ -4,7 +4,6 @@ import { TaskDescription } from '../../../domain/value-objects/task-description'
 import { TaskTitle } from '../../../domain/value-objects/task-title'
 
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
-const UUID_2 = '6ba7b810-9dad-41d4-80b4-00c04fd430c8'
 
 describe('Task', () => {
   describe('create()', () => {
@@ -37,7 +36,10 @@ describe('Task', () => {
 
     it('throws when title exceeds max length', () => {
       expect(() =>
-        Task.create(TaskTitle.create('a'.repeat(101)), TaskDescription.create('')),
+        Task.create(
+          TaskTitle.create('a'.repeat(101)),
+          TaskDescription.create(''),
+        ),
       ).toThrow('TaskTitle cannot exceed')
     })
 

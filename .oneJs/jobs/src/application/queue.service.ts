@@ -39,7 +39,7 @@ export class QueueService {
   async add(
     queueName: string,
     jobName: string,
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     options?: JobsOptions,
   ) {
     const queue = this.getQueue(queueName)
@@ -56,7 +56,7 @@ export class QueueService {
     queueName: string,
     jobName: string,
     jobId: string,
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     options?: JobsOptions,
   ) {
     const queue = this.getQueue(queueName)
@@ -73,7 +73,7 @@ export class QueueService {
   async addUniqueByData(
     queueName: string,
     jobName: string,
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     options?: JobsOptions,
   ): Promise<Job | null> {
     const jobId = this.generateJobId(jobName, data)
@@ -100,7 +100,10 @@ export class QueueService {
   }
 
   /** Generador de jobId hash desde nombre + contenido */
-  private generateJobId(jobName: string, data: Record<string, any>): string {
+  private generateJobId(
+    jobName: string,
+    data: Record<string, unknown>,
+  ): string {
     const key = JSON.stringify(data, Object.keys(data).sort())
     const base = `${jobName}:${key}`
     return crypto.createHash('sha1').update(base).digest('hex')

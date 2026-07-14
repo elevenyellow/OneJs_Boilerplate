@@ -44,7 +44,7 @@ describe('@UseAuth()', () => {
       }
     }
 
-    const { routeA, routeB } = (TestController as any).__meta?.routes
+    const { routeA, routeB } = (TestController as any).__meta.routes
     expect(routeA?.middlewares).toContain(AuthMiddleware)
     expect(routeB?.middlewares).toContain(AuthMiddleware)
   })
@@ -104,7 +104,7 @@ describe('@Roles()', () => {
       }
     }
 
-    const { adminRoute, staffRoute } = (TestController as any).__meta?.routes
+    const { adminRoute, staffRoute } = (TestController as any).__meta.routes
     expect(adminRoute?.roles).toEqual(['admin'])
     expect(staffRoute?.roles).toEqual(['staff', 'admin'])
   })

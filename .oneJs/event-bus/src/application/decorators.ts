@@ -9,11 +9,11 @@ export function EventHandler<T extends DomainEvent>(
   options: EventHandlerOptions = {},
 ): MethodDecorator {
   return (
-    target: any,
+    target: object,
     propertyKey: string | symbol,
     descriptor: PropertyDescriptor,
   ) => {
-    const controller = target.constructor as ClassConstructor
+    const controller = (target as { constructor: ClassConstructor }).constructor
 
     if (
       typeof eventType !== 'function' ||

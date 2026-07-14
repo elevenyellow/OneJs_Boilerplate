@@ -1,11 +1,12 @@
 import {
   ConfigService,
+  type ErrorCode,
   ErrorCodes,
   Inject,
   Injectable,
   OneJsError,
 } from '@OneJs/core'
-import jwt from 'jsonwebtoken'
+import jwt, { type JwtPayload } from 'jsonwebtoken'
 import { type AuthStrategy, type AuthUser, UserRoles } from '../types'
 
 @Injectable()
@@ -18,7 +19,7 @@ export class LocalJwtStrategy implements AuthStrategy {
 
   async validate(token: string): Promise<AuthUser> {
     try {
-      const decoded = jwt.verify(token, this.secret) as any
+      const decoded = jwt.verify(token, this.secret) as JwtPayload
 
       return {
         userId: decoded.sub || decoded.id,
@@ -26,13 +27,13 @@ export class LocalJwtStrategy implements AuthStrategy {
         role: decoded.role || UserRoles.USER,
         payload: decoded,
       }
-    } catch (err) {
+    } catch {
       throw new OneJsError(
         'Unauthorized',
         401,
         'Invalid or expired local token',
         undefined,
-        ErrorCodes.AUTH_INVALID as any,
+        ErrorCodes.AUTH_INVALID as ErrorCode,
       )
     }
   }

@@ -7,7 +7,7 @@ import {
   OneJsError,
 } from '@OneJs/core'
 import { AUTH_STRATEGY_TOKEN } from './auth-strategy-token'
-import { type AuthStrategy, type UserRole } from './types'
+import { type AuthStrategy, type AuthUser, type UserRole } from './types'
 
 @Injectable()
 export class AuthMiddleware {
@@ -18,10 +18,10 @@ export class AuthMiddleware {
 
   async handle(
     context: {
-      request: { headers: { get: (arg0: string) => any } }
+      request: { headers: { get: (arg0: string) => string | null } }
       set: { status: number }
       store: {
-        user?: any
+        user?: AuthUser
       }
     },
     requiredRoles?: (UserRole | string)[],
@@ -58,20 +58,23 @@ export class AuthMiddleware {
       }
 
       context.store.user = user
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof OneJsError) {
         throw err
       }
 
       if (process.env.NODE_ENV === 'development') {
-        this.logger.error('oneJs:auth', `Invalid token: ${err}`)
+        this.logger.error('oneJs:auth', `Invalid token: ${String(err)}`)
       }
+
+      const message =
+        err instanceof Error ? err.message : 'Token is invalid or expired'
 
       context.set.status = 401
       throw new OneJsError(
         'Unauthorized',
         401,
-        err.message || 'Token is invalid or expired',
+        message,
         { token },
         ErrorCodes.AUTH_INVALID as ErrorCode,
       )

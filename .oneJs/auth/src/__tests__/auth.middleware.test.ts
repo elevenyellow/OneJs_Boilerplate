@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { ErrorCodes, OneJsError } from '../../errors'
 import { AuthMiddleware } from '../auth.middleware'
 

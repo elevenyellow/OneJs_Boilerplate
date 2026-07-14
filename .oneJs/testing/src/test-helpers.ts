@@ -21,7 +21,7 @@ export class TestHelpers {
   /**
    * Create a spy function (like mock but simpler)
    */
-  static spy<T extends (...args: any[]) => any>(
+  static spy<T extends (...args: never[]) => unknown>(
     implementation?: T,
   ): T & { calls: Array<Parameters<T>>; callCount: number } {
     const calls: Array<Parameters<T>> = []

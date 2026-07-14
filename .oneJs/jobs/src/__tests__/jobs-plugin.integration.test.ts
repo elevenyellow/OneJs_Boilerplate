@@ -42,7 +42,6 @@ mock.module('ioredis', () => {
 })
 
 const { JobsPlugin } = await import('../jobs-plugin')
-const { getAllWorkerHandlers } = await import('../domain/store')
 
 // Minimal stub for bootstrap-loader dependency
 const stubBootstrapLoader = { name: 'bootstrap-loader', priority: 10 }

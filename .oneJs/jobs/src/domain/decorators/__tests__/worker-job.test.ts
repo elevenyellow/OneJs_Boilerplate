@@ -33,6 +33,7 @@ describe('WorkerJob decorator', () => {
     }
 
     const call = mockRegisterWorkerHandler.mock.calls[0][0] as any
+    expect(call.target).toBe(AnotherWorker)
     expect(call.concurrency).toBe(1)
   })
 
@@ -48,9 +49,9 @@ describe('WorkerJob decorator', () => {
     }
 
     expect(mockRegisterWorkerHandler).toHaveBeenCalledTimes(2)
-    const queueNames = mockRegisterWorkerHandler.mock.calls.map(
-      (c: any) => c[0].queueName,
-    )
+    const calls = mockRegisterWorkerHandler.mock.calls.map((c: any) => c[0])
+    expect(calls.every((call: any) => call.target === MultiWorker)).toBe(true)
+    const queueNames = calls.map((call: any) => call.queueName)
     expect(queueNames).toContain('queue-a')
     expect(queueNames).toContain('queue-b')
   })

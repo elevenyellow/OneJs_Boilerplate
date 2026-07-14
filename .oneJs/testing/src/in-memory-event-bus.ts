@@ -7,7 +7,7 @@ export class InMemoryEventBus {
   private readonly events: DomainEvent[] = []
   private readonly handlers = new Map<
     string,
-    Array<(event: any) => Promise<void>>
+    Array<(event: DomainEvent) => Promise<void>>
   >()
 
   async publish(event: DomainEvent): Promise<void> {
@@ -19,11 +19,16 @@ export class InMemoryEventBus {
     }
   }
 
-  subscribe(eventName: string, handler: (event: any) => Promise<void>): void {
+  subscribe<T extends DomainEvent>(
+    eventName: string,
+    handler: (event: T) => Promise<void>,
+  ): void {
     if (!this.handlers.has(eventName)) {
       this.handlers.set(eventName, [])
     }
-    this.handlers.get(eventName)!.push(handler)
+    this.handlers
+      .get(eventName)!
+      .push(handler as (event: DomainEvent) => Promise<void>)
   }
 
   getPublishedEvents(): DomainEvent[] {
@@ -31,7 +36,7 @@ export class InMemoryEventBus {
   }
 
   getEventsByType<T extends DomainEvent>(
-    eventType: new (...args: any[]) => T,
+    eventType: new (...args: never[]) => T,
   ): T[] {
     return this.events.filter((e) => e instanceof eventType) as T[]
   }

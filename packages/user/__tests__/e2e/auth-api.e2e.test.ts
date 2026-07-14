@@ -187,12 +187,10 @@ function get(path: string, token?: string) {
 
 describe('Auth API — E2E (Elysia handle)', () => {
   let app: ReturnType<typeof createE2EApp>['app']
-  let repo: ReturnType<typeof createE2EApp>['repo']
 
   beforeEach(() => {
     const result = createE2EApp()
     app = result.app
-    repo = result.repo
   })
 
   // ── POST /api/auth/register ──────────────────────────────

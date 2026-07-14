@@ -50,7 +50,7 @@ describe('Module ↔ EventBus wiring', () => {
     }
 
     @Module({ handlers: [OrderPlacedHandler] })
-    class OrderModule {}
+    class _OrderModule {}
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
@@ -110,7 +110,7 @@ describe('Module ↔ EventBus wiring', () => {
     @Module({
       handlers: [NotificationHandler, AuditHandler],
     })
-    class PaymentModule {}
+    class _PaymentModule {}
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
@@ -153,7 +153,7 @@ describe('Module ↔ EventBus wiring', () => {
     }
 
     @Module({ handlers: [HandlerA, HandlerB] })
-    class MultiEventModule {}
+    class _MultiEventModule {}
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()
@@ -178,7 +178,7 @@ describe('Module ↔ EventBus wiring', () => {
     }
 
     @Module({ handlers: [TaskEventHandler] })
-    class ApiTaskModule {}
+    class _ApiTaskModule {}
 
     PluginRegistry.register(new EventBusPlugin())
     const container = new Container()

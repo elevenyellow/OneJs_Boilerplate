@@ -64,7 +64,7 @@ describe('EventHandler decorator', () => {
     })
 
     test('stores the correct methodName', () => {
-      class OrderHandler {
+      class _OrderHandler {
         @EventHandler(OrderCreatedEvent)
         onOrderCreated(_event: OrderCreatedEvent) {}
       }
@@ -113,7 +113,7 @@ describe('EventHandler decorator', () => {
 
   describe('invalid eventType warning', () => {
     test('logs a warning when the eventType is not a DomainEvent subclass', () => {
-      class InvalidHandler {
+      class _InvalidHandler {
         @EventHandler(PlainClass as any)
         handle() {}
       }
